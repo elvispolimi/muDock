@@ -48,7 +48,7 @@ foreach(flag IN LISTS global_c_cxx_flags)
 endforeach()
 
 #########################################################################
-#### Add the component that compose this repositoe
+#### Add each component that compose this project
 #########################################################################
 
 add_subdirectory(application)
