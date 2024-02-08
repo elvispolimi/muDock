@@ -59,7 +59,7 @@ add_subdirectory(application)
 
 message(STATUS "" )
 message(STATUS "//===---------------------------===//" )
-message(STATUS "//     SCORE-BSL CONFIGURATION     //" )
+message(STATUS "//       CONFIGURATION RECAP       //" )
 message(STATUS "//===---------------------------===//" )
 message(STATUS "Build type..........................: ${CMAKE_BUILD_TYPE} (CMAKE_BUILD_TYPE)")
 message(STATUS "Install prefix......................: ${CMAKE_INSTALL_PREFIX} (CMAKE_INSTALL_PREFIX)")
