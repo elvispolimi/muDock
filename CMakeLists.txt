@@ -30,17 +30,22 @@ find_package(Boost REQUIRED COMPONENTS graph)
 #       all the child ones, but not the parents
 
 # add more warnings (these flags are compatible with gcc and clang)
-add_compile_options(-Wall -Wextra -Wpedantic -Wshadow  -Wdouble-promotion)
+list(APPEND global_c_cxx_flags -Wall -Wextra -Wpedantic -Wshadow -Wdouble-promotion)
 
 # if we are using ninja, force to have colored output
 if ("${CMAKE_GENERATOR}" STREQUAL "Ninja")
     if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-        add_compile_options(-fdiagnostics-color=always)
+        list(APPEND global_c_cxx_flags -fdiagnostics-color=always)
     elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-        add_compile_options(-fcolor-diagnostics)
+        list(APPEND global_c_cxx_flags -fcolor-diagnostics)
     endif()
 endif()
 
+# add all the previously defined flags to each target language
+foreach(flag IN LISTS global_c_cxx_flags)
+    add_compile_options($<$<COMPILE_LANGUAGE:CXX>:${flag}>)
+    add_compile_options($<$<COMPILE_LANGUAGE:C>:${flag}>)
+endforeach()
 
 #########################################################################
 #### Add the component that compose this repositoe
