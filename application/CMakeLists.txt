@@ -27,6 +27,9 @@ set_target_properties("${CMAKE_PROJECT_NAME}"
       CXX_EXTENSIONS OFF
   )
 
+# add the dependencies
+target_link_libraries("${CMAKE_PROJECT_NAME}" libmudock)
+
 #########################################################################
 #### Declare the install step
 #########################################################################
