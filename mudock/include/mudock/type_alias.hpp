@@ -1,8 +1,5 @@
-#ifndef MUDCOK_TYPE_ALIAS_HDR
-#define MUDCOK_TYPE_ALIAS_HDR
+#pragma once
 
 namespace mudock {
   using coordinate_type = float;
 }
-
-#endif // MUDCOK_TYPE_ALIAS_HDR
