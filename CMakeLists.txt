@@ -52,6 +52,7 @@ endforeach()
 #########################################################################
 
 add_subdirectory(application)
+add_subdirectory(mudock)
 
 #########################################################################
 #### Print a small recap of the project configuration
