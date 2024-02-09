@@ -1,5 +1,4 @@
-#ifndef MUDCOK_MOLECULE_HDR
-#define MUDCOK_MOLECULE_HDR
+#pragma once
 
 #include <mudock/type_alias.hpp>
 #include <span>
@@ -13,5 +12,3 @@ namespace mudock {
   };
 
 } // namespace mudock
-
-#endif // MUDCOK_MOLECULE_HDR
