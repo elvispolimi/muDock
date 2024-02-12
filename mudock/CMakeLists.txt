@@ -33,6 +33,7 @@ set_target_properties(libmudock
       CXX_STANDARD_REQUIRED ON
       CXX_EXTENSIONS OFF
   )
+target_link_libraries(libmudock Microsoft.GSL::GSL)
 
 #########################################################################
 #### Declare the install step
