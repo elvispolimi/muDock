@@ -6,13 +6,20 @@
 set(header_path "${CMAKE_CURRENT_SOURCE_DIR}/include")
 set(header_prefix "mudock")
 list(APPEND header_files
+  "${header_path}/${header_prefix}/molecule/atom_coordinates.hpp"
+  "${header_path}/${header_prefix}/molecule/atoms.hpp"
+  "${header_path}/${header_prefix}/molecule/constraints.hpp"
+  "${header_path}/${header_prefix}/molecule/containers.hpp"
   "${header_path}/${header_prefix}/molecule.hpp"
+  "${header_path}/${header_prefix}/mudock.hpp"
   "${header_path}/${header_prefix}/type_alias.hpp"
 )
 
 # sources
 set(source_path "${CMAKE_CURRENT_SOURCE_DIR}/src")
 list(APPEND source_files
+  "${source_path}/molecule/atom_coordinates.cpp"
+  "${source_path}/molecule/atoms.cpp"
   "${source_path}/molecule.cpp"
 )
 
@@ -33,7 +40,7 @@ set_target_properties(libmudock
       CXX_STANDARD_REQUIRED ON
       CXX_EXTENSIONS OFF
   )
-target_link_libraries(libmudock Microsoft.GSL::GSL)
+target_link_libraries(libmudock PUBLIC Microsoft.GSL::GSL)
 
 #########################################################################
 #### Declare the install step
