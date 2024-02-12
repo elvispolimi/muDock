@@ -6,7 +6,7 @@ auto test(const mudock::molecule auto& molecule) { return molecule.atoms.coordin
 int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[]) {
   std::cout << "Hello world" << std::endl;
 
-  mudock::molecule_type<mudock::static_container_type> ligand;
+  mudock::static_molecule ligand;
   test(ligand);
 
   return EXIT_SUCCESS;
