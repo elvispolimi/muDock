@@ -17,10 +17,14 @@ endif()
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 #########################################################################
-#### Find external dependency
+#### Handle third party dependenies
 #########################################################################
 
+# Third-party libraries that must be manually installed
 find_package(Boost REQUIRED COMPONENTS graph)
+
+# Third-party libraries that we download and compile
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/prerequisite.cmake")
 
 #########################################################################
 #### Enable global compiler flags
