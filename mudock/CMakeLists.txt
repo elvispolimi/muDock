@@ -10,6 +10,7 @@ list(APPEND header_files
   "${header_path}/${header_prefix}/chem/elements.hpp"
   "${header_path}/${header_prefix}/molecule/atom_coordinates.hpp"
   "${header_path}/${header_prefix}/molecule/atoms.hpp"
+  "${header_path}/${header_prefix}/molecule/bond.hpp"
   "${header_path}/${header_prefix}/molecule/constraints.hpp"
   "${header_path}/${header_prefix}/molecule/containers.hpp"
   "${header_path}/${header_prefix}/molecule.hpp"
