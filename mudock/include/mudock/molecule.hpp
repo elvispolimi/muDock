@@ -5,6 +5,7 @@
 #include <mudock/molecule/atom_coordinates.hpp>
 #include <mudock/molecule/bond.hpp>
 #include <mudock/molecule/containers.hpp>
+#include <mudock/molecule/property_table.hpp>
 #include <mudock/type_alias.hpp>
 
 namespace mudock {
@@ -21,6 +22,9 @@ namespace mudock {
     // the bonds description
     container_type<bond> bonds;
     index_type num_bonds = index_type{0};
+
+    // a container that we can use to store key-value properties, e.g. its name
+    property_map properties;
 
     // utility function to allocate the memory based on the number of atoms and bonds
     void resize(const std::size_t n_atoms, std::size_t n_bonds);
