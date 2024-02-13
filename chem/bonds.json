@@ -1,0 +1,29 @@
+{
+  "bonds": [
+    {
+      "index": 0,
+      "value": "SINGLE",
+      "name": "Single"
+    },
+    {
+      "index": 1,
+      "value": "DOUBLE",
+      "name": "Double"
+    },
+    {
+      "index": 2,
+      "value": "TRIPLE",
+      "name": "Triple"
+    },
+    {
+      "index": 3,
+      "value": "AMIDE",
+      "name": "Amide"
+    },
+    {
+      "index": 4,
+      "value": "AROMATIC",
+      "name": "Aromatic"
+    }
+  ]
+}
