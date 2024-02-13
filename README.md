@@ -33,6 +33,14 @@ TBD
 
 The repository is structured as follows:
 
-- `application`: this folder contains the source files of the µDock executable.
+- `application`: contains the source files of the µDock executable.
 
-- `share`: this folder contains graphical resources and other files that are not strictly related to the application.
+- `chem`: contains chemical knowledge in JSON format, typically used to automatically generate sources
+
+- `cmake`: contains cmake helper function, e.g. to download third party dependencies
+
+- `mudock`: contains the sources of the µDock library, which implements domain concerns
+
+- `script`: contains utility scripts, e.g. beautifier or the script that generates sources
+
+- `share`: contains graphical resources and other files that are not strictly related to the application.
