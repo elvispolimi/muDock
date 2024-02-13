@@ -9,7 +9,6 @@ list(APPEND header_files
   "${header_path}/${header_prefix}/chem/bond_types.hpp"
   "${header_path}/${header_prefix}/chem/elements.hpp"
   "${header_path}/${header_prefix}/molecule/atom_coordinates.hpp"
-  "${header_path}/${header_prefix}/molecule/atoms.hpp"
   "${header_path}/${header_prefix}/molecule/bond.hpp"
   "${header_path}/${header_prefix}/molecule/constraints.hpp"
   "${header_path}/${header_prefix}/molecule/containers.hpp"
@@ -24,7 +23,6 @@ list(APPEND source_files
   "${source_path}/chem/bond_types.cpp"
   "${source_path}/chem/elements.cpp"
   "${source_path}/molecule/atom_coordinates.cpp"
-  "${source_path}/molecule/atoms.cpp"
   "${source_path}/molecule.cpp"
 )
 
