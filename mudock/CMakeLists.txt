@@ -12,6 +12,8 @@ list(APPEND header_files
   "${header_path}/${header_prefix}/molecule/bond.hpp"
   "${header_path}/${header_prefix}/molecule/constraints.hpp"
   "${header_path}/${header_prefix}/molecule/containers.hpp"
+  "${header_path}/${header_prefix}/molecule/properties.hpp"
+  "${header_path}/${header_prefix}/molecule/property_table.hpp"
   "${header_path}/${header_prefix}/molecule.hpp"
   "${header_path}/${header_prefix}/mudock.hpp"
   "${header_path}/${header_prefix}/type_alias.hpp"
@@ -23,6 +25,7 @@ list(APPEND source_files
   "${source_path}/chem/bond_types.cpp"
   "${source_path}/chem/elements.cpp"
   "${source_path}/molecule/atom_coordinates.cpp"
+  "${source_path}/molecule/property_table.cpp"
   "${source_path}/molecule.cpp"
 )
 
