@@ -2,17 +2,28 @@
 
 #include <concepts>
 #include <mudock/molecule/atoms.hpp>
+#include <mudock/molecule/bond.hpp>
 #include <mudock/molecule/containers.hpp>
+#include <mudock/type_alias.hpp>
 #include <string>
 
 namespace mudock {
 
   // this is the generic definition of a molecule, that depends on the used type of storage
   template<template<typename> class container_type>
-  struct molecule_type {
+  class molecule_type {
+  public:
+    void resize(const std::size_t n_atoms, std::size_t n_bonds);
+
     std::string name;
     atoms_type<container_type> atoms;
+    container_type<bond> bonds;
+    index_type num_bonds = index_type{0};
   };
+  template<>
+  void molecule_type<static_container_type>::resize(const std::size_t n_atoms, std::size_t n_bonds);
+  template<>
+  void molecule_type<dynamic_container_type>::resize(const std::size_t n_atoms, std::size_t n_bonds);
 
   using dynamic_molecule = molecule_type<dynamic_container_type>;
   using static_molecule  = molecule_type<static_container_type>;
