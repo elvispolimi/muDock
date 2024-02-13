@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <mudock/chem/elements.hpp>
 #include <mudock/molecule/atom_coordinates.hpp>
 #include <mudock/type_alias.hpp>
 
@@ -12,6 +13,7 @@ namespace mudock {
     void resize(const std::size_t n);
 
     atom_coordinates_type<container_type> coordinates;
+    container_type<element> elements;
     index_type num_atoms = index_type{0};
   };
 
