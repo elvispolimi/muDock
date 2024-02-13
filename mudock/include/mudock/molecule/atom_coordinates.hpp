@@ -7,7 +7,7 @@
 namespace mudock {
 
   template<template<typename> class container_type>
-  class atom_coordinates_type {
+  class atom_coordinates {
   public:
     void resize(const std::size_t n);
     void fill(const coordinate_type value = 0);
@@ -22,13 +22,13 @@ namespace mudock {
   //===------------------------------------------------------------------------------------------------------
 
   template<>
-  void atom_coordinates_type<static_container_type>::resize(const std::size_t n);
+  void atom_coordinates<static_container_type>::resize(const std::size_t n);
   template<>
-  void atom_coordinates_type<dynamic_container_type>::resize(const std::size_t n);
+  void atom_coordinates<dynamic_container_type>::resize(const std::size_t n);
 
   template<>
-  void atom_coordinates_type<static_container_type>::fill(const coordinate_type value);
+  void atom_coordinates<static_container_type>::fill(const coordinate_type value);
   template<>
-  void atom_coordinates_type<dynamic_container_type>::fill(const coordinate_type value);
+  void atom_coordinates<dynamic_container_type>::fill(const coordinate_type value);
 
 } // namespace mudock

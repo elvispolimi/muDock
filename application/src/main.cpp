@@ -1,7 +1,7 @@
 #include <iostream>
 #include <mudock/mudock.hpp>
 
-auto test(const mudock::molecule auto& molecule) { return molecule.atoms.coordinates.x[7]; }
+auto test(const mudock::is_molecule auto& molecule) { return molecule.coordinates.x[7]; }
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[]) {
   std::cout << "Hello world" << std::endl;
