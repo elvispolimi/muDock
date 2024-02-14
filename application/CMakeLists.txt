@@ -5,11 +5,13 @@
 # headers
 set(header_path "${CMAKE_CURRENT_SOURCE_DIR}/src")
 list(APPEND header_files
+  "${header_path}/command_line_args.hpp"
 )
 
 # sources
 set(source_path "${CMAKE_CURRENT_SOURCE_DIR}/src")
 list(APPEND source_files
+  "${header_path}/command_line_args.cpp"
   "${source_path}/main.cpp"
 )
 
@@ -28,7 +30,7 @@ set_target_properties("${CMAKE_PROJECT_NAME}"
   )
 
 # add the dependencies
-target_link_libraries("${CMAKE_PROJECT_NAME}" libmudock)
+target_link_libraries("${CMAKE_PROJECT_NAME}" libmudock Boost::program_options)
 
 #########################################################################
 #### Declare the install step
