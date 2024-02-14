@@ -150,6 +150,6 @@ namespace mudock {
     assert(ELEMENT_DICTIONARY[static_cast<std::size_t>(e)].value == e);
     return ELEMENT_DICTIONARY[static_cast<std::size_t>(e)];
   }
-  std::optional<element> parse(const std::string_view symbol);
+  std::optional<element> parse_element_symbol(const std::string_view symbol);
 
 } // namespace mudock

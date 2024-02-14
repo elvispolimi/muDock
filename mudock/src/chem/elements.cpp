@@ -7,7 +7,7 @@
 
 namespace mudock {
 
-  std::optional<element> parse(const std::string_view symbol) {
+  std::optional<element> parse_element_symbol(const std::string_view symbol) {
     const auto element_it = std::find_if(std::begin(ELEMENT_DICTIONARY),
                                          std::end(ELEMENT_DICTIONARY),
                                          [&symbol](const auto& e) { return e.symbol == symbol; });
