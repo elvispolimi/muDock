@@ -2,6 +2,7 @@
 
 #include <mudock/format.hpp>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace mudock {
@@ -18,7 +19,7 @@ namespace mudock {
 
     std::vector<std::string> operator()(std::string new_text);
     std::string flush() {
-      auto&& text_remainder = std::move(input_text);
+      auto text_remainder = std::move(input_text);
       input_text.clear();
       return text_remainder;
     }
@@ -37,17 +38,16 @@ namespace mudock {
     input_text += new_text;
 
     // find all the molecule in the text
-    auto found_molecule_descriptions = std::vector<std::string>{};
-    auto parsing_index               = std::string::size_type{0};
-    while (parsing_index != std::string::npos) {
-      const auto index_next_molecule = format_splitter.next_molecule_start_index(new_text);
+    auto input_view = std::string_view{input_text};
+    while (!input_view.empty()) {
+      const auto index_next_molecule = format_splitter.next_molecule_start_index(input_view);
       if (index_next_molecule != std::string::npos) { // we found a description
-        const auto description_size = index_next_molecule - parsing_index;
-        result.emplace_back(input_text.substr(parsing_index, description_size));
+        result.emplace_back(input_text.substr(std::size_t{0}, index_next_molecule));
+        input_view = input_view.substr(index_next_molecule);
       } else { // there is no description
-        input_text = input_text.substr(parsing_index);
+        input_text = std::string{input_view};
+        input_view = std::string_view{};
       }
-      parsing_index = index_next_molecule;
     }
 
     return result;
