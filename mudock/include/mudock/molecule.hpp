@@ -40,7 +40,8 @@ namespace mudock {
   // this is the concept that defines a molecule, which is any molecule for which we have defined a
   // special container and we are agnostic about it.
   template<class T>
-  concept is_molecule = (std::same_as<T, static_molecule> || std::same_as<T, dynamic_molecule>);
+  concept is_molecule = (std::same_as<std::remove_cvref_t<T>, static_molecule> ||
+                         std::same_as<std::remove_cvref_t<T>, dynamic_molecule>);
 
   //===------------------------------------------------------------------------------------------------------
   // Out-of-class method definitions
