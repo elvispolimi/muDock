@@ -21,6 +21,7 @@ list(APPEND header_files
   "${header_path}/${header_prefix}/format.hpp"
   "${header_path}/${header_prefix}/molecule.hpp"
   "${header_path}/${header_prefix}/mudock.hpp"
+  "${header_path}/${header_prefix}/splitter.hpp"
   "${header_path}/${header_prefix}/type_alias.hpp"
 )
 
