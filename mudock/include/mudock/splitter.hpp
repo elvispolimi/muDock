@@ -42,7 +42,7 @@ namespace mudock {
     while (!input_view.empty()) {
       const auto index_next_molecule = format_splitter.next_molecule_start_index(input_view);
       if (index_next_molecule != std::string::npos) { // we found a description
-        result.emplace_back(input_text.substr(std::size_t{0}, index_next_molecule));
+        result.emplace_back(input_view.substr(std::size_t{0}, index_next_molecule));
         input_view = input_view.substr(index_next_molecule);
       } else { // there is no description
         input_text = std::string{input_view};
