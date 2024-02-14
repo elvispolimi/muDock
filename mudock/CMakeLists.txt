@@ -8,6 +8,8 @@ set(header_prefix "mudock")
 list(APPEND header_files
   "${header_path}/${header_prefix}/chem/bond_types.hpp"
   "${header_path}/${header_prefix}/chem/elements.hpp"
+  "${header_path}/${header_prefix}/format/mol2.hpp"
+  "${header_path}/${header_prefix}/format/rdkit_wrapper.hpp"
   "${header_path}/${header_prefix}/molecule/atom_coordinates.hpp"
   "${header_path}/${header_prefix}/molecule/bond.hpp"
   "${header_path}/${header_prefix}/molecule/constraints.hpp"
@@ -24,6 +26,8 @@ set(source_path "${CMAKE_CURRENT_SOURCE_DIR}/src")
 list(APPEND source_files
   "${source_path}/chem/bond_types.cpp"
   "${source_path}/chem/elements.cpp"
+  "${source_path}/format/mol2.cpp"
+  "${source_path}/format/rdkit_wrapper.cpp"
   "${source_path}/molecule/atom_coordinates.cpp"
   "${source_path}/molecule/property_table.cpp"
   "${source_path}/molecule.cpp"
