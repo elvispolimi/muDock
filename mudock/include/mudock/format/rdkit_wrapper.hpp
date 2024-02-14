@@ -55,6 +55,9 @@ namespace mudock {
       dest.bonds[mudock_bond_index].dest   = index_translator.at(bond->getEndAtomIdx());
       dest.bonds[mudock_bond_index].type   = parse_rdkit_bond_type(bond->getBondType());
     }
+
+    // store the molecule name
+    dest.properties.assign(property_type::NAME, source->getProp<std::string>("_Name"));
   }
 
 } // namespace mudock
