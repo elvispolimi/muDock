@@ -19,7 +19,7 @@ function(add_rdkit_dep target)
     get_target_property(RDKIT_LIB_FULLPATH RDKit::RDGeneral LOCATION)
     get_filename_component(RDKIT_LIB_DIRPATH "${RDKIT_LIB_FULLPATH}" DIRECTORY)
     cmake_path(GET RDKIT_LIB_DIRPATH PARENT_PATH RDKIT_INSTALL_PREFIX)
-    target_include_directories(${target} PUBLIC "${RDKIT_INSTALL_PREFIX}/include/rdkit")
+    target_include_directories(${target} SYSTEM PUBLIC "${RDKIT_INSTALL_PREFIX}/include/rdkit")
     target_link_directories(${target} PUBLIC "${RDKIT_INSTALL_PREFIX}/lib")
     target_link_directories(${target} PUBLIC "${RDKIT_INSTALL_PREFIX}/lib64")
     target_link_libraries(${target} PUBLIC
