@@ -1,12 +1,10 @@
 #pragma once
 
-#include "mudock/chem/bond_types.hpp"
-
 #include <GraphMol/RWMol.h>
 #include <cassert>
 #include <map>
 #include <memory>
-#include <mudock/chem/elements.hpp>
+#include <mudock/chem.hpp>
 #include <mudock/molecule.hpp>
 #include <mudock/type_alias.hpp>
 #include <string_view>
