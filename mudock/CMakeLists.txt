@@ -16,6 +16,8 @@ list(APPEND header_files
   "${header_path}/${header_prefix}/molecule/containers.hpp"
   "${header_path}/${header_prefix}/molecule/properties.hpp"
   "${header_path}/${header_prefix}/molecule/property_table.hpp"
+  "${header_path}/${header_prefix}/chem.hpp"
+  "${header_path}/${header_prefix}/format.hpp"
   "${header_path}/${header_prefix}/molecule.hpp"
   "${header_path}/${header_prefix}/mudock.hpp"
   "${header_path}/${header_prefix}/type_alias.hpp"
