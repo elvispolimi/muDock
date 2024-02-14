@@ -8,6 +8,7 @@ set(header_prefix "mudock")
 list(APPEND header_files
   "${header_path}/${header_prefix}/chem/bond_types.hpp"
   "${header_path}/${header_prefix}/chem/elements.hpp"
+  "${header_path}/${header_prefix}/format/concept.hpp"
   "${header_path}/${header_prefix}/format/mol2.hpp"
   "${header_path}/${header_prefix}/format/rdkit_wrapper.hpp"
   "${header_path}/${header_prefix}/molecule/atom_coordinates.hpp"
