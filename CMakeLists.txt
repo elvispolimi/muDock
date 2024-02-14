@@ -22,6 +22,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Third-party libraries that must be manually installed
 find_package(Boost REQUIRED COMPONENTS graph)
+find_package(rdkit REQUIRED)
 
 # Third-party libraries that we download and compile
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/prerequisite.cmake")

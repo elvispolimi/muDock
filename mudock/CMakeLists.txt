@@ -47,6 +47,7 @@ set_target_properties(libmudock
       CXX_EXTENSIONS OFF
   )
 target_link_libraries(libmudock PUBLIC Microsoft.GSL::GSL)
+add_rdkit_dep(libmudock)
 
 #########################################################################
 #### Declare the install step
