@@ -36,9 +36,11 @@ namespace mudock {
     const auto conformation = source->getConformer(0);
     auto mudock_atom_index  = index_type{0};
     for (const auto& atom: source->atoms()) {
-      const auto atom_id                    = atom->getIdx();
-      const auto [x, y, z]                  = conformation.getAtomPos(atom_id);
-      dest.elements[mudock_atom_index]      = parse_element_symbol(atom->getSymbol());
+      const auto atom_id      = atom->getIdx();
+      const auto [x, y, z]    = conformation.getAtomPos(atom_id);
+      const auto atom_element = parse_element_symbol(atom->getSymbol());
+      assert(atom_element.has_value());
+      dest.elements[mudock_atom_index]      = atom_element.value();
       dest.coordinates.x[mudock_atom_index] = static_cast<coordinate_type>(x);
       dest.coordinates.y[mudock_atom_index] = static_cast<coordinate_type>(y);
       dest.coordinates.z[mudock_atom_index] = static_cast<coordinate_type>(z);
