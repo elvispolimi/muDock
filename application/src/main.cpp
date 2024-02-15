@@ -1,5 +1,7 @@
 #include "command_line_args.hpp"
 
+#include <cassert>
+#include <fstream>
 #include <iostream>
 #include <mudock/mudock.hpp>
 #include <stdexcept>
@@ -7,6 +9,16 @@
 
 int main(int argc, char* argv[]) {
   const auto args = parse_command_line_arguments(argc, argv);
+
+  // read and parse the target protein
+  auto protein      = mudock::dynamic_molecule{};
+  auto pdb          = mudock::pdb{};
+  auto protein_file = std::ifstream(args.protein_path);
+  assert(protein_file.good());
+  const auto protein_description =
+      std::string{std::istreambuf_iterator<std::string::value_type>{protein_file},
+                  std::istreambuf_iterator<std::string::value_type>{}};
+  pdb.parse(protein, protein_description);
 
   // find all the ligands description from the standard input
   auto input_text = std::string{std::istreambuf_iterator<std::string::value_type>{std::cin},
