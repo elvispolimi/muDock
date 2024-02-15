@@ -29,6 +29,15 @@ namespace mudock {
     return molecule;
   }
 
+  rw_mol_wrapper parse_pdb(const std::string_view description) {
+    static constexpr auto sanitaze  = false;
+    static constexpr auto remove_hs = false;
+    auto molecule =
+        std::unique_ptr<RDKit::RWMol>{RDKit::PDBBlockToMol(std::string{description}, sanitaze, remove_hs)};
+    compute_and_sanitize(molecule);
+    return molecule;
+  }
+
   bond_type parse_rdkit_bond_type(const RDKit::Bond::BondType bond_type) {
     switch (bond_type) {
       case RDKit::Bond::BondType::SINGLE: return bond_type::SINGLE;
