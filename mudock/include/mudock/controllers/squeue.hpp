@@ -11,23 +11,31 @@
 #include <vector>
 
 namespace mudock {
+  // Each application's worker dock and score in batches of get_max_work() ligands
   constexpr index_type get_max_work() { return index_type{1000}; };
 
+  // Is a Safe queue implementation
+  // Enqueueing and dequeueing elements is thread safe
   template<typename T>
   class squeue {
   public:
-    squeue()                         = default;
-    ~squeue()                        = default;
+    squeue()  = default;
+    ~squeue() = default;
+
     squeue(const squeue&)            = delete;
     squeue(squeue&&)                 = delete;
     squeue& operator=(const squeue&) = delete;
     squeue& operator=(squeue&&)      = delete;
 
+    // It returns ONE element of the queue if available
+    // SIDE-EFFECT: the function give you ownership of the returned unique pointer
     std::unique_ptr<T> dequeue() {
       std::lock_guard<std::mutex> guard(this->m_t);
       return dequeue_i();
     };
 
+    // It returns X elements of the queue, where X is the minimum between the size requested and the elements still in the queue
+    // SIDE-EFFECT: the function give you ownership of the returned unique pointers
     std::vector<std::unique_ptr<T>> dequeue(const std::size_t size) {
       std::lock_guard<std::mutex> guard(this->m_t);
       std::vector<std::unique_ptr<T>> work;
@@ -37,11 +45,15 @@ namespace mudock {
       return work;
     };
 
+    // It enqueues ONE element in the queue
     void enqueue(std::unique_ptr<T> data) {
       std::lock_guard<std::mutex> guard(this->m_t);
       enqueue_i(std::move(data));
     };
 
+    // It enqueues all elements in the span
+    // SIDE-EFFECT: all unique ptr in the span will be nullptr upon returning
+    //              the queue take ownership of the unique pointer in the span
     void enqueue(std::span<std::unique_ptr<T>> data) {
       std::lock_guard<std::mutex> guard(this->m_t);
       for (auto& t: data) enqueue_i(std::move(t));
