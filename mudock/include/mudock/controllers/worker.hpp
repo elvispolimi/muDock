@@ -10,19 +10,31 @@
 #include <mudock/type_alias.hpp>
 
 namespace mudock {
+  // This function is executed by application's thread
+  // It carries out the dock and score computation, thus it requires:
+  //  - an input queue
+  //  - an output queue
+  //  - the id of the targeting device to create the context
+  // It dequeues from the input batches of ligands, and it enqueues in output the results
   template<language_types l_t>
   void worker(std::shared_ptr<squeue<static_molecule>> i_queue,
               std::shared_ptr<squeue<static_molecule>> o_queue,
               const index_type id) {
+    device_context<l_t> context{
+        id}; // Create and set the thread's context, based on the device's ID, and the target language
+    // Allocate the scratch memory on the device
     molecules_scratchpad<l_t> m_scratch;
-    device_context<l_t> context{id};
 
+    // Start the computation with the first batch
     auto molecules = i_queue->dequeue(get_max_work());
     while (!molecules.empty()) {
+      // For each batch copy in, compute, and copy out
       m_scratch.copy_in(molecules, context);
       dock_and_score(m_scratch, context);
       m_scratch.copy_out(molecules, context);
+      // Enqueue in output the results
       o_queue->enqueue(molecules);
+      // Get a new batch of ligands if available
       molecules = i_queue->dequeue(get_max_work());
     }
   };
