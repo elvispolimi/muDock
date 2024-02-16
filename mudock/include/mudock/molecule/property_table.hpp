@@ -7,7 +7,7 @@
 namespace mudock {
 
   class property_map {
-    std::array<std::string, 1> map;
+    std::array<std::string, property_type_size()> map;
 
     inline constexpr auto to_index(const property_type type) const { return static_cast<std::size_t>(type); }
 
