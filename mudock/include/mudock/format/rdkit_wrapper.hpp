@@ -68,7 +68,9 @@ namespace mudock {
     }
 
     // store the molecule name
-    dest.properties.assign(property_type::NAME, source->getProp<std::string>("_Name"));
+    auto name = std::string{"N/A"};
+    source->getProp<std::string>("_Name", name);
+    dest.properties.assign(property_type::NAME, name);
   }
 
 } // namespace mudock
