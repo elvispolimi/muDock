@@ -2,11 +2,13 @@
 
 #include <GraphMol/RWMol.h>
 #include <cassert>
+#include <concepts>
 #include <map>
 #include <memory>
 #include <mudock/chem.hpp>
 #include <mudock/molecule.hpp>
 #include <mudock/type_alias.hpp>
+#include <stdexcept>
 #include <string_view>
 #include <unordered_map>
 
@@ -27,7 +29,15 @@ namespace mudock {
     requires is_molecule<molecule_type>
   void convert(molecule_type&& dest, const rw_mol_wrapper& source) {
     // set the molecule geometry
+    // NOTE: for static molecules we need to enforce the constraint on the maximum number
+    //       ot atoms or bonds by throwing an exception
     static constexpr auto only_heavy_bonds = false;
+    if constexpr (std::same_as<std::remove_cvref_t<molecule_type>, static_molecule>) {
+      if (source->getNumAtoms() > max_static_atoms() ||
+          source->getNumBonds(only_heavy_bonds) > max_static_bonds()) {
+        throw std::runtime_error("Number of atoms or bonds exceeding static storage");
+      }
+    }
     dest.resize(source->getNumAtoms(), source->getNumBonds(only_heavy_bonds));
 
     // fill the atom information (we assume a single conformation)
@@ -58,7 +68,9 @@ namespace mudock {
     }
 
     // store the molecule name
-    dest.properties.assign(property_type::NAME, source->getProp<std::string>("_Name"));
+    auto name = std::string{"N/A"};
+    source->getProp<std::string>("_Name", name);
+    dest.properties.assign(property_type::NAME, name);
   }
 
 } // namespace mudock
