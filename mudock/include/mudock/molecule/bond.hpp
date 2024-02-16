@@ -6,9 +6,10 @@
 namespace mudock {
 
   struct bond {
-    index_type source;
-    index_type dest;
-    bond_type type;
+    index_type source = index_type{0};
+    index_type dest   = index_type{0};
+    bond_type type    = bond_type::SINGLE;
+    bool can_rotate   = false;
   };
 
 } // namespace mudock

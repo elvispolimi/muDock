@@ -1,6 +1,9 @@
 #pragma once
 
 #include <GraphMol/RWMol.h>
+#include <GraphMol/SmilesParse/SmilesParse.h>
+#include <GraphMol/Substruct/SubstructMatch.h>
+#include <array>
 #include <cassert>
 #include <concepts>
 #include <iostream>
@@ -15,17 +18,26 @@
 
 namespace mudock {
 
+  //===------------------------------------------------------------------------------------------------------
+  // Useful type alias to work with RDKit data structures
+  //===------------------------------------------------------------------------------------------------------
+
   // define a type alias to prevent memory leaks
   using rw_mol_wrapper = std::unique_ptr<RDKit::RWMol>;
+
+  //===------------------------------------------------------------------------------------------------------
+  // Utility functions to parse convert simple data from RDKit to our simple data structure
+  //===------------------------------------------------------------------------------------------------------
 
   // the list of functions that we use to parse a molecule
   rw_mol_wrapper parse_mol2(const std::string_view description);
   rw_mol_wrapper parse_pdb(const std::string_view description);
-
-  // utility functions to parse information from RDKit string to our data structure
   bond_type parse_rdkit_bond_type(const RDKit::Bond::BondType bond_type);
 
-  // main function that translates an RDKit molecule to our internal format
+  //===------------------------------------------------------------------------------------------------------
+  // Translate an RDKit molecule to our internal format
+  //===------------------------------------------------------------------------------------------------------
+
   template<class molecule_type>
     requires is_molecule<molecule_type>
   void convert(molecule_type&& dest, const rw_mol_wrapper& source) {
@@ -60,12 +72,51 @@ namespace mudock {
       mudock_atom_index += index_type{1};
     }
 
+    // define the SMARTS pattern of the rotatable bonds
+    static const auto rotatable_bonds_pattern = rw_mol_wrapper{
+        RDKit::SmartsToMol("[!$(*#*)&!D1&!$(C(F)(F)F)&!$(C(Cl)(Cl)Cl)&!$(C(Br)(Br)Br)&!$(C([CH3])("
+                           "[CH3])[CH3])&!$([CD3](=[N,O,S])-!@[#7,O,S!D1])&!$([#7,O,S!D1]-!@[CD3]="
+                           "[N,O,S])&!$([CD3](=[N+])-!@[#7!D1])&!$([#7!D1]-!@[CD3]=[N+])]-,:;!@[!$"
+                           "(*#*)&!D1&!$(C(F)(F)F)&!$(C(Cl)(Cl)Cl)&!$(C(Br)(Br)Br)&!$(C([CH3])(["
+                           "CH3])[CH3])]")};
+
+    // search all the instances of the fragment in the target molecule
+    std::vector<RDKit::MatchVectType> matched_bonds;
+    static constexpr auto uniquify             = true;
+    static constexpr auto recursionPossible    = true;
+    static constexpr auto useChirality         = false;
+    static constexpr auto useQueryQueryMatches = false;
+    static constexpr auto maxMatches           = 10000; // for the proteins
+    RDKit::SubstructMatch(*source,
+                          *rotatable_bonds_pattern,
+                          matched_bonds,
+                          uniquify,
+                          recursionPossible,
+                          useChirality,
+                          useQueryQueryMatches,
+                          maxMatches);
+    assert(matched_bonds.size() < static_cast<std::size_t>(maxMatches) && "Too many rotatable bonds");
+
     // fill the bond information
     auto mudock_bond_index = index_type{0};
     for (const auto& bond: source->bonds()) {
-      dest.bonds[mudock_bond_index].source = index_translator.at(bond->getBeginAtomIdx());
-      dest.bonds[mudock_bond_index].dest   = index_translator.at(bond->getEndAtomIdx());
+      const auto atom_id_source            = bond->getBeginAtomIdx();
+      const auto atom_id_dest              = bond->getEndAtomIdx();
+      dest.bonds[mudock_bond_index].source = index_translator.at(atom_id_source);
+      dest.bonds[mudock_bond_index].dest   = index_translator.at(atom_id_dest);
       dest.bonds[mudock_bond_index].type   = parse_rdkit_bond_type(bond->getBondType());
+
+      // check if it can rotate
+      for (const auto& rotatable_bond: matched_bonds) {
+        assert(rotatable_bond.size() == std::size_t{2}); // make sure that we have a single bond
+        const auto atom_id_1 = index_translator.at(rotatable_bond[0].second);
+        const auto atom_id_2 = index_translator.at(rotatable_bond[1].second);
+        if ((atom_id_source == atom_id_1 && atom_id_dest == atom_id_2) ||
+            (atom_id_source == atom_id_2 && atom_id_dest == atom_id_1)) {
+          dest.bonds[mudock_bond_index].can_rotate = true;
+          break;
+        }
+      }
     }
 
     // store the molecule name
