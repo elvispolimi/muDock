@@ -25,6 +25,8 @@ namespace mudock {
     static constexpr auto remove_hs = false;
     auto molecule =
         std::unique_ptr<RDKit::RWMol>{RDKit::Mol2BlockToMol(std::string{description}, sanitaze, remove_hs)};
+    if (molecule.get() == nullptr)
+      throw std::runtime_error{"RDKit was unable to parse the ligand description!"};
     compute_and_sanitize(molecule);
     return molecule;
   }
