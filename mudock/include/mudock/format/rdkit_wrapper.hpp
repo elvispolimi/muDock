@@ -3,6 +3,7 @@
 #include <GraphMol/RWMol.h>
 #include <cassert>
 #include <concepts>
+#include <iostream>
 #include <map>
 #include <memory>
 #include <mudock/chem.hpp>
@@ -69,7 +70,7 @@ namespace mudock {
 
     // store the molecule name
     auto name = std::string{"N/A"};
-    source->getProp<std::string>("_Name", name);
+    source->getPropIfPresent<std::string>("_Name", name);
     dest.properties.assign(property_type::NAME, name);
   }
 
