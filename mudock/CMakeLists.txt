@@ -1,6 +1,6 @@
-#########################################################################
-#### Declare the application source files
-#########################################################################
+# ########################################################################
+# ### Declare the application source files
+# ########################################################################
 
 # headers
 set(header_path "${CMAKE_CURRENT_SOURCE_DIR}/include")
@@ -29,6 +29,27 @@ list(APPEND header_files
   "${header_path}/${header_prefix}/mudock.hpp"
   "${header_path}/${header_prefix}/splitter.hpp"
   "${header_path}/${header_prefix}/type_alias.hpp"
+
+  "${header_path}/${header_prefix}/controllers.hpp"
+  "${header_path}/${header_prefix}/devices.hpp"
+  "${header_path}/${header_prefix}/utils.hpp"
+
+  "${header_path}/${header_prefix}/controllers/cpp_manager.hpp"
+  "${header_path}/${header_prefix}/controllers/squeue.hpp"
+  "${header_path}/${header_prefix}/controllers/manager.hpp"
+  "${header_path}/${header_prefix}/controllers/worker.hpp"
+
+  "${header_path}/${header_prefix}/devices/cpp/cpp_context.hpp"
+  "${header_path}/${header_prefix}/devices/cpp/cpp_kernels.hpp"
+  "${header_path}/${header_prefix}/devices/cpp/cpp_molecules.hpp"
+
+  "${header_path}/${header_prefix}/devices/buffer.hpp"
+  "${header_path}/${header_prefix}/devices/device_contexts.hpp"
+  "${header_path}/${header_prefix}/devices/device_kernels.hpp"
+  "${header_path}/${header_prefix}/devices/device_parsers.hpp"
+  "${header_path}/${header_prefix}/devices/device_types.hpp"
+  "${header_path}/${header_prefix}/devices/language_types.hpp"
+  "${header_path}/${header_prefix}/devices/molecules.hpp"
 )
 
 # sources
@@ -44,11 +65,19 @@ list(APPEND source_files
   "${source_path}/molecule/graph.cpp"
   "${source_path}/molecule/property_table.cpp"
   "${source_path}/molecule.cpp"
+
+  "${source_path}/controllers/cpp_manager.cpp"
+
+  "${source_path}/devices/cpp/cpp_kernels.cpp"
+  "${source_path}/devices/cpp/cpp_context.cpp"
+  "${source_path}/devices/device_parsers.cpp"
+  "${source_path}/devices/device_types.cpp"
+  "${source_path}/devices/language_types.cpp"
 )
 
-#########################################################################
-#### Declare the compile step
-#########################################################################
+# ########################################################################
+# ### Declare the compile step
+# ########################################################################
 
 # declare the mudock library
 add_library(libmudock STATIC ${source_files} ${header_files})
@@ -58,16 +87,16 @@ target_include_directories(libmudock PUBLIC "${header_path}")
 set_target_properties(libmudock PROPERTIES POSITION_INDEPENDENT_CODE ON)
 set_target_properties(libmudock PROPERTIES PREFIX "" OUTPUT_NAME "libmudock")
 set_target_properties(libmudock
-    PROPERTIES
-      CXX_STANDARD 20
-      CXX_STANDARD_REQUIRED ON
-      CXX_EXTENSIONS OFF
-  )
+  PROPERTIES
+  CXX_STANDARD 20
+  CXX_STANDARD_REQUIRED ON
+  CXX_EXTENSIONS OFF
+)
 target_link_libraries(libmudock PUBLIC Microsoft.GSL::GSL)
 add_rdkit_dep(libmudock)
 
-#########################################################################
-#### Declare the install step
-#########################################################################
+# ########################################################################
+# ### Declare the install step
+# ########################################################################
 
 # at the moment we don't deploy the library
