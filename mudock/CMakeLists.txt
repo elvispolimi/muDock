@@ -12,6 +12,7 @@ list(APPEND header_files
   "${header_path}/${header_prefix}/format/mol2.hpp"
   "${header_path}/${header_prefix}/format/pdb.hpp"
   "${header_path}/${header_prefix}/format/rdkit_wrapper.hpp"
+  "${header_path}/${header_prefix}/grid/mdindex.hpp"
   "${header_path}/${header_prefix}/molecule/atom_coordinates.hpp"
   "${header_path}/${header_prefix}/molecule/bond.hpp"
   "${header_path}/${header_prefix}/molecule/constraints.hpp"
@@ -20,6 +21,7 @@ list(APPEND header_files
   "${header_path}/${header_prefix}/molecule/property_table.hpp"
   "${header_path}/${header_prefix}/chem.hpp"
   "${header_path}/${header_prefix}/format.hpp"
+  "${header_path}/${header_prefix}/grid.hpp"
   "${header_path}/${header_prefix}/molecule.hpp"
   "${header_path}/${header_prefix}/mudock.hpp"
   "${header_path}/${header_prefix}/splitter.hpp"
@@ -34,6 +36,7 @@ list(APPEND source_files
   "${source_path}/format/mol2.cpp"
   "${source_path}/format/rdkit_wrapper.cpp"
   "${source_path}/molecule/atom_coordinates.cpp"
+  "${source_path}/molecule/fragments.cpp"
   "${source_path}/molecule/property_table.cpp"
   "${source_path}/molecule.cpp"
 )
