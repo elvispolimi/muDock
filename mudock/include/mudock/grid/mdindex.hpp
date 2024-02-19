@@ -47,9 +47,7 @@ namespace mudock {
     }
     inline auto to3D(const std::size_t index1D) const {
       assert(index1D < n_x * n_y * n_z);
-      const auto x_value     = index1D % n_x;
-      const auto x_remainder = index1D - x_value;
-      return std::make_tuple(x_value, x_remainder % n_xy, x_remainder / n_xy);
+      return std::make_tuple(index1D % n_x, (index1D % n_xy) / n_y, index1D / n_xy);
     }
   };
 
