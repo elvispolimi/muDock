@@ -14,7 +14,7 @@ namespace mudock {
     index2D index;
 
   public:
-    void initialize(const std::size_t num_atoms, const std::size_t num_bonds);
+    void reset(const std::size_t num_atoms, const std::size_t num_bonds);
 
     inline const coordinate_type* get_const_mask(const std::size_t bond_index) const {
       return &storage[index.to1D(0, bond_index)];
@@ -29,10 +29,9 @@ namespace mudock {
   //===------------------------------------------------------------------------------------------------------
 
   template<>
-  void fragments<static_container_type>::initialize(const std::size_t num_atoms, const std::size_t num_bonds);
+  void fragments<static_container_type>::reset(const std::size_t num_atoms, const std::size_t num_bonds);
 
   template<>
-  void fragments<dynamic_container_type>::initialize(const std::size_t num_atoms,
-                                                     const std::size_t num_bonds);
+  void fragments<dynamic_container_type>::reset(const std::size_t num_atoms, const std::size_t num_bonds);
 
 } // namespace mudock
