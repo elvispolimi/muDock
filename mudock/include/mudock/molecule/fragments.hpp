@@ -22,6 +22,10 @@ namespace mudock {
       // NOTE: we assume that container_type will hold the elements linearly
       return &storage[index.to1D(0, bond_index)];
     }
+    inline gsl::not_null<const coordinate_type*> get_mask(const std::size_t bond_index) const {
+      // NOTE: we assume that container_type will hold the elements linearly
+      return &storage[index.to1D(0, bond_index)];
+    }
     inline auto get_num_rotatable_bonds() const { return index.size_y(); }
   };
 
