@@ -1,10 +1,10 @@
 #pragma once
 
-#include <concepts>
 #include <cstdint>
 #include <mudock/grid/mdindex.hpp>
 #include <mudock/molecule/containers.hpp>
 #include <mudock/type_alias.hpp>
+#include <span>
 
 namespace mudock {
 
@@ -16,11 +16,9 @@ namespace mudock {
   public:
     void reset(const std::size_t num_atoms, const std::size_t num_bonds);
 
-    inline const coordinate_type* get_const_mask(const std::size_t bond_index) const {
-      return &storage[index.to1D(0, bond_index)];
-    }
-    inline coordinate_type* get_mask(const std::size_t bond_index) const {
-      return &storage[index.to1D(0, bond_index)];
+    inline std::span<coordinate_type> get_mask(const std::size_t bond_index) const {
+      // NOTE: we assume that container_type will hold the elements linearly
+      return {&storage[index.to1D(0, bond_index)], index.size_x()};
     }
   };
 
