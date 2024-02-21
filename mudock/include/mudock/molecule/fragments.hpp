@@ -1,7 +1,9 @@
 #pragma once
 
 #include <cstdint>
+#include <gsl/pointers>
 #include <mudock/grid/mdindex.hpp>
+#include <mudock/molecule/bond.hpp>
 #include <mudock/molecule/containers.hpp>
 #include <mudock/type_alias.hpp>
 #include <span>
@@ -14,22 +16,35 @@ namespace mudock {
     index2D index;
 
   public:
-    void reset(const std::size_t num_atoms, const std::size_t num_bonds);
+    fragments(const std::size_t num_atoms, const std::size_t num_bonds);
 
-    inline std::span<coordinate_type> get_mask(const std::size_t bond_index) const {
+    inline gsl::not_null<coordinate_type*> get_mask(const std::size_t bond_index) {
       // NOTE: we assume that container_type will hold the elements linearly
-      return {&storage[index.to1D(0, bond_index)], index.size_x()};
+      return &storage[index.to1D(0, bond_index)];
     }
+    inline auto get_num_rotatable_bonds() const { return index.size_y(); }
   };
+
+  template<template<typename> class container_type>
+  fragments<container_type> make_fragments(const container_type<bond>& bonds, const index_type num_atoms);
 
   //===------------------------------------------------------------------------------------------------------
   // Out-of-class method definitions
   //===------------------------------------------------------------------------------------------------------
 
   template<>
-  void fragments<static_container_type>::reset(const std::size_t num_atoms, const std::size_t num_bonds);
+  fragments<static_container_type>::fragments(const std::size_t num_atoms, const std::size_t num_bonds);
 
   template<>
-  void fragments<dynamic_container_type>::reset(const std::size_t num_atoms, const std::size_t num_bonds);
+  fragments<dynamic_container_type>::fragments(const std::size_t num_atoms, const std::size_t num_bonds);
+
+  template<>
+  fragments<static_container_type>
+      make_fragments<static_container_type>(const static_container_type<bond>& bonds,
+                                            const index_type num_atoms);
+  template<>
+  fragments<dynamic_container_type>
+      make_fragments<dynamic_container_type>(const dynamic_container_type<bond>& bonds,
+                                             const index_type num_atoms);
 
 } // namespace mudock
