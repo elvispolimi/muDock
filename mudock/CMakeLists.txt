@@ -18,6 +18,7 @@ list(APPEND header_files
   "${header_path}/${header_prefix}/molecule/constraints.hpp"
   "${header_path}/${header_prefix}/molecule/containers.hpp"
   "${header_path}/${header_prefix}/molecule/fragments.hpp"
+  "${header_path}/${header_prefix}/molecule/graph.hpp"
   "${header_path}/${header_prefix}/molecule/properties.hpp"
   "${header_path}/${header_prefix}/molecule/property_table.hpp"
   "${header_path}/${header_prefix}/chem.hpp"
