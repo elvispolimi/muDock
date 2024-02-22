@@ -117,6 +117,7 @@ namespace mudock {
           break;
         }
       }
+      ++mudock_bond_index;
     }
 
     // store the molecule name
