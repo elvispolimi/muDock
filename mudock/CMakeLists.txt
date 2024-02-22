@@ -9,6 +9,7 @@ list(APPEND header_files
   "${header_path}/${header_prefix}/chem/bond_types.hpp"
   "${header_path}/${header_prefix}/chem/elements.hpp"
   "${header_path}/${header_prefix}/format/concept.hpp"
+  "${header_path}/${header_prefix}/format/dot.hpp"
   "${header_path}/${header_prefix}/format/mol2.hpp"
   "${header_path}/${header_prefix}/format/pdb.hpp"
   "${header_path}/${header_prefix}/format/rdkit_wrapper.hpp"
@@ -35,6 +36,7 @@ set(source_path "${CMAKE_CURRENT_SOURCE_DIR}/src")
 list(APPEND source_files
   "${source_path}/chem/bond_types.cpp"
   "${source_path}/chem/elements.cpp"
+  "${source_path}/format/dot.cpp"
   "${source_path}/format/mol2.cpp"
   "${source_path}/format/rdkit_wrapper.cpp"
   "${source_path}/molecule/atom_coordinates.cpp"
