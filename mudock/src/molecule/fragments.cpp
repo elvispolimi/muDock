@@ -101,8 +101,9 @@ namespace mudock {
   // to the actual container type
   template<template<typename> class container_type>
   fragments<container_type> make_fragments_internal(const container_type<bond> &bonds,
-                                                    const index_type num_atoms) {
-    auto g                                            = make_graph<container_type>(bonds);
+                                                    const index_type num_atoms,
+                                                    const index_type num_bonds) {
+    auto g                                            = make_graph<container_type>(bonds, num_bonds);
     const auto [rotatable_edges, num_rotatable_edges] = get_rotatable_edges<container_type>(bonds, g);
     auto result = fragments<container_type>(num_atoms, num_rotatable_edges);
     for (index_type i{0}; i < num_rotatable_edges; ++i) {
@@ -129,16 +130,18 @@ namespace mudock {
   template<>
   fragments<static_container_type>
       make_fragments<static_container_type>(const static_container_type<bond> &bonds,
-                                            const index_type num_atoms) {
-    return make_fragments_internal<static_container_type>(bonds, num_atoms);
+                                            const index_type num_atoms,
+                                            const index_type num_bonds) {
+    return make_fragments_internal<static_container_type>(bonds, num_atoms, num_bonds);
   }
 
   // specialization for dynamic containers
   template<>
   fragments<dynamic_container_type>
       make_fragments<dynamic_container_type>(const dynamic_container_type<bond> &bonds,
-                                             const index_type num_atoms) {
-    return make_fragments_internal<dynamic_container_type>(bonds, num_atoms);
+                                             const index_type num_atoms,
+                                             const index_type num_bonds) {
+    return make_fragments_internal<dynamic_container_type>(bonds, num_atoms, num_bonds);
   }
 
 } // namespace mudock

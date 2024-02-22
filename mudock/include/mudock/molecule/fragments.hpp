@@ -30,7 +30,9 @@ namespace mudock {
   };
 
   template<template<typename> class container_type>
-  fragments<container_type> make_fragments(const container_type<bond>& bonds, const index_type num_atoms);
+  fragments<container_type> make_fragments(const container_type<bond>& bonds,
+                                           const index_type num_atoms,
+                                           const index_type num_bonds);
 
   //===------------------------------------------------------------------------------------------------------
   // Out-of-class method definitions
@@ -45,10 +47,12 @@ namespace mudock {
   template<>
   fragments<static_container_type>
       make_fragments<static_container_type>(const static_container_type<bond>& bonds,
-                                            const index_type num_atoms);
+                                            const index_type num_atoms,
+                                            const index_type num_bonds);
   template<>
   fragments<dynamic_container_type>
       make_fragments<dynamic_container_type>(const dynamic_container_type<bond>& bonds,
-                                             const index_type num_atoms);
+                                             const index_type num_atoms,
+                                             const index_type num_bonds);
 
 } // namespace mudock
