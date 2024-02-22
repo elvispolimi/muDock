@@ -77,6 +77,7 @@ namespace mudock {
     for (auto it = begin_it; it != end_it; ++it) {
       if (bonds[g[*it].bond_index].can_rotate) {
         result[rotatable_bond_counter] = *it;
+        ++rotatable_bond_counter;
       }
     }
     return std::make_pair(result, rotatable_bond_counter);
