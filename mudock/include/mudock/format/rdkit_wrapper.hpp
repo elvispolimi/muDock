@@ -6,7 +6,6 @@
 #include <array>
 #include <cassert>
 #include <concepts>
-#include <iostream>
 #include <map>
 #include <memory>
 #include <mudock/chem.hpp>
