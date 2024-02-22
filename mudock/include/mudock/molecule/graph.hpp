@@ -20,7 +20,7 @@ namespace mudock {
 
   // utility function that build a graph from the molecules bond
   template<template<typename> class container_type>
-  molecule_graph_type make_graph(const container_type<bond>& bonds) {
+  molecule_graph_type make_graph(const container_type<bond>& bonds, const index_type num_bonds) {
     using vertex_type = typename molecule_graph_type::vertex_descriptor;
 
     // describe support data structures that we need to compute the fragment mask
@@ -38,10 +38,10 @@ namespace mudock {
     };
 
     // populate the graph with the molecule topology
-    for (std::size_t i{0}; i < bonds.size(); ++i) {
+    for (index_type i{0}; i < num_bonds; ++i) {
       const auto& bond_description = bonds[i];
       const auto [edge, is_inserted] =
-          boost::add_edge(get_vertex(bond_description.source), get_vertex(bond_description.source), g);
+          boost::add_edge(get_vertex(bond_description.source), get_vertex(bond_description.dest), g);
       assert(is_inserted);
       g[edge].bond_index = static_cast<index_type>(i);
     }
