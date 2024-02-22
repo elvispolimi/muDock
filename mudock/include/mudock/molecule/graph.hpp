@@ -28,7 +28,7 @@ namespace mudock {
     std::unordered_map<index_type, vertex_type> index2vertex;
     const auto get_vertex = [&index2vertex, &g](const auto index_value) {
       auto vertex_it = index2vertex.find(index_value);
-      if (vertex_it != std::end(index2vertex)) { // it's a new vertex
+      if (vertex_it == std::end(index2vertex)) { // it's a new vertex
         const auto [new_vertex_it, is_inserted] = index2vertex.emplace(index_value, boost::add_vertex(g));
         assert(is_inserted);
         vertex_it = new_vertex_it;
