@@ -9,6 +9,7 @@
 #include <mudock/molecule/fragments.hpp>
 #include <mudock/molecule/graph.hpp>
 #include <mudock/type_alias.hpp>
+#include <utility>
 
 namespace mudock {
 
@@ -60,22 +61,28 @@ namespace mudock {
   };
 
   // find all the rotatable bonds in the bonds
-  using edge_type = typename molecule_graph_type::edge_descriptor;
+  // NOTE: we define an edge with their two edges, to avoid problems in graph update
+  struct edge_description {
+    using vertex_type = typename molecule_graph_type::vertex_descriptor;
+    vertex_type source;
+    vertex_type dest;
+  };
+  using vertex_type = typename molecule_graph_type::vertex_descriptor;
   template<template<typename> class container_type>
-  std::pair<container_type<edge_type>, index_type> get_rotatable_edges(const container_type<bond> &bonds,
-                                                                       const molecule_graph_type &g);
+  std::pair<container_type<edge_description>, index_type>
+      get_rotatable_edges(const container_type<bond> &bonds, const molecule_graph_type &g);
 
   template<>
-  std::pair<static_container_type<edge_type>, index_type>
+  std::pair<static_container_type<edge_description>, index_type>
       get_rotatable_edges<static_container_type>(const static_container_type<bond> &bonds,
                                                  const molecule_graph_type &g) {
     assert(boost::num_edges(g) < max_static_bonds());
-    static_container_type<edge_type> result;
+    static_container_type<edge_description> result;
     auto rotatable_bond_counter   = index_type{0};
     const auto [begin_it, end_it] = boost::edges(g);
     for (auto it = begin_it; it != end_it; ++it) {
       if (bonds[g[*it].bond_index].can_rotate) {
-        result[rotatable_bond_counter] = *it;
+        result[rotatable_bond_counter] = edge_description{boost::source(*it, g), boost::target(*it, g)};
         ++rotatable_bond_counter;
       }
     }
@@ -83,15 +90,15 @@ namespace mudock {
   }
 
   template<>
-  std::pair<dynamic_container_type<edge_type>, index_type>
+  std::pair<dynamic_container_type<edge_description>, index_type>
       get_rotatable_edges<dynamic_container_type>(const dynamic_container_type<bond> &bonds,
                                                   const molecule_graph_type &g) {
-    dynamic_container_type<edge_type> result;
+    dynamic_container_type<edge_description> result;
     result.reserve(static_cast<std::size_t>(boost::num_edges(g)));
     const auto [begin_it, end_it] = boost::edges(g);
     for (auto it = begin_it; it != end_it; ++it) {
       if (bonds[g[*it].bond_index].can_rotate) {
-        result.emplace_back(*it);
+        result.emplace_back(boost::source(*it, g), boost::target(*it, g));
       }
     }
     return std::make_pair(result, static_cast<index_type>(result.size()));
@@ -109,8 +116,8 @@ namespace mudock {
     for (index_type i{0}; i < num_rotatable_edges; ++i) {
       const auto edge          = rotatable_edges[i];
       auto mask                = result.get_mask(i);
-      const auto source_vertex = boost::source(edge, g);
-      const auto dest_vertex   = boost::target(edge, g);
+      const auto source_vertex = edge.source;
+      const auto dest_vertex   = edge.dest;
 
       boost::remove_edge(source_vertex, dest_vertex, g);
       atom_counter counter_source, counter_dest;
