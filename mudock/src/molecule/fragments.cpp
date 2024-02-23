@@ -2,7 +2,6 @@
 #include <boost/graph/breadth_first_search.hpp>
 #include <cassert>
 #include <cstdint>
-#include <gsl/pointers>
 #include <iterator>
 #include <mudock/grid.hpp>
 #include <mudock/molecule/constraints.hpp>
@@ -39,12 +38,12 @@ namespace mudock {
     using graph_type  = molecule_graph_type;
     using vertex_type = typename boost::graph_traits<graph_type>::vertex_descriptor;
 
-    gsl::not_null<coordinate_type *> bitmask;
+    std::span<coordinate_type> bitmask;
 
   public:
-    bitmask_setter(gsl::not_null<coordinate_type *> mask): bitmask(mask) {}
+    bitmask_setter(std::span<coordinate_type> mask): bitmask(mask) {}
     void discover_vertex(vertex_type u, const graph_type &g) {
-      bitmask.get()[g[u].atom_index] = static_cast<coordinate_type>(1);
+      bitmask[g[u].atom_index] = static_cast<coordinate_type>(1);
     }
   };
 
