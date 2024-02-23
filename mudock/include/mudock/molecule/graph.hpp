@@ -31,7 +31,8 @@ namespace mudock {
       if (vertex_it == std::end(index2vertex)) { // it's a new vertex
         const auto [new_vertex_it, is_inserted] = index2vertex.emplace(index_value, boost::add_vertex(g));
         assert(is_inserted);
-        vertex_it = new_vertex_it;
+        g[new_vertex_it->second].atom_index = index_value;
+        vertex_it                           = new_vertex_it;
       }
       assert(vertex_it != std::end(index2vertex));
       return vertex_it->second;
