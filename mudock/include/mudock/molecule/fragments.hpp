@@ -18,13 +18,13 @@ namespace mudock {
     fragments(const std::size_t num_atoms, const std::size_t num_bonds);
 
     inline std::span<coordinate_type> get_mask(const std::size_t bond_index) {
-      const auto begin = storage.begin() + bond_index;
+      const auto begin = storage.begin() + index.to1D(0, bond_index);
       const auto end   = begin + index.size_x();
       assert(begin != std::end(storage) && end != std::end(storage));
       return std::span(begin, end);
     }
     inline std::span<const coordinate_type> get_mask(const std::size_t bond_index) const {
-      const auto begin = storage.cbegin() + bond_index;
+      const auto begin = storage.cbegin() + index.to1D(0, bond_index);
       const auto end   = begin + index.size_x();
       assert(begin != std::end(storage) && end != std::end(storage));
       return std::span(begin, end);
