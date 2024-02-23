@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstdint>
-#include <gsl/pointers>
 #include <mudock/grid/mdindex.hpp>
 #include <mudock/molecule/bond.hpp>
 #include <mudock/molecule/containers.hpp>
@@ -18,13 +17,17 @@ namespace mudock {
   public:
     fragments(const std::size_t num_atoms, const std::size_t num_bonds);
 
-    inline gsl::not_null<coordinate_type*> get_mask(const std::size_t bond_index) {
-      // NOTE: we assume that container_type will hold the elements linearly
-      return &storage[index.to1D(0, bond_index)];
+    inline std::span<coordinate_type> get_mask(const std::size_t bond_index) {
+      const auto begin = storage.begin() + bond_index;
+      const auto end   = begin + index.size_x();
+      assert(begin != std::end(storage) && end != std::end(storage));
+      return std::span(begin, end);
     }
-    inline gsl::not_null<const coordinate_type*> get_mask(const std::size_t bond_index) const {
-      // NOTE: we assume that container_type will hold the elements linearly
-      return &storage[index.to1D(0, bond_index)];
+    inline std::span<const coordinate_type> get_mask(const std::size_t bond_index) const {
+      const auto begin = storage.cbegin() + bond_index;
+      const auto end   = begin + index.size_x();
+      assert(begin != std::end(storage) && end != std::end(storage));
+      return std::span(begin, end);
     }
     inline auto get_num_rotatable_bonds() const { return index.size_y(); }
   };
