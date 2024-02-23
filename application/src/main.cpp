@@ -38,10 +38,21 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  // print the name of the molecules
+  // print the fragment mask for each molecule
   for (const auto& ligand: ligands) {
     const auto name = ligand.properties.get(mudock::property_type::NAME);
-    std::cout << "Read ligand " << name << std::endl;
+    std::cout << "> fragments for ligand \"" << name << '"' << std::endl;
+    const auto fragments = mudock::make_fragments<mudock::static_container_type>(ligand.bonds,
+                                                                                 ligand.num_atoms,
+                                                                                 ligand.num_bonds);
+    for (std::size_t i{0}; i < fragments.get_num_rotatable_bonds(); ++i) {
+      const auto mask = fragments.get_mask(i);
+      std::cout << '\t';
+      for (const auto value: mask) { /* std::cout << mask[j] << ' ';*/
+      }
+      std::cout << std::endl;
+    }
+    std::cout << std::endl;
   }
 
   return EXIT_SUCCESS;
