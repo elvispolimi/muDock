@@ -1,7 +1,6 @@
 #pragma once
 
 #include <boost/graph/adjacency_list.hpp>
-#include <boost/graph/undirected_graph.hpp>
 #include <mudock/molecule/bond.hpp>
 #include <mudock/molecule/fragments.hpp>
 #include <mudock/type_alias.hpp>
