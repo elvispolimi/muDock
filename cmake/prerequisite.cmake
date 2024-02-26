@@ -26,6 +26,8 @@ function(add_rdkit_dep target)
         RDKitFileParsers
         RDKitGraphMol
         RDKitRDGeneral
+        RDKitSmilesParse
+        RDKitSubstructMatch
     )
     message(STATUS "Found RDKit prefix: ${RDKIT_INSTALL_PREFIX}")
 endfunction(add_rdkit_dep)

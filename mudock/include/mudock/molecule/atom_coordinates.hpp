@@ -1,20 +1,44 @@
 #pragma once
 
+#include <cassert>
+#include <concepts>
 #include <cstddef>
 #include <mudock/molecule/containers.hpp>
 #include <mudock/type_alias.hpp>
+#include <span>
 
 namespace mudock {
 
-  template<template<typename> class container_type>
+  template<class container_aliases>
+    requires is_container_specification<container_aliases>
   class atom_coordinates {
+    template<typename T>
+    using array_type = container_aliases::template atoms_size<T>;
+
+    std::size_t num_atoms;
+    array_type<coordinate_type> x_coordinates;
+    array_type<coordinate_type> y_coordinates;
+    array_type<coordinate_type> z_coordinates;
+
   public:
     void resize(const std::size_t n);
     void fill(const coordinate_type value = 0);
 
-    container_type<coordinate_type> x;
-    container_type<coordinate_type> y;
-    container_type<coordinate_type> z;
+    // utility functions to get the whole container
+    [[nodiscard]] inline auto x() { return std::span(std::begin(x_coordinates), num_atoms); }
+    [[nodiscard]] inline auto x() const { return std::span(std::cbegin(x_coordinates), num_atoms); }
+    [[nodiscard]] inline auto y() { return std::span(std::begin(y_coordinates), num_atoms); }
+    [[nodiscard]] inline auto y() const { return std::span(std::cbegin(y_coordinates), num_atoms); }
+    [[nodiscard]] inline auto z() { return std::span(std::begin(z_coordinates), num_atoms); }
+    [[nodiscard]] inline auto z() const { return std::span(std::cbegin(z_coordinates), num_atoms); }
+
+    // utility functions to access the data
+    [[nodiscard]] inline coordinate_type& x(auto i) { return x_coordinates[i]; }
+    [[nodiscard]] inline const coordinate_type& x(auto i) const { return x_coordinates[i]; }
+    [[nodiscard]] inline coordinate_type& y(auto i) { return y_coordinates[i]; }
+    [[nodiscard]] inline const coordinate_type& y(auto i) const { return y_coordinates[i]; }
+    [[nodiscard]] inline coordinate_type& z(auto i) { return z_coordinates[i]; }
+    [[nodiscard]] inline const coordinate_type& z(auto i) const { return z_coordinates[i]; }
   };
 
   //===------------------------------------------------------------------------------------------------------
@@ -22,13 +46,13 @@ namespace mudock {
   //===------------------------------------------------------------------------------------------------------
 
   template<>
-  void atom_coordinates<static_container_type>::resize(const std::size_t n);
+  void atom_coordinates<static_containers>::resize(const std::size_t n);
   template<>
-  void atom_coordinates<dynamic_container_type>::resize(const std::size_t n);
+  void atom_coordinates<dynamic_containers>::resize(const std::size_t n);
 
   template<>
-  void atom_coordinates<static_container_type>::fill(const coordinate_type value);
+  void atom_coordinates<static_containers>::fill(const coordinate_type value);
   template<>
-  void atom_coordinates<dynamic_container_type>::fill(const coordinate_type value);
+  void atom_coordinates<dynamic_containers>::fill(const coordinate_type value);
 
 } // namespace mudock
