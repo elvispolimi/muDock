@@ -16,11 +16,11 @@ namespace mudock {
     void print(molecule_type&& molecule, std::ostream& out) const {
       out << "graph G {" << std::endl;
       out << "  node [ style=rounded ]" << std::endl;
-      for (index_type i{0}; i < molecule.num_atoms(); ++i) {
+      for (std::size_t i{0}; i < molecule.num_atoms(); ++i) {
         out << "  " << i << " [ label=\"" << i << "." << get_description(molecule.elements(i)).symbol
             << "\" ]" << std::endl;
       }
-      for (index_type i{0}; i < molecule.num_bonds(); ++i) {
+      for (std::size_t i{0}; i < molecule.num_bonds(); ++i) {
         const auto& bond = molecule.bonds(i);
         out << "  " << bond.source << " -- " << bond.dest << " [";
         if (bond.can_rotate) {

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <concepts>
+#include <cstdint>
 #include <mudock/chem/elements.hpp>
 #include <mudock/molecule/atom_coordinates.hpp>
 #include <mudock/molecule/bond.hpp>
@@ -27,11 +28,11 @@ namespace mudock {
 
     // the atoms chemical properties
     atoms_array_type<element> atom_elements;
-    index_type atom_size = index_type{0};
+    std::size_t atom_size = std::size_t{0};
 
     // the intra-molecular connections
     bonds_array_type<bond> bond_descriptions;
-    index_type bonds_size = index_type{0};
+    std::size_t bonds_size = std::size_t{0};
 
   public:
     // utility function to allocate the memory based on the number of atoms and bonds
