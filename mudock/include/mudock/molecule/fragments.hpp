@@ -17,7 +17,11 @@ namespace mudock {
     using mask_container_type  = container_aliases::template fragments_size<fragment_mask_type>;
     using index_container_type = container_aliases::template fragments_size<std::size_t>;
 
-    // this is a 2D grid that keep track of which atom belong to the related fragment
+    // this is a 2D grid that keep track of which atom belong to the related fragment. Each atom mask has the
+    // following meaning:
+    //  0 - the atom does not belong to the rotatable fragment
+    //  1 - the atom belongs to the rotatable fragment
+    //  2 - the atom is part of the rotatable bond
     mask_container_type mask;
     index2D index;
 
