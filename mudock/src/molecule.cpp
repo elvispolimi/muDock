@@ -11,8 +11,8 @@ namespace mudock {
     coordinates.resize(n_atoms);
     assert(n_atoms < max_static_atoms());
     assert(n_bonds < max_static_bonds());
-    atom_size  = static_cast<index_type>(n_atoms);
-    bonds_size = static_cast<index_type>(n_bonds);
+    atom_size  = n_atoms;
+    bonds_size = n_bonds;
   }
 
   template<>
@@ -20,8 +20,8 @@ namespace mudock {
     coordinates.resize(n_atoms);
     atom_elements.resize(n_atoms, element::H);
     bond_descriptions.resize(n_bonds);
-    atom_size  = static_cast<index_type>(n_atoms);
-    bonds_size = static_cast<index_type>(n_bonds);
+    atom_size  = n_atoms;
+    bonds_size = n_bonds;
   }
 
 } // namespace mudock

@@ -6,6 +6,7 @@
 #include <array>
 #include <cassert>
 #include <concepts>
+#include <cstdint>
 #include <map>
 #include <memory>
 #include <mudock/chem.hpp>
@@ -54,10 +55,10 @@ namespace mudock {
 
     // fill the atom information (we assume a single conformation)
     // NOTE: we need to store the mapping between our atom index and the rdkit one
-    std::unordered_map<unsigned int, index_type> index_translator;
+    std::unordered_map<unsigned int, std::size_t> index_translator;
     assert(source->getNumConformers() == 1);
     const auto conformation = source->getConformer(0);
-    auto mudock_atom_index  = index_type{0};
+    auto mudock_atom_index  = std::size_t{0};
     for (const auto& atom: source->atoms()) {
       const auto atom_id      = atom->getIdx();
       const auto [x, y, z]    = conformation.getAtomPos(atom_id);
@@ -68,7 +69,7 @@ namespace mudock {
       dest.coordinates.y(mudock_atom_index) = static_cast<coordinate_type>(y);
       dest.coordinates.z(mudock_atom_index) = static_cast<coordinate_type>(z);
       index_translator.emplace(atom_id, mudock_atom_index);
-      mudock_atom_index += index_type{1};
+      mudock_atom_index += std::size_t{1};
     }
 
     // define the SMARTS pattern of the rotatable bonds
@@ -97,7 +98,7 @@ namespace mudock {
     assert(matched_bonds.size() < static_cast<std::size_t>(maxMatches) && "Too many rotatable bonds");
 
     // fill the bond information
-    auto mudock_bond_index = index_type{0};
+    auto mudock_bond_index = std::size_t{0};
     for (const auto& bond: source->bonds()) {
       const auto atom_id_source            = bond->getBeginAtomIdx();
       const auto atom_id_dest              = bond->getEndAtomIdx();

@@ -70,16 +70,16 @@ namespace mudock {
 
   using vertex_type = typename molecule_graph_type::vertex_descriptor;
   template<class container_aliases>
-  std::pair<typename container_aliases::template bonds_size<edge_description>, index_type>
+  std::pair<typename container_aliases::template bonds_size<edge_description>, std::size_t>
       get_rotatable_edges(const std::span<const bond> &bonds, const molecule_graph_type &g);
 
   template<>
-  std::pair<typename static_containers::template bonds_size<edge_description>, index_type>
+  std::pair<typename static_containers::template bonds_size<edge_description>, std::size_t>
       get_rotatable_edges<static_containers>(const std::span<const bond> &bonds,
                                              const molecule_graph_type &g) {
     assert(boost::num_edges(g) < max_static_bonds());
     static_containers::template bonds_size<edge_description> result;
-    auto rotatable_bond_counter   = index_type{0};
+    auto rotatable_bond_counter   = std::size_t{0};
     const auto [begin_it, end_it] = boost::edges(g);
     for (auto it = begin_it; it != end_it; ++it) {
       if (bonds[g[*it].bond_index].can_rotate) {
@@ -91,7 +91,7 @@ namespace mudock {
   }
 
   template<>
-  std::pair<typename dynamic_containers::template bonds_size<edge_description>, index_type>
+  std::pair<typename dynamic_containers::template bonds_size<edge_description>, std::size_t>
       get_rotatable_edges<dynamic_containers>(const std::span<const bond> &bonds,
                                               const molecule_graph_type &g) {
     dynamic_containers::template bonds_size<edge_description> result;
@@ -102,19 +102,19 @@ namespace mudock {
         result.emplace_back(boost::source(*it, g), boost::target(*it, g));
       }
     }
-    return std::make_pair(result, static_cast<index_type>(result.size()));
+    return std::make_pair(result, result.size());
   }
 
   // this is an internal templatized version to fill the fragment mask that is agnostic with respect
   // to the actual container type
   template<class container_aliases>
   fragments<container_aliases> make_fragments_internal(const std::span<const bond> &bonds,
-                                                       const index_type num_atoms,
-                                                       const index_type num_bonds) {
+                                                       const std::size_t num_atoms,
+                                                       const std::size_t num_bonds) {
     auto g                                            = make_graph(bonds, num_bonds);
     const auto [rotatable_edges, num_rotatable_edges] = get_rotatable_edges<container_aliases>(bonds, g);
     auto result = fragments<container_aliases>(num_atoms, num_rotatable_edges);
-    for (index_type i{0}; i < num_rotatable_edges; ++i) {
+    for (std::size_t i{0}; i < num_rotatable_edges; ++i) {
       const auto edge          = rotatable_edges[i];
       auto mask                = result.get_mask(i);
       const auto source_vertex = edge.source;
@@ -137,16 +137,16 @@ namespace mudock {
   // specialization for static containers
   template<>
   fragments<static_containers> make_fragments<static_containers>(const std::span<const bond> &bonds,
-                                                                 const index_type num_atoms,
-                                                                 const index_type num_bonds) {
+                                                                 const std::size_t num_atoms,
+                                                                 const std::size_t num_bonds) {
     return make_fragments_internal<static_containers>(bonds, num_atoms, num_bonds);
   }
 
   // specialization for dynamic containers
   template<>
   fragments<dynamic_containers> make_fragments<dynamic_containers>(const std::span<const bond> &bonds,
-                                                                   const index_type num_atoms,
-                                                                   const index_type num_bonds) {
+                                                                   const std::size_t num_atoms,
+                                                                   const std::size_t num_bonds) {
     return make_fragments_internal<dynamic_containers>(bonds, num_atoms, num_bonds);
   }
 

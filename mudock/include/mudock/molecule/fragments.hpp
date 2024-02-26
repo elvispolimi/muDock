@@ -46,8 +46,8 @@ namespace mudock {
 
   template<class container_aliases>
   [[nodiscard]] fragments<container_aliases> make_fragments(const std::span<const bond>& bonds,
-                                                            const index_type num_atoms,
-                                                            const index_type num_bonds);
+                                                            const std::size_t num_atoms,
+                                                            const std::size_t num_bonds);
 
   //===------------------------------------------------------------------------------------------------------
   // Out-of-class method definitions
@@ -62,12 +62,12 @@ namespace mudock {
   template<>
   [[nodiscard]] fragments<static_containers>
       make_fragments<static_containers>(const std::span<const bond>& bonds,
-                                        const index_type num_atoms,
-                                        const index_type num_bonds);
+                                        const std::size_t num_atoms,
+                                        const std::size_t num_bonds);
   template<>
   [[nodiscard]] fragments<dynamic_containers>
       make_fragments<dynamic_containers>(const std::span<const bond>& bonds,
-                                         const index_type num_atoms,
-                                         const index_type num_bonds);
+                                         const std::size_t num_atoms,
+                                         const std::size_t num_bonds);
 
 } // namespace mudock

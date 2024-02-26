@@ -3,12 +3,12 @@
 #include <unordered_map>
 
 namespace mudock {
-  molecule_graph_type make_graph(const std::span<const bond>& bonds, const index_type num_bonds) {
+  molecule_graph_type make_graph(const std::span<const bond>& bonds, const std::size_t num_bonds) {
     using vertex_type = typename molecule_graph_type::vertex_descriptor;
 
     // describe support data structures that we need to compute the fragment mask
     molecule_graph_type g;
-    std::unordered_map<index_type, vertex_type> index2vertex;
+    std::unordered_map<std::size_t, vertex_type> index2vertex;
     const auto get_vertex = [&index2vertex, &g](const auto index_value) {
       auto vertex_it = index2vertex.find(index_value);
       if (vertex_it == std::end(index2vertex)) { // it's a new vertex
@@ -22,12 +22,12 @@ namespace mudock {
     };
 
     // populate the graph with the molecule topology
-    for (index_type i{0}; i < num_bonds; ++i) {
+    for (std::size_t i{0}; i < num_bonds; ++i) {
       const auto& bond_description = bonds[i];
       const auto [edge, is_inserted] =
           boost::add_edge(get_vertex(bond_description.source), get_vertex(bond_description.dest), g);
       assert(is_inserted);
-      g[edge].bond_index = static_cast<index_type>(i);
+      g[edge].bond_index = i;
     }
     return g;
   }
