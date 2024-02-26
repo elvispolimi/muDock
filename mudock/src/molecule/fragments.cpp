@@ -36,15 +36,16 @@ namespace mudock {
 
   // this is a simple functor that set to one all the atoms that it visits
   class bitmask_setter: public boost::default_bfs_visitor {
-    using graph_type  = molecule_graph_type;
-    using vertex_type = typename boost::graph_traits<graph_type>::vertex_descriptor;
+    using graph_type      = molecule_graph_type;
+    using vertex_type     = typename boost::graph_traits<graph_type>::vertex_descriptor;
+    using mask_value_type = typename fragments<static_containers>::value_type;
 
-    std::span<coordinate_type> bitmask;
+    std::span<mask_value_type> bitmask;
 
   public:
-    bitmask_setter(std::span<coordinate_type> mask): bitmask(mask) {}
+    bitmask_setter(std::span<mask_value_type> mask): bitmask(mask) {}
     void discover_vertex(vertex_type u, const graph_type &g) {
-      bitmask[g[u].atom_index] = static_cast<coordinate_type>(1);
+      bitmask[g[u].atom_index] = static_cast<mask_value_type>(1);
     }
   };
 
