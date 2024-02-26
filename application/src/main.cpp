@@ -37,19 +37,19 @@ int main(int argc, char* argv[]) {
       std::cerr << "Unable to parse the ligand with index " << i << ", due to: " << e.what() << std::endl;
     }
   }
+  std::cout << "We have " << ligands.size() << std::endl;
 
   // print the fragment mask for each molecule
   for (const auto& ligand: ligands) {
     const auto name = ligand.properties.get(mudock::property_type::NAME);
     std::cout << "> fragments for ligand \"" << name << '"' << std::endl;
-    const auto fragments = mudock::make_fragments<mudock::static_container_type>(ligand.bonds,
-                                                                                 ligand.num_atoms,
-                                                                                 ligand.num_bonds);
+    const auto fragments = mudock::make_fragments<mudock::static_containers>(ligand.bonds(),
+                                                                             ligand.num_atoms(),
+                                                                             ligand.num_bonds());
     for (std::size_t i{0}; i < fragments.get_num_rotatable_bonds(); ++i) {
       const auto mask = fragments.get_mask(i);
       std::cout << '\t';
-      for (const auto value: mask) { /* std::cout << mask[j] << ' ';*/
-      }
+      for (const auto value: mask) { std::cout << value << ' '; }
       std::cout << std::endl;
     }
     std::cout << std::endl;
