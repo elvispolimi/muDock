@@ -22,17 +22,11 @@ namespace mudock {
     [[nodiscard]] inline auto get_num_rotatable_bonds() const { return index.size_y(); }
 
     // utility functions to get the whole container
-    [[nodiscard]] inline std::span<coordinate_type> get_mask(const std::size_t bond_index) {
-      const auto begin = storage.begin() + index.to1D(0, bond_index);
-      const auto end   = begin + index.size_x();
-      assert(begin != std::end(storage) && end != std::end(storage));
-      return std::span(begin, end);
+    [[nodiscard]] inline auto get_mask(const std::size_t bond_index) {
+      return std::span(std::begin(storage) + index.to1D(0, bond_index), index.size_x());
     }
-    [[nodiscard]] inline std::span<const coordinate_type> get_mask(const std::size_t bond_index) const {
-      const auto begin = storage.cbegin() + index.to1D(0, bond_index);
-      const auto end   = begin + index.size_x();
-      assert(begin != std::end(storage) && end != std::end(storage));
-      return std::span(begin, end);
+    [[nodiscard]] inline auto get_mask(const std::size_t bond_index) const {
+      return std::span(std::cbegin(storage) + index.to1D(0, bond_index), index.size_x());
     }
 
     // utility functions to access the data
@@ -46,8 +40,7 @@ namespace mudock {
 
   template<class container_aliases>
   [[nodiscard]] fragments<container_aliases> make_fragments(const std::span<const bond>& bonds,
-                                                            const std::size_t num_atoms,
-                                                            const std::size_t num_bonds);
+                                                            const std::size_t num_atoms);
 
   //===------------------------------------------------------------------------------------------------------
   // Out-of-class method definitions
@@ -61,13 +54,9 @@ namespace mudock {
 
   template<>
   [[nodiscard]] fragments<static_containers>
-      make_fragments<static_containers>(const std::span<const bond>& bonds,
-                                        const std::size_t num_atoms,
-                                        const std::size_t num_bonds);
+      make_fragments<static_containers>(const std::span<const bond>& bonds, const std::size_t num_atoms);
   template<>
   [[nodiscard]] fragments<dynamic_containers>
-      make_fragments<dynamic_containers>(const std::span<const bond>& bonds,
-                                         const std::size_t num_atoms,
-                                         const std::size_t num_bonds);
+      make_fragments<dynamic_containers>(const std::span<const bond>& bonds, const std::size_t num_atoms);
 
 } // namespace mudock

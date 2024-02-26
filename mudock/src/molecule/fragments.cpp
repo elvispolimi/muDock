@@ -109,9 +109,8 @@ namespace mudock {
   // to the actual container type
   template<class container_aliases>
   fragments<container_aliases> make_fragments_internal(const std::span<const bond> &bonds,
-                                                       const std::size_t num_atoms,
-                                                       const std::size_t num_bonds) {
-    auto g                                            = make_graph(bonds, num_bonds);
+                                                       const std::size_t num_atoms) {
+    auto g                                            = make_graph(bonds);
     const auto [rotatable_edges, num_rotatable_edges] = get_rotatable_edges<container_aliases>(bonds, g);
     auto result = fragments<container_aliases>(num_atoms, num_rotatable_edges);
     for (std::size_t i{0}; i < num_rotatable_edges; ++i) {
@@ -137,17 +136,15 @@ namespace mudock {
   // specialization for static containers
   template<>
   fragments<static_containers> make_fragments<static_containers>(const std::span<const bond> &bonds,
-                                                                 const std::size_t num_atoms,
-                                                                 const std::size_t num_bonds) {
-    return make_fragments_internal<static_containers>(bonds, num_atoms, num_bonds);
+                                                                 const std::size_t num_atoms) {
+    return make_fragments_internal<static_containers>(bonds, num_atoms);
   }
 
   // specialization for dynamic containers
   template<>
   fragments<dynamic_containers> make_fragments<dynamic_containers>(const std::span<const bond> &bonds,
-                                                                   const std::size_t num_atoms,
-                                                                   const std::size_t num_bonds) {
-    return make_fragments_internal<dynamic_containers>(bonds, num_atoms, num_bonds);
+                                                                   const std::size_t num_atoms) {
+    return make_fragments_internal<dynamic_containers>(bonds, num_atoms);
   }
 
 } // namespace mudock

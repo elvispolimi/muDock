@@ -49,10 +49,10 @@ namespace mudock {
     [[nodiscard]] constexpr auto num_bonds() const { return bonds_size; }
 
     // utility functions to get the whole containers for each fields
-    [[nodiscard]] std::span<element> elements() { return atom_elements; }
-    [[nodiscard]] std::span<const element> elements() const { return atom_elements; }
-    [[nodiscard]] std::span<bond> bonds() { return bond_descriptions; }
-    [[nodiscard]] std::span<const bond> bonds() const { return bond_descriptions; }
+    [[nodiscard]] inline auto elements() { return std::span(std::begin(atom_elements), atom_size); }
+    [[nodiscard]] inline auto elements() const { return std::span(std::cbegin(atom_elements), atom_size); }
+    [[nodiscard]] inline auto bonds() { return std::span(std::begin(bond_descriptions), bonds_size); }
+    [[nodiscard]] inline auto bonds() const { return std::span(std::cbegin(bond_descriptions), bonds_size); }
 
     // utility functions for accessing directly to a specific element
     [[nodiscard]] inline element& elements(auto i) { return atom_elements[i]; }
