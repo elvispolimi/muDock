@@ -44,12 +44,26 @@ int main(int argc, char* argv[]) {
     const auto name = ligand.properties.get(mudock::property_type::NAME);
     mudock::dot{}.print(ligand, std::cerr);
     const auto fragments = mudock::fragments<mudock::static_containers>(ligand.bonds(), ligand.num_atoms());
-    const auto target_fragment = std::size_t{1};
-    std::cout << "> fragment mask for rotatable bond \"" << target_fragment << '"' << std::endl;
-    std::cout << std::setw(20) << "1" << std::setw(20) << "2" << std::setw(20) << "3" << std::setw(20) << "4"
-              << std::setw(20) << "5" << std::endl;
-    std::cout << ' ';
-    for (const auto value: fragments.get_mask(target_fragment)) { std::cout << value << ' '; }
+    const auto target_fragment = std::size_t{0};
+    std::cout << "rotatable bond \"" << target_fragment << '"' << std::endl;
+    const auto [start_index, stop_index] = fragments.get_rotatable_atoms(target_fragment);
+    std::cout << "starting index=" << start_index << " | stopping index=" << stop_index << std::endl;
+    for (std::size_t i{0}; i < ligand.num_atoms(); ++i) {
+      switch (i) {
+        case 10: std::cout << "1"; break;
+        case 20: std::cout << "2"; break;
+        case 30: std::cout << "3"; break;
+        case 40: std::cout << "4"; break;
+        case 50: std::cout << "5"; break;
+        case 60: std::cout << "6"; break;
+        default: std::cout << " "; break;
+      }
+    }
+    std::cout << std::endl;
+    std::cout << 0;
+    for (std::size_t i{1}; i < ligand.num_atoms(); ++i) { std::cout << i % 10; }
+    std::cout << std::endl;
+    for (const auto value: fragments.get_mask(target_fragment)) { std::cout << value; }
     std::cout << std::endl;
   }
 
