@@ -42,16 +42,15 @@ int main(int argc, char* argv[]) {
   // print the fragment mask for each molecule
   for (const auto& ligand: ligands) {
     const auto name = ligand.properties.get(mudock::property_type::NAME);
-    std::cout << "> fragments for ligand \"" << name << '"' << std::endl;
-    const auto fragments = mudock::make_fragments<mudock::static_containers>(ligand.bonds(),
-                                                                             ligand.num_atoms(),
-                                                                             ligand.num_bonds());
-    for (std::size_t i{0}; i < fragments.get_num_rotatable_bonds(); ++i) {
-      const auto mask = fragments.get_mask(i);
-      std::cout << '\t';
-      for (const auto value: mask) { std::cout << value << ' '; }
-      std::cout << std::endl;
-    }
+    mudock::dot{}.print(ligand, std::cerr);
+    const auto fragments =
+        mudock::make_fragments<mudock::static_containers>(ligand.bonds(), ligand.num_atoms());
+    const auto target_fragment = std::size_t{1};
+    std::cout << "> fragment mask for rotatable bond \"" << target_fragment << '"' << std::endl;
+    std::cout << std::setw(20) << "1" << std::setw(20) << "2" << std::setw(20) << "3" << std::setw(20) << "4"
+              << std::setw(20) << "5" << std::endl;
+    std::cout << ' ';
+    for (const auto value: fragments.get_mask(target_fragment)) { std::cout << value << ' '; }
     std::cout << std::endl;
   }
 
