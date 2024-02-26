@@ -41,6 +41,7 @@ list(APPEND source_files
   "${source_path}/format/rdkit_wrapper.cpp"
   "${source_path}/molecule/atom_coordinates.cpp"
   "${source_path}/molecule/fragments.cpp"
+  "${source_path}/molecule/graph.cpp"
   "${source_path}/molecule/property_table.cpp"
   "${source_path}/molecule.cpp"
 )

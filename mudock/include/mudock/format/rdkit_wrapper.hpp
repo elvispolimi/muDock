@@ -63,10 +63,10 @@ namespace mudock {
       const auto [x, y, z]    = conformation.getAtomPos(atom_id);
       const auto atom_element = parse_element_symbol(atom->getSymbol());
       assert(atom_element.has_value());
-      dest.elements[mudock_atom_index]      = atom_element.value();
-      dest.coordinates.x[mudock_atom_index] = static_cast<coordinate_type>(x);
-      dest.coordinates.y[mudock_atom_index] = static_cast<coordinate_type>(y);
-      dest.coordinates.z[mudock_atom_index] = static_cast<coordinate_type>(z);
+      dest.elements(mudock_atom_index)      = atom_element.value();
+      dest.coordinates.x(mudock_atom_index) = static_cast<coordinate_type>(x);
+      dest.coordinates.y(mudock_atom_index) = static_cast<coordinate_type>(y);
+      dest.coordinates.z(mudock_atom_index) = static_cast<coordinate_type>(z);
       index_translator.emplace(atom_id, mudock_atom_index);
       mudock_atom_index += index_type{1};
     }
@@ -101,9 +101,9 @@ namespace mudock {
     for (const auto& bond: source->bonds()) {
       const auto atom_id_source            = bond->getBeginAtomIdx();
       const auto atom_id_dest              = bond->getEndAtomIdx();
-      dest.bonds[mudock_bond_index].source = index_translator.at(atom_id_source);
-      dest.bonds[mudock_bond_index].dest   = index_translator.at(atom_id_dest);
-      dest.bonds[mudock_bond_index].type   = parse_rdkit_bond_type(bond->getBondType());
+      dest.bonds(mudock_bond_index).source = index_translator.at(atom_id_source);
+      dest.bonds(mudock_bond_index).dest   = index_translator.at(atom_id_dest);
+      dest.bonds(mudock_bond_index).type   = parse_rdkit_bond_type(bond->getBondType());
 
       // check if it can rotate
       for (const auto& rotatable_bond: matched_bonds) {
@@ -112,7 +112,7 @@ namespace mudock {
         const auto atom_id_2 = index_translator.at(rotatable_bond[1].second);
         if ((atom_id_source == atom_id_1 && atom_id_dest == atom_id_2) ||
             (atom_id_source == atom_id_2 && atom_id_dest == atom_id_1)) {
-          dest.bonds[mudock_bond_index].can_rotate = true;
+          dest.bonds(mudock_bond_index).can_rotate = true;
           break;
         }
       }

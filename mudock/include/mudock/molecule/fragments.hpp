@@ -9,53 +9,63 @@
 
 namespace mudock {
 
-  template<template<typename> class container_type>
+  template<class container_aliases>
   class fragments {
-    container_type<coordinate_type> storage;
+    template<typename T>
+    using array_type = container_aliases::template fragments_size<T>;
+
+    array_type<coordinate_type> storage;
     index2D index;
 
   public:
     fragments(const std::size_t num_atoms, const std::size_t num_bonds);
+    [[nodiscard]] inline auto get_num_rotatable_bonds() const { return index.size_y(); }
 
-    inline std::span<coordinate_type> get_mask(const std::size_t bond_index) {
+    // utility functions to get the whole container
+    [[nodiscard]] inline std::span<coordinate_type> get_mask(const std::size_t bond_index) {
       const auto begin = storage.begin() + index.to1D(0, bond_index);
       const auto end   = begin + index.size_x();
       assert(begin != std::end(storage) && end != std::end(storage));
       return std::span(begin, end);
     }
-    inline std::span<const coordinate_type> get_mask(const std::size_t bond_index) const {
+    [[nodiscard]] inline std::span<const coordinate_type> get_mask(const std::size_t bond_index) const {
       const auto begin = storage.cbegin() + index.to1D(0, bond_index);
       const auto end   = begin + index.size_x();
       assert(begin != std::end(storage) && end != std::end(storage));
       return std::span(begin, end);
     }
-    inline auto get_num_rotatable_bonds() const { return index.size_y(); }
+
+    // utility functions to access the data
+    [[nodiscard]] inline coordinate_type& get_mask(const auto bond_index, const auto atom_index) {
+      return storage[index.to1D(atom_index, bond_index)];
+    }
+    [[nodiscard]] inline const coordinate_type& get_mask(const auto bond_index, const auto atom_index) const {
+      return storage[index.to1D(atom_index, bond_index)];
+    }
   };
 
-  template<template<typename> class container_type>
-  fragments<container_type> make_fragments(const container_type<bond>& bonds,
-                                           const index_type num_atoms,
-                                           const index_type num_bonds);
+  template<class container_aliases>
+  fragments<container_aliases> make_fragments(const std::span<const bond>& bonds,
+                                              const index_type num_atoms,
+                                              const index_type num_bonds);
 
   //===------------------------------------------------------------------------------------------------------
   // Out-of-class method definitions
   //===------------------------------------------------------------------------------------------------------
 
   template<>
-  fragments<static_container_type>::fragments(const std::size_t num_atoms, const std::size_t num_bonds);
+  fragments<static_containers>::fragments(const std::size_t num_atoms, const std::size_t num_bonds);
 
   template<>
-  fragments<dynamic_container_type>::fragments(const std::size_t num_atoms, const std::size_t num_bonds);
+  fragments<dynamic_containers>::fragments(const std::size_t num_atoms, const std::size_t num_bonds);
 
   template<>
-  fragments<static_container_type>
-      make_fragments<static_container_type>(const static_container_type<bond>& bonds,
-                                            const index_type num_atoms,
-                                            const index_type num_bonds);
+  fragments<static_containers> make_fragments<static_containers>(const std::span<const bond>& bonds,
+                                                                 const index_type num_atoms,
+                                                                 const index_type num_bonds);
   template<>
-  fragments<dynamic_container_type>
-      make_fragments<dynamic_container_type>(const dynamic_container_type<bond>& bonds,
-                                             const index_type num_atoms,
-                                             const index_type num_bonds);
+  fragments<dynamic_containers> make_fragments<dynamic_containers>(const std::span<const bond>& bonds,
+                                                                   const index_type num_atoms,
+                                                                   const index_type num_bonds);
 
 } // namespace mudock
