@@ -2,6 +2,7 @@
 #include <boost/graph/breadth_first_search.hpp>
 #include <cassert>
 #include <cstdint>
+#include <gsl/pointers>
 #include <iterator>
 #include <mudock/grid.hpp>
 #include <mudock/molecule/constraints.hpp>
@@ -13,55 +14,9 @@
 
 namespace mudock {
 
-  template<>
-  fragments<static_containers>::fragments(const std::size_t num_atoms, const std::size_t num_bonds)
-      : index(num_atoms, num_bonds) {
-    assert(num_atoms < max_static_atoms());
-    assert(num_bonds < max_static_bonds());
-    storage.fill(coordinate_type{0});
-    index = index2D{num_atoms, num_bonds};
-  }
-
-  template<>
-  fragments<dynamic_containers>::fragments(const std::size_t num_atoms, const std::size_t num_bonds)
-      : index(num_atoms, num_bonds) {
-    storage.clear();
-    storage.resize(num_atoms * num_bonds, coordinate_type{0});
-    index = index2D{num_atoms, num_bonds};
-  }
-
   //===------------------------------------------------------------------------------------------------------
-  // Implementation fo the methods that build the fragment mask
+  // Utility function to find the rotatable edge on a graph (using a consistent container type)
   //===------------------------------------------------------------------------------------------------------
-
-  // this is a simple functor that set to one all the atoms that it visits
-  class bitmask_setter: public boost::default_bfs_visitor {
-    using graph_type      = molecule_graph_type;
-    using vertex_type     = typename boost::graph_traits<graph_type>::vertex_descriptor;
-    using mask_value_type = typename fragments<static_containers>::value_type;
-
-    std::span<mask_value_type> bitmask;
-
-  public:
-    bitmask_setter(std::span<mask_value_type> mask): bitmask(mask) {}
-    void discover_vertex(vertex_type u, const graph_type &g) {
-      bitmask[g[u].atom_index] = static_cast<mask_value_type>(1);
-    }
-  };
-
-  // this is a simple functor that count how many atoms it visits
-  class atom_counter: public boost::default_bfs_visitor {
-    using graph_type  = molecule_graph_type;
-    using vertex_type = typename boost::graph_traits<graph_type>::vertex_descriptor;
-
-    std::size_t counter = 0;
-
-  public:
-    void discover_vertex([[maybe_unused]] vertex_type u, [[maybe_unused]] const graph_type &g) { ++counter; }
-    inline auto get_counter() const { return counter; }
-  };
-
-  // find all the rotatable bonds in the bonds
   // NOTE: we define an edge with their two edges, to avoid problems in graph update
   struct edge_description {
     using vertex_type = typename molecule_graph_type::vertex_descriptor;
@@ -106,46 +61,111 @@ namespace mudock {
     return std::make_pair(result, result.size());
   }
 
-  // this is an internal templatized version to fill the fragment mask that is agnostic with respect
-  // to the actual container type
-  template<class container_aliases>
-  fragments<container_aliases> make_fragments_internal(const std::span<const bond> &bonds,
-                                                       const std::size_t num_atoms) {
-    auto g                                            = make_graph(bonds);
-    const auto [rotatable_edges, num_rotatable_edges] = get_rotatable_edges<container_aliases>(bonds, g);
-    auto result = fragments<container_aliases>(num_atoms, num_rotatable_edges);
-    for (std::size_t i{0}; i < num_rotatable_edges; ++i) {
-      const auto edge          = rotatable_edges[i];
-      auto mask                = result.get_mask(i);
-      const auto source_vertex = edge.source;
-      const auto dest_vertex   = edge.dest;
+  //===------------------------------------------------------------------------------------------------------
+  // Functor that work with graph (to count and find the bitmask)
+  //===------------------------------------------------------------------------------------------------------
 
-      boost::remove_edge(source_vertex, dest_vertex, g);
-      atom_counter counter_source, counter_dest;
-      boost::breadth_first_search(g, source_vertex, boost::visitor(counter_source));
-      boost::breadth_first_search(g, dest_vertex, boost::visitor(counter_dest));
-      if (counter_source.get_counter() > counter_dest.get_counter()) {
-        boost::breadth_first_search(g, dest_vertex, boost::visitor(bitmask_setter{mask}));
-      } else {
-        boost::breadth_first_search(g, source_vertex, boost::visitor(bitmask_setter{mask}));
-      }
-      boost::add_edge(source_vertex, dest_vertex, g);
+  // this is a simple functor that set to one all the atoms that it visits
+  class bitmask_setter: public boost::default_bfs_visitor {
+    using graph_type      = molecule_graph_type;
+    using vertex_type     = typename boost::graph_traits<graph_type>::vertex_descriptor;
+    using mask_value_type = typename fragments<static_containers>::value_type;
+
+    std::span<mask_value_type> bitmask;
+
+  public:
+    bitmask_setter(std::span<mask_value_type> mask): bitmask(mask) {}
+    void discover_vertex(vertex_type u, const graph_type &g) {
+      bitmask[g[u].atom_index] = static_cast<mask_value_type>(1);
     }
-    return result;
+  };
+
+  // this is a simple functor that count how many atoms it visits
+  class atom_counter: public boost::default_bfs_visitor {
+    using graph_type  = molecule_graph_type;
+    using vertex_type = typename boost::graph_traits<graph_type>::vertex_descriptor;
+
+    std::size_t counter = 0;
+
+  public:
+    void discover_vertex([[maybe_unused]] vertex_type u, [[maybe_unused]] const graph_type &g) { ++counter; }
+    inline auto get_counter() const { return counter; }
+  };
+
+  //===------------------------------------------------------------------------------------------------------
+  // Utility function that fill the information of the fragments
+  //===------------------------------------------------------------------------------------------------------
+
+  void fill_fragment_mask(std::span<fragments<static_containers>::value_type> mask,
+                          gsl::not_null<std::size_t *> start_index,
+                          gsl::not_null<std::size_t *> stop_index,
+                          const edge_description &rotatable_bond,
+                          molecule_graph_type &g) {
+    const auto source_vertex = rotatable_bond.source;
+    const auto dest_vertex   = rotatable_bond.dest;
+    boost::remove_edge(source_vertex, dest_vertex, g);
+    atom_counter counter_source, counter_dest;
+    boost::breadth_first_search(g, source_vertex, boost::visitor(counter_source));
+    boost::breadth_first_search(g, dest_vertex, boost::visitor(counter_dest));
+    if (counter_source.get_counter() > counter_dest.get_counter()) {
+      boost::breadth_first_search(g, dest_vertex, boost::visitor(bitmask_setter{mask}));
+      *start_index.get() = g[dest_vertex].atom_index;
+      *stop_index.get()  = g[source_vertex].atom_index;
+    } else {
+      boost::breadth_first_search(g, source_vertex, boost::visitor(bitmask_setter{mask}));
+      *start_index.get() = g[source_vertex].atom_index;
+      *stop_index.get()  = g[dest_vertex].atom_index;
+    }
+    boost::add_edge(source_vertex, dest_vertex, g);
   }
 
-  // specialization for static containers
+  //===------------------------------------------------------------------------------------------------------
+  // These are the actual constructor definition
+  //===------------------------------------------------------------------------------------------------------
+
   template<>
-  fragments<static_containers> make_fragments<static_containers>(const std::span<const bond> &bonds,
-                                                                 const std::size_t num_atoms) {
-    return make_fragments_internal<static_containers>(bonds, num_atoms);
+  fragments<static_containers>::fragments(const std::span<const bond> &bonds, const std::size_t num_atoms)
+      : index(num_atoms, bonds.size()) {
+    // make sure to initiate from a known state
+    assert(num_atoms < max_static_atoms());
+    assert(bonds.size() < max_static_bonds());
+    mask.fill(value_type{0});
+    start_atom_indices.fill(value_type{0});
+    stop_atom_indices.fill(value_type{0});
+
+    // get the rotatable bonds from the molecule's graph
+    auto g                                            = make_graph(bonds);
+    const auto [rotatable_edges, num_rotatable_edges] = get_rotatable_edges<static_containers>(bonds, g);
+
+    // recompute the index with the actual number of rotatable bonds
+    index = index2D(num_atoms, num_rotatable_edges);
+
+    // fill the fragment data structures
+    for (std::size_t i{0}; i < num_rotatable_edges; ++i) {
+      fill_fragment_mask(get_mask(i), &start_atom_indices[i], &stop_atom_indices[i], rotatable_edges[i], g);
+    }
   }
 
-  // specialization for dynamic containers
   template<>
-  fragments<dynamic_containers> make_fragments<dynamic_containers>(const std::span<const bond> &bonds,
-                                                                   const std::size_t num_atoms) {
-    return make_fragments_internal<dynamic_containers>(bonds, num_atoms);
+  fragments<dynamic_containers>::fragments(const std::span<const bond> &bonds, const std::size_t num_atoms)
+      : mask(num_atoms * bonds.size(), value_type{0}),
+        index(num_atoms, bonds.size()),
+        start_atom_indices(bonds.size(), std::size_t{0}),
+        stop_atom_indices(bonds.size(), std::size_t{0}) {
+    // get the reotatable bonds from the molecule's graph
+    auto g                                            = make_graph(bonds);
+    const auto [rotatable_edges, num_rotatable_edges] = get_rotatable_edges<dynamic_containers>(bonds, g);
+
+    // reset the containers set and recompute the index for the actual number of rotatable bonds
+    index = index2D(num_atoms, num_rotatable_edges);
+    mask.resize(num_atoms * num_rotatable_edges);
+    start_atom_indices.resize(num_rotatable_edges);
+    start_atom_indices.resize(num_rotatable_edges);
+
+    // fill the fragment data structures
+    for (std::size_t i{0}; i < num_rotatable_edges; ++i) {
+      fill_fragment_mask(get_mask(i), &start_atom_indices[i], &stop_atom_indices[i], rotatable_edges[i], g);
+    }
   }
 
 } // namespace mudock
