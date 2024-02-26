@@ -85,11 +85,11 @@ namespace mudock {
     using graph_type  = molecule_graph_type;
     using vertex_type = typename boost::graph_traits<graph_type>::vertex_descriptor;
 
-    std::size_t counter = 0;
+    std::size_t &counter;
 
   public:
+    atom_counter(std::size_t &c): counter(c) {}
     void discover_vertex([[maybe_unused]] vertex_type u, [[maybe_unused]] const graph_type &g) { ++counter; }
-    inline auto get_counter() const { return counter; }
   };
 
   //===------------------------------------------------------------------------------------------------------
@@ -104,18 +104,19 @@ namespace mudock {
     const auto source_vertex = rotatable_bond.source;
     const auto dest_vertex   = rotatable_bond.dest;
     boost::remove_edge(source_vertex, dest_vertex, g);
-    atom_counter counter_source, counter_dest;
-    boost::breadth_first_search(g, source_vertex, boost::visitor(counter_source));
-    boost::breadth_first_search(g, dest_vertex, boost::visitor(counter_dest));
-    if (counter_source.get_counter() > counter_dest.get_counter()) {
+    std::size_t counter_source{0}, counter_dest{0};
+    boost::breadth_first_search(g, source_vertex, boost::visitor(atom_counter{counter_source}));
+    boost::breadth_first_search(g, dest_vertex, boost::visitor(atom_counter{counter_dest}));
+    if (counter_source > counter_dest) {
       boost::breadth_first_search(g, dest_vertex, boost::visitor(bitmask_setter{mask}));
-      *start_index.get() = g[dest_vertex].atom_index;
-      *stop_index.get()  = g[source_vertex].atom_index;
-    } else {
-      boost::breadth_first_search(g, source_vertex, boost::visitor(bitmask_setter{mask}));
       *start_index.get() = g[source_vertex].atom_index;
       *stop_index.get()  = g[dest_vertex].atom_index;
+    } else {
+      boost::breadth_first_search(g, source_vertex, boost::visitor(bitmask_setter{mask}));
+      *start_index.get() = g[dest_vertex].atom_index;
+      *stop_index.get()  = g[source_vertex].atom_index;
     }
+    mask[*stop_index.get()] = fragments<static_containers>::value_type{0};
     boost::add_edge(source_vertex, dest_vertex, g);
   }
 
