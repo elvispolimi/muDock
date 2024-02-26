@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <concepts>
 #include <mudock/molecule/constraints.hpp>
 #include <vector>
 
@@ -32,5 +33,10 @@ namespace mudock {
     template<typename T>
     using fragments_size = std::vector<T>;
   };
+
+  // this concepts tell if a type is a specification of the container abstraction used in a class.
+  template<class T>
+  concept is_container_specification = (std::same_as<std::remove_cvref_t<T>, static_containers> ||
+                                        std::same_as<std::remove_cvref_t<T>, dynamic_containers>);
 
 } // namespace mudock

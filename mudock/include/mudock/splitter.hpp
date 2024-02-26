@@ -17,8 +17,8 @@ namespace mudock {
     template<class... args_type>
     splitter(args_type&&... args): format_splitter(args...) {}
 
-    std::vector<std::string> operator()(std::string new_text);
-    std::string flush() {
+    [[nodiscard]] std::vector<std::string> operator()(std::string new_text);
+    [[nodiscard]] std::string flush() {
       auto text_remainder = std::move(input_text);
       input_text.clear();
       return text_remainder;
@@ -31,7 +31,7 @@ namespace mudock {
 
   template<class format_type>
     requires can_split<format_type>
-  std::vector<std::string> splitter<format_type>::operator()(std::string new_text) {
+  [[nodiscard]] std::vector<std::string> splitter<format_type>::operator()(std::string new_text) {
     std::vector<std::string> result;
 
     // append the new text to the old one

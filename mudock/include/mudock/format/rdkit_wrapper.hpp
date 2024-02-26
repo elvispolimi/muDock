@@ -29,9 +29,9 @@ namespace mudock {
   //===------------------------------------------------------------------------------------------------------
 
   // the list of functions that we use to parse a molecule
-  rw_mol_wrapper parse_mol2(const std::string_view description);
-  rw_mol_wrapper parse_pdb(const std::string_view description);
-  bond_type parse_rdkit_bond_type(const RDKit::Bond::BondType bond_type);
+  [[nodiscard]] rw_mol_wrapper parse_mol2(const std::string_view description);
+  [[nodiscard]] rw_mol_wrapper parse_pdb(const std::string_view description);
+  [[nodiscard]] bond_type parse_rdkit_bond_type(const RDKit::Bond::BondType bond_type);
 
   //===------------------------------------------------------------------------------------------------------
   // Translate an RDKit molecule to our internal format
