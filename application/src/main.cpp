@@ -43,8 +43,7 @@ int main(int argc, char* argv[]) {
   for (const auto& ligand: ligands) {
     const auto name = ligand.properties.get(mudock::property_type::NAME);
     mudock::dot{}.print(ligand, std::cerr);
-    const auto fragments =
-        mudock::make_fragments<mudock::static_containers>(ligand.bonds(), ligand.num_atoms());
+    const auto fragments = mudock::fragments<mudock::static_containers>(ligand.bonds(), ligand.num_atoms());
     const auto target_fragment = std::size_t{1};
     std::cout << "> fragment mask for rotatable bond \"" << target_fragment << '"' << std::endl;
     std::cout << std::setw(20) << "1" << std::setw(20) << "2" << std::setw(20) << "3" << std::setw(20) << "4"
