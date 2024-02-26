@@ -9,6 +9,7 @@
 namespace mudock {
 
   template<class container_aliases>
+    requires is_container_specification<container_aliases>
   class atom_coordinates {
     template<typename T>
     using array_type = container_aliases::template atoms_size<T>;

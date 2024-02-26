@@ -17,6 +17,7 @@ namespace mudock {
 
   // this is the generic definition of a molecule, that depends on the used type of storage
   template<class container_aliases>
+    requires is_container_specification<container_aliases>
   class molecule {
     template<typename T>
     using atoms_array_type = container_aliases::template atoms_size<T>;

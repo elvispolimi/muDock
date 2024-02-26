@@ -45,9 +45,9 @@ namespace mudock {
   };
 
   template<class container_aliases>
-  fragments<container_aliases> make_fragments(const std::span<const bond>& bonds,
-                                              const index_type num_atoms,
-                                              const index_type num_bonds);
+  [[nodiscard]] fragments<container_aliases> make_fragments(const std::span<const bond>& bonds,
+                                                            const index_type num_atoms,
+                                                            const index_type num_bonds);
 
   //===------------------------------------------------------------------------------------------------------
   // Out-of-class method definitions
@@ -60,12 +60,14 @@ namespace mudock {
   fragments<dynamic_containers>::fragments(const std::size_t num_atoms, const std::size_t num_bonds);
 
   template<>
-  fragments<static_containers> make_fragments<static_containers>(const std::span<const bond>& bonds,
-                                                                 const index_type num_atoms,
-                                                                 const index_type num_bonds);
+  [[nodiscard]] fragments<static_containers>
+      make_fragments<static_containers>(const std::span<const bond>& bonds,
+                                        const index_type num_atoms,
+                                        const index_type num_bonds);
   template<>
-  fragments<dynamic_containers> make_fragments<dynamic_containers>(const std::span<const bond>& bonds,
-                                                                   const index_type num_atoms,
-                                                                   const index_type num_bonds);
+  [[nodiscard]] fragments<dynamic_containers>
+      make_fragments<dynamic_containers>(const std::span<const bond>& bonds,
+                                         const index_type num_atoms,
+                                         const index_type num_bonds);
 
 } // namespace mudock
