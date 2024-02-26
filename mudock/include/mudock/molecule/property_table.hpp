@@ -15,7 +15,7 @@ namespace mudock {
     property_map();                                               // fill all the properties with "N/A"
     void assign(const property_type name, std::string value);     // overwrite previous values
     void initialize(const property_type name, std::string value); // overwrite "N/A" values only
-    const std::string& get(const property_type name) const;       // get the value
+    [[nodiscard]] const std::string& get(const property_type name) const; // get the value
   };
 
 } // namespace mudock
