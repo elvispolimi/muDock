@@ -8,6 +8,7 @@ namespace mudock {
   template<>
   void atom_coordinates<static_containers>::resize([[maybe_unused]] const std::size_t n) {
     assert(n <= max_static_atoms());
+    num_atoms = n;
   }
 
   template<>
@@ -15,6 +16,7 @@ namespace mudock {
     x_coordinates.resize(n, coordinate_type{0});
     y_coordinates.resize(n, coordinate_type{0});
     z_coordinates.resize(n, coordinate_type{0});
+    num_atoms = n;
   }
 
   template<>

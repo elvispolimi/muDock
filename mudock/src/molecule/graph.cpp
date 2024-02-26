@@ -3,7 +3,7 @@
 #include <unordered_map>
 
 namespace mudock {
-  molecule_graph_type make_graph(const std::span<const bond>& bonds, const std::size_t num_bonds) {
+  molecule_graph_type make_graph(const std::span<const bond>& bonds) {
     using vertex_type = typename molecule_graph_type::vertex_descriptor;
 
     // describe support data structures that we need to compute the fragment mask
@@ -22,7 +22,7 @@ namespace mudock {
     };
 
     // populate the graph with the molecule topology
-    for (std::size_t i{0}; i < num_bonds; ++i) {
+    for (std::size_t i{0}; i < bonds.size(); ++i) {
       const auto& bond_description = bonds[i];
       const auto [edge, is_inserted] =
           boost::add_edge(get_vertex(bond_description.source), get_vertex(bond_description.dest), g);

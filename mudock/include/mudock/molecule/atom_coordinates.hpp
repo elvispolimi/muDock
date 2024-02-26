@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cassert>
 #include <concepts>
 #include <cstddef>
 #include <mudock/molecule/containers.hpp>
@@ -14,6 +15,7 @@ namespace mudock {
     template<typename T>
     using array_type = container_aliases::template atoms_size<T>;
 
+    std::size_t num_atoms;
     array_type<coordinate_type> x_coordinates;
     array_type<coordinate_type> y_coordinates;
     array_type<coordinate_type> z_coordinates;
@@ -23,12 +25,12 @@ namespace mudock {
     void fill(const coordinate_type value = 0);
 
     // utility functions to get the whole container
-    [[nodiscard]] inline std::span<coordinate_type> x() { return x_coordinates; }
-    [[nodiscard]] inline std::span<const coordinate_type> x() const { return x_coordinates; }
-    [[nodiscard]] inline std::span<coordinate_type> y() { return y_coordinates; }
-    [[nodiscard]] inline std::span<const coordinate_type> y() const { return y_coordinates; }
-    [[nodiscard]] inline std::span<coordinate_type> z() { return z_coordinates; }
-    [[nodiscard]] inline std::span<const coordinate_type> z() const { return z_coordinates; }
+    [[nodiscard]] inline auto x() { return std::span(std::begin(x_coordinates), num_atoms); }
+    [[nodiscard]] inline auto x() const { return std::span(std::cbegin(x_coordinates), num_atoms); }
+    [[nodiscard]] inline auto y() { return std::span(std::begin(y_coordinates), num_atoms); }
+    [[nodiscard]] inline auto y() const { return std::span(std::cbegin(y_coordinates), num_atoms); }
+    [[nodiscard]] inline auto z() { return std::span(std::begin(z_coordinates), num_atoms); }
+    [[nodiscard]] inline auto z() const { return std::span(std::cbegin(z_coordinates), num_atoms); }
 
     // utility functions to access the data
     [[nodiscard]] inline coordinate_type& x(auto i) { return x_coordinates[i]; }
