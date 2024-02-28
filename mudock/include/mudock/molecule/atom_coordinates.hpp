@@ -33,12 +33,30 @@ namespace mudock {
     [[nodiscard]] inline auto z() const { return std::span(std::cbegin(z_coordinates), num_atoms); }
 
     // utility functions to access the data
-    [[nodiscard]] inline coordinate_type& x(auto i) { return x_coordinates[i]; }
-    [[nodiscard]] inline const coordinate_type& x(auto i) const { return x_coordinates[i]; }
-    [[nodiscard]] inline coordinate_type& y(auto i) { return y_coordinates[i]; }
-    [[nodiscard]] inline const coordinate_type& y(auto i) const { return y_coordinates[i]; }
-    [[nodiscard]] inline coordinate_type& z(auto i) { return z_coordinates[i]; }
-    [[nodiscard]] inline const coordinate_type& z(auto i) const { return z_coordinates[i]; }
+    [[nodiscard]] inline coordinate_type& x(const std::size_t i) {
+      assert(i < num_atoms);
+      return x_coordinates[i];
+    }
+    [[nodiscard]] inline const coordinate_type& x(const std::size_t i) const {
+      assert(i < num_atoms);
+      return x_coordinates[i];
+    }
+    [[nodiscard]] inline coordinate_type& y(const std::size_t i) {
+      assert(i < num_atoms);
+      return y_coordinates[i];
+    }
+    [[nodiscard]] inline const coordinate_type& y(const std::size_t i) const {
+      assert(i < num_atoms);
+      return y_coordinates[i];
+    }
+    [[nodiscard]] inline coordinate_type& z(const std::size_t i) {
+      assert(i < num_atoms);
+      return z_coordinates[i];
+    }
+    [[nodiscard]] inline const coordinate_type& z(const std::size_t i) const {
+      assert(i < num_atoms);
+      return z_coordinates[i];
+    }
   };
 
   //===------------------------------------------------------------------------------------------------------
