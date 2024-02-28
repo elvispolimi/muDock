@@ -1,4 +1,4 @@
-#include <mudock/devices/cpp/cpp_context.hpp>
+#include <mudock/devices/cpp/context.hpp>
 
 namespace mudock {
   template<>

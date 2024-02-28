@@ -1,5 +1,5 @@
 #include <exception>
-#include <mudock/devices/device_parsers.hpp>
+#include <mudock/devices/parser.hpp>
 #include <sstream>
 #include <stdexcept>
 #include <string>

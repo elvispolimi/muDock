@@ -39,17 +39,17 @@ list(APPEND header_files
   "${header_path}/${header_prefix}/controllers/manager.hpp"
   "${header_path}/${header_prefix}/controllers/worker.hpp"
 
-  "${header_path}/${header_prefix}/devices/cpp/cpp_context.hpp"
-  "${header_path}/${header_prefix}/devices/cpp/cpp_kernels.hpp"
-  "${header_path}/${header_prefix}/devices/cpp/cpp_molecules.hpp"
+  "${header_path}/${header_prefix}/devices/cpp/context.hpp"
+  "${header_path}/${header_prefix}/devices/cpp/kernel.hpp"
+  "${header_path}/${header_prefix}/devices/cpp/scratch.hpp"
 
   "${header_path}/${header_prefix}/devices/buffer.hpp"
-  "${header_path}/${header_prefix}/devices/device_contexts.hpp"
-  "${header_path}/${header_prefix}/devices/device_kernels.hpp"
-  "${header_path}/${header_prefix}/devices/device_parsers.hpp"
+  "${header_path}/${header_prefix}/devices/context.hpp"
+  "${header_path}/${header_prefix}/devices/kernel.hpp"
+  "${header_path}/${header_prefix}/devices/parser.hpp"
   "${header_path}/${header_prefix}/devices/device_types.hpp"
   "${header_path}/${header_prefix}/devices/language_types.hpp"
-  "${header_path}/${header_prefix}/devices/molecules.hpp"
+  "${header_path}/${header_prefix}/devices/scratch.hpp"
 )
 
 # sources
@@ -68,9 +68,9 @@ list(APPEND source_files
 
   "${source_path}/controllers/cpp_manager.cpp"
 
-  "${source_path}/devices/cpp/cpp_kernels.cpp"
-  "${source_path}/devices/cpp/cpp_context.cpp"
-  "${source_path}/devices/device_parsers.cpp"
+  "${source_path}/devices/cpp/kernel.cpp"
+  "${source_path}/devices/cpp/context.cpp"
+  "${source_path}/devices/parser.cpp"
   "${source_path}/devices/device_types.cpp"
   "${source_path}/devices/language_types.cpp"
 )

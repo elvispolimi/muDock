@@ -1,8 +1,8 @@
-#include <mudock/devices/cpp/cpp_kernels.hpp>
+#include <mudock/devices/cpp/kernel.hpp>
 
 namespace mudock {
   template<>
-  void dock_and_score<language_types::CPP>(molecules_scratchpad<language_types::CPP>& mol_scratchpad,
+  void dock_and_score<language_types::CPP>(language_scratchpad_impl<language_types::CPP>& mol_scratchpad,
                                            const device_context<language_types::CPP>& dev_context) {
     // TODO Add kernel
     for (auto& mol: mol_scratchpad.get_ligands()) { 
