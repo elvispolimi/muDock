@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cassert>
 #include <concepts>
 #include <cstdint>
 #include <mudock/chem/elements.hpp>
@@ -55,10 +56,22 @@ namespace mudock {
     [[nodiscard]] inline auto bonds() const { return std::span(std::cbegin(bond_descriptions), bonds_size); }
 
     // utility functions for accessing directly to a specific element
-    [[nodiscard]] inline element& elements(auto i) { return atom_elements[i]; }
-    [[nodiscard]] inline const element& elements(auto i) const { return atom_elements[i]; }
-    [[nodiscard]] inline bond& bonds(auto i) { return bond_descriptions[i]; }
-    [[nodiscard]] inline const bond& bonds(auto i) const { return bond_descriptions[i]; }
+    [[nodiscard]] inline element& elements(std::size_t i) {
+      assert(i < atom_size);
+      return atom_elements[i];
+    }
+    [[nodiscard]] inline const element& elements(std::size_t i) const {
+      assert(i < atom_size);
+      return atom_elements[i];
+    }
+    [[nodiscard]] inline bond& bonds(std::size_t i) {
+      assert(i < bonds_size);
+      return bond_descriptions[i];
+    }
+    [[nodiscard]] inline const bond& bonds(std::size_t i) const {
+      assert(i < bonds_size);
+      return bond_descriptions[i];
+    }
   };
 
   //===------------------------------------------------------------------------------------------------------

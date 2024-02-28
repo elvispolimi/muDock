@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cassert>
 #include <cstdint>
 #include <mudock/grid/mdindex.hpp>
 #include <mudock/molecule/bond.hpp>
@@ -35,24 +36,31 @@ namespace mudock {
 
     // utility functions to get the whole container
     [[nodiscard]] inline auto get_mask(const std::size_t bond_index) {
+      assert(bond_index < index.size_y());
       return std::span(std::begin(mask) + index.to1D(0, bond_index), index.size_x());
     }
     [[nodiscard]] inline auto get_mask(const std::size_t bond_index) const {
+      assert(bond_index < index.size_y());
       return std::span(std::cbegin(mask) + index.to1D(0, bond_index), index.size_x());
     }
 
     // utility functions to access the data
     [[nodiscard]] inline int& get_mask(const std::size_t bond_index, const std::size_t atom_index) {
+      assert(bond_index < index.size_y());
+      assert(atom_index < index.size_x());
       return mask[index.to1D(atom_index, bond_index)];
     }
     [[nodiscard]] inline const int& get_mask(const std::size_t bond_index,
                                              const std::size_t atom_index) const {
+      assert(bond_index < index.size_y());
+      assert(atom_index < index.size_x());
       return mask[index.to1D(atom_index, bond_index)];
     }
 
     // utility function to get the indices of the atoms related to the rotatable bonds
     [[nodiscard]] inline std::pair<std::size_t, std::size_t>
         get_rotatable_atoms(const std::size_t bond_index) const {
+      assert(bond_index < index.size_y());
       return std::make_pair(start_atom_indices[bond_index], stop_atom_indices[bond_index]);
     }
 

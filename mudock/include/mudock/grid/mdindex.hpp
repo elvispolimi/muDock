@@ -22,6 +22,7 @@ namespace mudock {
       return index_y * n_x + index_x;
     }
     [[nodiscard]] inline auto to2D(const std::size_t index1D) const {
+      assert(index1D < n_x * n_y);
       return std::make_tuple(index1D % n_x, index1D / n_x);
     }
     [[nodiscard]] inline auto size_x() const { return n_x; }
