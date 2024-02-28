@@ -54,6 +54,8 @@ Where:
 - Device is one of the following
   - **CPU** use the CPU of the target machine, each IDS is a thread with the specify affinity
 
+The full list of supported devices can be found in [here](./mudock/include/mudock/devices/device_types.hpp), while the languages list in [here](./mudock/include/mudock/devices/language_types.hpp)
+
 ## Repository structure
 
 The repository is structured as follows:

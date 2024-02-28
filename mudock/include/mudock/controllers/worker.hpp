@@ -23,15 +23,15 @@ namespace mudock {
     device_context<l_t> context{
         id}; // Create and set the thread's context, based on the device's ID, and the target language
     // Allocate the scratch memory on the device
-    molecules_scratchpad<l_t> m_scratch;
+    language_scratchpad_impl<l_t> scratchpad{context};
 
     // Start the computation with the first batch
     auto molecules = i_queue->dequeue(get_max_work());
     while (!molecules.empty()) {
       // For each batch copy in, compute, and copy out
-      m_scratch.copy_in(molecules, context);
-      dock_and_score(m_scratch, context);
-      m_scratch.copy_out(molecules, context);
+      scratchpad.copy_in(molecules);
+      dock_and_score(scratchpad, context);
+      scratchpad.copy_out(molecules);
       // Enqueue in output the results
       o_queue->enqueue(molecules);
       // Get a new batch of ligands if available

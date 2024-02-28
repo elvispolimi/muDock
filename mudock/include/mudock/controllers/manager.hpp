@@ -12,6 +12,7 @@
 
 namespace mudock {
   // The manager is responsible to spawn the application's threads, which execute the worker function (in worker.hpp)
+  // For ech new language type a new manager has to be provided
   template<language_types l_t>
   class manager {
   public:

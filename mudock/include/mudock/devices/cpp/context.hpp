@@ -1,6 +1,6 @@
 #pragma once
 
-#include <mudock/devices/device_contexts.hpp>
+#include <mudock/devices/context.hpp>
 #include <pthread.h>
 #include <thread>
 
