@@ -34,9 +34,9 @@ list(APPEND header_files
   "${header_path}/${header_prefix}/devices.hpp"
   "${header_path}/${header_prefix}/utils.hpp"
 
-  "${header_path}/${header_prefix}/controllers/cpp_manager.hpp"
+  "${header_path}/${header_prefix}/controllers/cpp_thread_pool.hpp"
   "${header_path}/${header_prefix}/controllers/squeue.hpp"
-  "${header_path}/${header_prefix}/controllers/manager.hpp"
+  "${header_path}/${header_prefix}/controllers/thread_pool.hpp"
   "${header_path}/${header_prefix}/controllers/worker.hpp"
 
   "${header_path}/${header_prefix}/devices/cpp/context.hpp"
@@ -48,7 +48,7 @@ list(APPEND header_files
   "${header_path}/${header_prefix}/devices/kernel.hpp"
   "${header_path}/${header_prefix}/devices/parser.hpp"
   "${header_path}/${header_prefix}/devices/device_types.hpp"
-  "${header_path}/${header_prefix}/devices/language_types.hpp"
+  "${header_path}/${header_prefix}/devices/kernel_types.hpp"
   "${header_path}/${header_prefix}/devices/scratch.hpp"
 )
 
@@ -66,13 +66,13 @@ list(APPEND source_files
   "${source_path}/molecule/property_table.cpp"
   "${source_path}/molecule.cpp"
 
-  "${source_path}/controllers/cpp_manager.cpp"
+  "${source_path}/controllers/cpp_thread_pool.cpp"
 
   "${source_path}/devices/cpp/kernel.cpp"
   "${source_path}/devices/cpp/context.cpp"
   "${source_path}/devices/parser.cpp"
   "${source_path}/devices/device_types.cpp"
-  "${source_path}/devices/language_types.cpp"
+  "${source_path}/devices/kernel_types.cpp"
 )
 
 # ########################################################################

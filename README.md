@@ -41,12 +41,12 @@ Available options:
 The device configuration options follows the following structure:
 
 ```
-LANGUAGE:DEVICE:IDS
+KERNEL:DEVICE:IDS
 ```
 
 Where:
 
-- LANGUAGE is one of the following
+- KERNEL is one of the following
   - **CPP** which is the multi-threaded version of muDock
 - IDS is like the printer dialogue, for example
   - **1,3,4,7-9,12** means that you are targeting devices with ids 1,3,4,7,8,9,12
@@ -54,7 +54,7 @@ Where:
 - Device is one of the following
   - **CPU** use the CPU of the target machine, each IDS is a thread with the specify affinity
 
-The full list of supported devices can be found in [here](./mudock/include/mudock/devices/device_types.hpp), while the languages list in [here](./mudock/include/mudock/devices/language_types.hpp)
+The full list of supported devices can be found in [here](./mudock/include/mudock/devices/device_types.hpp), while the kernel types list in [here](./mudock/include/mudock/devices/kernel_types.hpp)
 
 ## Repository structure
 

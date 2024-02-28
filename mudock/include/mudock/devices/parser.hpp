@@ -2,7 +2,7 @@
 
 #include <cstdint>
 #include <mudock/devices/device_types.hpp>
-#include <mudock/devices/language_types.hpp>
+#include <mudock/devices/kernel_types.hpp>
 #include <mudock/type_alias.hpp>
 #include <string_view>
 #include <vector>
@@ -14,11 +14,11 @@ namespace mudock {
   //  - the language types, for example CPP
   //  - the ids of the device
   struct device_conf {
-    const device_types d_t;
-    const language_types l_t;
+    const device_type d_t;
+    const kernel_type l_t;
     const std::vector<std::size_t> ids;
   };
 
   // Get the device configurations defined by the user from command line
-  device_conf parse_conf(const std::string);
+  device_conf parse_conf(const std::string& conf);
 } // namespace mudock

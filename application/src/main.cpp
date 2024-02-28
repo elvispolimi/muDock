@@ -44,13 +44,13 @@ int main(int argc, char* argv[]) {
   const mudock::device_conf d_c = mudock::parse_conf(args.device_conf);
   auto o_queue                  = std::make_shared<mudock::squeue<mudock::static_molecule>>();
 
-  constexpr_for<static_cast<int>(mudock::language_types::CPP),
-                static_cast<int>(mudock::language_types::NONE),
+  constexpr_for<static_cast<int>(mudock::kernel_type::CPP),
+                static_cast<int>(mudock::kernel_type::NONE),
                 1>([&](auto index) {
-    constexpr mudock::language_types sel_l = static_cast<mudock::language_types>(index.value);
+    constexpr mudock::kernel_type sel_l = static_cast<mudock::kernel_type>(index.value);
     if (sel_l == d_c.l_t) {
-      // The destructor will handle the termination
-      mudock::manager<sel_l> man{i_queue, o_queue, d_c};
+      // NOTE: The destructor will handle the termination
+      mudock::thread_pool<sel_l> t_pool{i_queue, o_queue, d_c};
     }
   });
 
