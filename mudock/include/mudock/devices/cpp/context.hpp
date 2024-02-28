@@ -7,9 +7,9 @@
 
 namespace mudock {
   template<>
-  device_context<language_types::CPP>::device_context(const std::size_t);
+  device_context<kernel_type::CPP>::device_context(const std::size_t);
 
   template<>
-  device_context<language_types::CPP>::~device_context();
+  device_context<kernel_type::CPP>::~device_context();
 
 } // namespace mudock
