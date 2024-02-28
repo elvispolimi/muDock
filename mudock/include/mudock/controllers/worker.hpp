@@ -16,14 +16,14 @@ namespace mudock {
   //  - an output queue
   //  - the id of the targeting device to create the context
   // It dequeues from the input batches of ligands, and it enqueues in output the results
-  template<language_types l_t>
+  template<kernel_type l_t>
   void worker(std::shared_ptr<squeue<static_molecule>> i_queue,
               std::shared_ptr<squeue<static_molecule>> o_queue,
               const std::size_t id) {
     device_context<l_t> context{
         id}; // Create and set the thread's context, based on the device's ID, and the target language
     // Allocate the scratch memory on the device
-    language_scratchpad_impl<l_t> scratchpad{context};
+    kernel_scratchpad_impl<l_t> scratchpad{context};
 
     // Start the computation with the first batch
     auto molecules = i_queue->dequeue(get_max_work());

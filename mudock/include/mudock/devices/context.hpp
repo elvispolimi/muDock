@@ -1,14 +1,14 @@
 #pragma once
 
 #include <cstdint>
-#include <mudock/devices/language_types.hpp>
+#include <mudock/devices/kernel_types.hpp>
 #include <mudock/type_alias.hpp>
 
 namespace mudock {
   // Each language requires a different way to handle the device's context
   // For ech new language type a new device context has to be provided
   // Each thread will have each own context, of the selected device
-  template<language_types l_t>
+  template<kernel_type l_t>
   class device_context {
   public:
     // Each device context requires the ID of the target device

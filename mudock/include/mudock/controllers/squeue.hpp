@@ -29,14 +29,14 @@ namespace mudock {
 
     // It returns ONE element of the queue if available
     // SIDE-EFFECT: the function give you ownership of the returned unique pointer
-    std::unique_ptr<T> dequeue() {
+    [[nodiscard]] std::unique_ptr<T> dequeue() {
       std::lock_guard<std::mutex> guard(this->m_t);
       return dequeue_i();
     };
 
     // It returns X elements of the queue, where X is the minimum between the size requested and the elements still in the queue
     // SIDE-EFFECT: the function give you ownership of the returned unique pointers
-    std::vector<std::unique_ptr<T>> dequeue(const std::size_t size) {
+    [[nodiscard]] std::vector<std::unique_ptr<T>> dequeue(const std::size_t size) {
       std::lock_guard<std::mutex> guard(this->m_t);
       std::vector<std::unique_ptr<T>> work;
       for (std::size_t index = 0; index < std::min(size, q_data.size()); index++) {
@@ -68,7 +68,7 @@ namespace mudock {
       q_data.emplace(std::move(data));
     }
 
-    inline std::unique_ptr<T> dequeue_i() {
+    [[nodiscard]] inline std::unique_ptr<T> dequeue_i() {
       std::unique_ptr<T> res{nullptr};
       if (!q_data.empty()) {
         res = std::move(q_data.front());

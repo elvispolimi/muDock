@@ -3,13 +3,13 @@
 #include <string>
 
 namespace mudock {
-  // Enumerates the languages that are support by muDock
+  // Enumerates the kernels type that are support by muDock
   // NOTE:  NONE is only used to get the end fo the Enum
   //        it is actually a trick to enable iterating over the enum
-  enum class language_types : int { CPP = 0, NONE };
+  enum class kernel_type : int { CPP = 0, NONE };
 
-  // From a string you get the language type, if available
+  // From a string you get the kernel type, if available
   // Otherwise it throws a runtime exception 
-  language_types parse_language(std::string);
+  kernel_type parse_kernel(const std::string& kernel_kind);
 
 } // namespace mudock
