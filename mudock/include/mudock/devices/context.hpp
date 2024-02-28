@@ -5,8 +5,8 @@
 #include <mudock/type_alias.hpp>
 
 namespace mudock {
-  // Each language requires a different way to handle the device's context
-  // For ech new language type a new device context has to be provided
+  // Each kernel requires a different way to handle the device's context
+  // For ech new kernel type a new device context has to be provided
   // Each thread will have each own context, of the selected device
   template<kernel_type l_t>
   class device_context {

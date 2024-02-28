@@ -6,7 +6,7 @@
 #include <string>
 
 namespace mudock {
-  enum class conf_fsm { language, device, id, finish };
+  enum class conf_fsm { kernel, device, id, finish };
 
   device_conf parse_conf(const std::string& conf) {
     device_type d_t{device_type::CPU};
@@ -15,10 +15,10 @@ namespace mudock {
 
     std::istringstream line_tokens{conf};
     std::string token;
-    conf_fsm state = conf_fsm::language;
+    conf_fsm state = conf_fsm::kernel;
     while (std::getline(line_tokens, token, ':') && state != conf_fsm::finish) {
       switch (state) {
-        case conf_fsm::language: {
+        case conf_fsm::kernel: {
           l_t   = parse_kernel(token);
           state = conf_fsm::device;
           break;

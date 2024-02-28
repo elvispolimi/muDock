@@ -9,11 +9,11 @@
 
 namespace mudock {
   // The scratchpad is used to abstract the memory management on the device and host
-  // Each language manage device memory differently
+  // Each kernel manage device memory differently
   // Thus, each worker will have a different scratchpad, which depends on the
-  // language and device(though device_context) types
+  // kernel and device(though device_context) types
 
-  // The scratchpad interfaces define which functionalities should each language expose to manager
+  // The scratchpad interfaces define which functionalities should each kernel expose to manager
   // interactions between host and device code 
   template<kernel_type l_t>
   class kernel_scratchpad_interface {
