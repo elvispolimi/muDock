@@ -3,6 +3,7 @@
 #include <cassert>
 #include <fstream>
 #include <iostream>
+#include <memory>
 #include <mudock/mudock.hpp>
 #include <stdexcept>
 #include <string>
@@ -29,42 +30,36 @@ int main(int argc, char* argv[]) {
 
   // parse the description to populate the actual data structures
   mudock::mol2 mol2;
-  auto ligands = std::vector<mudock::static_molecule>{ligands_description.size()};
-  for (std::size_t i{0}; i < ligands.size(); ++i) {
+  auto i_queue = std::make_shared<mudock::squeue<mudock::static_molecule>>();
+  for (std::size_t i{0}; i < ligands_description.size(); ++i) {
     try {
-      mol2.parse(ligands[i], ligands_description[i]);
+      std::unique_ptr<mudock::static_molecule> ligand = std::make_unique<mudock::static_molecule>();
+      mol2.parse(*(ligand.get()), ligands_description[i]);
+      i_queue->enqueue(std::move(ligand));
     } catch (const std::runtime_error& e) {
       std::cerr << "Unable to parse the ligand with index " << i << ", due to: " << e.what() << std::endl;
     }
   }
-  std::cout << "We have " << ligands.size() << std::endl;
 
-  // print the fragment mask for each molecule
-  for (const auto& ligand: ligands) {
-    const auto name = ligand.properties.get(mudock::property_type::NAME);
-    mudock::dot{}.print(ligand, std::cerr);
-    const auto fragments = mudock::fragments<mudock::static_containers>(ligand.bonds(), ligand.num_atoms());
-    const auto target_fragment = std::size_t{0};
-    std::cout << "rotatable bond \"" << target_fragment << '"' << std::endl;
-    const auto [start_index, stop_index] = fragments.get_rotatable_atoms(target_fragment);
-    std::cout << "starting index=" << start_index << " | stopping index=" << stop_index << std::endl;
-    for (std::size_t i{0}; i < ligand.num_atoms(); ++i) {
-      switch (i) {
-        case 10: std::cout << "1"; break;
-        case 20: std::cout << "2"; break;
-        case 30: std::cout << "3"; break;
-        case 40: std::cout << "4"; break;
-        case 50: std::cout << "5"; break;
-        case 60: std::cout << "6"; break;
-        default: std::cout << " "; break;
-      }
+  const mudock::device_conf d_c = mudock::parse_conf(args.device_conf);
+  auto o_queue                  = std::make_shared<mudock::squeue<mudock::static_molecule>>();
+
+  constexpr_for<static_cast<int>(mudock::language_types::CPP),
+                static_cast<int>(mudock::language_types::NONE),
+                1>([&](auto index) {
+    constexpr mudock::language_types sel_l = static_cast<mudock::language_types>(index.value);
+    if (sel_l == d_c.l_t) {
+      // The destructor will handle the termination
+      mudock::manager<sel_l> man{i_queue, o_queue, d_c};
     }
-    std::cout << std::endl;
-    std::cout << 0;
-    for (std::size_t i{1}; i < ligand.num_atoms(); ++i) { std::cout << i % 10; }
-    std::cout << std::endl;
-    for (const auto value: fragments.get_mask(target_fragment)) { std::cout << value; }
-    std::cout << std::endl;
+  });
+
+  std::unique_ptr<mudock::static_molecule> mol = o_queue->dequeue();
+  while (mol.get() != nullptr) {
+    const auto name  = mol->properties.get(mudock::property_type::NAME);
+    const auto score = mol->properties.get(mudock::property_type::SCORE);
+    std::cout << "Read ligand " << name << " with score " << score << std::endl;
+    mol = o_queue->dequeue();
   }
 
   return EXIT_SUCCESS;
