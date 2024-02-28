@@ -13,6 +13,9 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
   arguments_description.add_options()("protein",
                                       po::value(&args.protein_path)->default_value(args.protein_path),
                                       "Path to the protein file (in PDB)");
+  arguments_description.add_options()("device_conf",
+                                      po::value(&args.device_conf)->default_value(args.device_conf),
+                                      "Devices configuration");
 
   // parse them
   po::variables_map vm;
@@ -24,8 +27,8 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
               << std::endl;
     std::cout << "print on the standard output the best docked pose with the score as comment" << std::endl;
     std::cout << std::endl;
-    std::cout << "USAGE: " << argv[0] << " --protein " << args.protein_path << " < \"/path/to/ligands.mol2\""
-              << std::endl;
+    std::cout << "USAGE: " << argv[0] << " --protein " << args.protein_path << " --device_conf "
+              << args.device_conf << " < \"/path/to/ligands.mol2\"" << std::endl;
     std::cout << std::endl;
     std::cout << arguments_description << std::endl;
     std::cout << std::endl;
