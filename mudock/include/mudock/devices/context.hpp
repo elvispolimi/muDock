@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <mudock/devices/language_types.hpp>
 #include <mudock/type_alias.hpp>
 
@@ -10,8 +11,8 @@ namespace mudock {
   template<language_types l_t>
   class device_context {
   public:
-    // Each device context requires the ID of the target device 
-    device_context(const index_type device_id);
+    // Each device context requires the ID of the target device
+    device_context(const std::size_t device_id);
     ~device_context();
 
     // The device context has to be unique per (thread,device) pairs

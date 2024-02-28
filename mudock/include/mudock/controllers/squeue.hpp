@@ -12,7 +12,7 @@
 
 namespace mudock {
   // Each application's worker dock and score in batches of get_max_work() ligands
-  constexpr index_type get_max_work() { return index_type{1000}; };
+  constexpr std::size_t get_max_work() { return std::size_t{1000}; };
 
   // Is a Safe queue implementation
   // Enqueueing and dequeueing elements is thread safe

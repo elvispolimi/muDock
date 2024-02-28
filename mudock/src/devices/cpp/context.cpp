@@ -1,8 +1,9 @@
+#include <cstdint>
 #include <mudock/devices/cpp/context.hpp>
 
 namespace mudock {
   template<>
-  device_context<language_types::CPP>::device_context(const index_type id) {
+  device_context<language_types::CPP>::device_context(const std::size_t id) {
     cpu_set_t cpuset;
     CPU_ZERO(&cpuset);
     CPU_SET(id, &cpuset); // Set affinity to CPU 0
