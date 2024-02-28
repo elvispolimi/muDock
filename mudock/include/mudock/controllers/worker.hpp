@@ -19,7 +19,7 @@ namespace mudock {
   template<language_types l_t>
   void worker(std::shared_ptr<squeue<static_molecule>> i_queue,
               std::shared_ptr<squeue<static_molecule>> o_queue,
-              const index_type id) {
+              const std::size_t id) {
     device_context<l_t> context{
         id}; // Create and set the thread's context, based on the device's ID, and the target language
     // Allocate the scratch memory on the device
