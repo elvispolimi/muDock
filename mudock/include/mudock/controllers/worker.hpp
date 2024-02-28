@@ -21,7 +21,7 @@ namespace mudock {
               std::shared_ptr<squeue<static_molecule>> o_queue,
               const std::size_t id) {
     device_context<l_t> context{
-        id}; // Create and set the thread's context, based on the device's ID, and the target language
+        id}; // Create and set the thread's context, based on the device's ID, and the target kernel
     // Allocate the scratch memory on the device
     kernel_scratchpad_impl<l_t> scratchpad{context};
 
