@@ -1,3 +1,4 @@
+#include <cstdint>
 #include <exception>
 #include <mudock/devices/parser.hpp>
 #include <sstream>
@@ -10,7 +11,7 @@ namespace mudock {
   device_conf parse_conf(const std::string conf) {
     device_types d_t{device_types::CPU};
     language_types l_t{language_types::CPP};
-    std::vector<index_type> ids;
+    std::vector<std::size_t> ids;
 
     std::istringstream line_tokens{conf};
     std::string token;

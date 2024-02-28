@@ -1,3 +1,4 @@
+#include <cstdint>
 #include <mudock/controllers/cpp_manager.hpp>
 #include <thread>
 
@@ -9,7 +10,7 @@ namespace mudock {
     if (dev_c.d_t != device_types::CPU) {
       throw std::runtime_error{"CPP version supports only CPU devices"};
     }
-    for (index_type id: dev_c.ids) {
+    for (const std::size_t id: dev_c.ids) {
       this->workers.emplace_back(worker<language_types::CPP>, i_queue, o_queue, id);
     }
   };
