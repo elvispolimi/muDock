@@ -6,6 +6,7 @@
 set(header_path "${CMAKE_CURRENT_SOURCE_DIR}/include")
 set(header_prefix "mudock")
 list(APPEND header_files
+  "${header_path}/${header_prefix}/chem/autodock_babel_types.hpp"
   "${header_path}/${header_prefix}/chem/bond_types.hpp"
   "${header_path}/${header_prefix}/chem/elements.hpp"
   "${header_path}/${header_prefix}/format/concept.hpp"
@@ -55,6 +56,7 @@ list(APPEND header_files
 # sources
 set(source_path "${CMAKE_CURRENT_SOURCE_DIR}/src")
 list(APPEND source_files
+  "${source_path}/chem/autodock_babel_types.cpp"
   "${source_path}/chem/bond_types.cpp"
   "${source_path}/chem/elements.cpp"
   "${source_path}/format/dot.cpp"
