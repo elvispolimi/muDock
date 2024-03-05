@@ -1,0 +1,729 @@
+{
+  "ff_type": [
+    {
+      "value": "H",
+      "name": "H",
+      "element": "H"
+    },
+    {
+      "value": "HC",
+      "name": "HC",
+      "element": "H"
+    },
+    {
+      "value": "He",
+      "name": "He",
+      "element": "He"
+    },
+    {
+      "value": "Li",
+      "name": "Li",
+      "element": "Li"
+    },
+    {
+      "value": "Be",
+      "name": "Be",
+      "element": "Be"
+    },
+    {
+      "value": "B",
+      "name": "B",
+      "element": "B"
+    },
+    {
+      "value": "C",
+      "name": "C",
+      "element": "C"
+    },
+    {
+      "value": "C1",
+      "name": "C1",
+      "element": "C"
+    },
+    {
+      "value": "C2",
+      "name": "C2",
+      "element": "C"
+    },
+    {
+      "value": "C3",
+      "name": "C3",
+      "element": "C"
+    },
+    {
+      "value": "Cac",
+      "name": "Cac",
+      "element": "C"
+    },
+    {
+      "value": "C_plus",
+      "name": "C+",
+      "element": "C"
+    },
+    {
+      "value": "N",
+      "name": "N",
+      "element": "N"
+    },
+    {
+      "value": "Nox",
+      "name": "Nox",
+      "element": "N"
+    },
+    {
+      "value": "N1",
+      "name": "N1",
+      "element": "N"
+    },
+    {
+      "value": "N2",
+      "name": "N2",
+      "element": "N"
+    },
+    {
+      "value": "N3",
+      "name": "N3",
+      "element": "N"
+    },
+    {
+      "value": "N3_plus",
+      "name": "N3+",
+      "element": "N"
+    },
+    {
+      "value": "Ntr",
+      "name": "Ntr",
+      "element": "N"
+    },
+    {
+      "value": "Npl",
+      "name": "Npl",
+      "element": "N"
+    },
+    {
+      "value": "Ng_plus",
+      "name": "Ng+",
+      "element": "N"
+    },
+    {
+      "value": "Nam",
+      "name": "Nam",
+      "element": "N"
+    },
+    {
+      "value": "O",
+      "name": "O",
+      "element": "O"
+    },
+    {
+      "value": "O_minus",
+      "name": "O-",
+      "element": "O"
+    },
+    {
+      "value": "O3",
+      "name": "O3",
+      "element": "O"
+    },
+    {
+      "value": "O2",
+      "name": "O2",
+      "element": "O"
+    },
+    {
+      "value": "F",
+      "name": "F",
+      "element": "F"
+    },
+    {
+      "value": "Ne",
+      "name": "Ne",
+      "element": "Ne"
+    },
+    {
+      "value": "Na",
+      "name": "Na",
+      "element": "Na"
+    },
+    {
+      "value": "Mg",
+      "name": "Mg",
+      "element": "Mg"
+    },
+    {
+      "value": "Al",
+      "name": "Al",
+      "element": "Al"
+    },
+    {
+      "value": "Si",
+      "name": "Si",
+      "element": "Si"
+    },
+    {
+      "value": "P",
+      "name": "P",
+      "element": "P"
+    },
+    {
+      "value": "Pac",
+      "name": "Pac",
+      "element": "P"
+    },
+    {
+      "value": "Pox",
+      "name": "Pox",
+      "element": "P"
+    },
+    {
+      "value": "P3_plus",
+      "name": "P3+",
+      "element": "P"
+    },
+    {
+      "value": "S",
+      "name": "S",
+      "element": "S"
+    },
+    {
+      "value": "S2",
+      "name": "S2",
+      "element": "S"
+    },
+    {
+      "value": "S3",
+      "name": "S3",
+      "element": "S"
+    },
+    {
+      "value": "S3_plus",
+      "name": "S3+",
+      "element": "S"
+    },
+    {
+      "value": "Sac",
+      "name": "Sac",
+      "element": "S"
+    },
+    {
+      "value": "Sox",
+      "name": "Sox",
+      "element": "S"
+    },
+    {
+      "value": "Cl",
+      "name": "Cl",
+      "element": "Cl"
+    },
+    {
+      "value": "Ar",
+      "name": "Ar",
+      "element": "Ar"
+    },
+    {
+      "value": "K",
+      "name": "K",
+      "element": "K"
+    },
+    {
+      "value": "Ca",
+      "name": "Ca",
+      "element": "Ca"
+    },
+    {
+      "value": "Sc",
+      "name": "Sc",
+      "element": "Sc"
+    },
+    {
+      "value": "Ti",
+      "name": "Ti",
+      "element": "Ti"
+    },
+    {
+      "value": "V",
+      "name": "V",
+      "element": "V"
+    },
+    {
+      "value": "Cr",
+      "name": "Cr",
+      "element": "Cr"
+    },
+    {
+      "value": "Mn",
+      "name": "Mn",
+      "element": "Mn"
+    },
+    {
+      "value": "Fe",
+      "name": "Fe",
+      "element": "Fe"
+    },
+    {
+      "value": "Co",
+      "name": "Co",
+      "element": "Co"
+    },
+    {
+      "value": "Ni",
+      "name": "Ni",
+      "element": "Ni"
+    },
+    {
+      "value": "Cu",
+      "name": "Cu",
+      "element": "Cu"
+    },
+    {
+      "value": "Zn",
+      "name": "Zn",
+      "element": "Zn"
+    },
+    {
+      "value": "Ga",
+      "name": "Ga",
+      "element": "Ga"
+    },
+    {
+      "value": "Ge",
+      "name": "Ge",
+      "element": "Ge"
+    },
+    {
+      "value": "As",
+      "name": "As",
+      "element": "As"
+    },
+    {
+      "value": "Se",
+      "name": "Se",
+      "element": "Se"
+    },
+    {
+      "value": "Br",
+      "name": "Br",
+      "element": "Br"
+    },
+    {
+      "value": "Kr",
+      "name": "Kr",
+      "element": "Kr"
+    },
+    {
+      "value": "Rb",
+      "name": "Rb",
+      "element": "Rb"
+    },
+    {
+      "value": "Sr",
+      "name": "Sr",
+      "element": "Sr"
+    },
+    {
+      "value": "Y",
+      "name": "Y",
+      "element": "Y"
+    },
+    {
+      "value": "Zr",
+      "name": "Zr",
+      "element": "Zr"
+    },
+    {
+      "value": "Nb",
+      "name": "Nb",
+      "element": "Nb"
+    },
+    {
+      "value": "Mo",
+      "name": "Mo",
+      "element": "Mo"
+    },
+    {
+      "value": "Tc",
+      "name": "Tc",
+      "element": "Tc"
+    },
+    {
+      "value": "Ru",
+      "name": "Ru",
+      "element": "Ru"
+    },
+    {
+      "value": "Rh",
+      "name": "Rh",
+      "element": "Rh"
+    },
+    {
+      "value": "Pd",
+      "name": "Pd",
+      "element": "Pd"
+    },
+    {
+      "value": "Ag",
+      "name": "Ag",
+      "element": "Ag"
+    },
+    {
+      "value": "Cd",
+      "name": "Cd",
+      "element": "Cd"
+    },
+    {
+      "value": "In",
+      "name": "In",
+      "element": "In"
+    },
+    {
+      "value": "Sn",
+      "name": "Sn",
+      "element": "Sn"
+    },
+    {
+      "value": "Sb",
+      "name": "Sb",
+      "element": "Sb"
+    },
+    {
+      "value": "Te",
+      "name": "Te",
+      "element": "Te"
+    },
+    {
+      "value": "I",
+      "name": "I",
+      "element": "I"
+    },
+    {
+      "value": "Xe",
+      "name": "Xe",
+      "element": "Xe"
+    },
+    {
+      "value": "Cs",
+      "name": "Cs",
+      "element": "Cs"
+    },
+    {
+      "value": "Ba",
+      "name": "Ba",
+      "element": "Ba"
+    },
+    {
+      "value": "La",
+      "name": "La",
+      "element": "La"
+    },
+    {
+      "value": "Ce",
+      "name": "Ce",
+      "element": "Ce"
+    },
+    {
+      "value": "Pr",
+      "name": "Pr",
+      "element": "Pr"
+    },
+    {
+      "value": "Nd",
+      "name": "Nd",
+      "element": "Nd"
+    },
+    {
+      "value": "Pm",
+      "name": "Pm",
+      "element": "Pm"
+    },
+    {
+      "value": "Sm",
+      "name": "Sm",
+      "element": "Sm"
+    },
+    {
+      "value": "Eu",
+      "name": "Eu",
+      "element": "Eu"
+    },
+    {
+      "value": "Gd",
+      "name": "Gd",
+      "element": "Gd"
+    },
+    {
+      "value": "Tb",
+      "name": "Tb",
+      "element": "Tb"
+    },
+    {
+      "value": "Dy",
+      "name": "Dy",
+      "element": "Dy"
+    },
+    {
+      "value": "Ho",
+      "name": "Ho",
+      "element": "Ho"
+    },
+    {
+      "value": "Er",
+      "name": "Er",
+      "element": "Er"
+    },
+    {
+      "value": "Tm",
+      "name": "Tm",
+      "element": "Tm"
+    },
+    {
+      "value": "Yb",
+      "name": "Yb",
+      "element": "Yb"
+    },
+    {
+      "value": "Lu",
+      "name": "Lu",
+      "element": "Lu"
+    },
+    {
+      "value": "Hf",
+      "name": "Hf",
+      "element": "Hf"
+    },
+    {
+      "value": "Ta",
+      "name": "Ta",
+      "element": "Ta"
+    },
+    {
+      "value": "W",
+      "name": "W",
+      "element": "W"
+    },
+    {
+      "value": "Re",
+      "name": "Re",
+      "element": "Re"
+    },
+    {
+      "value": "Os",
+      "name": "Os",
+      "element": "Os"
+    },
+    {
+      "value": "Ir",
+      "name": "Ir",
+      "element": "Ir"
+    },
+    {
+      "value": "Pt",
+      "name": "Pt",
+      "element": "Pt"
+    },
+    {
+      "value": "Au",
+      "name": "Au",
+      "element": "Au"
+    },
+    {
+      "value": "Hg",
+      "name": "Hg",
+      "element": "Hg"
+    },
+    {
+      "value": "Tl",
+      "name": "Tl",
+      "element": "Tl"
+    },
+    {
+      "value": "Pb",
+      "name": "Pb",
+      "element": "Pb"
+    },
+    {
+      "value": "Bi",
+      "name": "Bi",
+      "element": "Bi"
+    },
+    {
+      "value": "Po",
+      "name": "Po",
+      "element": "Po"
+    },
+    {
+      "value": "At",
+      "name": "At",
+      "element": "At"
+    },
+    {
+      "value": "Rn",
+      "name": "Rn",
+      "element": "Rn"
+    },
+    {
+      "value": "Fr",
+      "name": "Fr",
+      "element": "Fr"
+    },
+    {
+      "value": "Ra",
+      "name": "Ra",
+      "element": "Ra"
+    },
+    {
+      "value": "Ac",
+      "name": "Ac",
+      "element": "Ac"
+    },
+    {
+      "value": "Th",
+      "name": "Th",
+      "element": "Th"
+    },
+    {
+      "value": "Pa",
+      "name": "Pa",
+      "element": "Pa"
+    },
+    {
+      "value": "U",
+      "name": "U",
+      "element": "U"
+    },
+    {
+      "value": "Np",
+      "name": "Np",
+      "element": "Np"
+    },
+    {
+      "value": "Pu",
+      "name": "Pu",
+      "element": "Pu"
+    },
+    {
+      "value": "Am",
+      "name": "Am",
+      "element": "Am"
+    },
+    {
+      "value": "Cm",
+      "name": "Cm",
+      "element": "Cm"
+    },
+    {
+      "value": "Bk",
+      "name": "Bk",
+      "element": "Bk"
+    },
+    {
+      "value": "Cf",
+      "name": "Cf",
+      "element": "Cf"
+    },
+    {
+      "value": "Es",
+      "name": "Es",
+      "element": "Es"
+    },
+    {
+      "value": "Fm",
+      "name": "Fm",
+      "element": "Fm"
+    },
+    {
+      "value": "Md",
+      "name": "Md",
+      "element": "Md"
+    },
+    {
+      "value": "No",
+      "name": "No",
+      "element": "No"
+    },
+    {
+      "value": "Lr",
+      "name": "Lr",
+      "element": "Lr"
+    },
+    {
+      "value": "Rf",
+      "name": "Rf",
+      "element": "Rf"
+    },
+    {
+      "value": "Db",
+      "name": "Db",
+      "element": "Db"
+    },
+    {
+      "value": "Sg",
+      "name": "Sg",
+      "element": "Sg"
+    },
+    {
+      "value": "Bh",
+      "name": "Bh",
+      "element": "Bh"
+    },
+    {
+      "value": "Hs",
+      "name": "Hs",
+      "element": "Hs"
+    },
+    {
+      "value": "Mt",
+      "name": "Mt",
+      "element": "Mt"
+    },
+    {
+      "value": "Ds",
+      "name": "Ds",
+      "element": "Ds"
+    },
+    {
+      "value": "Rg",
+      "name": "Rg",
+      "element": "Rg"
+    },
+    {
+      "value": "Cn",
+      "name": "Cn",
+      "element": "Cn"
+    },
+    {
+      "value": "Nh",
+      "name": "Nh",
+      "element": "Nh"
+    },
+    {
+      "value": "Fl",
+      "name": "Fl",
+      "element": "Fl"
+    },
+    {
+      "value": "Mc",
+      "name": "Mc",
+      "element": "Mc"
+    },
+    {
+      "value": "Lv",
+      "name": "Lv",
+      "element": "Lv"
+    },
+    {
+      "value": "Ts",
+      "name": "Ts",
+      "element": "Ts"
+    },
+    {
+      "value": "Og",
+      "name": "Og",
+      "element": "Og"
+    },
+    {
+      "value": "Uue",
+      "name": "Uue",
+      "element": "Uue"
+    }
+  ]
+}
