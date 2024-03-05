@@ -14,7 +14,7 @@ namespace mudock {
   // kernel and device(though device_context) types
 
   // The scratchpad interfaces define which functionalities should each kernel expose to manager
-  // interactions between host and device code 
+  // interactions between host and device code
   template<kernel_type l_t>
   class kernel_scratchpad_interface {
   public:
