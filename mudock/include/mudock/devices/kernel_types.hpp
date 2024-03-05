@@ -9,7 +9,7 @@ namespace mudock {
   enum class kernel_type : int { CPP = 0, NONE };
 
   // From a string you get the kernel type, if available
-  // Otherwise it throws a runtime exception 
+  // Otherwise it throws a runtime exception
   kernel_type parse_kernel(const std::string& kernel_kind);
 
 } // namespace mudock
