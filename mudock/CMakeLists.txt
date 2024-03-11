@@ -15,6 +15,8 @@ list(APPEND header_files
   "${header_path}/${header_prefix}/format/pdb.hpp"
   "${header_path}/${header_prefix}/format/rdkit_wrapper.hpp"
   "${header_path}/${header_prefix}/grid/mdindex.hpp"
+  "${header_path}/${header_prefix}/grid/pi.hpp"
+  "${header_path}/${header_prefix}/grid/point3D.hpp"
   "${header_path}/${header_prefix}/molecule/atom_coordinates.hpp"
   "${header_path}/${header_prefix}/molecule/bond.hpp"
   "${header_path}/${header_prefix}/molecule/constraints.hpp"
