@@ -44,7 +44,9 @@ namespace mudock {
     inline is_free_ox(const std::span<element>& e, const molecule_graph_type& g): elements(e), graph(g) {}
 
     inline auto operator()(const molecule_graph_type::edge_descriptor edge) {
-      return count_neighbors_if(boost::target(edge, graph), graph, is_heavy_edge{elements, graph}) == 1;
+      const auto target_index = boost::target(edge, graph);
+      return elements[target_index] == element::O &&
+             count_neighbors_if(boost::target(edge, graph), graph, is_heavy_edge{elements, graph}) == 1;
     }
   };
 
