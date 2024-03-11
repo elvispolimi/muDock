@@ -32,7 +32,7 @@ namespace mudock {
     inline is_heavy_edge(const std::span<element>& e, const molecule_graph_type& g): elements(e), graph(g) {}
 
     inline auto operator()(const molecule_graph_type::edge_descriptor edge) {
-      return elements[graph[boost::target(edge, graph)].atom_index] == element::H;
+      return elements[graph[boost::target(edge, graph)].atom_index] != element::H;
     }
   };
 
