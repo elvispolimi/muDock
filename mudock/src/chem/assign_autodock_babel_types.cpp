@@ -290,11 +290,11 @@ namespace mudock {
   // The implementation of the actual function that assign the atom typing
   //===------------------------------------------------------------------------------------------------------
 
-  void assign_autodock_babel_types(std::span<autodock_babel_ff>& types,
-                                   const std::span<coordinate_type>& x,
-                                   const std::span<coordinate_type>& y,
-                                   const std::span<coordinate_type>& z,
-                                   const std::span<element>& elements,
+  void assign_autodock_babel_types(std::span<autodock_babel_ff> types,
+                                   const std::span<coordinate_type> x,
+                                   const std::span<coordinate_type> y,
+                                   const std::span<coordinate_type> z,
+                                   const std::span<element> elements,
                                    const molecule_graph_type& graph) {
     // the sensing scheme is not straightforward. It starts by assign to each atom its element type, then it
     // has some rules to further specify atom types. It basically is a porting from:
