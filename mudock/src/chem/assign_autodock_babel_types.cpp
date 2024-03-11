@@ -486,11 +486,11 @@ namespace mudock {
                      types[neighbor_index] == autodock_babel_ff::Sox)
               types[vertex_index] = autodock_babel_ff::O2;
             else if (elements[neighbor_index] == element::C &&
-                     distance2(vertex_point, neighbor_point) > square(coordinate_type{1.30})) {
+                     distance2(vertex_point, neighbor_point) < square(coordinate_type{1.30})) {
               types[vertex_index]   = autodock_babel_ff::O2;
               types[neighbor_index] = autodock_babel_ff::C2;
             } else if (elements[neighbor_index] == element::As &&
-                       distance2(vertex_point, neighbor_point) > square(coordinate_type{1.685}))
+                       distance2(vertex_point, neighbor_point) < square(coordinate_type{1.685}))
               types[vertex_index] = autodock_babel_ff::O2;
             else
               types[vertex_index] = autodock_babel_ff::O3;
@@ -500,11 +500,11 @@ namespace mudock {
             if (elements[neighbor_index] == element::P)
               types[vertex_index] = autodock_babel_ff::S2;
             else if (elements[neighbor_index] == element::C &&
-                     distance2(vertex_point, neighbor_point) > square(coordinate_type{1.76})) {
+                     distance2(vertex_point, neighbor_point) < square(coordinate_type{1.76})) {
               types[vertex_index]   = autodock_babel_ff::S2;
               types[neighbor_index] = autodock_babel_ff::C2;
             } else if (elements[neighbor_index] == element::As &&
-                       distance2(vertex_point, neighbor_point) > square(coordinate_type{2.11}))
+                       distance2(vertex_point, neighbor_point) < square(coordinate_type{2.11}))
               types[vertex_index] = autodock_babel_ff::S2;
             else
               types[vertex_index] = autodock_babel_ff::S3;
