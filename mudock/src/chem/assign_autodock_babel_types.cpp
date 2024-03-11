@@ -602,14 +602,15 @@ namespace mudock {
       if (types[vertex_index] == autodock_babel_ff::Npl) {
         const auto [edge_begin, edge_end] = boost::out_edges(vertex, graph);
         for (auto neigh_it = edge_begin; neigh_it != edge_end; ++neigh_it) {
-          const auto neigh       = *neigh_it;
-          const auto neigh_index = graph[boost::target(neigh, graph)].atom_index;
-          const auto neigh_type  = types[neigh_index];
+          const auto neigh        = *neigh_it;
+          const auto neigh_vertex = boost::target(neigh, graph);
+          const auto neigh_index  = graph[neigh_vertex].atom_index;
+          const auto neigh_type   = types[neigh_index];
           if (neigh_type == autodock_babel_ff::Cac || neigh_type == autodock_babel_ff::Sox) {
             types[vertex_index] = autodock_babel_ff::Nam;
             break;
           } else if (neigh_type == autodock_babel_ff::C2) {
-            const auto [neigh_edge_begin, neigh_edge_end] = boost::out_edges(vertex, graph);
+            const auto [neigh_edge_begin, neigh_edge_end] = boost::out_edges(neigh_vertex, graph);
             auto is_interesting                           = false;
             for (auto it = neigh_edge_begin; it != neigh_edge_end; ++it) {
               const auto type = types[graph[boost::target(*it, graph)].atom_index];
