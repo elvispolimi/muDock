@@ -429,7 +429,9 @@ namespace mudock {
       };
     };
     const auto [vertex_begin, vertex_end] = boost::vertices(graph);
-    std::transform(vertex_begin, vertex_end, std::begin(types), elements2babel);
+    for (auto it = vertex_begin; it != vertex_end; ++it) {
+      types[graph[*it].atom_index] = elements2babel(*it);
+    }
 
     // handle the atoms with "valence_one"
     // NOTE: we need to do it after the main switch since it depends on types computed previously
