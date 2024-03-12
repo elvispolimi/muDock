@@ -553,10 +553,11 @@ namespace mudock {
         auto protonated                   = true;
         const auto [edge_begin, edge_end] = boost::out_edges(vertex, graph);
         for (auto neigh_it = edge_begin; neigh_it != edge_end; ++neigh_it) {
-          const auto neigh       = *neigh_it;
-          const auto neigh_index = graph[boost::target(neigh, graph)].atom_index;
-          const auto neigh_type  = types[neigh_index];
-          if (boost::out_degree(vertex, graph) == 2 &&
+          const auto neigh        = *neigh_it;
+          const auto neigh_vertex = boost::target(neigh, graph);
+          const auto neigh_index  = graph[neigh_vertex].atom_index;
+          const auto neigh_type   = types[neigh_index];
+          if (boost::out_degree(neigh_vertex, graph) == 2 &&
               (neigh_type == autodock_babel_ff::C2 || neigh_type == autodock_babel_ff::Sox ||
                neigh_type == autodock_babel_ff::Sac || neigh_type == autodock_babel_ff::Pac)) {
             protonated          = false;
@@ -579,7 +580,7 @@ namespace mudock {
         if (m == 3) {
           types[vertex_index] = autodock_babel_ff::C_plus;
           std::for_each(edge_begin, edge_end, [&](const auto edge) {
-            types[boost::target(edge, graph)] = autodock_babel_ff::Ng_plus;
+            types[graph[boost::target(edge, graph)].atom_index] = autodock_babel_ff::Ng_plus;
           });
         }
       } else if (types[vertex_index] == autodock_babel_ff::Cac) {
