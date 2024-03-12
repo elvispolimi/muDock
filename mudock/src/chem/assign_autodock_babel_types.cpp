@@ -545,7 +545,7 @@ namespace mudock {
       }
     }
 
-    // post-process the nitrogen and carbon to see if they are some special case
+    // post-process the nitrogen to set them as Npl
     for (auto it = vertex_begin; it != vertex_end; ++it) {
       const auto vertex       = *it;
       const auto vertex_index = graph[vertex].atom_index;
@@ -570,7 +570,14 @@ namespace mudock {
         if (protonated) {
           types[vertex_index] = autodock_babel_ff::N3_plus;
         }
-      } else if (types[vertex_index] == autodock_babel_ff::C2) {
+      }
+    }
+
+    // look for guardining carbons
+    for (auto it = vertex_begin; it != vertex_end; ++it) {
+      const auto vertex       = *it;
+      const auto vertex_index = graph[vertex].atom_index;
+      if (types[vertex_index] == autodock_babel_ff::C2) {
         const auto [edge_begin, edge_end] = boost::out_edges(vertex, graph);
         const auto m                      = std::count_if(edge_begin, edge_end, [&](const auto edge) {
           const auto neigh_type = types[graph[boost::target(edge, graph)].atom_index];
