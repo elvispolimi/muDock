@@ -557,7 +557,7 @@ namespace mudock {
           const auto neigh_vertex = boost::target(neigh, graph);
           const auto neigh_index  = graph[neigh_vertex].atom_index;
           const auto neigh_type   = types[neigh_index];
-          if (boost::out_degree(neigh_vertex, graph) == 2 &&
+          if (boost::out_degree(vertex, graph) == 2 &&
               (neigh_type == autodock_babel_ff::C2 || neigh_type == autodock_babel_ff::Sox ||
                neigh_type == autodock_babel_ff::Sac || neigh_type == autodock_babel_ff::Pac)) {
             protonated          = false;
