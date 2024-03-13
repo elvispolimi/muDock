@@ -107,7 +107,7 @@ namespace mudock {
     const auto origin    = point3D{x[origin_index], y[origin_index], z[origin_index]};
     const auto k         = point3D{x[neighbors_index[0]], y[neighbors_index[0]], z[neighbors_index[0]]};
     const auto m         = point3D{x[neighbors_index[1]], y[neighbors_index[1]], z[neighbors_index[1]]};
-    const auto angle_kam = angle(origin, k, m);
+    const auto angle_kam = rad_to_deg(angle(origin, k, m));
     return angle_kam < coordinate_type{180} ? angle_kam : coordinate_type{360} - angle_kam;
   }
 
