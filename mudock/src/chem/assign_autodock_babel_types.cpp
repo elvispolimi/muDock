@@ -50,26 +50,23 @@ namespace mudock {
     }
   };
 
-  static auto find_closest_neighbor(const molecule_graph_type::vertex_descriptor v,
-                                    const molecule_graph_type& graph,
-                                    const std::span<coordinate_type>& x,
-                                    const std::span<coordinate_type>& y,
-                                    const std::span<coordinate_type>& z) {
-    const auto index_source = graph[v].atom_index;
-    const auto source_point = point3D{x[index_source], y[index_source], z[index_source]};
-    const auto [begin, end] = boost::out_edges(v, graph);
-    auto min_distance       = std::numeric_limits<coordinate_type>::max();
-    auto min_index          = std::numeric_limits<std::size_t>::max();
-    for (auto it = begin; it != end; ++it) {
-      const auto index_target = graph[boost::target(*it, graph)].atom_index;
-      const auto target_point = point3D{x[index_target], y[index_target], z[index_target]};
-      const auto distance     = std::sqrt(distance2(source_point, target_point));
-      if (distance < min_distance) {
-        min_distance = distance;
-        min_index    = index_target;
-      }
-    }
-    return std::make_pair(min_distance, min_index);
+  template<class callable>
+  static auto is_any_neigh_close(const molecule_graph_type::vertex_descriptor v,
+                                 const molecule_graph_type& graph,
+                                 const std::span<element>& elements,
+                                 const std::span<coordinate_type>& x,
+                                 const std::span<coordinate_type>& y,
+                                 const std::span<coordinate_type>& z,
+                                 callable&& op) {
+    const auto [neigh_begin, neigh_end] = boost::out_edges(v, graph);
+    const auto vertex_index             = graph[v].atom_index;
+    const auto source_point             = point3D{x[vertex_index], y[vertex_index], z[vertex_index]};
+    return std::any_of(neigh_begin, neigh_end, [&](const auto edge) {
+      const auto neigh_index = graph[boost::target(edge, graph)].atom_index;
+      const auto neigh_point = point3D{x[neigh_index], y[neigh_index], z[neigh_index]};
+      const auto d           = distance2(source_point, neigh_point);
+      return op(d, elements[neigh_index]);
+    });
   }
 
   static auto find_mean_angle_3_neighbors(const molecule_graph_type::vertex_descriptor v,
@@ -156,21 +153,22 @@ namespace mudock {
       // compute the angle with the neighbors k,m
       const auto angle = find_angle_2_neighbors(v, graph, x, y, z);
 
-      // find out the closest atom
-      const auto [min_distance, min_index] = find_closest_neighbor(v, graph, x, y, z);
-
       // assign the correct type based on angle and distance
       if (angle < coordinate_type{114.8}) {
-        if ((min_distance < coordinate_type{1.42} && elements[min_index] == element::C) ||
-            (min_distance < coordinate_type{1.41} && elements[min_index] == element::N)) {
+        if (is_any_neigh_close(v, graph, elements, x, y, z, [&](const coordinate_type d2, const element e) {
+              return (d2 < square(coordinate_type{1.42}) && e == element::C) ||
+                     (d2 < square(coordinate_type{1.41}) && e == element::N);
+            })) {
           return autodock_babel_ff::C2;
         } else {
           return autodock_babel_ff::C3;
         }
       } else if (angle < coordinate_type{122}) {
-        if ((min_distance > coordinate_type{1.41} && elements[min_index] == element::C) ||
-            (min_distance > coordinate_type{1.46} && elements[min_index] == element::N) ||
-            (min_distance > coordinate_type{1.44} && elements[min_index] == element::O)) {
+        if (is_any_neigh_close(v, graph, elements, x, y, z, [&](const coordinate_type d2, const element e) {
+              return (d2 < square(coordinate_type{1.41}) && e == element::C) ||
+                     (d2 < square(coordinate_type{1.46}) && e == element::N) ||
+                     (d2 < square(coordinate_type{1.44}) && e == element::O);
+            })) {
           return autodock_babel_ff::C3;
         } else {
           return autodock_babel_ff::C2;
@@ -217,13 +215,12 @@ namespace mudock {
       // compute the angle with the neighbors k,m
       const auto angle = find_angle_2_neighbors(v, graph, x, y, z);
 
-      // find out the closest atom
-      const auto [min_distance, min_index] = find_closest_neighbor(v, graph, x, y, z);
-
       // assign the correct type based on angle and distance
-      if (angle < coordinate_type{114.8}) {
-        if ((min_distance < coordinate_type{1.38} && elements[min_index] == element::C) ||
-            (min_distance < coordinate_type{1.32} && elements[min_index] == element::N)) {
+      if (angle <= coordinate_type{114.8}) {
+        if (is_any_neigh_close(v, graph, elements, x, y, z, [&](const coordinate_type d2, const element e) {
+              return (d2 < square(coordinate_type{1.38}) && e == element::C) ||
+                     (d2 < square(coordinate_type{1.32}) && e == element::N);
+            })) {
           return autodock_babel_ff::Npl;
         } else {
           return autodock_babel_ff::N3;
