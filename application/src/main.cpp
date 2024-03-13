@@ -36,19 +36,6 @@ int main(int argc, char* argv[]) {
       std::unique_ptr<mudock::static_molecule> ligand = std::make_unique<mudock::static_molecule>();
       mol2.parse(*(ligand.get()), ligands_description[i]);
 
-      // compute the autodock type
-      std::array<mudock::autodock_babel_ff, mudock::max_static_atoms()> types;
-      mudock::assign_autodock_babel_types(std::span{std::begin(types), ligand->num_atoms()},
-                                          ligand->coordinates.x(),
-                                          ligand->coordinates.y(),
-                                          ligand->coordinates.z(),
-                                          ligand->elements(),
-                                          mudock::make_graph(ligand->bonds()));
-      std::cout << "Ligand: " << ligand->properties.get(mudock::property_type::NAME) << std::endl;
-      for (std::size_t index{0}; index < ligand->num_atoms(); ++index) {
-        std::cout << index << ' ' << mudock::get_description(types[index]).name << std::endl;
-      }
-
       i_queue->enqueue(std::move(ligand));
     } catch (const std::runtime_error& e) {
       std::cerr << "Unable to parse the ligand with index " << i << ", due to: " << e.what() << std::endl;
