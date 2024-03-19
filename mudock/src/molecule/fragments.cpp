@@ -8,7 +8,6 @@
 #include <mudock/molecule/constraints.hpp>
 #include <mudock/molecule/containers.hpp>
 #include <mudock/molecule/fragments.hpp>
-#include <mudock/molecule/graph.hpp>
 #include <mudock/type_alias.hpp>
 #include <utility>
 
@@ -126,7 +125,9 @@ namespace mudock {
   //===------------------------------------------------------------------------------------------------------
 
   template<>
-  fragments<static_containers>::fragments(const std::span<const bond> &bonds, const std::size_t num_atoms)
+  fragments<static_containers>::fragments(molecule_graph_type &graph,
+                                          const std::span<const bond> &bonds,
+                                          const std::size_t num_atoms)
       : index(num_atoms, bonds.size()) {
     // make sure to initiate from a known state
     assert(num_atoms < max_static_atoms());
@@ -136,27 +137,31 @@ namespace mudock {
     stop_atom_indices.fill(value_type{0});
 
     // get the rotatable bonds from the molecule's graph
-    auto g                                            = make_graph(bonds);
-    const auto [rotatable_edges, num_rotatable_edges] = get_rotatable_edges<static_containers>(bonds, g);
+    const auto [rotatable_edges, num_rotatable_edges] = get_rotatable_edges<static_containers>(bonds, graph);
 
     // recompute the index with the actual number of rotatable bonds
     index = index2D(num_atoms, num_rotatable_edges);
 
     // fill the fragment data structures
     for (std::size_t i{0}; i < num_rotatable_edges; ++i) {
-      fill_fragment_mask(get_mask(i), &start_atom_indices[i], &stop_atom_indices[i], rotatable_edges[i], g);
+      fill_fragment_mask(get_mask(i),
+                         &start_atom_indices[i],
+                         &stop_atom_indices[i],
+                         rotatable_edges[i],
+                         graph);
     }
   }
 
   template<>
-  fragments<dynamic_containers>::fragments(const std::span<const bond> &bonds, const std::size_t num_atoms)
+  fragments<dynamic_containers>::fragments(molecule_graph_type &graph,
+                                           const std::span<const bond> &bonds,
+                                           const std::size_t num_atoms)
       : mask(num_atoms * bonds.size(), value_type{0}),
         index(num_atoms, bonds.size()),
         start_atom_indices(bonds.size(), std::size_t{0}),
         stop_atom_indices(bonds.size(), std::size_t{0}) {
     // get the reotatable bonds from the molecule's graph
-    auto g                                            = make_graph(bonds);
-    const auto [rotatable_edges, num_rotatable_edges] = get_rotatable_edges<dynamic_containers>(bonds, g);
+    const auto [rotatable_edges, num_rotatable_edges] = get_rotatable_edges<dynamic_containers>(bonds, graph);
 
     // reset the containers set and recompute the index for the actual number of rotatable bonds
     index = index2D(num_atoms, num_rotatable_edges);
@@ -166,7 +171,11 @@ namespace mudock {
 
     // fill the fragment data structures
     for (std::size_t i{0}; i < num_rotatable_edges; ++i) {
-      fill_fragment_mask(get_mask(i), &start_atom_indices[i], &stop_atom_indices[i], rotatable_edges[i], g);
+      fill_fragment_mask(get_mask(i),
+                         &start_atom_indices[i],
+                         &stop_atom_indices[i],
+                         rotatable_edges[i],
+                         graph);
     }
   }
 
