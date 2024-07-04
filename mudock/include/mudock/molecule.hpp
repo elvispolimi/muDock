@@ -10,7 +10,7 @@
 #include <mudock/molecule/containers.hpp>
 #include <mudock/molecule/fragments.hpp>
 #include <mudock/molecule/graph.hpp>
-#include <mudock/chem.hpp>
+#include <mudock/chem/autodock_types.hpp>
 #include <mudock/molecule/properties.hpp>
 #include <mudock/molecule/property_table.hpp>
 #include <mudock/type_alias.hpp>

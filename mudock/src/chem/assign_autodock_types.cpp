@@ -1,12 +1,4 @@
-#include "mudock/chem/autodock_babel_types.hpp"
-#include "mudock/chem/autodock_types.hpp"
-#include "mudock/chem/elements.hpp"
-#include "mudock/molecule.hpp"
-#include "mudock/molecule/graph.hpp"
-
 #include <mudock/chem/assign_autodock_types.hpp>
-
-#include <iostream>
 
 namespace mudock {
 
@@ -28,6 +20,7 @@ namespace mudock {
       return autodock_ff::HD;
     }
     return autodock_ff::H;
+    // TODO missing HS case
   }
 
   static auto handleN([[maybe_unused]] const std::span<element>& elements,
@@ -46,6 +39,7 @@ namespace mudock {
       return autodock_ff::NA;
     }
     return autodock_ff::N;
+    // TODO missing NS case
   }
 
   static auto handleS([[maybe_unused]] const std::span<element>& elements,
@@ -89,6 +83,7 @@ namespace mudock {
         case (element::C): return handleC(elements, graph, is_aromatic, v);
         case (element::N): return handleN(elements, babel_type, graph, v);
         case (element::O): return autodock_ff::OA;
+        // TODO missing OS case
         case (element::F): return autodock_ff::F;
         case (element::Ne): return autodock_ff::Ne;
         case (element::Na): return autodock_ff::Na;
@@ -200,6 +195,7 @@ namespace mudock {
         case (element::Ts): return autodock_ff::Ts;
         case (element::Og): return autodock_ff::Og;
         case (element::Uue): return autodock_ff::Uue;
+        // TODO missing case for Z, G, GA, J, Q
         default: throw std::runtime_error("Unknown element, internal error");
       };
     };
