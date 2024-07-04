@@ -57,6 +57,13 @@ namespace mudock {
       assert(i < num_atoms);
       return z_coordinates[i];
     }
+
+    void remove_atom(const size_t index) {
+      x_coordinates.erase(x_coordinates.begin() + index);
+      y_coordinates.erase(y_coordinates.begin() + index);
+      z_coordinates.erase(z_coordinates.begin() + index);
+      num_atoms--;
+    };
   };
 
   //===------------------------------------------------------------------------------------------------------

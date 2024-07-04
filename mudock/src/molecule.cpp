@@ -1,3 +1,4 @@
+#include "mudock/chem/autodock_types.hpp"
 #include <mudock/chem/bond_types.hpp>
 #include <mudock/chem/elements.hpp>
 #include <mudock/molecule.hpp>
@@ -19,6 +20,8 @@ namespace mudock {
   void molecule<dynamic_containers>::resize(const std::size_t n_atoms, std::size_t n_bonds) {
     coordinates.resize(n_atoms);
     atom_elements.resize(n_atoms, element::H);
+    atom_autodock_elements.resize(n_atoms, autodock_ff::H);
+    is_aromatic.resize(n_atoms, false);
     bond_descriptions.resize(n_bonds);
     atom_size  = n_atoms;
     bonds_size = n_bonds;
