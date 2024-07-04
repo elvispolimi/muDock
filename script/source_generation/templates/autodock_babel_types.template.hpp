@@ -15,7 +15,7 @@ namespace mudock {
 
   // this is the list of all the known atoms
   enum class autodock_babel_ff : std::size_t {{% for element in data %}
-    {@ element.value @} = {@ element.index @}, // {@ element.name @}{% endfor %}
+    {@ element.value @} = {@ element.index @}, // {@ element.value @}{% endfor %}
   };
 
   // this is knowledge that we have about all the elements (that we need at least)
