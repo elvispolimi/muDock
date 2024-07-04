@@ -1,0 +1,373 @@
+{
+  "ff_type": [
+    {
+      "value": "H"
+    },
+    {
+      "value": "HD"
+    },
+    {
+      "value": "He"
+    },
+    {
+      "value": "Li"
+    },
+    {
+      "value": "Be"
+    },
+    {
+      "value": "B"
+    },
+    {
+      "value": "C"
+    },
+    {
+      "value": "A"
+    },
+    {
+      "value": "N"
+    },
+    {
+      "value": "NA"
+    },
+    {
+      "value": "OA"
+    },
+    {
+      "value": "F"
+    },
+    {
+      "value": "Ne"
+    },
+    {
+      "value": "Na"
+    },
+    {
+      "value": "Mg"
+    },
+    {
+      "value": "Al"
+    },
+    {
+      "value": "Si"
+    },
+    {
+      "value": "P"
+    },
+    {
+      "value": "S"
+    },
+    {
+      "value": "SA"
+    },
+    {
+      "value": "Cl"
+    },
+    {
+      "value": "Ar"
+    },
+    {
+      "value": "K"
+    },
+    {
+      "value": "Ca"
+    },
+    {
+      "value": "Sc"
+    },
+    {
+      "value": "Ti"
+    },
+    {
+      "value": "V"
+    },
+    {
+      "value": "Cr"
+    },
+    {
+      "value": "Mn"
+    },
+    {
+      "value": "Fe"
+    },
+    {
+      "value": "Co"
+    },
+    {
+      "value": "Ni"
+    },
+    {
+      "value": "Cu"
+    },
+    {
+      "value": "Zn"
+    },
+    {
+      "value": "Ga"
+    },
+    {
+      "value": "Ge"
+    },
+    {
+      "value": "As"
+    },
+    {
+      "value": "Se"
+    },
+    {
+      "value": "Br"
+    },
+    {
+      "value": "Kr"
+    },
+    {
+      "value": "Rb"
+    },
+    {
+      "value": "Sr"
+    },
+    {
+      "value": "Y"
+    },
+    {
+      "value": "Zr"
+    },
+    {
+      "value": "Nb"
+    },
+    {
+      "value": "Mo"
+    },
+    {
+      "value": "Tc"
+    },
+    {
+      "value": "Ru"
+    },
+    {
+      "value": "Rh"
+    },
+    {
+      "value": "Pd"
+    },
+    {
+      "value": "Ag"
+    },
+    {
+      "value": "Cd"
+    },
+    {
+      "value": "In"
+    },
+    {
+      "value": "Sn"
+    },
+    {
+      "value": "Sb"
+    },
+    {
+      "value": "Te"
+    },
+    {
+      "value": "I"
+    },
+    {
+      "value": "Xe"
+    },
+    {
+      "value": "Cs"
+    },
+    {
+      "value": "Ba"
+    },
+    {
+      "value": "La"
+    },
+    {
+      "value": "Ce"
+    },
+    {
+      "value": "Pr"
+    },
+    {
+      "value": "Nd"
+    },
+    {
+      "value": "Pm"
+    },
+    {
+      "value": "Sm"
+    },
+    {
+      "value": "Eu"
+    },
+    {
+      "value": "Gd"
+    },
+    {
+      "value": "Tb"
+    },
+    {
+      "value": "Dy"
+    },
+    {
+      "value": "Ho"
+    },
+    {
+      "value": "Er"
+    },
+    {
+      "value": "Tm"
+    },
+    {
+      "value": "Yb"
+    },
+    {
+      "value": "Lu"
+    },
+    {
+      "value": "Hf"
+    },
+    {
+      "value": "Ta"
+    },
+    {
+      "value": "W"
+    },
+    {
+      "value": "Re"
+    },
+    {
+      "value": "Os"
+    },
+    {
+      "value": "Ir"
+    },
+    {
+      "value": "Pt"
+    },
+    {
+      "value": "Au"
+    },
+    {
+      "value": "Hg"
+    },
+    {
+      "value": "Tl"
+    },
+    {
+      "value": "Pb"
+    },
+    {
+      "value": "Bi"
+    },
+    {
+      "value": "Po"
+    },
+    {
+      "value": "At"
+    },
+    {
+      "value": "Rn"
+    },
+    {
+      "value": "Fr"
+    },
+    {
+      "value": "Ra"
+    },
+    {
+      "value": "Ac"
+    },
+    {
+      "value": "Th"
+    },
+    {
+      "value": "Pa"
+    },
+    {
+      "value": "U"
+    },
+    {
+      "value": "Np"
+    },
+    {
+      "value": "Pu"
+    },
+    {
+      "value": "Am"
+    },
+    {
+      "value": "Cm"
+    },
+    {
+      "value": "Bk"
+    },
+    {
+      "value": "Cf"
+    },
+    {
+      "value": "Es"
+    },
+    {
+      "value": "Fm"
+    },
+    {
+      "value": "Md"
+    },
+    {
+      "value": "No"
+    },
+    {
+      "value": "Lr"
+    },
+    {
+      "value": "Rf"
+    },
+    {
+      "value": "Db"
+    },
+    {
+      "value": "Sg"
+    },
+    {
+      "value": "Bh"
+    },
+    {
+      "value": "Hs"
+    },
+    {
+      "value": "Mt"
+    },
+    {
+      "value": "Ds"
+    },
+    {
+      "value": "Rg"
+    },
+    {
+      "value": "Cn"
+    },
+    {
+      "value": "Nh"
+    },
+    {
+      "value": "Fl"
+    },
+    {
+      "value": "Mc"
+    },
+    {
+      "value": "Lv"
+    },
+    {
+      "value": "Ts"
+    },
+    {
+      "value": "Og"
+    },
+    {
+      "value": "Uue"
+    }
+  ]
+}

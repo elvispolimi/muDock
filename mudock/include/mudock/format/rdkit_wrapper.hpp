@@ -44,14 +44,15 @@ namespace mudock {
     // set the molecule geometry
     // NOTE: for static molecules we need to enforce the constraint on the maximum number
     //       ot atoms or bonds by throwing an exception
-    static constexpr auto only_heavy_bonds = false;
+    // NOTE: this is set to true due to some mismatch between how rdkit counts heavy bonds, and the actual number of bonds
+    static constexpr auto only_heavy_bonds = true;
     if constexpr (std::same_as<std::remove_cvref_t<molecule_type>, static_molecule>) {
       if (source->getNumAtoms() > max_static_atoms() ||
           source->getNumBonds(only_heavy_bonds) > max_static_bonds()) {
         throw std::runtime_error("Number of atoms or bonds exceeding static storage");
       }
     }
-    dest.resize(source->getNumAtoms(), source->getNumBonds(only_heavy_bonds));
+    dest.resize(source->getNumAtoms(), source->getNumBonds(true));
 
     // fill the atom information (we assume a single conformation)
     // NOTE: we need to store the mapping between our atom index and the rdkit one
@@ -63,6 +64,9 @@ namespace mudock {
       const auto atom_id      = atom->getIdx();
       const auto [x, y, z]    = conformation.getAtomPos(atom_id);
       const auto atom_element = parse_element_symbol(atom->getSymbol());
+      // Get which atoms are aromatic
+      // TODO check the cast between bool and uinfast8_t
+      dest.aromaticity(mudock_atom_index) = atom->getIsAromatic();
       assert(atom_element.has_value());
       dest.elements(mudock_atom_index)      = atom_element.value();
       dest.coordinates.x(mudock_atom_index) = static_cast<coordinate_type>(x);
