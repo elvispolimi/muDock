@@ -7,7 +7,7 @@ namespace mudock {
   // - mergeLPS (lonepairs)
   // - cleanUpResidues (waters and nonstdres)
 
-  // From AutoDockTools mergeNPHS 
+  // From AutoDockTools mergeNPHS
   template<class container_aliases>
   void cleanup_nonpolar_hydrogen(molecule<container_aliases>& molecule, const molecule_graph_type& graph) {
     const auto& elements = molecule.elements();
