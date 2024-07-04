@@ -1,373 +1,717 @@
 {
   "ff_type": [
     {
-      "value": "H"
+      "value": "H",
+      "name": "H",
+      "Rii": "2.00",
+      "epsii": "0.020",
+      "vol": "0.0000",
+      "solpar": "0.00051",
+      "Rij_hb": "0.0",
+      "epsij_hb": "0.0",
+      "hbond": "0"
+    },
+    {
+      "value": "HD",
+      "name": "HD",
+      "Rii": "2.00",
+      "epsii": "0.020",
+      "vol": "0.0000",
+      "solpar": "0.00051",
+      "Rij_hb": "0.0",
+      "epsij_hb": "0.0",
+      "hbond": "2"
+    },
+    {
+      "value": "HS",
+      "name": "HS",
+      "Rii": "2.00",
+      "epsii": "0.020",
+      "vol": "0.0000",
+      "solpar": "0.00051",
+      "Rij_hb": "0.0",
+      "epsij_hb": "0.0",
+      "hbond": "1"
+    },
+    {
+      "value": "He",
+      "name": "He"
+    },
+    {
+      "value": "Li",
+      "name": "Li"
+    },
+    {
+      "value": "Be",
+      "name": "Be"
+    },
+    {
+      "value": "B",
+      "name": "B"
+    },
+    {
+      "value": "C",
+      "name": "C",
+      "Rii": "4.00",
+      "epsii": "0.150",
+      "vol": "33.5103",
+      "solpar": "-0.00143",
+      "Rij_hb": "0.0",
+      "epsij_hb": "0.0",
+      "hbond": "0"
+    },
+    {
+      "value": "A",
+      "name": "A",
+      "Rii": "4.00",
+      "epsii": "0.150",
+      "vol": "33.5103",
+      "solpar": "-0.00052",
+      "Rij_hb": "0.0",
+      "epsij_hb": "0.0",
+      "hbond": "0"
+    },
+    {
+      "value": "N",
+      "name": "N",
+      "Rii": "3.50",
+      "epsii": "0.160",
+      "vol": "22.4493",
+      "solpar": "-0.00162",
+      "Rij_hb": "0.0",
+      "epsij_hb": "0.0",
+      "hbond": "0"
+    },
+    {
+      "value": "NA",
+      "name": "NA",
+      "Rii": "3.50",
+      "epsii": "0.160",
+      "vol": "22.4493",
+      "solpar": "-0.00162",
+      "Rij_hb": "1.9",
+      "epsij_hb": "5.0",
+      "hbond": "4"
+    },
+    {
+      "value": "NS",
+      "name": "NS",
+      "Rii": "3.50",
+      "epsii": "0.160",
+      "vol": "22.4493",
+      "solpar": "-0.00162",
+      "Rij_hb": "1.9",
+      "epsij_hb": "5.0",
+      "hbond": "3"
+    },
+    {
+      "value": "OA",
+      "name": "OA",
+      "Rii": "3.20",
+      "epsii": "0.200",
+      "vol": "17.1573",
+      "solpar": "-0.00251",
+      "Rij_hb": "1.9",
+      "epsij_hb": "5.0",
+      "hbond": "5"
+    },
+    {
+      "value": "OS",
+      "name": "OS",
+      "Rii": "3.20",
+      "epsii": "0.200",
+      "vol": "17.1573",
+      "solpar": "-0.00251",
+      "Rij_hb": "1.9",
+      "epsij_hb": "5.0",
+      "hbond": "3"
+    },
+    {
+      "value": "F",
+      "name": "F",
+      "Rii": "3.09",
+      "epsii": "0.080",
+      "vol": "15.4480",
+      "solpar": "-0.00110",
+      "Rij_hb": "0.0",
+      "epsij_hb": "0.0",
+      "hbond": "0"
     },
     {
-      "value": "HD"
+      "value": "Ne",
+      "name": "Ne"
     },
     {
-      "value": "He"
+      "value": "Na",
+      "name": "Na"
     },
     {
-      "value": "Li"
+      "value": "Mg",
+      "name": "Mg",
+      "Rii": "1.30",
+      "epsii": "0.875",
+      "vol": "1.5600",
+      "solpar": "-0.00110",
+      "Rij_hb": "0.0",
+      "epsij_hb": "0.0",
+      "hbond": "0"
     },
     {
-      "value": "Be"
+      "value": "Al",
+      "name": "Al"
     },
     {
-      "value": "B"
+      "value": "Si",
+      "name": "Si"
     },
     {
-      "value": "C"
+      "value": "P",
+      "name": "P",
+      "Rii": "4.20",
+      "epsii": "0.200",
+      "vol": "38.7924",
+      "solpar": "-0.00110",
+      "Rij_hb": "0.0",
+      "epsij_hb": "0.0",
+      "hbond": "0"
     },
     {
-      "value": "A"
+      "value": "SA",
+      "name": "SA",
+      "Rii": "4.00",
+      "epsii": "0.200",
+      "vol": "33.5103",
+      "solpar": "-0.00214",
+      "Rij_hb": "2.5",
+      "epsij_hb": "1.0",
+      "hbond": "5"
     },
     {
-      "value": "N"
+      "value": "S",
+      "name": "S",
+      "Rii": "4.00",
+      "epsii": "0.200",
+      "vol": "33.5103",
+      "solpar": "-0.00214",
+      "Rij_hb": "0.0",
+      "epsij_hb": "0.0",
+      "hbond": "0"
     },
     {
-      "value": "NA"
+      "value": "Cl",
+      "name": "Cl",
+      "Rii": "4.09",
+      "epsii": "0.276",
+      "vol": "35.8235",
+      "solpar": "-0.00110",
+      "Rij_hb": "0.0",
+      "epsij_hb": "0.0",
+      "hbond": "0"
     },
     {
-      "value": "OA"
+      "value": "Ar",
+      "name": "Ar"
     },
     {
-      "value": "F"
+      "value": "K",
+      "name": "K"
     },
     {
-      "value": "Ne"
+      "value": "Ca",
+      "name": "Ca",
+      "Rii": "1.98",
+      "epsii": "0.550",
+      "vol": "2.7700",
+      "solpar": "-0.00110",
+      "Rij_hb": "0.0",
+      "epsij_hb": "0.0",
+      "hbond": "0"
     },
     {
-      "value": "Na"
+      "value": "Sc",
+      "name": "Sc"
     },
     {
-      "value": "Mg"
+      "value": "Ti",
+      "name": "Ti"
     },
     {
-      "value": "Al"
+      "value": "V",
+      "name": "V"
     },
     {
-      "value": "Si"
+      "value": "Cr",
+      "name": "Cr"
     },
     {
-      "value": "P"
+      "value": "Mn",
+      "name": "Mn",
+      "Rii": "1.30",
+      "epsii": "0.875",
+      "vol": "2.1400",
+      "solpar": "-0.00110",
+      "Rij_hb": "0.0",
+      "epsij_hb": "0.0",
+      "hbond": "0"
     },
     {
-      "value": "S"
+      "value": "Fe",
+      "name": "Fe",
+      "Rii": "1.30",
+      "epsii": "0.010",
+      "vol": "1.8400",
+      "solpar": "-0.00110",
+      "Rij_hb": "0.0",
+      "epsij_hb": "0.0",
+      "hbond": "0"
     },
     {
-      "value": "SA"
+      "value": "Co",
+      "name": "Co"
     },
     {
-      "value": "Cl"
+      "value": "Ni",
+      "name": "Ni"
     },
     {
-      "value": "Ar"
+      "value": "Cu",
+      "name": "Cu"
     },
     {
-      "value": "K"
+      "value": "Zn",
+      "name": "Zn",
+      "Rii": "1.48",
+      "epsii": "0.550",
+      "vol": "1.7000",
+      "solpar": "-0.00110",
+      "Rij_hb": "0.0",
+      "epsij_hb": "0.0",
+      "hbond": "0"
     },
     {
-      "value": "Ca"
+      "value": "Ga",
+      "name": "Ga"
     },
     {
-      "value": "Sc"
+      "value": "Ge",
+      "name": "Ge"
     },
     {
-      "value": "Ti"
+      "value": "As",
+      "name": "As"
     },
     {
-      "value": "V"
+      "value": "Se",
+      "name": "Se"
     },
     {
-      "value": "Cr"
+      "value": "Br",
+      "name": "Br",
+      "Rii": "4.33",
+      "epsii": "0.389",
+      "vol": "42.5661",
+      "solpar": "-0.00110",
+      "Rij_hb": "0.0",
+      "epsij_hb": "0.0",
+      "hbond": "0"
     },
     {
-      "value": "Mn"
+      "value": "Kr",
+      "name": "Kr"
     },
     {
-      "value": "Fe"
+      "value": "Rb",
+      "name": "Rb"
     },
     {
-      "value": "Co"
+      "value": "Sr",
+      "name": "Sr"
     },
     {
-      "value": "Ni"
+      "value": "Y",
+      "name": "Y"
     },
     {
-      "value": "Cu"
+      "value": "Zr",
+      "name": "Zr"
     },
     {
-      "value": "Zn"
+      "value": "Nb",
+      "name": "Nb"
     },
     {
-      "value": "Ga"
+      "value": "Mo",
+      "name": "Mo"
     },
     {
-      "value": "Ge"
+      "value": "Tc",
+      "name": "Tc"
     },
     {
-      "value": "As"
+      "value": "Ru",
+      "name": "Ru"
     },
     {
-      "value": "Se"
+      "value": "Rh",
+      "name": "Rh"
     },
     {
-      "value": "Br"
+      "value": "Pd",
+      "name": "Pd"
     },
     {
-      "value": "Kr"
+      "value": "Ag",
+      "name": "Ag"
     },
     {
-      "value": "Rb"
+      "value": "Cd",
+      "name": "Cd"
     },
     {
-      "value": "Sr"
+      "value": "In",
+      "name": "In"
     },
     {
-      "value": "Y"
+      "value": "Sn",
+      "name": "Sn"
     },
     {
-      "value": "Zr"
+      "value": "Sb",
+      "name": "Sb"
     },
     {
-      "value": "Nb"
+      "value": "Te",
+      "name": "Te"
     },
     {
-      "value": "Mo"
+      "value": "I",
+      "name": "I",
+      "Rii": "4.72",
+      "epsii": "0.550",
+      "vol": "55.0585",
+      "solpar": "-0.00110",
+      "Rij_hb": "0.0",
+      "epsij_hb": "0.0",
+      "hbond": "0"
     },
     {
-      "value": "Tc"
+      "value": "Xe",
+      "name": "Xe"
     },
     {
-      "value": "Ru"
+      "value": "Cs",
+      "name": "Cs"
     },
     {
-      "value": "Rh"
+      "value": "Ba",
+      "name": "Ba"
     },
     {
-      "value": "Pd"
+      "value": "La",
+      "name": "La"
     },
     {
-      "value": "Ag"
+      "value": "Ce",
+      "name": "Ce"
     },
     {
-      "value": "Cd"
+      "value": "Pr",
+      "name": "Pr"
     },
     {
-      "value": "In"
+      "value": "Nd",
+      "name": "Nd"
     },
     {
-      "value": "Sn"
+      "value": "Pm",
+      "name": "Pm"
     },
     {
-      "value": "Sb"
+      "value": "Sm",
+      "name": "Sm"
     },
     {
-      "value": "Te"
+      "value": "Eu",
+      "name": "Eu"
     },
     {
-      "value": "I"
+      "value": "Gd",
+      "name": "Gd"
     },
     {
-      "value": "Xe"
+      "value": "Tb",
+      "name": "Tb"
     },
     {
-      "value": "Cs"
+      "value": "Dy",
+      "name": "Dy"
     },
     {
-      "value": "Ba"
+      "value": "Ho",
+      "name": "Ho"
     },
     {
-      "value": "La"
+      "value": "Er",
+      "name": "Er"
     },
     {
-      "value": "Ce"
+      "value": "Tm",
+      "name": "Tm"
     },
     {
-      "value": "Pr"
+      "value": "Yb",
+      "name": "Yb"
     },
     {
-      "value": "Nd"
+      "value": "Lu",
+      "name": "Lu"
     },
     {
-      "value": "Pm"
+      "value": "Hf",
+      "name": "Hf"
     },
     {
-      "value": "Sm"
+      "value": "Ta",
+      "name": "Ta"
     },
     {
-      "value": "Eu"
+      "value": "W",
+      "name": "W"
     },
     {
-      "value": "Gd"
+      "value": "Re",
+      "name": "Re"
     },
     {
-      "value": "Tb"
+      "value": "Os",
+      "name": "Os"
     },
     {
-      "value": "Dy"
+      "value": "Ir",
+      "name": "Ir"
     },
     {
-      "value": "Ho"
+      "value": "Pt",
+      "name": "Pt"
     },
     {
-      "value": "Er"
+      "value": "Au",
+      "name": "Au"
     },
     {
-      "value": "Tm"
+      "value": "Hg",
+      "name": "Hg"
     },
     {
-      "value": "Yb"
+      "value": "Tl",
+      "name": "Tl"
     },
     {
-      "value": "Lu"
+      "value": "Pb",
+      "name": "Pb"
     },
     {
-      "value": "Hf"
+      "value": "Bi",
+      "name": "Bi"
     },
     {
-      "value": "Ta"
+      "value": "Po",
+      "name": "Po"
     },
     {
-      "value": "W"
+      "value": "At",
+      "name": "At"
     },
     {
-      "value": "Re"
+      "value": "Rn",
+      "name": "Rn"
     },
     {
-      "value": "Os"
+      "value": "Fr",
+      "name": "Fr"
     },
     {
-      "value": "Ir"
+      "value": "Ra",
+      "name": "Ra"
     },
     {
-      "value": "Pt"
+      "value": "Ac",
+      "name": "Ac"
     },
     {
-      "value": "Au"
+      "value": "Th",
+      "name": "Th"
     },
     {
-      "value": "Hg"
+      "value": "Pa",
+      "name": "Pa"
     },
     {
-      "value": "Tl"
+      "value": "U",
+      "name": "U"
     },
     {
-      "value": "Pb"
+      "value": "Np",
+      "name": "Np"
     },
     {
-      "value": "Bi"
+      "value": "Pu",
+      "name": "Pu"
     },
     {
-      "value": "Po"
+      "value": "Am",
+      "name": "Am"
     },
     {
-      "value": "At"
+      "value": "Cm",
+      "name": "Cm"
     },
     {
-      "value": "Rn"
+      "value": "Bk",
+      "name": "Bk"
     },
     {
-      "value": "Fr"
+      "value": "Cf",
+      "name": "Cf"
     },
     {
-      "value": "Ra"
+      "value": "Es",
+      "name": "Es"
     },
     {
-      "value": "Ac"
+      "value": "Fm",
+      "name": "Fm"
     },
     {
-      "value": "Th"
+      "value": "Md",
+      "name": "Md"
     },
     {
-      "value": "Pa"
+      "value": "No",
+      "name": "No"
     },
     {
-      "value": "U"
+      "value": "Lr",
+      "name": "Lr"
     },
     {
-      "value": "Np"
+      "value": "Rf",
+      "name": "Rf"
     },
     {
-      "value": "Pu"
+      "value": "Db",
+      "name": "Db"
     },
     {
-      "value": "Am"
+      "value": "Sg",
+      "name": "Sg"
     },
     {
-      "value": "Cm"
+      "value": "Bh",
+      "name": "Bh"
     },
     {
-      "value": "Bk"
+      "value": "Hs",
+      "name": "Hs"
     },
     {
-      "value": "Cf"
+      "value": "Mt",
+      "name": "Mt"
     },
     {
-      "value": "Es"
+      "value": "Ds",
+      "name": "Ds"
     },
     {
-      "value": "Fm"
+      "value": "Rg",
+      "name": "Rg"
     },
     {
-      "value": "Md"
+      "value": "Cn",
+      "name": "Cn"
     },
     {
-      "value": "No"
+      "value": "Nh",
+      "name": "Nh"
     },
     {
-      "value": "Lr"
+      "value": "Fl",
+      "name": "Fl"
     },
     {
-      "value": "Rf"
+      "value": "Mc",
+      "name": "Mc"
     },
     {
-      "value": "Db"
+      "value": "Lv",
+      "name": "Lv"
     },
     {
-      "value": "Sg"
+      "value": "Ts",
+      "name": "Ts"
     },
     {
-      "value": "Bh"
+      "value": "Og",
+      "name": "Og"
     },
     {
-      "value": "Hs"
+      "value": "Uue",
+      "name": "Uue"
     },
     {
-      "value": "Mt"
+      "value": "Z",
+      "name": "Z",
+      "Rii": "4.00",
+      "epsii": "0.150",
+      "vol": "33.5103",
+      "solpar": "-0.00143",
+      "Rij_hb": "0.0",
+      "epsij_hb": "0.0",
+      "hbond": "0"
     },
     {
-      "value": "Ds"
+      "value": "G",
+      "name": "G",
+      "Rii": "4.00",
+      "epsii": "0.150",
+      "vol": "33.5103",
+      "solpar": "-0.00143",
+      "Rij_hb": "0.0",
+      "epsij_hb": "0.0",
+      "hbond": "0"
     },
     {
-      "value": "Rg"
+      "value": "GA",
+      "name": "GA",
+      "Rii": "4.00",
+      "epsii": "0.150",
+      "vol": "33.5103",
+      "solpar": "-0.00052",
+      "Rij_hb": "0.0",
+      "epsij_hb": "0.0",
+      "hbond": "0"
     },
     {
-      "value": "Cn"
+      "value": "J",
+      "name": "J",
+      "Rii": "4.00",
+      "epsii": "0.150",
+      "vol": "33.5103",
+      "solpar": "-0.00143",
+      "Rij_hb": "0.0",
+      "epsij_hb": "0.0",
+      "hbond": "0"
     },
     {
-      "value": "Nh"
-    },
-    {
-      "value": "Fl"
-    },
-    {
-      "value": "Mc"
-    },
-    {
-      "value": "Lv"
-    },
-    {
-      "value": "Ts"
-    },
-    {
-      "value": "Og"
-    },
-    {
-      "value": "Uue"
+      "value": "Q",
+      "name": "Q",
+      "Rii": "4.00",
+      "epsii": "0.150",
+      "vol": "33.5103",
+      "solpar": "-0.00143",
+      "Rij_hb": "0.0",
+      "epsij_hb": "0.0",
+      "hbond": "0"
     }
   ]
 }
