@@ -3,6 +3,7 @@
 #include <cassert>
 #include <concepts>
 #include <cstdint>
+#include <mudock/chem/autodock_types.hpp>
 #include <mudock/chem/elements.hpp>
 #include <mudock/molecule/atom_coordinates.hpp>
 #include <mudock/molecule/bond.hpp>
@@ -10,7 +11,6 @@
 #include <mudock/molecule/containers.hpp>
 #include <mudock/molecule/fragments.hpp>
 #include <mudock/molecule/graph.hpp>
-#include <mudock/chem/autodock_types.hpp>
 #include <mudock/molecule/properties.hpp>
 #include <mudock/molecule/property_table.hpp>
 #include <mudock/type_alias.hpp>
