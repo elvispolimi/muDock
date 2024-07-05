@@ -34,6 +34,7 @@ DerivePointerAlignment: 'true'
 FixNamespaceComments: 'true'
 IncludeBlocks: Regroup
 IndentCaseLabels: 'true'
+InsertNewlineAtEOF: 'true'
 IndentPPDirectives: BeforeHash
 IndentWrappedFunctionNames: 'true'
 KeepEmptyLinesAtTheStartOfBlocks: 'false'
