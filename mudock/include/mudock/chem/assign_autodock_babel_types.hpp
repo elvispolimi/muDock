@@ -3,6 +3,7 @@
 #include <mudock/chem/autodock_babel_types.hpp>
 #include <mudock/chem/elements.hpp>
 #include <mudock/molecule.hpp>
+#include <mudock/molecule/graph.hpp>
 #include <mudock/type_alias.hpp>
 #include <span>
 

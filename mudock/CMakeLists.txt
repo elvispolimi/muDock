@@ -20,7 +20,6 @@ list(APPEND header_files
   "${header_path}/${header_prefix}/grid/mdindex.hpp"
   "${header_path}/${header_prefix}/grid/pi.hpp"
   "${header_path}/${header_prefix}/grid/point3D.hpp"
-  "${header_path}/${header_prefix}/molecule/atom_coordinates.hpp"
   "${header_path}/${header_prefix}/molecule/bond.hpp"
   "${header_path}/${header_prefix}/molecule/constraints.hpp"
   "${header_path}/${header_prefix}/molecule/containers.hpp"
@@ -70,11 +69,9 @@ list(APPEND source_files
   "${source_path}/format/dot.cpp"
   "${source_path}/format/mol2.cpp"
   "${source_path}/format/rdkit_wrapper.cpp"
-  "${source_path}/molecule/atom_coordinates.cpp"
   "${source_path}/molecule/fragments.cpp"
   "${source_path}/molecule/graph.cpp"
   "${source_path}/molecule/property_table.cpp"
-  "${source_path}/molecule.cpp"
 
   "${source_path}/controllers/cpp_thread_pool.cpp"
 
