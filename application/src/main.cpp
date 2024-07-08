@@ -20,6 +20,7 @@ int main(int argc, char* argv[]) {
       std::string{std::istreambuf_iterator<std::string::value_type>{protein_file},
                   std::istreambuf_iterator<std::string::value_type>{}};
   pdb.parse(protein, protein_description);
+  mudock::apply_autodock_forcefield(protein);
 
   // find all the ligands description from the standard input
   auto input_text = std::string{std::istreambuf_iterator<std::string::value_type>{std::cin},
