@@ -30,16 +30,16 @@ namespace mudock {
   private:
     // the atoms chemical properties
     atoms_array_type<element> atom_elements;
-    atoms_array_type<coordinate_type> x_coordinates;
-    atoms_array_type<coordinate_type> y_coordinates;
-    atoms_array_type<coordinate_type> z_coordinates;
+    atoms_array_type<fp_type> x_coordinates;
+    atoms_array_type<fp_type> y_coordinates;
+    atoms_array_type<fp_type> z_coordinates;
     atoms_array_type<int> atom_is_aromatic; // 1-> aromatic, 0 -> no aromatic
-    atoms_array_type<coordinate_type> atom_Rii;
-    atoms_array_type<coordinate_type> atom_vol;
-    atoms_array_type<coordinate_type> atom_solpar;
-    atoms_array_type<coordinate_type> atom_epsii;
-    atoms_array_type<coordinate_type> atom_Rij_hb;
-    atoms_array_type<coordinate_type> atom_epsij_hb;
+    atoms_array_type<fp_type> atom_Rii;
+    atoms_array_type<fp_type> atom_vol;
+    atoms_array_type<fp_type> atom_solpar;
+    atoms_array_type<fp_type> atom_epsii;
+    atoms_array_type<fp_type> atom_Rij_hb;
+    atoms_array_type<fp_type> atom_epsij_hb;
     atoms_array_type<std::size_t> atom_num_hbond;
     std::size_t atoms_size = std::size_t{0};
 

@@ -69,9 +69,9 @@ namespace mudock {
       assert(atom_element.has_value());
       dest.elements(mudock_atom_index)    = atom_element.value();
       dest.is_aromatic(mudock_atom_index) = atom->getIsAromatic();
-      dest.x(mudock_atom_index)           = static_cast<coordinate_type>(x);
-      dest.y(mudock_atom_index)           = static_cast<coordinate_type>(y);
-      dest.z(mudock_atom_index)           = static_cast<coordinate_type>(z);
+      dest.x(mudock_atom_index)           = static_cast<fp_type>(x);
+      dest.y(mudock_atom_index)           = static_cast<fp_type>(y);
+      dest.z(mudock_atom_index)           = static_cast<fp_type>(z);
       index_translator.emplace(atom_id, mudock_atom_index);
       mudock_atom_index += std::size_t{1};
     }

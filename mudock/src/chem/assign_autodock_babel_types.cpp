@@ -54,9 +54,9 @@ namespace mudock {
   static auto is_any_neigh_close(const molecule_graph_type::vertex_descriptor v,
                                  const molecule_graph_type& graph,
                                  const std::span<element>& elements,
-                                 const std::span<coordinate_type>& x,
-                                 const std::span<coordinate_type>& y,
-                                 const std::span<coordinate_type>& z,
+                                 const std::span<fp_type>& x,
+                                 const std::span<fp_type>& y,
+                                 const std::span<fp_type>& z,
                                  callable&& op) {
     const auto [neigh_begin, neigh_end] = boost::out_edges(v, graph);
     const auto vertex_index             = graph[v].atom_index;
@@ -71,9 +71,9 @@ namespace mudock {
 
   static auto find_mean_angle_3_neighbors(const molecule_graph_type::vertex_descriptor v,
                                           const molecule_graph_type& graph,
-                                          const std::span<coordinate_type>& x,
-                                          const std::span<coordinate_type>& y,
-                                          const std::span<coordinate_type>& z) {
+                                          const std::span<fp_type>& x,
+                                          const std::span<fp_type>& y,
+                                          const std::span<fp_type>& z) {
     const auto origin_index = graph[v].atom_index;
     std::array<std::size_t, 3> neighbors_index;
     const auto [begin, end] = boost::out_edges(v, graph);
@@ -87,14 +87,14 @@ namespace mudock {
     const auto angle_kal = angle(origin, k, l);
     const auto angle_kam = angle(origin, k, m);
     const auto angle_mal = angle(origin, l, m);
-    return rad_to_deg((angle_kal + angle_kam + angle_mal) / coordinate_type{3});
+    return rad_to_deg((angle_kal + angle_kam + angle_mal) / fp_type{3});
   }
 
   static auto find_angle_2_neighbors(const molecule_graph_type::vertex_descriptor v,
                                      const molecule_graph_type& graph,
-                                     const std::span<coordinate_type>& x,
-                                     const std::span<coordinate_type>& y,
-                                     const std::span<coordinate_type>& z) {
+                                     const std::span<fp_type>& x,
+                                     const std::span<fp_type>& y,
+                                     const std::span<fp_type>& z) {
     const auto origin_index = graph[v].atom_index;
     std::array<std::size_t, 2> neighbors_index;
     const auto [begin, end] = boost::out_edges(v, graph);
@@ -105,10 +105,10 @@ namespace mudock {
     const auto k         = point3D{x[neighbors_index[0]], y[neighbors_index[0]], z[neighbors_index[0]]};
     const auto m         = point3D{x[neighbors_index[1]], y[neighbors_index[1]], z[neighbors_index[1]]};
     const auto angle_kam = rad_to_deg(angle(origin, k, m));
-    return angle_kam < coordinate_type{180} ? angle_kam : coordinate_type{360} - angle_kam;
+    return angle_kam < fp_type{180} ? angle_kam : fp_type{360} - angle_kam;
   }
 
-  static constexpr auto square(const coordinate_type x) { return x * x; }
+  static constexpr auto square(const fp_type x) { return x * x; }
 
   //===------------------------------------------------------------------------------------------------------
   // Utility function to set the initial atom type
@@ -126,9 +126,9 @@ namespace mudock {
   }
 
   static auto handleC(const std::span<element>& elements,
-                      const std::span<coordinate_type>& x,
-                      const std::span<coordinate_type>& y,
-                      const std::span<coordinate_type>& z,
+                      const std::span<fp_type>& x,
+                      const std::span<fp_type>& y,
+                      const std::span<fp_type>& z,
                       const molecule_graph_type& graph,
                       const molecule_graph_type::vertex_descriptor v) -> autodock_babel_ff {
     const auto num_neighbors = boost::out_degree(v, graph);
@@ -139,7 +139,7 @@ namespace mudock {
       const auto mean_angle = find_mean_angle_3_neighbors(v, graph, x, y, z);
 
       // assign the correct type based on the average angle and the neighbors
-      if (mean_angle < coordinate_type{114.8}) {
+      if (mean_angle < fp_type{114.8}) {
         return autodock_babel_ff::C3;
       } else {
         const auto num_free_ox = count_neighbors_if(v, graph, is_free_ox{elements, graph});
@@ -154,26 +154,26 @@ namespace mudock {
       const auto angle = find_angle_2_neighbors(v, graph, x, y, z);
 
       // assign the correct type based on angle and distance
-      if (angle < coordinate_type{114.8}) {
-        if (is_any_neigh_close(v, graph, elements, x, y, z, [&](const coordinate_type d2, const element e) {
-              return (d2 < square(coordinate_type{1.42}) && e == element::C) ||
-                     (d2 < square(coordinate_type{1.41}) && e == element::N);
+      if (angle < fp_type{114.8}) {
+        if (is_any_neigh_close(v, graph, elements, x, y, z, [&](const fp_type d2, const element e) {
+              return (d2 < square(fp_type{1.42}) && e == element::C) ||
+                     (d2 < square(fp_type{1.41}) && e == element::N);
             })) {
           return autodock_babel_ff::C2;
         } else {
           return autodock_babel_ff::C3;
         }
-      } else if (angle < coordinate_type{122}) {
-        if (is_any_neigh_close(v, graph, elements, x, y, z, [&](const coordinate_type d2, const element e) {
-              return (d2 < square(coordinate_type{1.41}) && e == element::C) ||
-                     (d2 < square(coordinate_type{1.46}) && e == element::N) ||
-                     (d2 < square(coordinate_type{1.44}) && e == element::O);
+      } else if (angle < fp_type{122}) {
+        if (is_any_neigh_close(v, graph, elements, x, y, z, [&](const fp_type d2, const element e) {
+              return (d2 < square(fp_type{1.41}) && e == element::C) ||
+                     (d2 < square(fp_type{1.46}) && e == element::N) ||
+                     (d2 < square(fp_type{1.44}) && e == element::O);
             })) {
           return autodock_babel_ff::C3;
         } else {
           return autodock_babel_ff::C2;
         }
-      } else if (angle < coordinate_type{160}) {
+      } else if (angle < fp_type{160}) {
         return autodock_babel_ff::C2;
       } else {
         return autodock_babel_ff::C1;
@@ -183,9 +183,9 @@ namespace mudock {
   }
 
   static auto handleN(const std::span<element>& elements,
-                      const std::span<coordinate_type>& x,
-                      const std::span<coordinate_type>& y,
-                      const std::span<coordinate_type>& z,
+                      const std::span<fp_type>& x,
+                      const std::span<fp_type>& y,
+                      const std::span<fp_type>& z,
                       const molecule_graph_type& graph,
                       const molecule_graph_type::vertex_descriptor v) -> autodock_babel_ff {
     const auto num_neighbors = boost::out_degree(v, graph);
@@ -201,7 +201,7 @@ namespace mudock {
       const auto mean_angle = find_mean_angle_3_neighbors(v, graph, x, y, z);
 
       // assign the correct type based on the average angle and the neighbors
-      if (mean_angle < coordinate_type{114.8}) {
+      if (mean_angle < fp_type{114.8}) {
         return autodock_babel_ff::N3;
       } else {
         const auto num_free_ox = count_neighbors_if(v, graph, is_free_ox{elements, graph});
@@ -216,16 +216,16 @@ namespace mudock {
       const auto angle = find_angle_2_neighbors(v, graph, x, y, z);
 
       // assign the correct type based on angle and distance
-      if (angle <= coordinate_type{114.8}) {
-        if (is_any_neigh_close(v, graph, elements, x, y, z, [&](const coordinate_type d2, const element e) {
-              return (d2 < square(coordinate_type{1.38}) && e == element::C) ||
-                     (d2 < square(coordinate_type{1.32}) && e == element::N);
+      if (angle <= fp_type{114.8}) {
+        if (is_any_neigh_close(v, graph, elements, x, y, z, [&](const fp_type d2, const element e) {
+              return (d2 < square(fp_type{1.38}) && e == element::C) ||
+                     (d2 < square(fp_type{1.32}) && e == element::N);
             })) {
           return autodock_babel_ff::Npl;
         } else {
           return autodock_babel_ff::N3;
         }
-      } else if (angle < coordinate_type{160}) {
+      } else if (angle < fp_type{160}) {
         return autodock_babel_ff::Npl;
       } else {
         return autodock_babel_ff::N1;
@@ -290,9 +290,9 @@ namespace mudock {
   //===------------------------------------------------------------------------------------------------------
 
   void assign_autodock_babel_types(std::span<autodock_babel_ff> types,
-                                   const std::span<coordinate_type> x,
-                                   const std::span<coordinate_type> y,
-                                   const std::span<coordinate_type> z,
+                                   const std::span<fp_type> x,
+                                   const std::span<fp_type> y,
+                                   const std::span<fp_type> z,
                                    const std::span<element> elements,
                                    const molecule_graph_type& graph) {
     // the sensing scheme is not straightforward. It starts by assign to each atom its element type, then it
@@ -448,13 +448,13 @@ namespace mudock {
         switch (vertex_atom_type) {
           case (element::C):
             if (types[neighbor_index] == autodock_babel_ff::C1 &&
-                distance2(vertex_point, neighbor_point) < square(coordinate_type{1.22}))
+                distance2(vertex_point, neighbor_point) < square(fp_type{1.22}))
               types[vertex_index] = autodock_babel_ff::C1;
             else if (elements[neighbor_index] == element::C &&
-                     distance2(vertex_point, neighbor_point) < square(coordinate_type{1.41}))
+                     distance2(vertex_point, neighbor_point) < square(fp_type{1.41}))
               types[vertex_index] = autodock_babel_ff::C1;
             else if (elements[neighbor_index] == element::N &&
-                     distance2(vertex_point, neighbor_point) < square(coordinate_type{1.37}))
+                     distance2(vertex_point, neighbor_point) < square(fp_type{1.37}))
               types[vertex_index] = autodock_babel_ff::C2;
             else
               types[vertex_index] = autodock_babel_ff::C3;
@@ -462,11 +462,11 @@ namespace mudock {
 
           case (element::N):
             if (types[neighbor_index] == autodock_babel_ff::C1 &&
-                distance2(vertex_point, neighbor_point) < square(coordinate_type{1.20}))
+                distance2(vertex_point, neighbor_point) < square(fp_type{1.20}))
               types[vertex_index] = autodock_babel_ff::N1;
             else if ((types[neighbor_index] == autodock_babel_ff::C2 ||
                       types[neighbor_index] == autodock_babel_ff::C3) &&
-                     distance2(vertex_point, neighbor_point) > square(coordinate_type{1.38}))
+                     distance2(vertex_point, neighbor_point) > square(fp_type{1.38}))
               types[vertex_index] = autodock_babel_ff::N3;
             else
               types[vertex_index] = autodock_babel_ff::Npl;
@@ -483,11 +483,11 @@ namespace mudock {
                      types[neighbor_index] == autodock_babel_ff::Sox)
               types[vertex_index] = autodock_babel_ff::O2;
             else if (elements[neighbor_index] == element::C &&
-                     distance2(vertex_point, neighbor_point) < square(coordinate_type{1.30})) {
+                     distance2(vertex_point, neighbor_point) < square(fp_type{1.30})) {
               types[vertex_index]   = autodock_babel_ff::O2;
               types[neighbor_index] = autodock_babel_ff::C2;
             } else if (elements[neighbor_index] == element::As &&
-                       distance2(vertex_point, neighbor_point) < square(coordinate_type{1.685}))
+                       distance2(vertex_point, neighbor_point) < square(fp_type{1.685}))
               types[vertex_index] = autodock_babel_ff::O2;
             else
               types[vertex_index] = autodock_babel_ff::O3;
@@ -497,11 +497,11 @@ namespace mudock {
             if (elements[neighbor_index] == element::P)
               types[vertex_index] = autodock_babel_ff::S2;
             else if (elements[neighbor_index] == element::C &&
-                     distance2(vertex_point, neighbor_point) < square(coordinate_type{1.76})) {
+                     distance2(vertex_point, neighbor_point) < square(fp_type{1.76})) {
               types[vertex_index]   = autodock_babel_ff::S2;
               types[neighbor_index] = autodock_babel_ff::C2;
             } else if (elements[neighbor_index] == element::As &&
-                       distance2(vertex_point, neighbor_point) < square(coordinate_type{2.11}))
+                       distance2(vertex_point, neighbor_point) < square(fp_type{2.11}))
               types[vertex_index] = autodock_babel_ff::S2;
             else
               types[vertex_index] = autodock_babel_ff::S3;

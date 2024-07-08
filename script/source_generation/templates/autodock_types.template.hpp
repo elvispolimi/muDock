@@ -23,15 +23,16 @@ namespace mudock {
   struct autodock_ff_description {
     autodock_ff value;
     std::string_view name;
-    coordinate_type Rii       = 0;
-    coordinate_type epsii     = 0;
-    coordinate_type vol       = 0;
-    coordinate_type solpar    = 0;
-    coordinate_type Rij_hb    = 0;
-    coordinate_type epsij_hb  = 0;
+    fp_type Rii       = 0;
+    fp_type epsii     = 0;
+    fp_type vol       = 0;
+    fp_type solpar    = 0;
+    fp_type Rij_hb    = 0;
+    fp_type epsij_hb  = 0;
     std::size_t hbond = 0;
   };
-  extern const std::array<autodock_ff_description, {@ num_elements @}> AUTODOCK_FF_DICTIONARY;
+  extern const std::array < autodock_ff_description, { @num_elements @ }
+  > AUTODOCK_FF_DICTIONARY;
 
   // utility functions to work with them
   inline const autodock_ff_description& get_description(const autodock_ff a) {
