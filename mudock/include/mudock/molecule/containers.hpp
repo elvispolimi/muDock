@@ -1,8 +1,11 @@
 #pragma once
 
+#include <algorithm>
 #include <array>
+#include <cassert>
 #include <concepts>
 #include <mudock/molecule/constraints.hpp>
+#include <span>
 #include <vector>
 
 namespace mudock {
@@ -38,5 +41,59 @@ namespace mudock {
   template<class T>
   concept is_container_specification = (std::same_as<std::remove_cvref_t<T>, static_containers> ||
                                         std::same_as<std::remove_cvref_t<T>, dynamic_containers>);
+
+  // helper functions to resize a container
+  template<typename value_type>
+  inline void resize(std::vector<value_type>& container, const std::size_t new_size) {
+    container.resize(new_size);
+  }
+  template<typename value_type, std::size_t num_elements>
+  inline void resize([[maybe_unused]] std::array<value_type, num_elements>& container,
+                     [[maybe_unused]] const std::size_t new_size) {
+    assert(new_size <= num_elements);
+  }
+
+  // helper functions to fill a container with a value
+  template<typename value_type>
+  inline void fill(std::vector<value_type>& container, const value_type value) {
+    std::fill(std::begin(container), std::end(container), value);
+  }
+  template<typename value_type, std::size_t num_elements>
+  inline void fill(std::array<value_type, num_elements>& container, const value_type value) {
+    container.fill(value);
+  }
+
+  // helper functions to remove an element by index
+  template<typename value_type>
+  inline void remove_atom(std::vector<value_type>& container, const std::size_t index) {
+    assert(container.size() > index);
+    std::shift_left(std::begin(container) + index, std::end(container), 1);
+    container.resize(container.size() - std::size_t{1});
+  }
+  template<typename value_type, std::size_t num_elements>
+  inline void remove_atom(std::array<value_type, num_elements>& container, const std::size_t index) {
+    assert(container.size() > index);
+    std::shift_left(std::begin(container) + index, std::end(container), 1);
+  }
+
+  // helper functions to create a span from a container
+  template<typename value_type>
+  [[nodiscard]] inline auto make_span(std::vector<value_type>& container, const std::size_t size) {
+    return std::span(std::begin(container), size);
+  }
+  template<typename value_type, std::size_t num_elements>
+  [[nodiscard]] inline auto make_span(std::array<value_type, num_elements>& container,
+                                      const std::size_t size) {
+    return std::span(std::begin(container), size);
+  }
+  template<typename value_type>
+  [[nodiscard]] inline auto make_span(const std::vector<value_type>& container, const std::size_t size) {
+    return std::span(std::begin(container), size);
+  }
+  template<typename value_type, std::size_t num_elements>
+  [[nodiscard]] inline auto make_span(const std::array<value_type, num_elements>& container,
+                                      const std::size_t size) {
+    return std::span(std::begin(container), size);
+  }
 
 } // namespace mudock
