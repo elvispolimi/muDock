@@ -6,6 +6,7 @@
 set(header_path "${CMAKE_CURRENT_SOURCE_DIR}/include")
 set(header_prefix "mudock")
 list(APPEND header_files
+  "${header_path}/${header_prefix}/chem/apply_autodock_force_field.hpp"
   "${header_path}/${header_prefix}/chem/assign_autodock_babel_types.hpp"
   "${header_path}/${header_prefix}/chem/assign_autodock_types.hpp"
   "${header_path}/${header_prefix}/chem/autodock_babel_types.hpp"
