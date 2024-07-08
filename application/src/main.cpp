@@ -35,6 +35,7 @@ int main(int argc, char* argv[]) {
     try {
       std::unique_ptr<mudock::static_molecule> ligand = std::make_unique<mudock::static_molecule>();
       mol2.parse(*(ligand.get()), ligands_description[i]);
+      mudock::apply_autodock_forcefield(*ligand.get());
 
       i_queue->enqueue(std::move(ligand));
     } catch (const std::runtime_error& e) {
