@@ -5,6 +5,7 @@
 #include <mudock/grid/mdindex.hpp>
 #include <mudock/molecule/bond.hpp>
 #include <mudock/molecule/containers.hpp>
+#include <mudock/molecule/graph.hpp>
 #include <mudock/type_alias.hpp>
 #include <span>
 #include <utility>
@@ -32,7 +33,7 @@ namespace mudock {
 
   public:
     using value_type = fragment_mask_type;
-    fragments(const std::span<const bond>& bonds, const std::size_t num_atoms);
+    fragments(molecule_graph_type& graph, const std::span<const bond>& bonds, const std::size_t num_atoms);
 
     // utility functions to get the whole container
     [[nodiscard]] inline auto get_mask(const std::size_t bond_index) {
@@ -73,9 +74,13 @@ namespace mudock {
   //===------------------------------------------------------------------------------------------------------
 
   template<>
-  fragments<static_containers>::fragments(const std::span<const bond>& bonds, const std::size_t num_atoms);
+  fragments<static_containers>::fragments(molecule_graph_type& graph,
+                                          const std::span<const bond>& bonds,
+                                          const std::size_t num_atoms);
 
   template<>
-  fragments<dynamic_containers>::fragments(const std::span<const bond>& bonds, const std::size_t num_atoms);
+  fragments<dynamic_containers>::fragments(molecule_graph_type& graph,
+                                           const std::span<const bond>& bonds,
+                                           const std::size_t num_atoms);
 
 } // namespace mudock

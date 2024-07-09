@@ -8,22 +8,26 @@
 #include <stdexcept>
 #include <string>
 
+// utility function that reads the whole content of a stream
+template<class stream_type>
+inline auto read_from_stream(stream_type&& in) {
+  assert(in.good());
+  return std::string{std::istreambuf_iterator<std::string::value_type>{in},
+                     std::istreambuf_iterator<std::string::value_type>{}};
+}
+
 int main(int argc, char* argv[]) {
   const auto args = parse_command_line_arguments(argc, argv);
 
   // read and parse the target protein
-  auto protein      = mudock::dynamic_molecule{};
-  auto pdb          = mudock::pdb{};
-  auto protein_file = std::ifstream(args.protein_path);
-  assert(protein_file.good());
-  const auto protein_description =
-      std::string{std::istreambuf_iterator<std::string::value_type>{protein_file},
-                  std::istreambuf_iterator<std::string::value_type>{}};
+  auto protein                   = mudock::dynamic_molecule{};
+  auto pdb                       = mudock::pdb{};
+  const auto protein_description = read_from_stream(std::ifstream(args.protein_path));
   pdb.parse(protein, protein_description);
+  mudock::apply_autodock_forcefield(protein);
 
-  // find all the ligands description from the standard input
-  auto input_text = std::string{std::istreambuf_iterator<std::string::value_type>{std::cin},
-                                std::istreambuf_iterator<std::string::value_type>{}};
+  // read  all the ligands description from the standard input and split them
+  auto input_text = read_from_stream(std::cin);
   mudock::splitter<mudock::mol2> split;
   auto ligands_description = split(std::move(input_text));
   ligands_description.emplace_back(split.flush());
@@ -35,6 +39,8 @@ int main(int argc, char* argv[]) {
     try {
       std::unique_ptr<mudock::static_molecule> ligand = std::make_unique<mudock::static_molecule>();
       mol2.parse(*(ligand.get()), ligands_description[i]);
+      mudock::apply_autodock_forcefield(*ligand.get());
+
       i_queue->enqueue(std::move(ligand));
     } catch (const std::runtime_error& e) {
       std::cerr << "Unable to parse the ligand with index " << i << ", due to: " << e.what() << std::endl;
