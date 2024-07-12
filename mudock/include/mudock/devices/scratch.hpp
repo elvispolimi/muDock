@@ -19,7 +19,7 @@ namespace mudock {
   class kernel_scratchpad_interface {
   public:
     // The scratchpad requires the device context in which move in and out the data
-    kernel_scratchpad_interface(const device_context<l_t>& d_c): d_context(d_c){};
+    kernel_scratchpad_interface(const device_context<l_t>& d_c): d_context(d_c) {};
     virtual ~kernel_scratchpad_interface() {}
 
     // A scratchpad cannot be copied or moved

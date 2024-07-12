@@ -8,8 +8,8 @@ namespace mudock {
   template<kernel_type k_t, typename T>
   class device_buffer {
   public:
-    device_buffer(const std::size_t capacity): capacity(capacity){};
-    ~device_buffer(){};
+    device_buffer(const std::size_t capacity): capacity(capacity) {};
+    ~device_buffer() {};
 
     device_buffer(const device_buffer&)            = delete;
     device_buffer(device_buffer&&)                 = delete;
