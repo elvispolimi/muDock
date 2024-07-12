@@ -19,7 +19,7 @@ namespace mudock {
     inline kernel_interface(std::shared_ptr<dynamic_molecule>& protein): target_protein(protein) {}
     virtual ~kernel_interface() {}
 
-    virtual std::span<fp_type> virtual_screen(const std::span<static_molecule> ligands) const = 0;
+    virtual std::span<fp_type> virtual_screen(const std::span<std::unique_ptr<static_molecule>> ligands) const = 0;
   };
 
   // this is a simple wrapper to hide implementation details about the kernel and the remove the burden of
@@ -37,7 +37,7 @@ namespace mudock {
     inline kernel& operator=(const kernel&) = delete;
     inline kernel& operator=(kernel&&)      = default;
 
-    [[nodiscard]] inline auto virtual_screen(const std::span<static_molecule> ligands) const {
+    [[nodiscard]] inline auto virtual_screen(const std::span<std::unique_ptr<static_molecule>> ligands) const {
       assert(implementation);
       return implementation->virtual_screen(ligands);
     }
