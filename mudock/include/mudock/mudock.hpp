@@ -9,3 +9,4 @@
 #include <mudock/splitter.hpp>
 #include <mudock/type_alias.hpp>
 #include <mudock/utils.hpp>
+#include <mudock/kernel.hpp>
