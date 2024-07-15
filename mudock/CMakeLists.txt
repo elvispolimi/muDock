@@ -28,6 +28,7 @@ list(APPEND header_files
   "${header_path}/${header_prefix}/molecule/graph.hpp"
   "${header_path}/${header_prefix}/molecule/properties.hpp"
   "${header_path}/${header_prefix}/molecule/property_table.hpp"
+  "${header_path}/${header_prefix}/parallel/reorder_buffer.hpp"
   "${header_path}/${header_prefix}/batch.hpp"
   "${header_path}/${header_prefix}/chem.hpp"
   "${header_path}/${header_prefix}/format.hpp"
@@ -35,6 +36,7 @@ list(APPEND header_files
   "${header_path}/${header_prefix}/kernel.hpp"
   "${header_path}/${header_prefix}/molecule.hpp"
   "${header_path}/${header_prefix}/mudock.hpp"
+  "${header_path}/${header_prefix}/parallel.hpp"
   "${header_path}/${header_prefix}/splitter.hpp"
   "${header_path}/${header_prefix}/type_alias.hpp"
 
@@ -75,6 +77,7 @@ list(APPEND source_files
   "${source_path}/molecule/fragments.cpp"
   "${source_path}/molecule/graph.cpp"
   "${source_path}/molecule/property_table.cpp"
+  "${source_path}/parallel/reorder_buffer.cpp"
 
   "${source_path}/controllers/cpp_thread_pool.cpp"
 
