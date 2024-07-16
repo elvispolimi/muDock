@@ -1,7 +1,6 @@
 #pragma once
 
 #include <memory>
-#include <mudock/kernel.hpp>
 #include <mudock/molecule.hpp>
 #include <mudock/type_alias.hpp>
 #include <random>
@@ -10,7 +9,7 @@
 
 namespace mudock {
 
-  class virtual_screen_cpp: public kernel_interface {
+  class virtual_screen_cpp {
     // this will be the scratchpad memory for the cpp implementation
     // NOTE: we will implement a random scoring function to test the infrastructure
     std::mt19937 generator;
@@ -19,7 +18,7 @@ namespace mudock {
   public:
     virtual_screen_cpp(std::shared_ptr<dynamic_molecule>& protein);
 
-    void virtual_screen(const std::span<std::unique_ptr<static_molecule>> ligands) override final;
+    void operator()(static_molecule& ligand);
   };
 
 } // namespace mudock
