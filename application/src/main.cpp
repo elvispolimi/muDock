@@ -20,7 +20,8 @@ int main(int argc, char* argv[]) {
   const auto args = parse_command_line_arguments(argc, argv);
 
   // read and parse the target protein
-  auto protein                   = mudock::dynamic_molecule{};
+  auto protein_ptr               = std::make_shared<mudock::dynamic_molecule>();
+  auto& protein                  = *protein_ptr;
   auto pdb                       = mudock::pdb{};
   const auto protein_description = read_from_stream(std::ifstream(args.protein_path));
   pdb.parse(protein, protein_description);
@@ -47,6 +48,11 @@ int main(int argc, char* argv[]) {
       std::cerr << "Due to: " << e.what() << std::endl;
     }
   }
+
+  // compute all the ligands using a single cpp implementation
+  auto output_queue = mudock::safe_stack<mudock::static_molecule>{};
+  auto worker       = mudock::cpp_worker(protein_ptr, input_queue, output_queue, 0);
+  worker.main();
 
   return EXIT_SUCCESS;
 }
