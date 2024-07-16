@@ -1,5 +1,5 @@
 #include <algorithm>
-#include <mudock/parallel/reorder_buffer.hpp>
+#include <mudock/compute/reorder_buffer.hpp>
 
 namespace mudock {
   reorder_buffer::reorder_buffer(std::function<std::size_t(const std::size_t, const std::size_t)> get_size) {
