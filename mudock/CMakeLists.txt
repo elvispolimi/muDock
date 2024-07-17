@@ -40,6 +40,7 @@ list(APPEND header_files
   "${header_path}/${header_prefix}/chem.hpp"
   "${header_path}/${header_prefix}/compute.hpp"
   "${header_path}/${header_prefix}/cpp_kernels.hpp"
+  "${header_path}/${header_prefix}/cuda_kernels.hpp"
   "${header_path}/${header_prefix}/format.hpp"
   "${header_path}/${header_prefix}/grid.hpp"
   "${header_path}/${header_prefix}/log.hpp"
@@ -73,6 +74,14 @@ list(APPEND source_files
   "${source_path}/log.cpp"
 )
 
+# declare the CUDA sources
+if (MUDOCK_ENABLE_CUDA)
+  list(APPEND header_files
+    "${header_path}/${header_prefix}/cuda_kernels/cuda_check_error_macro.cuh"
+    "${header_path}/${header_prefix}/cuda_kernels/cuda_object.cuh"
+  )
+endif()
+
 # ########################################################################
 # ### Declare the compile step
 # ########################################################################
@@ -97,6 +106,7 @@ add_rdkit_dep(libmudock)
 if (MUDOCK_ENABLE_CUDA)
   target_compile_definitions(libmudock PUBLIC MUDOCK_USE_CUDA)
 endif()
+
 
 # ########################################################################
 # ### Declare the install step

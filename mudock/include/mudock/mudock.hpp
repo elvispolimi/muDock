@@ -4,6 +4,7 @@
 #include <mudock/chem.hpp>
 #include <mudock/compute.hpp>
 #include <mudock/cpp_kernels.hpp>
+#include <mudock/cuda_kernels.hpp>
 #include <mudock/format.hpp>
 #include <mudock/grid.hpp>
 #include <mudock/log.hpp>
