@@ -58,6 +58,7 @@ int main(int argc, char* argv[]) {
   {
     auto threadpool = mudock::threadpool();
     mudock::manage_cpp(args.device_conf, threadpool, protein_ptr, input_queue, output_queue);
+    mudock::manage_cuda(args.device_conf, threadpool, protein_ptr, input_queue, output_queue);
   } // when we exit from this block the computation is complete
 
   // after the computation it will be nice to print the score of all the molecules
