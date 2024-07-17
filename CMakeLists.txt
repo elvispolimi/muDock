@@ -49,7 +49,6 @@ endif()
 # add all the previously defined flags to each target language
 foreach(flag IN LISTS global_c_cxx_flags)
     add_compile_options($<$<COMPILE_LANGUAGE:CXX>:${flag}>)
-    add_compile_options($<$<COMPILE_LANGUAGE:C>:${flag}>)
 endforeach()
 
 #########################################################################
