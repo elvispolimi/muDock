@@ -1,8 +1,8 @@
 #pragma once
 
 #include <memory>
-#include <mudock/cuda_kernels/cuda_object.cuh>
-#include <mudock/cuda_kernels/cuda_wrapper.cuh>
+#include <mudock/cuda_implementation/cuda_object.cuh>
+#include <mudock/cuda_implementation/cuda_wrapper.cuh>
 #include <mudock/molecule.hpp>
 #include <mudock/type_alias.hpp>
 #include <random>

@@ -2,7 +2,7 @@
 
 #include <memory>
 #include <mudock/compute.hpp>
-#include <mudock/cpp_kernels/virtual_screen.hpp>
+#include <mudock/cpp_implementation/virtual_screen.hpp>
 #include <mudock/molecule.hpp>
 
 namespace mudock {

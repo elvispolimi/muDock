@@ -1,6 +1,6 @@
 #include <cstdlib>
 #include <iostream>
-#include <mudock/cpp_kernels/cpp_worker.hpp>
+#include <mudock/cpp_implementation/cpp_worker.hpp>
 #include <mudock/log.hpp>
 #include <stdexcept>
 #include <string>

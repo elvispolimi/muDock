@@ -1,4 +1,4 @@
-#include <mudock/cuda_kernels/virtual_screen.cuh>
+#include <mudock/cuda_implementation/virtual_screen.cuh>
 
 namespace mudock {
   virtual_screen_cuda::virtual_screen_cuda([[maybe_unused]] std::shared_ptr<dynamic_molecule>& protein)
