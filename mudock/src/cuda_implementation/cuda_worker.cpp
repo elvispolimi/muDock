@@ -45,6 +45,8 @@ namespace mudock {
       auto [half_batch, is_valid] = rob->flush_one();
       if (is_valid) {
         process(half_batch);
+      } else {
+        rob_is_empty = true;
       }
     }
   }
