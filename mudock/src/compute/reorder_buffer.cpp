@@ -31,7 +31,6 @@ namespace mudock {
     for (auto& cluster: clusters) {
       const auto num_ligands = cluster.num_ligands;
       if (num_ligands > std::size_t{0}) {
-        cluster.num_ligands = 0;
         return std::make_pair(std::move(cluster), true);
       }
     }
