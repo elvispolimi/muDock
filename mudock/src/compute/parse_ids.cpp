@@ -26,7 +26,9 @@ namespace mudock {
       }
 
       // remove the current group from the description
-      description = description.substr(end_group_description_index);
+      description = end_group_description_index != std::string_view::npos
+                        ? description.substr(end_group_description_index)
+                        : std::string_view{};
     }
     return ids;
   }

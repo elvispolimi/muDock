@@ -15,7 +15,8 @@ namespace mudock {
     // single out the CPP description
     const auto begin_cpp_description = configuration.find(cpp_token);
     const auto end_cpp_description   = configuration.find(";", begin_cpp_description);
-    configuration = configuration.substr(begin_cpp_description, end_cpp_description - begin_cpp_description);
+    configuration                    = configuration.substr(begin_cpp_description + cpp_token.size(),
+                                         end_cpp_description - begin_cpp_description);
 
     // parse the CPP description (if any)
     if (!configuration.empty()) {
