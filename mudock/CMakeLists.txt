@@ -15,6 +15,7 @@ list(APPEND header_files
   "${header_path}/${header_prefix}/chem/elements.hpp"
   "${header_path}/${header_prefix}/compute/reorder_buffer.hpp"
   "${header_path}/${header_prefix}/compute/safe_stack.hpp"
+  "${header_path}/${header_prefix}/compute/threadpool.hpp"
   "${header_path}/${header_prefix}/cpp_kernels/cpp_worker.hpp"
   "${header_path}/${header_prefix}/cpp_kernels/virtual_screen.hpp"
   "${header_path}/${header_prefix}/format/concept.hpp"
