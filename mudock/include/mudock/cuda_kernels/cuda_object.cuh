@@ -39,7 +39,7 @@ namespace mudock {
     inline void copy_host2device(const T* const host) {
       CHECK(cudaMemcpy(dev_ptr, host, sizeof(T) * size, cudaMemcpyHostToDevice))
     };
-    inline void copy_odevice2host(T* const host) const {
+    inline void copy_device2host(T* const host) const {
       CHECK(cudaMemcpy(host, dev_ptr, sizeof(T) * size, cudaMemcpyDeviceToHost))
     };
 
