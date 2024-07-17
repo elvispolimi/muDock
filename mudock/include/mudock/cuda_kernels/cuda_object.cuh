@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <cuda_runtime.h>
+#include <mudock/cuda_kernels/cuda_check_error_macro.cuh>
 
 namespace mudock {
 
@@ -23,8 +24,8 @@ namespace mudock {
       if (dev_ptr != nullptr)
         CHECK(cudaFree(dev_ptr));
     }
-    cuda cuda_object& operator=(const cuda_object&) = delete;
-    cuda_object& operator=(cuda_object&&)           = default;
+    cuda_object& operator=(const cuda_object&) = delete;
+    cuda_object& operator=(cuda_object&&)      = default;
 
     inline void alloc(const size_t num_elements) {
       if (size < num_elements) {
@@ -37,11 +38,11 @@ namespace mudock {
     inline void set_to_value(const T value) { CHECK(cudaMemset(dev_ptr, value, size)); }
 
     inline void copy_host2device(const T* const host) {
-      CHECK(cudaMemcpy(dev_ptr, host, sizeof(T) * size, cudaMemcpyHostToDevice))
-    };
+      CHECK(cudaMemcpy(dev_ptr, host, sizeof(T) * size, cudaMemcpyHostToDevice));
+    }
     inline void copy_device2host(T* const host) const {
-      CHECK(cudaMemcpy(host, dev_ptr, sizeof(T) * size, cudaMemcpyDeviceToHost))
-    };
+      CHECK(cudaMemcpy(host, dev_ptr, sizeof(T) * size, cudaMemcpyDeviceToHost));
+    }
 
     [[nodiscard]] inline auto dev_pointer() const { return dev_ptr; }
     [[nodiscard]] inline auto num_elements() const { return size; }
