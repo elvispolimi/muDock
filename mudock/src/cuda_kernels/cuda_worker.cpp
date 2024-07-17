@@ -18,19 +18,33 @@ namespace mudock {
     info("Worker CUDA on duty! Set affinity to GPU ", gpu_id);
   }
 
+  void cuda_worker::process(batch& b) {
+    try {
+      virtual_screen(std::span(b.molecules));
+    } catch (const std::runtime_error& e) {
+      std::cerr << std::string{"Unable to vs a batch of ligands due to "} + e.what() + std::string{"\n"};
+    }
+
+    for (auto& batch_ligand: b.molecules) { output_stack->enqueue(std::move(batch_ligand)); }
+  }
+
   void cuda_worker::main() {
+    // process the input ligands
     auto new_ligand = input_stack->dequeue();
     while (new_ligand) {
       auto [new_batch, is_valid] = rob->add_ligand(std::move(new_ligand));
       if (is_valid) {
-        try {
-          virtual_screen(std::span(new_batch.molecules));
-        } catch (const std::runtime_error& e) {
-          std::cerr << std::string{"Unable to vs a batch of ligands due to "} + e.what() + std::string{"\n"};
-        }
-
-        for (auto& batch_ligand: new_batch.molecules) { output_stack->enqueue(std::move(batch_ligand)); }
+        process(new_batch);
         new_ligand = std::move(input_stack->dequeue());
+      }
+    }
+
+    // finish the half empty batches in the rob
+    auto rob_is_empty = false;
+    while (!rob_is_empty) {
+      auto [half_batch, is_valid] = rob->flush_one();
+      if (is_valid) {
+        process(half_batch);
       }
     }
   }
