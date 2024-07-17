@@ -20,6 +20,7 @@ int main(int argc, char* argv[]) {
   const auto args = parse_command_line_arguments(argc, argv);
 
   // read and parse the target protein
+  mudock::info("Reading protein ", args.protein_path, " ...");
   auto protein_ptr               = std::make_shared<mudock::dynamic_molecule>();
   auto& protein                  = *protein_ptr;
   auto pdb                       = mudock::pdb{};
@@ -28,12 +29,14 @@ int main(int argc, char* argv[]) {
   mudock::apply_autodock_forcefield(protein);
 
   // read  all the ligands description from the standard input and split them
+  mudock::info("Reading ligands from the stdin ...");
   auto input_text = read_from_stream(std::cin);
   mudock::splitter<mudock::mol2> split;
   auto ligands_description = split(std::move(input_text));
   ligands_description.emplace_back(split.flush());
 
   // parse the input ligands and put them in a stack that we can compute
+  mudock::info("Parsing ", ligands_description.size(), " ligand(s) ...");
   mudock::mol2 mol2;
   auto input_queue = std::make_shared<mudock::safe_stack<mudock::static_molecule>>();
   for (const auto& description: ligands_description) {
@@ -50,6 +53,7 @@ int main(int argc, char* argv[]) {
   }
 
   // compute all the ligands according to the input configuration
+  mudock::info("Virtual screening the ligands ...");
   auto output_queue = std::make_shared<mudock::safe_stack<mudock::static_molecule>>();
   {
     auto threadpool = mudock::threadpool();
@@ -57,11 +61,13 @@ int main(int argc, char* argv[]) {
   } // when we exit from this block the computation is complete
 
   // after the computation it will be nice to print the score of all the molecules
+  mudock::info("Printing the scores ...");
   for (auto ligand = output_queue->dequeue(); ligand; ligand = output_queue->dequeue()) {
     std::cout << ligand->properties.get(mudock::property_type::NAME) << " "
               << ligand->properties.get(mudock::property_type::SCORE) << std::endl;
   }
 
   // if ewch this statement we completed successfully the run
+  mudock::info("All Done!");
   return EXIT_SUCCESS;
 }
