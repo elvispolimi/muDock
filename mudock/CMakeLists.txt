@@ -80,6 +80,10 @@ if (MUDOCK_ENABLE_CUDA)
     "${header_path}/${header_prefix}/cuda_kernels/cuda_check_error_macro.cuh"
     "${header_path}/${header_prefix}/cuda_kernels/cuda_object.cuh"
     "${header_path}/${header_prefix}/cuda_kernels/cuda_wrapper.cuh"
+    "${header_path}/${header_prefix}/cuda_kernels/virtual_screen.cuh"
+  )
+  list(APPEND source_files
+    "${source_path}/cuda_kernels/virtual_screen.cu"
   )
 endif()
 
