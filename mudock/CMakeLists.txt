@@ -47,27 +47,7 @@ list(APPEND header_files
   "${header_path}/${header_prefix}/mudock.hpp"
   "${header_path}/${header_prefix}/splitter.hpp"
   "${header_path}/${header_prefix}/type_alias.hpp"
-
-  "${header_path}/${header_prefix}/controllers.hpp"
-  "${header_path}/${header_prefix}/devices.hpp"
   "${header_path}/${header_prefix}/utils.hpp"
-
-  "${header_path}/${header_prefix}/controllers/cpp_thread_pool.hpp"
-  "${header_path}/${header_prefix}/controllers/squeue.hpp"
-  "${header_path}/${header_prefix}/controllers/thread_pool.hpp"
-  "${header_path}/${header_prefix}/controllers/worker.hpp"
-
-  "${header_path}/${header_prefix}/devices/cpp/context.hpp"
-  "${header_path}/${header_prefix}/devices/cpp/kernel.hpp"
-  "${header_path}/${header_prefix}/devices/cpp/scratch.hpp"
-
-  "${header_path}/${header_prefix}/devices/buffer.hpp"
-  "${header_path}/${header_prefix}/devices/context.hpp"
-  "${header_path}/${header_prefix}/devices/kernel.hpp"
-  "${header_path}/${header_prefix}/devices/parser.hpp"
-  "${header_path}/${header_prefix}/devices/device_types.hpp"
-  "${header_path}/${header_prefix}/devices/kernel_types.hpp"
-  "${header_path}/${header_prefix}/devices/scratch.hpp"
 )
 
 # sources
@@ -82,8 +62,8 @@ list(APPEND source_files
   "${source_path}/compute/parse_ids.cpp"
   "${source_path}/compute/reorder_buffer.cpp"
   "${source_path}/cpp_kernels/cpp_manager.cpp"
-  "${source_path}/cpp_kernels/virtual_screen.cpp"
   "${source_path}/cpp_kernels/cpp_worker.cpp"
+  "${source_path}/cpp_kernels/virtual_screen.cpp"
   "${source_path}/format/dot.cpp"
   "${source_path}/format/mol2.cpp"
   "${source_path}/format/rdkit_wrapper.cpp"
@@ -91,14 +71,6 @@ list(APPEND source_files
   "${source_path}/molecule/graph.cpp"
   "${source_path}/molecule/property_table.cpp"
   "${source_path}/log.cpp"
-
-  "${source_path}/controllers/cpp_thread_pool.cpp"
-
-  "${source_path}/devices/cpp/kernel.cpp"
-  "${source_path}/devices/cpp/context.cpp"
-  "${source_path}/devices/parser.cpp"
-  "${source_path}/devices/device_types.cpp"
-  "${source_path}/devices/kernel_types.cpp"
 )
 
 # ########################################################################

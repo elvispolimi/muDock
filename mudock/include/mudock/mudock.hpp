@@ -1,10 +1,9 @@
 #pragma once
 
+#include <mudock/batch.hpp>
 #include <mudock/chem.hpp>
 #include <mudock/compute.hpp>
-#include <mudock/controllers.hpp>
 #include <mudock/cpp_kernels.hpp>
-#include <mudock/devices.hpp>
 #include <mudock/format.hpp>
 #include <mudock/grid.hpp>
 #include <mudock/log.hpp>
