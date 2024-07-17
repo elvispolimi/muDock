@@ -90,6 +90,7 @@ list(APPEND source_files
   "${source_path}/molecule/fragments.cpp"
   "${source_path}/molecule/graph.cpp"
   "${source_path}/molecule/property_table.cpp"
+  "${source_path}/log.cpp"
 
   "${source_path}/controllers/cpp_thread_pool.cpp"
 
