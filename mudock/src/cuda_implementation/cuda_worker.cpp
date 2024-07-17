@@ -21,9 +21,7 @@ namespace mudock {
   void cuda_worker::process(batch& b) {
     try {
       virtual_screen(std::span(b.molecules.data(), b.num_ligands));
-    } catch (const std::runtime_error& e) {
-      std::cerr << std::string{"Unable to vs a batch of ligands due to "} + e.what() + std::string{"\n"};
-    }
+    } catch (const std::runtime_error& e) { error("Unable to vs a batch due to ", e.what()); }
 
     for (auto& batch_ligand: std::span(b.molecules.data(), b.num_ligands)) {
       output_stack->enqueue(std::move(batch_ligand));

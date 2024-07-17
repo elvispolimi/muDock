@@ -25,8 +25,10 @@ namespace mudock {
       try {
         output_stack->enqueue(std::move(new_ligand));
       } catch (const std::runtime_error& e) {
-        std::cerr << std::string{"Unable to vs molecule "} + new_ligand->properties.get(property_type::NAME) +
-                         std::string{" due to: "} + e.what() + std::string{"\n"};
+        error("Unable to vs molecule ",
+              new_ligand->properties.get(property_type::NAME),
+              " due to ",
+              e.what());
       }
       new_ligand = std::move(input_stack->dequeue());
     }
