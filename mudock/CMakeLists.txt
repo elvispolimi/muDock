@@ -79,6 +79,7 @@ if (MUDOCK_ENABLE_CUDA)
   list(APPEND header_files
     "${header_path}/${header_prefix}/cuda_kernels/cuda_check_error_macro.cuh"
     "${header_path}/${header_prefix}/cuda_kernels/cuda_object.cuh"
+    "${header_path}/${header_prefix}/cuda_kernels/cuda_wrapper.cuh"
   )
 endif()
 
