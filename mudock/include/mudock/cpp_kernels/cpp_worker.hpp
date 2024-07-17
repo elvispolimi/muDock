@@ -6,7 +6,7 @@
 
 namespace mudock {
 
-  class cpp_worker {
+  class cpp_worker: public worker_interface {
     // this a reference to the work pool
     safe_stack<static_molecule>& input_stack;
     safe_stack<static_molecule>& output_stack;
@@ -22,7 +22,7 @@ namespace mudock {
                const std::size_t cpu_id);
 
     // this is the thread "main" loop (it will fetch ligands from the queue and compute them)
-    void main();
+    void main() override final;
   };
 
 } // namespace mudock
