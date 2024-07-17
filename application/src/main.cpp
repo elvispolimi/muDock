@@ -35,13 +35,13 @@ int main(int argc, char* argv[]) {
 
   // parse the input ligands and put them in a stack that we can compute
   mudock::mol2 mol2;
-  auto input_queue = mudock::safe_stack<mudock::static_molecule>{};
+  auto input_queue = std::make_shared<mudock::safe_stack<mudock::static_molecule>>();
   for (const auto& description: ligands_description) {
     try {
       auto ligand = std::make_unique<mudock::static_molecule>();
       mol2.parse(*ligand, description);
       mudock::apply_autodock_forcefield(*ligand);
-      input_queue.enqueue(std::move(ligand));
+      input_queue->enqueue(std::move(ligand));
     } catch (const std::runtime_error& e) {
       std::cerr << "Unable to parse the following ligand: " << std::endl;
       std::cerr << description << std::endl;
@@ -50,7 +50,7 @@ int main(int argc, char* argv[]) {
   }
 
   // compute all the ligands using a single cpp worker
-  auto output_queue = mudock::safe_stack<mudock::static_molecule>{};
+  auto output_queue = std::make_shared<mudock::safe_stack<mudock::static_molecule>>();
   auto threadpool   = mudock::threadpool();
   threadpool.add_worker<mudock::cpp_worker>(protein_ptr, input_queue, output_queue, 0);
 
