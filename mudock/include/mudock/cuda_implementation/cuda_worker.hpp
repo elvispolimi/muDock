@@ -19,7 +19,7 @@ namespace mudock {
     virtual_screen_cuda virtual_screen;
 
     // utility function to process a single batch of ligands
-    void process(batch& b);
+    void process(batch b);
 
   public:
     // the constructor intialize the kernel and set the CPU affinity to the correct device
