@@ -79,7 +79,7 @@ message(STATUS "Build type..........................: ${CMAKE_BUILD_TYPE} (CMAKE
 message(STATUS "Install prefix......................: ${CMAKE_INSTALL_PREFIX} (CMAKE_INSTALL_PREFIX)")
 message(STATUS "Enable CUDA.........................: ${MUDOCK_ENABLE_CUDA} (MUDOCK_ENABLE_CUDA)")
 if (MUDOCK_ENABLE_CUDA)
-    message(STATUS "Target CUDA architecture............: ${CMAKE_CUDA_ARCHITECTURE} (CMAKE_CUDA_ARCHITECTURE)")
+    message(STATUS "Target CUDA architecture............: ${CMAKE_CUDA_ARCHITECTURES} (CMAKE_CUDA_ARCHITECTURES)")
 endif()
 message(STATUS "//===---------------------------===//" )
 message(STATUS "" )
