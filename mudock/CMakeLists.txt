@@ -93,6 +93,11 @@ set_target_properties(libmudock
 target_link_libraries(libmudock PUBLIC Microsoft.GSL::GSL)
 add_rdkit_dep(libmudock)
 
+# check if we need to activate the compilation flag that signals CUDA
+if (MUDOCK_ENABLE_CUDA)
+  target_compile_definitions(libmudock PUBLIC MUDOCK_USE_CUDA)
+endif()
+
 # ########################################################################
 # ### Declare the install step
 # ########################################################################
