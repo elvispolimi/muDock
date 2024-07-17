@@ -49,10 +49,10 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  // compute all the ligands using a single cpp worker
+  // compute all the ligands according to the input configuration
   auto output_queue = std::make_shared<mudock::safe_stack<mudock::static_molecule>>();
   auto threadpool   = mudock::threadpool();
-  threadpool.add_worker<mudock::cpp_worker>(protein_ptr, input_queue, output_queue, 0);
+  mudock::manage_cpp(args.device_conf, threadpool, protein_ptr, input_queue, output_queue);
 
   return EXIT_SUCCESS;
 }
