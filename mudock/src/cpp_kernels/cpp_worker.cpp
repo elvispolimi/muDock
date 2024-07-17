@@ -1,5 +1,8 @@
 #include <cstdlib>
+#include <iostream>
 #include <mudock/cpp_kernels/cpp_worker.hpp>
+#include <stdexcept>
+#include <string>
 
 namespace mudock {
   cpp_worker::cpp_worker(std::shared_ptr<dynamic_molecule>& protein,
@@ -17,7 +20,12 @@ namespace mudock {
     auto new_ligand = input_stack.dequeue();
     while (new_ligand) {
       virtual_screen(*new_ligand);
-      output_stack.enqueue(std::move(new_ligand));
+      try {
+        output_stack.enqueue(std::move(new_ligand));
+      } catch (const std::runtime_error& e) {
+        std::cerr << std::string{"Unable to vs molecule "} + new_ligand->properties.get(property_type::NAME) +
+                         std::string{" due to: "} + e.what() + std::string{"\n"};
+      }
       new_ligand = std::move(input_stack.dequeue());
     }
   }
