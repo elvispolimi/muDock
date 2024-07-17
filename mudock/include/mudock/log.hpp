@@ -31,7 +31,7 @@ namespace mudock {
 
       // start by printing the elapsed time
       stream << '[' << std::fixed << std::setprecision(2) << std::setw(12) << std::setfill(' ')
-             << timer::get() << "] ";
+             << timer::get() << " ] ";
       log_add_line(stream, args...);
 
       // print in output the line
