@@ -1,6 +1,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <mudock/cpp_kernels/cpp_worker.hpp>
+#include <mudock/log.hpp>
 #include <stdexcept>
 #include <string>
 
@@ -14,6 +15,7 @@ namespace mudock {
     CPU_ZERO(&cpuset);
     CPU_SET(cpu_id, &cpuset); // Set affinity to the target CPU
     pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
+    info("Worker CPP on duty! Set affinity to core ", cpu_id);
   }
 
   void cpp_worker::main() {
