@@ -26,18 +26,15 @@ namespace mudock {
     }
   }
 
-  void reorder_buffer::flush(std::vector<batch> input_batches) {
+  std::pair<batch&&, bool> reorder_buffer::flush_one() {
     std::lock_guard lock{mutex};
     for (auto& cluster: clusters) {
       const auto num_ligands = cluster.num_ligands;
       if (num_ligands > std::size_t{0}) {
-        auto& new_batch       = input_batches.emplace_back(batch{});
-        new_batch.num_ligands = num_ligands;
-        for (std::size_t i{0}; i < num_ligands; ++i) {
-          new_batch.molecules[i] = std::move(cluster.molecules[i]);
-        }
-        cluster.num_ligands = std::size_t{0};
+        cluster.num_ligands = 0;
+        return std::make_pair(std::move(cluster), true);
       }
     }
+    return std::make_pair(batch{}, false);
   }
 } // namespace mudock
