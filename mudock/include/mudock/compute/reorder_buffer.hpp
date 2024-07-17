@@ -56,11 +56,11 @@ namespace mudock {
     // add the molecule to a batch. If the batch is full, return it
     template<class container_type>
       requires is_container_specification<container_type>
-    std::pair<batch, bool> add_ligand(std::unique_ptr<molecule<container_type>> new_molecule) {
+    std::pair<batch&&, bool> add_ligand(std::unique_ptr<molecule<container_type>> new_molecule) {
       std::lock_guard lock{mutex};
       const auto cluster_index = get_flattened_index(new_molecule->num_atoms(), new_molecule->num_rotamers());
       auto& cluster            = clusters[cluster_index]; // take a ref (to update it)
-      cluster.molecule[cluster.num_ligands] = std::move(new_molecule);
+      cluster.molecules[cluster.num_ligands] = std::move(new_molecule);
       ++cluster.num_ligands;
       return cluster.num_ligands < max_sizes[cluster_index] ? std::make_pair(batch{}, false)
                                                             : std::make_pair(std::move(cluster), true);
