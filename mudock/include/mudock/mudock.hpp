@@ -7,6 +7,7 @@
 #include <mudock/devices.hpp>
 #include <mudock/format.hpp>
 #include <mudock/grid.hpp>
+#include <mudock/log.hpp>
 #include <mudock/molecule.hpp>
 #include <mudock/splitter.hpp>
 #include <mudock/type_alias.hpp>
