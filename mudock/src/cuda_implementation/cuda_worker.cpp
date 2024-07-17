@@ -1,8 +1,8 @@
 #include <cstdlib>
 #include <cuda_runtime.h>
 #include <iostream>
-#include <mudock/cuda_kernels/cuda_check_error_macro.cuh>
-#include <mudock/cuda_kernels/cuda_worker.hpp>
+#include <mudock/cuda_implementation/cuda_check_error_macro.cuh>
+#include <mudock/cuda_implementation/cuda_worker.hpp>
 #include <mudock/log.hpp>
 #include <stdexcept>
 #include <string>

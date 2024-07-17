@@ -1,6 +1,6 @@
 #include <mudock/compute.hpp>
-#include <mudock/cpp_kernels/cpp_manager.hpp>
-#include <mudock/cpp_kernels/cpp_worker.hpp>
+#include <mudock/cpp_implementation/cpp_manager.hpp>
+#include <mudock/cpp_implementation/cpp_worker.hpp>
 #include <stdexcept>
 
 namespace mudock {

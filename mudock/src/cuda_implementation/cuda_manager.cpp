@@ -1,7 +1,7 @@
 #include <mudock/compute.hpp>
-#include <mudock/cuda_kernels/cuda_batch_sizer.cuh>
-#include <mudock/cuda_kernels/cuda_manager.hpp>
-#include <mudock/cuda_kernels/cuda_worker.hpp>
+#include <mudock/cuda_implementation/cuda_batch_sizer.cuh>
+#include <mudock/cuda_implementation/cuda_manager.hpp>
+#include <mudock/cuda_implementation/cuda_worker.hpp>
 #include <stdexcept>
 
 namespace mudock {

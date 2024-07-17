@@ -1,4 +1,4 @@
-#include <mudock/cpp_kernels/virtual_screen.hpp>
+#include <mudock/cpp_implementation/virtual_screen.hpp>
 
 namespace mudock {
 
