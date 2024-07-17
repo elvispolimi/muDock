@@ -67,7 +67,7 @@ int main(int argc, char* argv[]) {
               << ligand->properties.get(mudock::property_type::SCORE) << std::endl;
   }
 
-  // if ewch this statement we completed successfully the run
+  // if we reach this statement we completed successfully the run
   mudock::info("All Done!");
   return EXIT_SUCCESS;
 }
