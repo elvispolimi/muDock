@@ -30,7 +30,7 @@ namespace mudock {
       // print in output the line
       // NOTE: since it's a single line, the log should be thread safe
       // NOTE2: we the stderr since stdout is for results
-      std::cerr << stream.str();
+      std::cerr << stream.str() << std::flush;
     }
   } // namespace log_details
 
