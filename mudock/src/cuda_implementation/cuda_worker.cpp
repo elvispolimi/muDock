@@ -25,7 +25,9 @@ namespace mudock {
       std::cerr << std::string{"Unable to vs a batch of ligands due to "} + e.what() + std::string{"\n"};
     }
 
-    for (auto& batch_ligand: b.molecules) { output_stack->enqueue(std::move(batch_ligand)); }
+    for (auto& batch_ligand: std::span(b.molecules.data(), b.num_ligands)) {
+      output_stack->enqueue(std::move(batch_ligand));
+    }
   }
 
   void cuda_worker::main() {
