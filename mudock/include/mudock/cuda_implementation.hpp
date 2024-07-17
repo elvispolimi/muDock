@@ -1,6 +1,6 @@
 #pragma once
 
-#ifdef MUDOCK_ENABLE_CUDA
+#ifdef MUDOCK_USE_CUDA
   #include <mudock/cuda_implementation/cuda_batch_sizer.cuh>
   #include <mudock/cuda_implementation/cuda_check_error_macro.cuh>
   #include <mudock/cuda_implementation/cuda_manager.hpp>
