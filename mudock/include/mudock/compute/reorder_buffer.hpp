@@ -66,8 +66,8 @@ namespace mudock {
                                                             : std::make_pair(std::move(cluster), true);
     }
 
-    // get all the half-empty butches inside this buffer
-    void flush(std::vector<batch> input_batches);
+    // get the first half-empty butches inside this buffer
+    std::pair<batch&&, bool> flush_one();
   };
 
 } // namespace mudock
