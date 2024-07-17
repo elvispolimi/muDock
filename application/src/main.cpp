@@ -51,8 +51,17 @@ int main(int argc, char* argv[]) {
 
   // compute all the ligands according to the input configuration
   auto output_queue = std::make_shared<mudock::safe_stack<mudock::static_molecule>>();
-  auto threadpool   = mudock::threadpool();
-  mudock::manage_cpp(args.device_conf, threadpool, protein_ptr, input_queue, output_queue);
+  {
+    auto threadpool = mudock::threadpool();
+    mudock::manage_cpp(args.device_conf, threadpool, protein_ptr, input_queue, output_queue);
+  } // when we exit from this block the computation is complete
 
+  // after the computation it will be nice to print the score of all the molecules
+  for (auto ligand = output_queue->dequeue(); ligand; ligand = output_queue->dequeue()) {
+    std::cout << ligand->properties.get(mudock::property_type::NAME) << " "
+              << ligand->properties.get(mudock::property_type::SCORE) << std::endl;
+  }
+
+  // if ewch this statement we completed successfully the run
   return EXIT_SUCCESS;
 }
