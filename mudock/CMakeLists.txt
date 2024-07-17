@@ -79,6 +79,7 @@ if (MUDOCK_ENABLE_CUDA)
   list(APPEND header_files
     "${header_path}/${header_prefix}/cuda_kernels/cuda_batch_sizer.cuh"
     "${header_path}/${header_prefix}/cuda_kernels/cuda_check_error_macro.cuh"
+    "${header_path}/${header_prefix}/cuda_kernels/cuda_manager.hpp"
     "${header_path}/${header_prefix}/cuda_kernels/cuda_object.cuh"
     "${header_path}/${header_prefix}/cuda_kernels/cuda_worker.hpp"
     "${header_path}/${header_prefix}/cuda_kernels/cuda_wrapper.cuh"
@@ -86,6 +87,7 @@ if (MUDOCK_ENABLE_CUDA)
   )
   list(APPEND source_files
     "${source_path}/cuda_kernels/cuda_batch_sizer.cu"
+    "${source_path}/cuda_kernels/cuda_manager.cpp"
     "${source_path}/cuda_kernels/cuda_worker.cpp"
     "${source_path}/cuda_kernels/virtual_screen.cu"
   )
