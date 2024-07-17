@@ -8,7 +8,7 @@
 namespace mudock {
 
   namespace log_details {
-    void log_add_line(std::ostringstream& s) { s << std::endl; }
+    inline void log_add_line(std::ostringstream& s) { s << std::endl; }
     template<class T, class... Ts>
     void log_add_line(std::ostringstream& s, T&& what, Ts&&... remainder) {
       s << what;
