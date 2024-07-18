@@ -3,6 +3,15 @@ project(muDock VERSION 1.0)
 enable_language(CXX)
 
 #########################################################################
+#### Define the compile options
+#########################################################################
+
+option(MUDOCK_ENABLE_CUDA "Enable the CUDA kernel implementation" OFF)
+if (MUDOCK_ENABLE_CUDA)
+    enable_language(CUDA)
+endif()
+
+#########################################################################
 #### Tweak the default configuration
 #########################################################################
 
@@ -21,7 +30,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 #########################################################################
 
 # Third-party libraries that must be manually installed
-find_package(Boost REQUIRED COMPONENTS program_options graph)
+find_package(Boost CONFIG REQUIRED COMPONENTS program_options graph)
 find_package(rdkit REQUIRED)
 
 # Third-party libraries that we download and compile
@@ -49,7 +58,6 @@ endif()
 # add all the previously defined flags to each target language
 foreach(flag IN LISTS global_c_cxx_flags)
     add_compile_options($<$<COMPILE_LANGUAGE:CXX>:${flag}>)
-    add_compile_options($<$<COMPILE_LANGUAGE:C>:${flag}>)
 endforeach()
 
 #########################################################################
@@ -69,5 +77,9 @@ message(STATUS "//       CONFIGURATION RECAP       //" )
 message(STATUS "//===---------------------------===//" )
 message(STATUS "Build type..........................: ${CMAKE_BUILD_TYPE} (CMAKE_BUILD_TYPE)")
 message(STATUS "Install prefix......................: ${CMAKE_INSTALL_PREFIX} (CMAKE_INSTALL_PREFIX)")
+message(STATUS "Enable CUDA.........................: ${MUDOCK_ENABLE_CUDA} (MUDOCK_ENABLE_CUDA)")
+if (MUDOCK_ENABLE_CUDA)
+    message(STATUS "Target CUDA architecture............: ${CMAKE_CUDA_ARCHITECTURES} (CMAKE_CUDA_ARCHITECTURES)")
+endif()
 message(STATUS "//===---------------------------===//" )
 message(STATUS "" )

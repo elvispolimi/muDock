@@ -234,8 +234,8 @@ namespace mudock {
     return autodock_babel_ff::N;
   }
 
-  static auto handleO(const molecule_graph_type& graph, const molecule_graph_type::vertex_descriptor v)
-      -> autodock_babel_ff {
+  static auto handleO(const molecule_graph_type& graph,
+                      const molecule_graph_type::vertex_descriptor v) -> autodock_babel_ff {
     const auto num_neighbors = boost::out_degree(v, graph);
     if (num_neighbors == 2) {
       return autodock_babel_ff::O3;
