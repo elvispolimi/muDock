@@ -54,6 +54,8 @@ namespace mudock {
 
       // add the workers that we found parsing the configuration
       for (const auto id: gpu_ids) {
+        // we spawn two workers for each GPU to implement the double buffer
+        pool.add_worker<mudock::cuda_worker>(protein, input_molecules, output_molecules, rob, id);
         pool.add_worker<mudock::cuda_worker>(protein, input_molecules, output_molecules, rob, id);
       }
     }
