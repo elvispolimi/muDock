@@ -20,7 +20,7 @@ int main(int argc, char* argv[]) {
   const auto args = parse_command_line_arguments(argc, argv);
 
   // read and parse the target protein
-  mudock::info("Reading protein ", args.protein_path, " ...");
+  mudock::info("Reading and parsing protein ", args.protein_path, " ...");
   auto protein_ptr               = std::make_shared<mudock::dynamic_molecule>();
   auto& protein                  = *protein_ptr;
   auto pdb                       = mudock::pdb{};
@@ -59,7 +59,7 @@ int main(int argc, char* argv[]) {
     auto threadpool = mudock::threadpool();
     mudock::manage_cpp(args.device_conf, threadpool, protein_ptr, input_queue, output_queue);
     mudock::manage_cuda(args.device_conf, threadpool, protein_ptr, input_queue, output_queue);
-    mudock::info("All workers are been created!");
+    mudock::info("All workers have been created!");
   } // when we exit from this block the computation is complete
 
   // after the computation it will be nice to print the score of all the molecules
