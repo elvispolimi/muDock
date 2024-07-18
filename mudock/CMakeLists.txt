@@ -13,6 +13,14 @@ list(APPEND header_files
   "${header_path}/${header_prefix}/chem/autodock_types.hpp"
   "${header_path}/${header_prefix}/chem/bond_types.hpp"
   "${header_path}/${header_prefix}/chem/elements.hpp"
+  "${header_path}/${header_prefix}/compute/device_names.hpp"
+  "${header_path}/${header_prefix}/compute/parse_ids.hpp"
+  "${header_path}/${header_prefix}/compute/reorder_buffer.hpp"
+  "${header_path}/${header_prefix}/compute/safe_stack.hpp"
+  "${header_path}/${header_prefix}/compute/threadpool.hpp"
+  "${header_path}/${header_prefix}/cpp_implementation/cpp_manager.hpp"
+  "${header_path}/${header_prefix}/cpp_implementation/cpp_worker.hpp"
+  "${header_path}/${header_prefix}/cpp_implementation/virtual_screen.hpp"
   "${header_path}/${header_prefix}/format/concept.hpp"
   "${header_path}/${header_prefix}/format/dot.hpp"
   "${header_path}/${header_prefix}/format/mol2.hpp"
@@ -28,34 +36,19 @@ list(APPEND header_files
   "${header_path}/${header_prefix}/molecule/graph.hpp"
   "${header_path}/${header_prefix}/molecule/properties.hpp"
   "${header_path}/${header_prefix}/molecule/property_table.hpp"
+  "${header_path}/${header_prefix}/batch.hpp"
   "${header_path}/${header_prefix}/chem.hpp"
+  "${header_path}/${header_prefix}/compute.hpp"
+  "${header_path}/${header_prefix}/cpp_implementation.hpp"
+  "${header_path}/${header_prefix}/cuda_implementation.hpp"
   "${header_path}/${header_prefix}/format.hpp"
   "${header_path}/${header_prefix}/grid.hpp"
+  "${header_path}/${header_prefix}/log.hpp"
   "${header_path}/${header_prefix}/molecule.hpp"
   "${header_path}/${header_prefix}/mudock.hpp"
   "${header_path}/${header_prefix}/splitter.hpp"
   "${header_path}/${header_prefix}/type_alias.hpp"
-
-  "${header_path}/${header_prefix}/controllers.hpp"
-  "${header_path}/${header_prefix}/devices.hpp"
   "${header_path}/${header_prefix}/utils.hpp"
-
-  "${header_path}/${header_prefix}/controllers/cpp_thread_pool.hpp"
-  "${header_path}/${header_prefix}/controllers/squeue.hpp"
-  "${header_path}/${header_prefix}/controllers/thread_pool.hpp"
-  "${header_path}/${header_prefix}/controllers/worker.hpp"
-
-  "${header_path}/${header_prefix}/devices/cpp/context.hpp"
-  "${header_path}/${header_prefix}/devices/cpp/kernel.hpp"
-  "${header_path}/${header_prefix}/devices/cpp/scratch.hpp"
-
-  "${header_path}/${header_prefix}/devices/buffer.hpp"
-  "${header_path}/${header_prefix}/devices/context.hpp"
-  "${header_path}/${header_prefix}/devices/kernel.hpp"
-  "${header_path}/${header_prefix}/devices/parser.hpp"
-  "${header_path}/${header_prefix}/devices/device_types.hpp"
-  "${header_path}/${header_prefix}/devices/kernel_types.hpp"
-  "${header_path}/${header_prefix}/devices/scratch.hpp"
 )
 
 # sources
@@ -67,21 +60,38 @@ list(APPEND source_files
   "${source_path}/chem/autodock_types.cpp"
   "${source_path}/chem/bond_types.cpp"
   "${source_path}/chem/elements.cpp"
+  "${source_path}/compute/parse_ids.cpp"
+  "${source_path}/compute/reorder_buffer.cpp"
+  "${source_path}/cpp_implementation/cpp_manager.cpp"
+  "${source_path}/cpp_implementation/cpp_worker.cpp"
+  "${source_path}/cpp_implementation/virtual_screen.cpp"
   "${source_path}/format/dot.cpp"
   "${source_path}/format/mol2.cpp"
   "${source_path}/format/rdkit_wrapper.cpp"
   "${source_path}/molecule/fragments.cpp"
   "${source_path}/molecule/graph.cpp"
   "${source_path}/molecule/property_table.cpp"
-
-  "${source_path}/controllers/cpp_thread_pool.cpp"
-
-  "${source_path}/devices/cpp/kernel.cpp"
-  "${source_path}/devices/cpp/context.cpp"
-  "${source_path}/devices/parser.cpp"
-  "${source_path}/devices/device_types.cpp"
-  "${source_path}/devices/kernel_types.cpp"
+  "${source_path}/log.cpp"
 )
+
+# declare the CUDA sources
+if (MUDOCK_ENABLE_CUDA)
+  list(APPEND header_files
+    "${header_path}/${header_prefix}/cuda_implementation/cuda_batch_sizer.cuh"
+    "${header_path}/${header_prefix}/cuda_implementation/cuda_check_error_macro.cuh"
+    "${header_path}/${header_prefix}/cuda_implementation/cuda_manager.hpp"
+    "${header_path}/${header_prefix}/cuda_implementation/cuda_object.cuh"
+    "${header_path}/${header_prefix}/cuda_implementation/cuda_worker.hpp"
+    "${header_path}/${header_prefix}/cuda_implementation/cuda_wrapper.cuh"
+    "${header_path}/${header_prefix}/cuda_implementation/virtual_screen.cuh"
+  )
+  list(APPEND source_files
+    "${source_path}/cuda_implementation/cuda_batch_sizer.cu"
+    "${source_path}/cuda_implementation/cuda_manager.cpp"
+    "${source_path}/cuda_implementation/cuda_worker.cpp"
+    "${source_path}/cuda_implementation/virtual_screen.cu"
+  )
+endif()
 
 # ########################################################################
 # ### Declare the compile step
@@ -102,6 +112,12 @@ set_target_properties(libmudock
 )
 target_link_libraries(libmudock PUBLIC Microsoft.GSL::GSL)
 add_rdkit_dep(libmudock)
+
+# check if we need to activate the compilation flag that signals CUDA
+if (MUDOCK_ENABLE_CUDA)
+  target_compile_definitions(libmudock PUBLIC MUDOCK_USE_CUDA)
+endif()
+
 
 # ########################################################################
 # ### Declare the install step

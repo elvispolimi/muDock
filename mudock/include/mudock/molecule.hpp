@@ -53,6 +53,11 @@ namespace mudock {
     void remove_atom(const std::size_t index);
     [[nodiscard]] constexpr auto num_atoms() const { return atoms_size; }
     [[nodiscard]] constexpr auto num_bonds() const { return bonds_size; }
+    constexpr auto num_rotamers() const {
+      return std::count_if(std::begin(bond_descriptions), std::end(bond_descriptions), [](const bond& b) {
+        return b.can_rotate;
+      });
+    }
 
     // a container that we can use to store key-value properties, e.g. its name
     property_map properties;

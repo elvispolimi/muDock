@@ -20,52 +20,56 @@ int main(int argc, char* argv[]) {
   const auto args = parse_command_line_arguments(argc, argv);
 
   // read and parse the target protein
-  auto protein                   = mudock::dynamic_molecule{};
+  mudock::info("Reading and parsing protein ", args.protein_path, " ...");
+  auto protein_ptr               = std::make_shared<mudock::dynamic_molecule>();
+  auto& protein                  = *protein_ptr;
   auto pdb                       = mudock::pdb{};
   const auto protein_description = read_from_stream(std::ifstream(args.protein_path));
   pdb.parse(protein, protein_description);
   mudock::apply_autodock_forcefield(protein);
 
   // read  all the ligands description from the standard input and split them
+  mudock::info("Reading ligands from the stdin ...");
   auto input_text = read_from_stream(std::cin);
   mudock::splitter<mudock::mol2> split;
   auto ligands_description = split(std::move(input_text));
   ligands_description.emplace_back(split.flush());
 
-  // parse the description to populate the actual data structures
+  // parse the input ligands and put them in a stack that we can compute
+  mudock::info("Parsing ", ligands_description.size(), " ligand(s) ...");
   mudock::mol2 mol2;
-  auto i_queue = std::make_shared<mudock::squeue<mudock::static_molecule>>();
-  for (std::size_t i{0}; i < ligands_description.size(); ++i) {
+  auto input_queue = std::make_shared<mudock::safe_stack<mudock::static_molecule>>();
+  for (const auto& description: ligands_description) {
     try {
-      std::unique_ptr<mudock::static_molecule> ligand = std::make_unique<mudock::static_molecule>();
-      mol2.parse(*(ligand.get()), ligands_description[i]);
-      mudock::apply_autodock_forcefield(*ligand.get());
-
-      i_queue->enqueue(std::move(ligand));
+      auto ligand = std::make_unique<mudock::static_molecule>();
+      mol2.parse(*ligand, description);
+      mudock::apply_autodock_forcefield(*ligand);
+      input_queue->enqueue(std::move(ligand));
     } catch (const std::runtime_error& e) {
-      std::cerr << "Unable to parse the ligand with index " << i << ", due to: " << e.what() << std::endl;
+      std::cerr << "Unable to parse the following ligand: " << std::endl;
+      std::cerr << description << std::endl;
+      std::cerr << "Due to: " << e.what() << std::endl;
     }
   }
 
-  const mudock::device_conf d_c = mudock::parse_conf(args.device_conf);
-  auto o_queue                  = std::make_shared<mudock::squeue<mudock::static_molecule>>();
+  // compute all the ligands according to the input configuration
+  mudock::info("Virtual screening the ligands ...");
+  auto output_queue = std::make_shared<mudock::safe_stack<mudock::static_molecule>>();
+  {
+    auto threadpool = mudock::threadpool();
+    mudock::manage_cpp(args.device_conf, threadpool, protein_ptr, input_queue, output_queue);
+    mudock::manage_cuda(args.device_conf, threadpool, protein_ptr, input_queue, output_queue);
+    mudock::info("All workers have been created!");
+  } // when we exit from this block the computation is complete
 
-  constexpr_for<static_cast<int>(mudock::kernel_type::CPP), static_cast<int>(mudock::kernel_type::NONE), 1>(
-      [&](auto index) {
-        constexpr mudock::kernel_type sel_l = static_cast<mudock::kernel_type>(index.value);
-        if (sel_l == d_c.l_t) {
-          // NOTE: The destructor will handle the termination
-          mudock::thread_pool<sel_l> t_pool{i_queue, o_queue, d_c};
-        }
-      });
-
-  std::unique_ptr<mudock::static_molecule> mol = o_queue->dequeue();
-  while (mol.get() != nullptr) {
-    const auto name  = mol->properties.get(mudock::property_type::NAME);
-    const auto score = mol->properties.get(mudock::property_type::SCORE);
-    std::cout << "Read ligand " << name << " with score " << score << std::endl;
-    mol = o_queue->dequeue();
+  // after the computation it will be nice to print the score of all the molecules
+  mudock::info("Printing the scores ...");
+  for (auto ligand = output_queue->dequeue(); ligand; ligand = output_queue->dequeue()) {
+    std::cout << ligand->properties.get(mudock::property_type::NAME) << " "
+              << ligand->properties.get(mudock::property_type::SCORE) << std::endl;
   }
 
+  // if we reach this statement we completed successfully the run
+  mudock::info("All Done!");
   return EXIT_SUCCESS;
 }
