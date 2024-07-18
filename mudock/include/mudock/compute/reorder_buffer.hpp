@@ -56,7 +56,7 @@ namespace mudock {
     // add the molecule to a batch. If the batch is full, return it
     template<class container_type>
       requires is_container_specification<container_type>
-    std::pair<batch&&, bool> add_ligand(std::unique_ptr<molecule<container_type>> new_molecule) {
+    std::pair<batch, bool> add_ligand(std::unique_ptr<molecule<container_type>> new_molecule) {
       std::lock_guard lock{mutex};
       const auto cluster_index = get_flattened_index(new_molecule->num_atoms(), new_molecule->num_rotamers());
       auto& cluster            = clusters[cluster_index]; // take a ref (to update it)
@@ -67,7 +67,7 @@ namespace mudock {
     }
 
     // get the first half-empty butches inside this buffer
-    std::pair<batch&&, bool> flush_one();
+    std::pair<batch, bool> flush_one();
   };
 
 } // namespace mudock

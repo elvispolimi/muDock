@@ -26,7 +26,7 @@ namespace mudock {
     }
   }
 
-  std::pair<batch&&, bool> reorder_buffer::flush_one() {
+  std::pair<batch, bool> reorder_buffer::flush_one() {
     std::lock_guard lock{mutex};
     for (auto& cluster: clusters) {
       const auto num_ligands = cluster.num_ligands;
