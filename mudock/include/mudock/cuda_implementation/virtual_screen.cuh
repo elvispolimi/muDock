@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <mudock/batch.hpp>
 #include <mudock/cuda_implementation/cuda_object.cuh>
 #include <mudock/cuda_implementation/cuda_wrapper.cuh>
 #include <mudock/molecule.hpp>
@@ -19,6 +20,6 @@ namespace mudock {
   public:
     virtual_screen_cuda(std::shared_ptr<dynamic_molecule>& protein);
 
-    void operator()(std::span<std::unique_ptr<static_molecule>> ligands);
+    void operator()(batch& incoming_batch);
   };
 } // namespace mudock
