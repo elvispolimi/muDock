@@ -18,7 +18,7 @@ namespace mudock {
     info("Worker CUDA on duty! Set affinity to GPU ", gpu_id);
   }
 
-  void cuda_worker::process(batch b) {
+  void cuda_worker::process(batch& b) {
     try {
       virtual_screen(b);
     } catch (const std::runtime_error& e) { error("Unable to virtual screen a batch due to ", e.what()); }
@@ -34,7 +34,7 @@ namespace mudock {
     while (new_ligand) {
       auto [new_batch, is_valid] = rob->add_ligand(std::move(new_ligand));
       if (is_valid) {
-        process(std::move(new_batch));
+        process(new_batch);
         new_ligand = std::move(input_stack->dequeue());
       }
     }
@@ -44,7 +44,7 @@ namespace mudock {
     while (!rob_is_empty) {
       auto [half_batch, is_valid] = rob->flush_one();
       if (is_valid) {
-        process(std::move(half_batch));
+        process(half_batch);
       } else {
         rob_is_empty = true;
       }
