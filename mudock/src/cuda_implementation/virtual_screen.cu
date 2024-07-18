@@ -6,8 +6,8 @@ namespace mudock {
     // NOTE: at the moment we don't care about the protein
   }
 
-  void virtual_screen_cuda::operator()(std::span<std::unique_ptr<static_molecule>> ligands) {
-    for (auto& ligand: ligands) {
+  void virtual_screen_cuda::operator()(batch& incoming_batch) {
+    for (auto& ligand: incoming_batch.molecules) {
       ligand->properties.assign(property_type::SCORE, std::to_string(dist(generator)));
     }
   }
