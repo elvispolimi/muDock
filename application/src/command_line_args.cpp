@@ -42,7 +42,7 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
               << "  IDS            -> GROUP[,GROUP]*" << std::endl
               << "  GROUP          -> <device_id>|<device_id>-<device_id>" << std::endl
               << "The <device_id> number is directly related to the device id, while the option" << std::endl
-              << "<device_id>-<device:id> can be used to specify a range" << std::endl;
+              << "<device_id>-<device_id> can be used to specify a range" << std::endl;
     exit(EXIT_SUCCESS);
   }
 
