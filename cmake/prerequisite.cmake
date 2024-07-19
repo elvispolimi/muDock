@@ -28,6 +28,7 @@ function(add_rdkit_dep target)
         RDKitRDGeneral
         RDKitSmilesParse
         RDKitSubstructMatch
+        RDKitPartialCharges
     )
     message(STATUS "Found RDKit prefix: ${RDKIT_INSTALL_PREFIX}")
 endfunction(add_rdkit_dep)
