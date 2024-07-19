@@ -1,5 +1,6 @@
 #pragma once
 
+#include <GraphMol/PartialCharges/GasteigerCharges.h>
 #include <GraphMol/RWMol.h>
 #include <GraphMol/SmilesParse/SmilesParse.h>
 #include <GraphMol/Substruct/SubstructMatch.h>
@@ -54,6 +55,9 @@ namespace mudock {
     }
     dest.resize(source->getNumAtoms(), source->getNumBonds(true));
 
+    // compute the Marsilli-Gasteiger partial charges for the molecule
+    computeGasteigerCharges(*source);
+
     // fill the atom information (we assume a single conformation)
     // NOTE: we need to store the mapping between our atom index and the rdkit one
     std::unordered_map<unsigned int, std::size_t> index_translator;
@@ -72,6 +76,8 @@ namespace mudock {
       dest.x(mudock_atom_index)           = static_cast<fp_type>(x);
       dest.y(mudock_atom_index)           = static_cast<fp_type>(y);
       dest.z(mudock_atom_index)           = static_cast<fp_type>(z);
+      dest.charge(mudock_atom_index)      = fp_type{0};
+      atom->getProp("_GasteigerCharge", dest.charge(mudock_atom_index));
       index_translator.emplace(atom_id, mudock_atom_index);
       mudock_atom_index += std::size_t{1};
     }
