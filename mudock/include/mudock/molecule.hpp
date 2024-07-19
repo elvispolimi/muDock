@@ -40,6 +40,7 @@ namespace mudock {
     atoms_array_type<fp_type> atom_epsii;
     atoms_array_type<fp_type> atom_Rij_hb;
     atoms_array_type<fp_type> atom_epsij_hb;
+    atoms_array_type<fp_type> atom_charge;
     atoms_array_type<std::size_t> atom_num_hbond;
     std::size_t atoms_size = std::size_t{0};
 
@@ -82,6 +83,7 @@ namespace mudock {
     [[nodiscard]] inline auto get_epsii() { return make_span(atom_epsii, atoms_size); }
     [[nodiscard]] inline auto get_Rij_hb() { return make_span(atom_Rij_hb, atoms_size); }
     [[nodiscard]] inline auto get_epsij_hb() { return make_span(atom_epsij_hb, atoms_size); }
+    [[nodiscard]] inline auto get_charge() { return make_span(atom_charge, atoms_size); }
     [[nodiscard]] inline auto get_num_hbond() { return make_span(atom_num_hbond, atoms_size); }
 
     // utility functions to get the span of the whole molecule (read only)
@@ -96,6 +98,7 @@ namespace mudock {
     [[nodiscard]] inline auto get_epsii() const { return make_span(atom_epsii, atoms_size); }
     [[nodiscard]] inline auto get_Rij_hb() const { return make_span(atom_Rij_hb, atoms_size); }
     [[nodiscard]] inline auto get_epsij_hb() const { return make_span(atom_epsij_hb, atoms_size); }
+    [[nodiscard]] inline auto get_charge() const { return make_span(atom_charge, atoms_size); }
     [[nodiscard]] inline auto get_num_hbond() const { return make_span(atom_num_hbond, atoms_size); }
 
     // utility functions to get the ref to an atom element (read + write)
@@ -110,6 +113,7 @@ namespace mudock {
     [[nodiscard]] inline auto& epsii(const std::size_t index) { return atom_epsii[index]; }
     [[nodiscard]] inline auto& Rij_hb(const std::size_t index) { return atom_Rij_hb[index]; }
     [[nodiscard]] inline auto& epsij_hb(const std::size_t index) { return atom_epsij_hb[index]; }
+    [[nodiscard]] inline auto& charge(const std::size_t index) { return atom_charge[index]; }
     [[nodiscard]] inline auto& num_hbond(const std::size_t index) { return atom_num_hbond[index]; }
 
     // utility functions to get the span of the whole molecule (read only)
@@ -126,6 +130,7 @@ namespace mudock {
     [[nodiscard]] inline const auto& epsii(const std::size_t index) const { return atom_epsii[index]; }
     [[nodiscard]] inline const auto& Rij_hb(const std::size_t index) const { return atom_Rij_hb[index]; }
     [[nodiscard]] inline const auto& epsij_hb(const std::size_t index) const { return atom_epsij_hb[index]; }
+    [[nodiscard]] inline auto& charge(const std::size_t index) const { return atom_charge[index]; }
     [[nodiscard]] inline const auto& num_hbond(const std::size_t index) const {
       return atom_num_hbond[index];
     }
@@ -162,6 +167,7 @@ namespace mudock {
     mudock::resize(atom_epsii, n_atoms);
     mudock::resize(atom_Rij_hb, n_atoms);
     mudock::resize(atom_epsij_hb, n_atoms);
+    mudock::resize(atom_charge, n_atoms);
     mudock::resize(atom_num_hbond, n_atoms);
     mudock::resize(bond_descriptions, n_bonds);
     atoms_size = n_atoms;
@@ -182,8 +188,8 @@ namespace mudock {
     mudock::remove_atom(atom_epsii, index);
     mudock::remove_atom(atom_Rij_hb, index);
     mudock::remove_atom(atom_epsij_hb, index);
+    mudock::remove_atom(atom_charge, index);
     mudock::remove_atom(atom_num_hbond, index);
-    mudock::remove_atom(bond_descriptions, index);
     atoms_size--;
 
     // now we need to update the bonds as well
@@ -204,7 +210,7 @@ namespace mudock {
       }
     }
     const auto new_bond_size = std::size_t{end_loop - std::begin(bond_descriptions)};
-    resize(bond_descriptions, new_bond_size);
+    mudock::resize(bond_descriptions, new_bond_size);
     bonds_size = new_bond_size;
   }
 
