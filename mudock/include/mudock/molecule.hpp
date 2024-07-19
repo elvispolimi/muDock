@@ -183,7 +183,6 @@ namespace mudock {
     mudock::remove_atom(atom_Rij_hb, index);
     mudock::remove_atom(atom_epsij_hb, index);
     mudock::remove_atom(atom_num_hbond, index);
-    mudock::remove_atom(bond_descriptions, index);
     atoms_size--;
 
     // now we need to update the bonds as well
@@ -204,7 +203,7 @@ namespace mudock {
       }
     }
     const auto new_bond_size = std::size_t{end_loop - std::begin(bond_descriptions)};
-    resize(bond_descriptions, new_bond_size);
+    mudock::resize(bond_descriptions, new_bond_size);
     bonds_size = new_bond_size;
   }
 
