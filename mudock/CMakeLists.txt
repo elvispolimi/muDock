@@ -11,6 +11,7 @@ list(APPEND header_files
   "${header_path}/${header_prefix}/chem/assign_autodock_types.hpp"
   "${header_path}/${header_prefix}/chem/autodock_babel_types.hpp"
   "${header_path}/${header_prefix}/chem/autodock_types.hpp"
+  "${header_path}/${header_prefix}/chem/autodock_parameters.hpp"
   "${header_path}/${header_prefix}/chem/bond_types.hpp"
   "${header_path}/${header_prefix}/chem/elements.hpp"
   "${header_path}/${header_prefix}/compute/device_names.hpp"
