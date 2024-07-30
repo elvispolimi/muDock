@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cmath>
 #include <mudock/grid/pi.hpp>
 #include <mudock/type_alias.hpp>
 #include <type_traits>
@@ -39,6 +40,11 @@ namespace mudock {
   }
 
   template<class point_type>
+  constexpr std::remove_reference_t<point_type> scale(point_type&& a, const fp_type value) {
+    return {a.x * value, a.y * value, a.z * value};
+  }
+
+  template<class point_type>
   constexpr std::remove_reference_t<point_type> square(point_type&& point) {
     return {point.x * point.x, point.y * point.y, point.z * point.z};
   }
@@ -49,13 +55,29 @@ namespace mudock {
   }
 
   template<class point_type>
+  constexpr fp_type diff_components(point_type&& point) {
+    return point.x - point.y - point.z;
+  }
+
+  template<class point_type>
   constexpr fp_type distance2(point_type&& a, point_type&& b) {
     return sum_components(square(difference(std::forward<point_type>(a), std::forward<point_type>(b))));
   }
 
   template<class point_type>
-  constexpr fp_type innert_product(point_type&& a, point_type&& b) {
+  constexpr fp_type distance(point_type&& a, point_type&& b) {
+    return sqrtf(
+        sum_components(square(difference(std::forward<point_type>(a), std::forward<point_type>(b)))));
+  }
+
+  template<class point_type>
+  constexpr fp_type inner_product(point_type&& a, point_type&& b) {
     return a.x * b.x + a.y * b.y + a.z * b.z;
+  }
+
+  template<class point_type>
+  constexpr std::remove_reference_t<point_type> product(point_type&& a, point_type&& b) {
+    return {a.x * b.x, a.y * b.y, a.z * b.z};
   }
 
   // this function consider the given point as the end of a vector that starts in the origin
@@ -68,7 +90,7 @@ namespace mudock {
   constexpr fp_type angle(point_type&& origin, point_type&& a, point_type&& b) {
     auto v1 = difference(std::forward<point_type>(a), std::forward<point_type>(origin));
     auto v2 = difference(std::forward<point_type>(b), std::forward<point_type>(origin));
-    return std::acos(innert_product(v1, v2) / (magnitude(v1) * magnitude(v2)));
+    return std::acos(inner_product(v1, v2) / (magnitude(v1) * magnitude(v2)));
   }
 
 } // namespace mudock

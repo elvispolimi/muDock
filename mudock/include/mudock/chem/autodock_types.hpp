@@ -153,7 +153,9 @@ namespace mudock {
   struct autodock_ff_description {
     autodock_ff value;
     std::string_view name;
+    // Autodock use this as Rij
     fp_type Rii       = 0;
+    // Autodock use this as epsij
     fp_type epsii     = 0;
     fp_type vol       = 0;
     fp_type solpar    = 0;

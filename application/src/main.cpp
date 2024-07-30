@@ -27,6 +27,9 @@ int main(int argc, char* argv[]) {
   const auto protein_description = read_from_stream(std::ifstream(args.protein_path));
   pdb.parse(protein, protein_description);
   mudock::apply_autodock_forcefield(protein);
+  auto grid_atom_maps     = generate_atom_grid_maps(protein);
+  auto electrostatic_maps = generate_electrostatic_grid_map(protein);
+  auto desolvation_maps   = generate_desolvation_grid_map(protein);
 
   // read  all the ligands description from the standard input and split them
   mudock::info("Reading ligands from the stdin ...");
