@@ -1,3 +1,4 @@
+#include "mudock/chem/autodock_parameters.hpp"
 #include "mudock/chem/autodock_types.hpp"
 #include "mudock/chem/grid_const.hpp"
 #include "mudock/grid/grid_map.hpp"
@@ -17,13 +18,20 @@
 #include <unordered_map>
 #include <vector>
 
-#define NEINT 131072
+#define NEINT 131072 /* Number of values in internal energy table, they are based on radius range values */
+/* Number of dielectric and desolvation values in lookup table.
+NDIEL is bigger than NEINT because electrostatic interactions are much
+longer-range than van der Waals interactions. */
+// TODO wrong comment in autogrid
+#define NDIEL 16384
+
 /* Used in distance look-up table. i.e. every 1/100-th of an Angstrom */
 #define A_DIV     100.00 /* Used in distance look-up table. */
 #define EINTCLAMP 100000 /* Clamp pairwise internal energies (kcal/mol )  */
 
 namespace mudock {
   static constexpr fp_type solpar_q{0.01097};
+  static constexpr fp_type sigma{3.6};
 
   struct vdw_hb_energy_table {
     vdw_hb_energy_table(const fp_type cA, const fp_type cB, const fp_type dxA, const fp_type dxB) {
@@ -81,6 +89,7 @@ namespace mudock {
     fp_type solpar_probe;
     fp_type vol;
     // TODO vol and vol_probe seems to be the same thing
+    // Autogrid GPF_SOL_PAR option seems to change the values, but it is marked as OBSOLETE
     fp_type vol_probe;
     autodock_ff receptor_type;
     autodock_ff map_type;
@@ -266,6 +275,17 @@ namespace mudock {
     for (auto ligand_type: ligand_types) {
       grid_atom_maps.push_back({ligand_type, npts});
       scratchpads.emplace_back(receptor_types, grid_atom_maps.back());
+    }
+
+    /* exponential function for receptor and ligand desolvation */
+    /* note: the solvation term ranges beyond the non-bond cutoff 
+    * and will not be smoothed 
+    */
+    std::array<fp_type, NDIEL> sol_fn;
+    for (size_t indx_r = 1; indx_r < NDIEL; indx_r++) {
+      const fp_type r = indx_r / A_DIV;
+      sol_fn[indx_r] =
+          autodock_parameters::coeff_desolv * std::exp(-std::sqrt(r) / (fp_type{2} * std::sqrt(sigma)));
     }
 
     // TODO what are these???
@@ -608,11 +628,11 @@ namespace mudock {
             if (d == fp_type{0}) {
               d = std::numeric_limits<fp_type>::epsilon();
             }
-            const fp_type inv_r    = fp_type{1} / d;
-            const fp_type inv_rmax = fp_type{1} / std::max(d, fp_type{0.5});
+            const fp_type inv_r = fp_type{1} / d;
 
             dist                = scale(dist, inv_r);
             const size_t indx_n = std::min<size_t>(std::floor(d * fp_type{A_DIV}), NEINT - 1);
+            const size_t indx_r = std::min<size_t>(std::floor(d * fp_type{A_DIV}), NDIEL - 1);
 
             fp_type racc{1};
             fp_type rdon{1};
@@ -792,24 +812,15 @@ namespace mudock {
 
               /* add desolvation energy  */
               /* forcefield desolv coefficient/weight in sol_fn*/
-              // TODO vol and vol_probe are the same thing????
-
-// TODO
-//               double sigma = 3.6;
-// for (indx_r = 1;  indx_r < NDIEL;  indx_r++) {
-//      r  = angstrom(indx_r);
-//      et.sol_fn[indx_r] = AD4.coeff_desolv * exp(-sq(r)/(2.*sq(sigma)));
-// }
-
               scratch.energy += inter.solpar_probe * inter.vol * sol_fn[indx_r] +
-                                (inter.solpar_probe + solpar_q * fabs(charge[ia])) *
+                                (inter.solpar_probe + solpar_q * std::fabs(receptor.charge(index))) *
                                     inter.vol_probe * sol_fn[indx_r];
             }
           } /* ia loop, over all receptor atoms... */
 
           /* adjust maps of hydrogen-bonding atoms by adding largest and
-            * smallest interaction of all 'pair-wise' interactions with receptor atoms
-            */
+          * smallest interaction of all 'pair-wise' interactions with receptor atoms
+          */
           for (scratchpad& scratch: scratchpads) { scratch.write_to_map(coord_x, coord_y, coord_z); }
         }
       }
