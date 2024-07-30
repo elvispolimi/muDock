@@ -1,37 +1,16 @@
-#include "mudock/chem/autodock_parameters.hpp"
-#include "mudock/chem/autodock_types.hpp"
-#include "mudock/chem/grid_const.hpp"
-#include "mudock/grid/grid_map.hpp"
-#include "mudock/grid/mdindex.hpp"
-#include "mudock/grid/point3D.hpp"
-#include "mudock/log.hpp"
-#include "mudock/molecule.hpp"
-#include "mudock/molecule/containers.hpp"
-#include "mudock/type_alias.hpp"
-
 #include <algorithm>
 #include <array>
 #include <cmath>
 #include <limits>
 #include <mudock/chem.hpp>
 #include <mudock/grid.hpp>
+#include <mudock/log.hpp>
+#include <mudock/molecule.hpp>
+#include <mudock/type_alias.hpp>
 #include <unordered_map>
 #include <vector>
 
-#define NEINT 131072 /* Number of values in internal energy table, they are based on radius range values */
-/* Number of dielectric and desolvation values in lookup table.
-NDIEL is bigger than NEINT because electrostatic interactions are much
-longer-range than van der Waals interactions. */
-// TODO wrong comment in autogrid
-#define NDIEL 16384
-
-/* Used in distance look-up table. i.e. every 1/100-th of an Angstrom */
-#define A_DIV     100.00 /* Used in distance look-up table. */
-#define EINTCLAMP 100000 /* Clamp pairwise internal energies (kcal/mol )  */
-
 namespace mudock {
-  static constexpr fp_type solpar_q{0.01097};
-  static constexpr fp_type sigma{3.6};
 
   struct vdw_hb_energy_table {
     vdw_hb_energy_table(const fp_type cA, const fp_type cB, const fp_type dxA, const fp_type dxB) {
@@ -41,16 +20,16 @@ namespace mudock {
         const fp_type rA = std::pow(r, dxA);
         const fp_type rB = std::pow(r, dxB);
 
-        e_vdW_Hb[indx_r] = std::min(fp_type{EINTCLAMP}, (cA / rA - cB / rB));
+        e_vdW_Hb[indx_r] = std::min(EINTCLAMP, (cA / rA - cB / rB));
       }
-      e_vdW_Hb[NEINT - 1] = 0.;
+      e_vdW_Hb[NEINT - 1] = 0;
 
       /* smooth with min function */ /* GPF_MAP */
 
       /* Angstrom is divided by A_DIV in look-up table. */
       /* Typical value of r_smooth is 0.5 Angstroms  */
       /* so i_smooth = 0.5 * 100. / 2 = 25 */
-      size_t i_smooth = std::floor(r_smooth * fp_type{A_DIV / 2});
+      size_t i_smooth = std::floor(r_smooth * A_DIV / fp_type{2});
       std::vector<fp_type> energy_smooth;
       energy_smooth.resize(NEINT, EINTCLAMP);
       if (i_smooth > 0) {
@@ -95,30 +74,30 @@ namespace mudock {
     autodock_ff map_type;
     vdw_hb_energy_table vdw_hb_table;
 
-    interaction(const fp_type cA,
-                const fp_type cB,
-                const fp_type nbp_r,
-                const fp_type nbp_eps,
-                const size_t xA,
-                const size_t xB,
-                const size_t hbonder,
-                const fp_type solpar_probe,
-                const fp_type vol,
-                const fp_type vol_probe,
-                const autodock_ff receptor_type,
-                const autodock_ff map_type)
-        : cA(cA),
-          cB(cB),
-          nbp_r(nbp_r),
-          nbp_eps(nbp_eps),
-          xA(xA),
-          xB(xB),
-          hbonder(hbonder),
-          solpar_probe(solpar_probe),
-          vol(vol),
-          vol_probe(vol_probe),
-          receptor_type(receptor_type),
-          map_type(map_type),
+    interaction(const fp_type _cA,
+                const fp_type _cB,
+                const fp_type _nbp_r,
+                const fp_type _nbp_eps,
+                const size_t _xA,
+                const size_t _xB,
+                const size_t _hbonder,
+                const fp_type _solpar_probe,
+                const fp_type _vol,
+                const fp_type _vol_probe,
+                const autodock_ff _receptor_type,
+                const autodock_ff _map_type)
+        : cA(_cA),
+          cB(_cB),
+          nbp_r(_nbp_r),
+          nbp_eps(_nbp_eps),
+          xA(_xA),
+          xB(_xB),
+          hbonder(_hbonder),
+          solpar_probe(_solpar_probe),
+          vol(_vol),
+          vol_probe(_vol_probe),
+          receptor_type(_receptor_type),
+          map_type(_map_type),
           vdw_hb_table(cA, cB, xA, xB){};
   };
 
@@ -129,7 +108,7 @@ namespace mudock {
     fp_type hbondflag{false};
     fp_type energy;
 
-    scratchpad(const std::vector<autodock_ff> receptor_types, grid_atom_map& atom_map): atom_map(atom_map) {
+    scratchpad(const std::vector<autodock_ff> receptor_types, grid_atom_map& _atom_map): atom_map(_atom_map) {
       const auto map_type = atom_map.get_atom_type();
       // Initialize data structure
       const auto& grid_type_desc = get_description(map_type);
@@ -588,8 +567,6 @@ namespace mudock {
     /*
     * Iterate over all grid points, Z( Y ( X ) ) (X is fastest)...
     */
-    size_t ic  = 0;
-    size_t ctr = 0;
     for (size_t index_z = 0; index_z < npts.size_z(); ++index_z) {
       /*
       *  c[0:2] contains the current grid point.
@@ -631,8 +608,8 @@ namespace mudock {
             const fp_type inv_r = fp_type{1} / d;
 
             dist                = scale(dist, inv_r);
-            const size_t indx_n = std::min<size_t>(std::floor(d * fp_type{A_DIV}), NEINT - 1);
-            const size_t indx_r = std::min<size_t>(std::floor(d * fp_type{A_DIV}), NDIEL - 1);
+            const size_t indx_n = std::min<size_t>(std::floor(d * A_DIV), NEINT - 1);
+            const size_t indx_r = std::min<size_t>(std::floor(d * A_DIV), NDIEL - 1);
 
             fp_type racc{1};
             fp_type rdon{1};
