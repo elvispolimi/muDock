@@ -9,5 +9,5 @@ namespace mudock {
     static constexpr fp_type FE_coeff_estat{{@ FE_coeff_estat @}};
     static constexpr fp_type FE_coeff_desolv{{@ FE_coeff_desolv @}};
     static constexpr fp_type FE_coeff_tors{{@ FE_coeff_tors @}};
-  }
-}; // namespace mudock
+  };
+} // namespace mudock
