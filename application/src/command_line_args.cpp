@@ -27,7 +27,7 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
               << std::endl;
     std::cout << "print on the standard output the score of each of them" << std::endl;
     std::cout << std::endl;
-    std::cout << "USAGE: " << argv[0] << " --protein " << args.protein_path << " --device_conf "
+    std::cout << "USAGE: " << argv[0] << " --protein " << args.protein_path << " --use "
               << args.device_conf << " < \"/path/to/ligands.mol2\"" << std::endl;
     std::cout << std::endl;
     std::cout << arguments_description << std::endl;
