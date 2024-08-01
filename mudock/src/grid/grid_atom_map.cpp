@@ -357,23 +357,11 @@ namespace mudock {
         if (nbond == 1) {
           /* calculate normalized carbonyl bond vector rvector[ia][] */
 
-          // TODO remove with normalization
-          // point3D diff = difference(point3D{receptor.x(index), receptor.y(index), receptor.z(index)},
-          //                           point3D{receptor.x(index_1), receptor.y(index_1), receptor.z(index_1)});
-          // fp_type square_distance = sum_components(square(diff));
-          // if (square_distance == fp_type{0}) {
-          //   error("Attempt to divide by zero was just prevented.");
-          //   square_distance = std::numeric_limits<fp_type>::epsilon();
-          // }
-          // // TODO ask @Davide about this
-          // fp_type inv_rd = fp_type{1} / sqrtf(square_distance);
-          // rvector[index] = scale(diff, inv_rd);
-          // TODO check the return value, if by copy or reference modified in place in the pure function
           rvector[index] = normalize(point3D{receptor.x(index), receptor.y(index), receptor.z(index)},
-                                     point3D{receptor.x(index_1), receptor.y(index_1), receptor.z(index_1)})
+                                     point3D{receptor.x(index_1), receptor.y(index_1), receptor.z(index_1)});
 
-              /* find a second atom (i2) bonded to carbonyl carbon (i1) */
-              for (index_2 = from_neighbor; index_2 < to_neighbor; ++index_2) {
+          /* find a second atom (i2) bonded to carbonyl carbon (i1) */
+          for (index_2 = from_neighbor; index_2 < to_neighbor; ++index_2) {
             if ((index_2 != index_1) && (index_2 != index)) {
               const fp_type square_distance =
                   distance2(point3D{receptor.x(index_1), receptor.y(index_1), receptor.z(index_1)},
@@ -390,28 +378,16 @@ namespace mudock {
                 //   d[i] = coord[i2][i] - coord[i1][i];
                 //   rd2 += sq(d[i]);
                 // }
-                // if (square_distance == fp_type{0}) {
-                //   error("Attempt to divide by zero was just prevented.");
-                //   square_distance = std::numeric_limits<fp_type>::epsilon();
-                // }
-                // inv_rd          = fp_type{1} / sqrtf(square_distance);
-                // const point3D d = scale(diff, inv_rd);
                 const point3D d =
                     normalize(point3D{receptor.x(index_1), receptor.y(index_1), receptor.z(index_1)},
                               point3D{receptor.x(index_2), receptor.y(index_2), receptor.z(index_2)});
 
                 /* C=O cross C-X gives the lone pair plane normal */
-                rvector2[index].x = rvector[index].y * d.z - rvector[index].z * d.y;
-                rvector2[index].y = rvector[index].z * d.x - rvector[index].x * d.z;
-                rvector2[index].z = rvector[index].x * d.y - rvector[index].y * d.x;
-                // square_distance   = sum_components(square(rvector2[index]));
-                // if (square_distance == fp_type{0}) {
-                //   error("Attempt to divide by zero was just prevented.");
-                //   square_distance = std::numeric_limits<fp_type>::epsilon();
-                // }
-                // inv_rd          = fp_type{1} / sqrtf(square_distance);
-                // rvector2[index] = scale(rvector2[index], inv_rd);
-                rvector2[index] = normalize(rvector2[index]);
+                rvector2[index] = normalize(point3D{
+                    rvector[index].y * d.z - rvector[index].z * d.y,
+                    rvector[index].z * d.x - rvector[index].x * d.z,
+                    rvector[index].x * d.y - rvector[index].y * d.x,
+                });
               }
             }
           } /*i2-loop*/
@@ -422,16 +398,6 @@ namespace mudock {
           /* not a disordered hydroxyl */
           /* normalized X1 to X2 vector, defines lone pair plane */
 
-          // rvector2[index] =
-          //     difference(point3D{receptor.x(index_2), receptor.y(index_2), receptor.z(index_2)},
-          //                point3D{receptor.x(index_1), receptor.y(index_1), receptor.z(index_1)});
-          // fp_type square_distance = sum_components(square(rvector2[index]));
-          // if (square_distance == fp_type{0}) {
-          //   error("Attempt to divide by zero was just prevented.");
-          //   square_distance = std::numeric_limits<fp_type>::epsilon();
-          // }
-          // fp_type inv_rd  = fp_type{1} / sqrtf(square_distance);
-          // rvector2[index] = scale(rvector2[index], inv_rd);
           rvector2[index] = normalize(point3D{receptor.x(index_2), receptor.y(index_2), receptor.z(index_2)},
                                       point3D{receptor.x(index_1), receptor.y(index_1), receptor.z(index_1)});
 
@@ -444,20 +410,13 @@ namespace mudock {
           const point3D diff =
               difference(point3D{receptor.x(index), receptor.y(index), receptor.z(index)},
                          point3D{receptor.x(index_1), receptor.y(index_1), receptor.z(index_1)});
-                        //  TODO check this static const to const
+          //  TODO check this static const to const
           const fp_type rdot = inner_product(diff, static_cast<const point3D&>(rvector2[index]));
-          rvector[index] =
+
+          rvector[index] = normalize(
               difference(point3D{receptor.x(index), receptor.y(index), receptor.z(index)},
                          add(scale(rvector2[index], rdot),
-                             point3D{receptor.x(index_1), receptor.y(index_1), receptor.z(index_1)}));
-          // square_distance = sum_components(square(rvector[index]));
-          // if (square_distance == fp_type{0}) {
-          //   error("Attempt to divide by zero was just prevented.");
-          //   square_distance = std::numeric_limits<fp_type>::epsilon();
-          // }
-          // inv_rd         = fp_type{1} / sqrtf(square_distance);
-          // rvector[index] = scale(rvector[index], inv_rd);
-          rvector[index] = normalize(rvector[index]);
+                             point3D{receptor.x(index_1), receptor.y(index_1), receptor.z(index_1)})));
         } /* end two bonds to Oxygen */
         /* NEW Directional N Acceptor */
       } else if (receptor.num_hbond(index) == 4) { /*A1*/
@@ -503,53 +462,69 @@ namespace mudock {
         if (nbond == 1) {
           /* calculate normalized N=C bond vector rvector[ia][] */
 
-          rvector[index] = difference(point3D{receptor.x(index), receptor.y(index), receptor.z(index)},
+          // rvector[index] = difference(point3D{receptor.x(index), receptor.y(index), receptor.z(index)},
 
-                                      point3D{receptor.x(index_1), receptor.y(index_1), receptor.z(index_1)});
-          fp_type square_distance = sum_components(square(rvector[index]));
-          if (square_distance == fp_type{0}) {
-            error("Attempt to divide by zero was just prevented.");
-            square_distance = std::numeric_limits<fp_type>::epsilon();
-          }
-          fp_type inv_rd = fp_type{1} / sqrtf(square_distance);
-          rvector[index] = scale(rvector[index], inv_rd);
+          //                             point3D{receptor.x(index_1), receptor.y(index_1), receptor.z(index_1)});
+          // fp_type square_distance = sum_components(square(rvector[index]));
+          // if (square_distance == fp_type{0}) {
+          //   error("Attempt to divide by zero was just prevented.");
+          //   square_distance = std::numeric_limits<fp_type>::epsilon();
+          // }
+          // fp_type inv_rd = fp_type{1} / sqrtf(square_distance);
+          // rvector[index] = scale(rvector[index], inv_rd);
+          rvector[index] = normalize(point3D{receptor.x(index), receptor.y(index), receptor.z(index)},
+
+                                     point3D{receptor.x(index_1), receptor.y(index_1), receptor.z(index_1)});
         } /* endif nbond==1 */
 
         /* two bonds: X1-N=X2 */
         if (nbond == 2) {
           /* normalized vector from Nitrogen to midpoint between X1 and X2 */
 
-          rvector[index] = difference(
+          // rvector[index] = difference(
+          //     point3D{receptor.x(index), receptor.y(index), receptor.z(index)},
+
+          //     scalar_division(add(point3D{receptor.x(index_2), receptor.y(index_2), receptor.z(index_2)},
+          //                         point3D{receptor.x(index_1), receptor.y(index_1), receptor.z(index_1)}),
+          //                     2));
+          // fp_type square_distance = sum_components(square(rvector[index]));
+          // if (square_distance == fp_type{0}) {
+          //   error("Attempt to divide by zero was just prevented.");
+          //   square_distance = std::numeric_limits<fp_type>::epsilon();
+          // }
+          // fp_type inv_rd = fp_type{1} / sqrtf(square_distance);
+          // rvector[index] = scale(rvector[index], inv_rd);
+          rvector[index] = normalize(difference(
               point3D{receptor.x(index), receptor.y(index), receptor.z(index)},
 
               scalar_division(add(point3D{receptor.x(index_2), receptor.y(index_2), receptor.z(index_2)},
                                   point3D{receptor.x(index_1), receptor.y(index_1), receptor.z(index_1)}),
-                              2));
-          fp_type square_distance = sum_components(square(rvector[index]));
-          if (square_distance == fp_type{0}) {
-            error("Attempt to divide by zero was just prevented.");
-            square_distance = std::numeric_limits<fp_type>::epsilon();
-          }
-          fp_type inv_rd = fp_type{1} / sqrtf(square_distance);
-          rvector[index] = scale(rvector[index], inv_rd);
+                              2)));
         } /* end two bonds for nitrogen*/
         /* three bonds: X1,X2,X3 */
         if (nbond == 3) {
           /* normalized vector from Nitrogen to midpoint between X1, X2, and X3 */
-          rvector[index] = difference(
+          // rvector[index] = difference(
+          //     point3D{receptor.x(index), receptor.y(index), receptor.z(index)},
+
+          //     scalar_division(add(add(point3D{receptor.x(index_1), receptor.y(index_1), receptor.z(index_1)},
+          //                             point3D{receptor.x(index_2), receptor.y(index_2), receptor.z(index_2)}),
+          //                         point3D{receptor.x(index_3), receptor.y(index_3), receptor.z(index_3)}),
+          //                     3));
+          // fp_type square_distance = sum_components(square(rvector[index]));
+          // if (square_distance == fp_type{0}) {
+          //   error("Attempt to divide by zero was just prevented.");
+          //   square_distance = std::numeric_limits<fp_type>::epsilon();
+          // }
+          // fp_type inv_rd = fp_type{1} / sqrtf(square_distance);
+          // rvector[index] = scale(rvector[index], inv_rd);
+          rvector[index] = normalize(difference(
               point3D{receptor.x(index), receptor.y(index), receptor.z(index)},
 
               scalar_division(add(add(point3D{receptor.x(index_1), receptor.y(index_1), receptor.z(index_1)},
                                       point3D{receptor.x(index_2), receptor.y(index_2), receptor.z(index_2)}),
                                   point3D{receptor.x(index_3), receptor.y(index_3), receptor.z(index_3)}),
-                              3));
-          fp_type square_distance = sum_components(square(rvector[index]));
-          if (square_distance == fp_type{0}) {
-            error("Attempt to divide by zero was just prevented.");
-            square_distance = std::numeric_limits<fp_type>::epsilon();
-          }
-          fp_type inv_rd = fp_type{1} / sqrtf(square_distance);
-          rvector[index] = scale(rvector[index], inv_rd);
+                              3)));
         } /* end three bonds for Nitrogen */
         /* endNEW directional N Acceptor */
       }
