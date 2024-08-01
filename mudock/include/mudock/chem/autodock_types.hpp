@@ -153,13 +153,12 @@ namespace mudock {
   struct autodock_ff_description {
     autodock_ff value;
     std::string_view name;
-    // Autodock use this as Rij
     fp_type Rii       = 0;
-    // Autodock use this as epsij
     fp_type epsii     = 0;
     fp_type vol       = 0;
     fp_type solpar    = 0;
     fp_type Rij_hb    = 0;
+    // TODO autogrid/build/read_parameter_library.cpp : 161 they should be multiplied by a coefficient
     fp_type epsij_hb  = 0;
     std::size_t hbond = 0;
   };
