@@ -16,8 +16,9 @@ namespace mudock {
 
   static constexpr std::size_t range_near_atom_receptor = 20;
 
+  // TODO why this value?
   static constexpr size_t NEINT{
-      131072}; /* Number of values in internal energy table, they are based on radius range values */
+      2048}; /* Number of values in internal energy table, they are based on radius range values */
   /* Number of dielectric and desolvation values in lookup table.
   NDIEL is bigger than NEINT because electrostatic interactions are much
   longer-range than van der Waals interactions. */

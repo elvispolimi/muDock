@@ -6,6 +6,7 @@
 #include <GraphMol/Substruct/SubstructMatch.h>
 #include <array>
 #include <cassert>
+#include <cmath>
 #include <concepts>
 #include <cstdint>
 #include <map>
@@ -14,6 +15,7 @@
 #include <mudock/molecule.hpp>
 #include <mudock/type_alias.hpp>
 #include <stdexcept>
+#include <string>
 #include <string_view>
 #include <unordered_map>
 
@@ -77,7 +79,12 @@ namespace mudock {
       dest.y(mudock_atom_index)           = static_cast<fp_type>(y);
       dest.z(mudock_atom_index)           = static_cast<fp_type>(z);
       dest.charge(mudock_atom_index)      = fp_type{0};
-      atom->getProp("_GasteigerCharge", dest.charge(mudock_atom_index));
+      std::string charge = atom->getProp<std::string>(RDKit::common_properties::_GasteigerCharge);
+      if(charge=="inf")
+        // https://github.com/rdkit/rdkit/blob/master/rdkit/Chem/MolSurf.py line 213
+        dest.charge(mudock_atom_index) = 0.0;
+      else
+        dest.charge(mudock_atom_index) = std::stof(charge);
       index_translator.emplace(atom_id, mudock_atom_index);
       mudock_atom_index += std::size_t{1};
     }
@@ -133,7 +140,7 @@ namespace mudock {
 
     // store the molecule name
     auto name = std::string{"N/A"};
-    source->getPropIfPresent<std::string>("_Name", name);
+    source->getPropIfPresent<std::string>(RDKit::common_properties::_Name, name);
     dest.properties.assign(property_type::NAME, name);
   }
 
