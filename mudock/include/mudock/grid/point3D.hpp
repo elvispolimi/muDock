@@ -55,6 +55,33 @@ namespace mudock {
   }
 
   template<class point_type>
+  constexpr std::remove_reference_t<point_type> normalize(point_type&& a, point_type&& b) {
+    point3D diff            = difference(point3D{a.x, a.y, a.z}, point3D{b.x, b.y, b.z});
+    fp_type square_distance = sum_components(square(diff));
+    if (square_distance == fp_type{0}) {
+      // TODO @Davide we should log something
+      // error("Attempt to divide by zero was just prevented.");
+      square_distance = std::numeric_limits<fp_type>::epsilon();
+    }
+    // TODO ask @Davide about this
+    fp_type inv_rd = fp_type{1} / sqrtf(square_distance);
+    return scale(diff, inv_rd);
+  }
+
+  template<class point_type>
+  constexpr std::remove_reference_t<point_type> normalize(point_type&& diff) {
+    fp_type square_distance = sum_components(square(diff));
+    if (square_distance == fp_type{0}) {
+      // TODO @Davide we should log something
+      // error("Attempt to divide by zero was just prevented.");
+      square_distance = std::numeric_limits<fp_type>::epsilon();
+    }
+    // TODO ask @Davide about this
+    fp_type inv_rd = fp_type{1} / sqrtf(square_distance);
+    return scale(diff, inv_rd);
+  }
+
+  template<class point_type>
   constexpr fp_type diff_components(point_type&& point) {
     return point.x - point.y - point.z;
   }
