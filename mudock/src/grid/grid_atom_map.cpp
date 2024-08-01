@@ -1,3 +1,8 @@
+#include "mudock/chem/autodock_parameters.hpp"
+#include "mudock/chem/autodock_types.hpp"
+#include "mudock/chem/grid_const.hpp"
+#include "mudock/grid/point3D.hpp"
+
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -15,8 +20,8 @@ namespace mudock {
   struct vdw_hb_energy_table {
     vdw_hb_energy_table(const fp_type cA, const fp_type cB, const fp_type dxA, const fp_type dxB) {
       e_vdW_Hb[0] = EINTCLAMP;
-      for (size_t indx_r = 1; indx_r < NEINT - 1; indx_r++) {
-        const fp_type r  = std::floor(indx_r / A_DIV);
+      for (size_t indx_r = 1; indx_r < NEINT - 1; ++indx_r) {
+        const fp_type r  = indx_r / A_DIV;
         const fp_type rA = std::pow(r, dxA);
         const fp_type rB = std::pow(r, dxB);
 
@@ -29,14 +34,14 @@ namespace mudock {
       /* Angstrom is divided by A_DIV in look-up table. */
       /* Typical value of r_smooth is 0.5 Angstroms  */
       /* so i_smooth = 0.5 * 100. / 2 = 25 */
-      size_t i_smooth = std::floor(r_smooth * A_DIV / fp_type{2});
+      const size_t i_smooth = std::floor(r_smooth * A_DIV / fp_type{2});
       std::vector<fp_type> energy_smooth;
       energy_smooth.resize(NEINT, EINTCLAMP);
       if (i_smooth > 0) {
         for (size_t indx_r = 0; indx_r < NEINT; ++indx_r) {
-          for (size_t j = std::max(size_t{0}, indx_r - i_smooth);
-               j < std::min(size_t{NEINT}, indx_r + i_smooth + 1);
-               j++)
+          const auto temp = indx_r - i_smooth;
+          size_t j        = temp <= indx_r ? temp : size_t{0};
+          for (; j < std::min(size_t{NEINT}, indx_r + i_smooth + 1); j++)
             energy_smooth[indx_r] = std::min(energy_smooth[indx_r], e_vdW_Hb[j]);
         }
         for (size_t indx_r = 0; indx_r < NEINT; indx_r++) { e_vdW_Hb[indx_r] = energy_smooth[indx_r]; }
@@ -49,7 +54,7 @@ namespace mudock {
     static constexpr fp_type r_smooth{0.5}; //Angstrom
 
     // e_vdW_Hb is sized for distances only up to NBC, the non-bond-cutoff
-    std::array<fp_type, NEINT> e_vdW_Hb; // vdW & Hb energies
+    std::vector<fp_type> e_vdW_Hb = std::vector<fp_type>(NEINT); // vdW & Hb energies
     // the other tables are sized for "unlimited" distances
     // fp_type sol_fn[NDIEL];                             // distance-dependent desolvation function
     // fp_type epsilon_fn[NDIEL];                         // distance-dependent dielectric function
@@ -58,21 +63,17 @@ namespace mudock {
   };
 
   struct interaction {
-    fp_type cA;
-    fp_type cB;      // coefficients if specified in gpf
-    fp_type nbp_r;   // radius of energy-well minimum
-    fp_type nbp_eps; // depth of energy-well minimum
-    size_t xA;       // generally 12
-    size_t xB;       // 6 for non-hbonders 10 for h-bonders
-    size_t hbonder;
-    fp_type solpar_probe;
-    fp_type vol;
+    const fp_type cA;
+    const fp_type cB;      // coefficients if specified in gpf
+    const fp_type nbp_r;   // radius of energy-well minimum
+    const fp_type nbp_eps; // depth of energy-well minimum
+    const size_t xA;       // generally 12
+    const size_t xB;       // 6 for non-hbonders 10 for h-bonders
+    const size_t hbonder;
     // TODO vol and vol_probe seems to be the same thing
     // Autogrid GPF_SOL_PAR option seems to change the values, but it is marked as OBSOLETE
-    fp_type vol_probe;
-    autodock_ff receptor_type;
-    autodock_ff map_type;
-    vdw_hb_energy_table vdw_hb_table;
+    const autodock_ff receptor_type;
+    const vdw_hb_energy_table vdw_hb_table;
 
     interaction(const fp_type _cA,
                 const fp_type _cB,
@@ -81,11 +82,7 @@ namespace mudock {
                 const size_t _xA,
                 const size_t _xB,
                 const size_t _hbonder,
-                const fp_type _solpar_probe,
-                const fp_type _vol,
-                const fp_type _vol_probe,
-                const autodock_ff _receptor_type,
-                const autodock_ff _map_type)
+                const autodock_ff _receptor_type)
         : cA(_cA),
           cB(_cB),
           nbp_r(_nbp_r),
@@ -93,11 +90,7 @@ namespace mudock {
           xA(_xA),
           xB(_xB),
           hbonder(_hbonder),
-          solpar_probe(_solpar_probe),
-          vol(_vol),
-          vol_probe(_vol_probe),
           receptor_type(_receptor_type),
-          map_type(_map_type),
           vdw_hb_table(cA, cB, xA, xB){};
   };
 
@@ -107,55 +100,42 @@ namespace mudock {
     fp_type hbondmax{-999999};
     fp_type hbondflag{false};
     fp_type energy;
+    const autodock_ff_description& grid_type_desc;
 
-    scratchpad(const std::vector<autodock_ff> receptor_types, grid_atom_map& _atom_map): atom_map(_atom_map) {
-      const auto map_type = atom_map.get_atom_type();
+    scratchpad(const std::vector<autodock_ff> receptor_types, grid_atom_map& _atom_map)
+        : atom_map(_atom_map), grid_type_desc(get_description(atom_map.get_atom_type())) {
       // Initialize data structure
-      const auto& grid_type_desc = get_description(map_type);
       for (auto& receptor_t: receptor_types) {
         const auto& receptor_type_desc = get_description(receptor_t);
 
         fp_type nbp_r = (grid_type_desc.Rii + receptor_type_desc.Rii) / fp_type{2.};
         // TODO check if it is ok to use the floating point version
-        fp_type nbp_eps      = sqrtf(grid_type_desc.epsii * receptor_type_desc.epsii);
-        fp_type solpar_probe = receptor_type_desc.solpar;
-        fp_type vol          = receptor_type_desc.vol;
-        fp_type vol_probe    = receptor_type_desc.vol;
-        size_t xA            = 12;
-        size_t xB            = 6;
-        fp_type cA           = (nbp_eps / (xA - xB)) * std::pow(nbp_r, static_cast<fp_type>(xA)) * xB;
-        fp_type cB           = nbp_eps / (xA - xB) * std::pow(nbp_r, static_cast<fp_type>(xB)) * xA;
-        size_t hbonder       = 0;
+        fp_type nbp_eps = sqrtf(grid_type_desc.epsii * autodock_parameters::coeff_vdW *
+                                receptor_type_desc.epsii * autodock_parameters::coeff_vdW);
+        // TODO probably they are constant
+        size_t xA = 12;
+        size_t xB = 6;
+        // TODO to be checked later in line 1707 from main.cpp
+        fp_type cA     = (nbp_eps / (xA - xB)) * std::pow(nbp_r, static_cast<fp_type>(xA)) * xB;
+        fp_type cB     = nbp_eps / (xA - xB) * std::pow(nbp_r, static_cast<fp_type>(xB)) * xA;
+        size_t hbonder = 0;
         if (grid_type_desc.hbond > 2 && (receptor_type_desc.hbond == 1 ||
                                          receptor_type_desc.hbond == 2)) { /*AS,A1,A2 map vs DS,D1 probe*/
           xB                  = 10;
           hbonder             = 1;
           atom_map.is_hbonder = true;
           nbp_r               = grid_type_desc.Rij_hb;
-          nbp_eps             = grid_type_desc.epsij_hb;
+          nbp_eps             = grid_type_desc.epsij_hb * autodock_parameters::coeff_hbond;
         } else if ((grid_type_desc.hbond == 1 || grid_type_desc.hbond == 2) &&
                    (receptor_type_desc.hbond > 2)) { /*DS,D1 map vs AS,A1,A2 probe*/
           xB                  = 10;
           hbonder             = 1;
           atom_map.is_hbonder = true;
           nbp_r               = receptor_type_desc.Rij_hb;
-          nbp_eps             = receptor_type_desc.epsij_hb;
-
-          interactions.insert({receptor_t,
-                               {cA,
-                                cB,
-                                nbp_r,
-                                nbp_eps,
-                                xA,
-                                xB,
-                                hbonder,
-                                solpar_probe,
-                                vol,
-                                vol_probe,
-                                receptor_t,
-                                map_type}});
-
+          nbp_eps             = receptor_type_desc.epsij_hb * autodock_parameters::coeff_hbond;
         }; /*initialize energy parms for each possible receptor type*/
+
+        interactions.emplace(receptor_t, interaction{cA, cB, nbp_r, nbp_eps, xA, xB, hbonder, receptor_t});
       }
     }
 
@@ -222,6 +202,8 @@ namespace mudock {
     typename dynamic_containers::template atoms_size<autodock_ff> receptor_types = receptor_autodock_types;
     std::sort(receptor_types.begin(), receptor_types.end());
     receptor_types.erase(std::unique(receptor_types.begin(), receptor_types.end()), receptor_types.end());
+    // TODO check if H should be removed
+    // receptor_types.erase(std::remove(receptor_types.begin(), receptor_types.end(), mudock::autodock_ff::H));
 
     // Define the autodock ligand types
     constexpr std::array<autodock_ff, 11> ligand_types{autodock_ff::A,
@@ -281,10 +263,11 @@ namespace mudock {
       * RECEPTOR hydrogen-BOND DONOR,
       */
       // TODO we should create an enum for hbond types
+      const auto temp          = index - range_near_atom_receptor;
+      const auto from_neighbor = temp <= index ? temp : size_t{0};
+      const auto to_neighbor   = std::min(index + range_near_atom_receptor, receptor.num_atoms());
       if (receptor.num_hbond(index) == 2) {
-        for (size_t other_index = std::max(index - range_near_atom_receptor, size_t{0});
-             other_index < std::min(index + range_near_atom_receptor, size_t{0});
-             ++other_index)
+        for (size_t other_index = from_neighbor; other_index < to_neighbor; ++other_index)
           if (index != other_index) {
             /*
             * =>  NH-> or OH->
@@ -339,9 +322,7 @@ namespace mudock {
          */
         // TODO check these index_1 and _2, seems odd to me
         size_t nbond = 0, index_1 = 0, index_2 = 0;
-        for (size_t other_index = std::max(index - range_near_atom_receptor, size_t{0});
-             other_index < std::min(index + range_near_atom_receptor, size_t{0});
-             ++other_index)
+        for (size_t other_index = from_neighbor; other_index < to_neighbor; ++other_index)
           if (index != other_index) {
             const fp_type square_distance =
                 distance2(point3D{receptor.x(index), receptor.y(index), receptor.z(index)},
@@ -376,25 +357,27 @@ namespace mudock {
         if (nbond == 1) {
           /* calculate normalized carbonyl bond vector rvector[ia][] */
 
-          point3D diff = difference(point3D{receptor.x(index), receptor.y(index), receptor.z(index)},
-                                    point3D{receptor.x(index_1), receptor.y(index_1), receptor.z(index_1)});
-          fp_type square_distance = sum_components(square(diff));
-          if (square_distance == fp_type{0}) {
-            error("Attempt to divide by zero was just prevented.");
-            square_distance = std::numeric_limits<fp_type>::epsilon();
-          }
-          // TODO ask @Davide about this
-          fp_type inv_rd = fp_type{1} / sqrtf(square_distance);
-          rvector[index] = scale(diff, inv_rd);
+          // TODO remove with normalization
+          // point3D diff = difference(point3D{receptor.x(index), receptor.y(index), receptor.z(index)},
+          //                           point3D{receptor.x(index_1), receptor.y(index_1), receptor.z(index_1)});
+          // fp_type square_distance = sum_components(square(diff));
+          // if (square_distance == fp_type{0}) {
+          //   error("Attempt to divide by zero was just prevented.");
+          //   square_distance = std::numeric_limits<fp_type>::epsilon();
+          // }
+          // // TODO ask @Davide about this
+          // fp_type inv_rd = fp_type{1} / sqrtf(square_distance);
+          // rvector[index] = scale(diff, inv_rd);
+          // TODO check the return value, if by copy or reference modified in place in the pure function
+          rvector[index] = normalize(point3D{receptor.x(index), receptor.y(index), receptor.z(index)},
+                                     point3D{receptor.x(index_1), receptor.y(index_1), receptor.z(index_1)})
 
-          /* find a second atom (i2) bonded to carbonyl carbon (i1) */
-          for (index_2 = std::max(index - range_near_atom_receptor, size_t{0});
-               index_2 < std::min(index + range_near_atom_receptor, size_t{0});
-               ++index_2) {
+              /* find a second atom (i2) bonded to carbonyl carbon (i1) */
+              for (index_2 = from_neighbor; index_2 < to_neighbor; ++index_2) {
             if ((index_2 != index_1) && (index_2 != index)) {
-              diff = difference(point3D{receptor.x(index_1), receptor.y(index_1), receptor.z(index_1)},
-                                point3D{receptor.x(index_2), receptor.y(index_2), receptor.z(index_2)});
-              square_distance = sum_components(square(diff));
+              const fp_type square_distance =
+                  distance2(point3D{receptor.x(index_1), receptor.y(index_1), receptor.z(index_1)},
+                            point3D{receptor.x(index_2), receptor.y(index_2), receptor.z(index_2)});
               if ((square_distance < unknown_distance_3 &&
                    receptor_autodock_types[index_2] != autodock_ff::HD) ||
                   (square_distance < unknown_distance_4 &&
@@ -407,24 +390,28 @@ namespace mudock {
                 //   d[i] = coord[i2][i] - coord[i1][i];
                 //   rd2 += sq(d[i]);
                 // }
-                if (square_distance == fp_type{0}) {
-                  error("Attempt to divide by zero was just prevented.");
-                  square_distance = std::numeric_limits<fp_type>::epsilon();
-                }
-                inv_rd          = fp_type{1} / sqrtf(square_distance);
-                const point3D d = scale(diff, inv_rd);
+                // if (square_distance == fp_type{0}) {
+                //   error("Attempt to divide by zero was just prevented.");
+                //   square_distance = std::numeric_limits<fp_type>::epsilon();
+                // }
+                // inv_rd          = fp_type{1} / sqrtf(square_distance);
+                // const point3D d = scale(diff, inv_rd);
+                const point3D d =
+                    normalize(point3D{receptor.x(index_1), receptor.y(index_1), receptor.z(index_1)},
+                              point3D{receptor.x(index_2), receptor.y(index_2), receptor.z(index_2)});
 
                 /* C=O cross C-X gives the lone pair plane normal */
                 rvector2[index].x = rvector[index].y * d.z - rvector[index].z * d.y;
                 rvector2[index].y = rvector[index].z * d.x - rvector[index].x * d.z;
                 rvector2[index].z = rvector[index].x * d.y - rvector[index].y * d.x;
-                square_distance   = sum_components(square(rvector2[index]));
-                if (square_distance == fp_type{0}) {
-                  error("Attempt to divide by zero was just prevented.");
-                  square_distance = std::numeric_limits<fp_type>::epsilon();
-                }
-                inv_rd          = fp_type{1} / sqrtf(square_distance);
-                rvector2[index] = scale(rvector2[index], inv_rd);
+                // square_distance   = sum_components(square(rvector2[index]));
+                // if (square_distance == fp_type{0}) {
+                //   error("Attempt to divide by zero was just prevented.");
+                //   square_distance = std::numeric_limits<fp_type>::epsilon();
+                // }
+                // inv_rd          = fp_type{1} / sqrtf(square_distance);
+                // rvector2[index] = scale(rvector2[index], inv_rd);
+                rvector2[index] = normalize(rvector2[index]);
               }
             }
           } /*i2-loop*/
@@ -435,16 +422,18 @@ namespace mudock {
           /* not a disordered hydroxyl */
           /* normalized X1 to X2 vector, defines lone pair plane */
 
-          rvector2[index] =
-              difference(point3D{receptor.x(index_2), receptor.y(index_2), receptor.z(index_2)},
-                         point3D{receptor.x(index_1), receptor.y(index_1), receptor.z(index_1)});
-          fp_type square_distance = sum_components(square(rvector2[index]));
-          if (square_distance == fp_type{0}) {
-            error("Attempt to divide by zero was just prevented.");
-            square_distance = std::numeric_limits<fp_type>::epsilon();
-          }
-          fp_type inv_rd  = fp_type{1} / sqrtf(square_distance);
-          rvector2[index] = scale(rvector2[index], inv_rd);
+          // rvector2[index] =
+          //     difference(point3D{receptor.x(index_2), receptor.y(index_2), receptor.z(index_2)},
+          //                point3D{receptor.x(index_1), receptor.y(index_1), receptor.z(index_1)});
+          // fp_type square_distance = sum_components(square(rvector2[index]));
+          // if (square_distance == fp_type{0}) {
+          //   error("Attempt to divide by zero was just prevented.");
+          //   square_distance = std::numeric_limits<fp_type>::epsilon();
+          // }
+          // fp_type inv_rd  = fp_type{1} / sqrtf(square_distance);
+          // rvector2[index] = scale(rvector2[index], inv_rd);
+          rvector2[index] = normalize(point3D{receptor.x(index_2), receptor.y(index_2), receptor.z(index_2)},
+                                      point3D{receptor.x(index_1), receptor.y(index_1), receptor.z(index_1)});
 
           /* vector pointing between the lone pairs:
                 ** front of the vector is the oxygen atom,
@@ -452,20 +441,23 @@ namespace mudock {
                 ** coords of X1 gives the point on the X1-X2 line for the
                 ** back of the vector.
                 */
-          point3D diff = difference(point3D{receptor.x(index), receptor.y(index), receptor.z(index)},
-                                    point3D{receptor.x(index_1), receptor.y(index_1), receptor.z(index_1)});
-          fp_type rdot = inner_product(diff, rvector2[index]);
+          const point3D diff =
+              difference(point3D{receptor.x(index), receptor.y(index), receptor.z(index)},
+                         point3D{receptor.x(index_1), receptor.y(index_1), receptor.z(index_1)});
+                        //  TODO check this static const to const
+          const fp_type rdot = inner_product(diff, static_cast<const point3D&>(rvector2[index]));
           rvector[index] =
               difference(point3D{receptor.x(index), receptor.y(index), receptor.z(index)},
                          add(scale(rvector2[index], rdot),
                              point3D{receptor.x(index_1), receptor.y(index_1), receptor.z(index_1)}));
-          square_distance = sum_components(square(rvector[index]));
-          if (square_distance == fp_type{0}) {
-            error("Attempt to divide by zero was just prevented.");
-            square_distance = std::numeric_limits<fp_type>::epsilon();
-          }
-          inv_rd         = fp_type{1} / sqrtf(square_distance);
-          rvector[index] = scale(rvector[index], inv_rd);
+          // square_distance = sum_components(square(rvector[index]));
+          // if (square_distance == fp_type{0}) {
+          //   error("Attempt to divide by zero was just prevented.");
+          //   square_distance = std::numeric_limits<fp_type>::epsilon();
+          // }
+          // inv_rd         = fp_type{1} / sqrtf(square_distance);
+          // rvector[index] = scale(rvector[index], inv_rd);
+          rvector[index] = normalize(rvector[index]);
         } /* end two bonds to Oxygen */
         /* NEW Directional N Acceptor */
       } else if (receptor.num_hbond(index) == 4) { /*A1*/
@@ -475,9 +467,7 @@ namespace mudock {
         ** determine number of atoms bonded to the oxygen
         */
         size_t nbond = 0, index_1 = 0, index_2 = 0, index_3 = 0;
-        for (size_t other_index = std::max(index - range_near_atom_receptor, size_t{0});
-             other_index < std::min(index + range_near_atom_receptor, size_t{0});
-             ++other_index)
+        for (size_t other_index = from_neighbor; other_index < to_neighbor; ++other_index)
           if (index != other_index) {
             const fp_type square_distance =
                 distance2(point3D{receptor.x(index), receptor.y(index), receptor.z(index)},
@@ -789,9 +779,10 @@ namespace mudock {
 
               /* add desolvation energy  */
               /* forcefield desolv coefficient/weight in sol_fn*/
-              scratch.energy += inter.solpar_probe * inter.vol * sol_fn[indx_r] +
-                                (inter.solpar_probe + solpar_q * std::fabs(receptor.charge(index))) *
-                                    inter.vol_probe * sol_fn[indx_r];
+              scratch.energy +=
+                  scratch.grid_type_desc.solpar * get_description(receptor_type).vol * sol_fn[indx_r] +
+                  (scratch.grid_type_desc.solpar + solpar_q * std::fabs(receptor.charge(index))) *
+                      scratch.grid_type_desc.vol * sol_fn[indx_r];
             }
           } /* ia loop, over all receptor atoms... */
 
