@@ -1,3 +1,5 @@
+#include "mudock/grid/point3D.hpp"
+
 #include <algorithm>
 #include <array>
 #include <limits>
@@ -59,25 +61,20 @@ namespace mudock {
       *  c[0:2] contains the current grid point.
       */
       const fp_type coord_z = grid_minimum.z + index_z * grid_spacing;
-      for (size_t index_y = 0; index_y < npts.size_z(); ++index_y) {
+      for (size_t index_y = 0; index_y < npts.size_y(); ++index_y) {
         const fp_type coord_y = grid_minimum.y + index_y * grid_spacing;
-        for (size_t index_x = 0; index_x < npts.size_z(); ++index_x) {
+        for (size_t index_x = 0; index_x < npts.size_x(); ++index_x) {
           const fp_type coord_x = grid_minimum.x + index_x * grid_spacing;
           fp_type energy{0};
           for (size_t index = 0; index < receptor.num_atoms(); ++index) {
-            point3D dist = difference(point3D{receptor.x(index), receptor.y(index), receptor.z(index)},
-                                      point3D{coord_x, coord_y, coord_z});
-            fp_type d    = sqrtf(sum_components(square(dist)));
-            //  TODO check @Davide why no error here?
-            if (d == fp_type{0}) {
-              d = std::numeric_limits<fp_type>::epsilon();
-            }
+            const fp_type d = distance(point3D{receptor.x(index), receptor.y(index), receptor.z(index)},
+                                       point3D{coord_x, coord_y, coord_z});
             const fp_type inv_rmax = fp_type{1} / std::max(d, fp_type{0.5});
             const size_t indx_r    = std::min<size_t>(std::floor(d * A_DIV), NDIEL - 1);
             energy +=
                 receptor.charge(index) * inv_rmax * r_epsilon_fn[indx_r] * autodock_parameters::coeff_estat;
           }
-          electrostatic_map.at(coord_x, coord_y, coord_z) = energy;
+          electrostatic_map.at(index_x, index_y, index_z) = energy;
         }
       }
     }

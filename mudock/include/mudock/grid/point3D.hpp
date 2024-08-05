@@ -76,11 +76,6 @@ namespace mudock {
   }
 
   template<class point_type>
-  [[nodiscard]] constexpr fp_type diff_components(point_type&& point) {
-    return point.x - point.y - point.z;
-  }
-
-  template<class point_type>
   [[nodiscard]] constexpr fp_type distance2(point_type&& a, point_type&& b) {
     return sum_components(square(difference(std::forward<point_type>(a), std::forward<point_type>(b))));
   }
@@ -90,7 +85,7 @@ namespace mudock {
     return sqrtf(
         sum_components(square(difference(std::forward<point_type>(a), std::forward<point_type>(b)))));
   }
-
+  
   template<class point_type>
   [[nodiscard]] constexpr fp_type inner_product(point_type&& a, point_type&& b) {
     return a.x * b.x + a.y * b.y + a.z * b.z;

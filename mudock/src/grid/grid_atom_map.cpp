@@ -12,6 +12,7 @@
 #include <mudock/log.hpp>
 #include <mudock/molecule.hpp>
 #include <mudock/type_alias.hpp>
+#include <ostream>
 #include <unordered_map>
 #include <vector>
 
@@ -53,13 +54,7 @@ namespace mudock {
   private:
     static constexpr fp_type r_smooth{0.5}; //Angstrom
 
-    // e_vdW_Hb is sized for distances only up to NBC, the non-bond-cutoff
     std::vector<fp_type> e_vdW_Hb = std::vector<fp_type>(NEINT); // vdW & Hb energies
-    // the other tables are sized for "unlimited" distances
-    // fp_type sol_fn[NDIEL];                             // distance-dependent desolvation function
-    // fp_type epsilon_fn[NDIEL];                         // distance-dependent dielectric function
-    // fp_type r_epsilon_fn[NDIEL];                       // r * distance-dependent dielectric function
-    // Boole is_hbond[MAX_ATOM_TYPES][MAX_ATOM_TYPES]; // for eintcalprint use
   };
 
   struct interaction {
@@ -70,8 +65,6 @@ namespace mudock {
     const size_t xA;       // generally 12
     const size_t xB;       // 6 for non-hbonders 10 for h-bonders
     const size_t hbonder;
-    // TODO vol and vol_probe seems to be the same thing
-    // Autogrid GPF_SOL_PAR option seems to change the values, but it is marked as OBSOLETE
     const autodock_ff receptor_type;
     const vdw_hb_energy_table vdw_hb_table;
 
@@ -95,15 +88,17 @@ namespace mudock {
   };
 
   struct scratchpad {
-    grid_atom_map& atom_map;
+    grid_atom_map atom_map;
     fp_type hbondmin{999999};
     fp_type hbondmax{-999999};
     fp_type hbondflag{false};
     fp_type energy;
     const autodock_ff_description& grid_type_desc;
 
-    scratchpad(const std::vector<autodock_ff> receptor_types, grid_atom_map& _atom_map)
-        : atom_map(_atom_map), grid_type_desc(get_description(atom_map.get_atom_type())) {
+    scratchpad(const std::vector<autodock_ff> receptor_types,
+               const autodock_ff& ligand_type,
+               const index3D& npts)
+        : atom_map(ligand_type, npts), grid_type_desc(get_description(atom_map.get_atom_type())) {
       // Initialize data structure
       for (auto& receptor_t: receptor_types) {
         const auto& receptor_type_desc = get_description(receptor_t);
@@ -113,11 +108,8 @@ namespace mudock {
         fp_type nbp_eps = sqrtf(grid_type_desc.epsii * autodock_parameters::coeff_vdW *
                                 receptor_type_desc.epsii * autodock_parameters::coeff_vdW);
         // TODO probably they are constant
-        size_t xA = 12;
-        size_t xB = 6;
-        // TODO to be checked later in line 1707 from main.cpp
-        fp_type cA     = (nbp_eps / (xA - xB)) * std::pow(nbp_r, static_cast<fp_type>(xA)) * xB;
-        fp_type cB     = nbp_eps / (xA - xB) * std::pow(nbp_r, static_cast<fp_type>(xB)) * xA;
+        size_t xA      = 12;
+        size_t xB      = 6;
         size_t hbonder = 0;
         if (grid_type_desc.hbond > 2 && (receptor_type_desc.hbond == 1 ||
                                          receptor_type_desc.hbond == 2)) { /*AS,A1,A2 map vs DS,D1 probe*/
@@ -134,6 +126,9 @@ namespace mudock {
           nbp_r               = receptor_type_desc.Rij_hb;
           nbp_eps             = receptor_type_desc.epsij_hb * autodock_parameters::coeff_hbond;
         }; /*initialize energy parms for each possible receptor type*/
+        // TODO to be checked later in line 1707 from main.cpp
+        fp_type cA = (nbp_eps / (xA - xB)) * std::pow(nbp_r, static_cast<fp_type>(xA)) * xB;
+        fp_type cB = nbp_eps / (xA - xB) * std::pow(nbp_r, static_cast<fp_type>(xB)) * xA;
 
         interactions.emplace(receptor_t, interaction{cA, cB, nbp_r, nbp_eps, xA, xB, hbonder, receptor_t});
       }
@@ -155,7 +150,10 @@ namespace mudock {
       * Now output this grid point's energies to the maps:
       *
       */
+      if (std::fabs(energy) < precision)
+        energy = 0;
       atom_map.at(coord_x, coord_y, coord_z) = energy;
+      // TODO
       // gridmap[k].energy_max = max(gridmap[k].energy_max, gridmap[k].energy);
       // gridmap[k].energy_min = min(gridmap[k].energy_min, gridmap[k].energy);
     }
@@ -168,8 +166,6 @@ namespace mudock {
   };
 
   std::vector<grid_atom_map> generate_atom_grid_maps(dynamic_molecule& receptor) {
-    // Allocate the results grid maps
-    std::vector<grid_atom_map> grid_atom_maps;
     // Allocate the correspondent scratchpads
     std::vector<scratchpad> scratchpads;
 
@@ -225,17 +221,19 @@ namespace mudock {
     const fp_type receptor_min_y = std::ranges::min(receptor.get_y());
     const fp_type receptor_min_z = std::ranges::min(receptor.get_z());
 
-    const index3D npts{
-        static_cast<size_t>(ceilf((receptor_max_x - receptor_min_x + cutoff_distance * 2) / grid_spacing)),
-        static_cast<size_t>(ceilf((receptor_max_y - receptor_min_y + cutoff_distance * 2) / grid_spacing)),
-        static_cast<size_t>(ceilf((receptor_max_z - receptor_min_z + cutoff_distance * 2) / grid_spacing))};
-    const point3D grid_minimum{floorf(receptor_min_x - cutoff_distance),
-                               floorf(receptor_min_y - cutoff_distance),
-                               floorf(receptor_min_z - cutoff_distance)};
+    const point3D grid_minimum{std::floor((receptor_min_x - cutoff_distance) * fp_type{2}) / fp_type{2},
+                               std::floor((receptor_min_y - cutoff_distance) * fp_type{2}) / fp_type{2},
+                               std::floor((receptor_min_z - cutoff_distance) * fp_type{2}) / fp_type{2}};
+    const point3D grid_maximum{std::ceil((receptor_max_x + cutoff_distance) * fp_type{2}) / fp_type{2},
+                               std::ceil((receptor_max_y + cutoff_distance) * fp_type{2}) / fp_type{2},
+                               std::ceil((receptor_max_z + cutoff_distance) * fp_type{2}) / fp_type{2}};
+    const index3D npts{static_cast<size_t>((grid_maximum.x - grid_minimum.x) / grid_spacing),
+                       static_cast<size_t>((grid_maximum.y - grid_minimum.y) / grid_spacing),
+                       static_cast<size_t>((grid_maximum.z - grid_minimum.z) / grid_spacing)};
 
     for (auto ligand_type: ligand_types) {
-      grid_atom_maps.push_back({ligand_type, npts});
-      scratchpads.emplace_back(receptor_types, grid_atom_maps.back());
+      // grid_atom_maps.push_back({ligand_type, npts});
+      scratchpads.emplace_back(receptor_types, ligand_type, npts);
     }
 
     /* exponential function for receptor and ligand desolvation */
@@ -243,10 +241,10 @@ namespace mudock {
     * and will not be smoothed 
     */
     std::array<fp_type, NDIEL> sol_fn;
-    for (size_t indx_r = 1; indx_r < NDIEL; indx_r++) {
+    for (size_t indx_r = 1; indx_r < NDIEL; ++indx_r) {
       const fp_type r = indx_r / A_DIV;
       sol_fn[indx_r] =
-          autodock_parameters::coeff_desolv * std::exp(-std::sqrt(r) / (fp_type{2} * std::sqrt(sigma)));
+          autodock_parameters::coeff_desolv * std::exp(-(r * r) / (fp_type{2} * (sigma * sigma)));
     }
 
     // TODO what are these???
@@ -254,6 +252,7 @@ namespace mudock {
     std::vector<point3D> rvector(receptor.num_atoms());
     // TODO why rvector2? Seems to be like the square of the previous one
     std::vector<point3D> rvector2(receptor.num_atoms());
+    // TODO seems to be often 0....
     std::vector<size_t> rexp(receptor.num_atoms());
     // TODO all scale with inv_rd should become a method of point3D for normalizing? Vector stuff?
     for (size_t index = 0; index < receptor.num_atoms(); ++index) {
@@ -375,12 +374,12 @@ namespace mudock {
                 // TODO @Davide it appears the same to me as the previous one
                 // rd2 = 0.;
                 // for (i = 0; i < XYZ; i++) {
-                //   d[i] = coord[i2][i] - coord[i1][i];
+                //   d[i] = index[i2][iindexoord[i1][i];
                 //   rd2 += sq(d[i]);
                 // }
                 const point3D d =
-                    normalize(point3D{receptor.x(index_1), receptor.y(index_1), receptor.z(index_1)},
-                              point3D{receptor.x(index_2), receptor.y(index_2), receptor.z(index_2)});
+                    normalize(point3D{receptor.x(index_2), receptor.y(index_2), receptor.z(index_2)},
+                              point3D{receptor.x(index_1), receptor.y(index_1), receptor.z(index_1)});
 
                 /* C=O cross C-X gives the lone pair plane normal */
                 rvector2[index] = normalize(point3D{
@@ -529,6 +528,7 @@ namespace mudock {
         /* endNEW directional N Acceptor */
       }
     }
+
     /*
     * Iterate over all grid points, Z( Y ( X ) ) (X is fastest)...
     */
@@ -537,9 +537,9 @@ namespace mudock {
       *  c[0:2] contains the current grid point.
       */
       const fp_type coord_z = grid_minimum.z + index_z * grid_spacing;
-      for (size_t index_y = 0; index_y < npts.size_z(); ++index_y) {
+      for (size_t index_y = 0; index_y < npts.size_y(); ++index_y) {
         const fp_type coord_y = grid_minimum.y + index_y * grid_spacing;
-        for (size_t index_x = 0; index_x < npts.size_z(); ++index_x) {
+        for (size_t index_x = 0; index_x < npts.size_x(); ++index_x) {
           const fp_type coord_x = grid_minimum.x + index_x * grid_spacing;
 
           /* Initialize Min Hbond variables  for each new point*/
@@ -561,20 +561,25 @@ namespace mudock {
           /* END NEW2: Find Min Hbond */
 
           for (size_t index = 0; index < receptor.num_atoms(); ++index) {
-            const auto receptor_type  = receptor_autodock_types[index];
-            const auto receptor_hbond = receptor.num_hbond(index);
+            const auto receptor_type       = receptor_autodock_types[index];
+            const auto& receptor_type_desc = get_description(receptor_type);
+            const auto receptor_hbond      = receptor.num_hbond(index);
             point3D dist = difference(point3D{receptor.x(index), receptor.y(index), receptor.z(index)},
                                       point3D{coord_x, coord_y, coord_z});
             fp_type d    = sqrtf(sum_components(square(dist)));
-            //  TODO check @Davide why no error here?
-            if (d == fp_type{0}) {
-              d = std::numeric_limits<fp_type>::epsilon();
-            }
-            const fp_type inv_r = fp_type{1} / d;
+            dist         = normalize(dist);
 
-            dist                = scale(dist, inv_r);
             const size_t indx_n = std::min<size_t>(std::floor(d * A_DIV), NEINT - 1);
             const size_t indx_r = std::min<size_t>(std::floor(d * A_DIV), NDIEL - 1);
+
+            /*
+            * If distance from grid point to atom ia is too large,
+            * or if atom is a disordered hydrogen,
+            *   add nothing to the grid-point's non-bond energy;
+            *   just continue to next atom...
+            */
+            if (d > NBC)
+              continue; /* onto the next atom... */
 
             fp_type racc{1};
             fp_type rdon{1};
@@ -594,7 +599,7 @@ namespace mudock {
               *  d[] = Unit vector from current grid pt to ia_th m/m atom.
               *  cos_theta = d dot rvector == cos(angle) subtended.
               */
-              fp_type cos_theta = diff_components(product(dist, rvector[index]));
+              fp_type cos_theta = -sum_components(product(dist, rvector[index]));
               if (cos_theta <= 0) {
                 /*
                          *  H->current-grid-pt vector >= 90 degrees from
@@ -641,7 +646,7 @@ namespace mudock {
               **  d[] = Unit vector from current grid pt to ia_th m/m atom.
               **  cos_theta = d dot rvector == cos(angle) subtended.
               */
-              fp_type cos_theta = diff_components(product(dist, rvector[index]));
+              fp_type cos_theta = -sum_components(product(dist, rvector[index]));
               if (cos_theta <= 0) {
                 /*
                 **  H->current-grid-pt vector >= 90 degrees from
@@ -664,13 +669,13 @@ namespace mudock {
               rdon = fp_type{0};
 
               /* check to see that probe is in front of oxygen, not behind */
-              fp_type cos_theta = diff_components(product(dist, rvector[index]));
+              fp_type cos_theta = -sum_components(product(dist, rvector[index]));
               /*
                     ** t0 is the angle out of the lone pair plane, calculated
                     ** as 90 deg - acos (vector to grid point DOT lone pair
                     ** plane normal)
                     */
-              fp_type t0 = sum_components(product(dist, rvector[index]));
+              fp_type t0 = sum_components(product(dist, rvector2[index]));
               t0         = std::clamp(t0, fp_type{-1}, fp_type{1});
 
               t0 = math::pi_halved - std::acos(t0);
@@ -680,17 +685,11 @@ namespace mudock {
               ** calculated as (grid vector CROSS lone pair plane normal)
               ** DOT C=O vector - 90 deg
               */
-              point3D cross{dist.y * rvector2[index].z - dist.z * rvector2[index].y,
-                            dist.z * rvector2[index].x - dist.x * rvector2[index].z,
-                            dist.x * rvector2[index].y - dist.y * rvector2[index].x};
-              fp_type square_distance = sum_components(square(cross));
-              if (square_distance == fp_type{0}) {
-                square_distance = std::numeric_limits<fp_type>::epsilon();
-              }
-              fp_type inv_rd = fp_type{1} / sqrtf(square_distance);
-              // TODO @Davide what should we do here with the rvalue return from scale to be used directly into product?
-              point3D temp_scale = scale(rvector[index], inv_rd);
-              fp_type ti         = sum_components(product(cross, temp_scale));
+              const point3D cross =
+                  normalize(point3D{dist.y * rvector2[index].z - dist.z * rvector2[index].y,
+                                    dist.z * rvector2[index].x - dist.x * rvector2[index].z,
+                                    dist.x * rvector2[index].y - dist.y * rvector2[index].x});
+              fp_type ti = sum_components(product(cross, static_cast<const point3D&>(rvector[index])));
 
               /* rdon expressions from Goodford */
               rdon = 0.;
@@ -754,9 +753,10 @@ namespace mudock {
 
               /* add desolvation energy  */
               /* forcefield desolv coefficient/weight in sol_fn*/
+              // TODO Check charges they seems to be different
               scratch.energy +=
                   scratch.grid_type_desc.solpar * get_description(receptor_type).vol * sol_fn[indx_r] +
-                  (scratch.grid_type_desc.solpar + solpar_q * std::fabs(receptor.charge(index))) *
+                  (receptor_type_desc.solpar + solpar_q * std::fabs(receptor.charge(index))) *
                       scratch.grid_type_desc.vol * sol_fn[indx_r];
             }
           } /* ia loop, over all receptor atoms... */
@@ -764,10 +764,22 @@ namespace mudock {
           /* adjust maps of hydrogen-bonding atoms by adding largest and
           * smallest interaction of all 'pair-wise' interactions with receptor atoms
           */
-          for (scratchpad& scratch: scratchpads) { scratch.write_to_map(coord_x, coord_y, coord_z); }
+          for (scratchpad& scratch: scratchpads) {
+            scratch.write_to_map(index_x, index_y, index_z);
+            // if (scratch.energy != fp_type{0} && scratch.energy>precision)
+            //   std::cout << "map " << scratch.grid_type_desc.name << "| coord " << coord_x << " " << coord_y
+            //             << " " << coord_z << " | value " << scratch.energy << std::endl;
+            // if (scratch.hbondflag)
+            //   std::cout << "map " << scratch.grid_type_desc.name << "| coord " << coord_x << " " << coord_y
+            //             << " " << coord_z << " | hbondmin " << scratch.hbondmin << " hbondmax "
+            //             << scratch.hbondmax << std::endl;
+          }
         }
       }
     }
+    // Allocate the results grid maps
+    std::vector<grid_atom_map> grid_atom_maps;
+    for (auto& scratch: scratchpads) grid_atom_maps.push_back(std::move(scratch.atom_map));
     return grid_atom_maps;
   }
 } // namespace mudock

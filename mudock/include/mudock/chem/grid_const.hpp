@@ -25,6 +25,8 @@ namespace mudock {
   // TODO wrong comment in autogrid
   static constexpr size_t NDIEL{16384};
 
+  static constexpr fp_type NBC{8.00}; /* Non-bonded cutoff for internal energy calc./Ang*/
+
   /* Used in distance look-up table. i.e. every 1/100-th of an Angstrom */
   static constexpr fp_type A_DIV{100.00};     /* Used in distance look-up table. */
   static constexpr fp_type EINTCLAMP{100000}; /* Clamp pairwise internal energies (kcal/mol )  */
@@ -33,4 +35,6 @@ namespace mudock {
 
   static constexpr fp_type solpar_q{0.01097};
   static constexpr fp_type sigma{3.6};
+
+  static constexpr fp_type precision{0.0001};
 } // namespace mudock
