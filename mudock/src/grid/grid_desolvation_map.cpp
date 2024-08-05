@@ -34,7 +34,7 @@ namespace mudock {
     for (size_t indx_r = 1; indx_r < NDIEL; indx_r++) {
       const fp_type r = indx_r / A_DIV;
       sol_fn[indx_r] =
-          autodock_parameters::coeff_desolv * std::exp(-std::sqrt(r) / (fp_type{2} * std::sqrt(sigma)));
+          autodock_parameters::coeff_desolv * std::exp(-(r * r) / (fp_type{2} * (sigma * sigma)));
     }
 
     for (size_t index_z = 0; index_z < npts.size_z(); ++index_z) {
@@ -42,24 +42,22 @@ namespace mudock {
       *  c[0:2] contains the current grid point.
       */
       const fp_type coord_z = grid_minimum.z + index_z * grid_spacing;
-      for (size_t index_y = 0; index_y < npts.size_z(); ++index_y) {
+      for (size_t index_y = 0; index_y < npts.size_y(); ++index_y) {
         const fp_type coord_y = grid_minimum.y + index_y * grid_spacing;
-        for (size_t index_x = 0; index_x < npts.size_z(); ++index_x) {
+        for (size_t index_x = 0; index_x < npts.size_x(); ++index_x) {
           const fp_type coord_x = grid_minimum.x + index_x * grid_spacing;
           fp_type energy{0};
           for (size_t index = 0; index < receptor.num_atoms(); ++index) {
-            point3D dist = difference(point3D{receptor.x(index), receptor.y(index), receptor.z(index)},
-                                      point3D{coord_x, coord_y, coord_z});
-            fp_type d    = sqrtf(sum_components(square(dist)));
-            //  TODO check @Davide why no error here?
-            if (d == fp_type{0}) {
-              d = std::numeric_limits<fp_type>::epsilon();
-            }
+            const fp_type d = distance(point3D{receptor.x(index), receptor.y(index), receptor.z(index)},
+                                       point3D{coord_x, coord_y, coord_z});
+            if (d > NBC)
+              continue; /* onto the next atom... */
             const size_t indx_r = std::min<size_t>(std::floor(d * A_DIV), NDIEL - 1);
-
             energy += solpar_q * receptor.get_vol()[index] * sol_fn[indx_r];
           }
-          desolvation_map.at(coord_x, coord_y, coord_z) = energy;
+          if (energy > 0)
+            std::cout << "coord " << coord_x << " " << coord_y << " " << coord_z << " | energy " << energy
+                      << std::endl;
         }
       }
     }
