@@ -35,7 +35,7 @@ namespace mudock {
       return grid_values[index.to1D(x, y, z)];
     }
 
-    inline int outside_grid(const point3D& p) {
+    inline int outside_grid(const point3D& p) const {
       return p.x < minimum.x || p.x > maximum.x || p.y < minimum.y || p.y > maximum.y || p.z < minimum.z ||
              p.z > maximum.z;
     }

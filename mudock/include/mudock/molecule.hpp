@@ -5,6 +5,7 @@
 #include <concepts>
 #include <cstdint>
 #include <mudock/chem/elements.hpp>
+#include <mudock/chem/autodock_types.hpp>
 #include <mudock/molecule/bond.hpp>
 #include <mudock/molecule/constraints.hpp>
 #include <mudock/molecule/containers.hpp>
@@ -30,6 +31,7 @@ namespace mudock {
   private:
     // the atoms chemical properties
     atoms_array_type<element> atom_elements;
+    atoms_array_type<autodock_ff> atom_autodock_type;
     atoms_array_type<fp_type> x_coordinates;
     atoms_array_type<fp_type> y_coordinates;
     atoms_array_type<fp_type> z_coordinates;
@@ -73,6 +75,7 @@ namespace mudock {
 
     // utility functions to get the span of the whole molecule (read + write)
     [[nodiscard]] inline auto get_elements() { return make_span(atom_elements, atoms_size); }
+    [[nodiscard]] inline auto get_autodock_type() { return make_span(atom_autodock_type, atoms_size); }
     [[nodiscard]] inline auto get_x() { return make_span(x_coordinates, atoms_size); }
     [[nodiscard]] inline auto get_y() { return make_span(y_coordinates, atoms_size); }
     [[nodiscard]] inline auto get_z() { return make_span(z_coordinates, atoms_size); }
@@ -88,6 +91,7 @@ namespace mudock {
 
     // utility functions to get the span of the whole molecule (read only)
     [[nodiscard]] inline auto get_element() const { return make_span(atom_elements, atoms_size); }
+    [[nodiscard]] inline auto get_autodock_type() const { return make_span(atom_autodock_type, atoms_size); }
     [[nodiscard]] inline auto get_x() const { return make_span(x_coordinates, atoms_size); }
     [[nodiscard]] inline auto get_y() const { return make_span(y_coordinates, atoms_size); }
     [[nodiscard]] inline auto get_z() const { return make_span(z_coordinates, atoms_size); }
@@ -103,6 +107,7 @@ namespace mudock {
 
     // utility functions to get the ref to an atom element (read + write)
     [[nodiscard]] inline auto& elements(const std::size_t index) { return atom_elements[index]; }
+    [[nodiscard]] inline auto& autodock_type(const std::size_t index) { return atom_autodock_type[index]; }
     [[nodiscard]] inline auto& x(const std::size_t index) { return x_coordinates[index]; }
     [[nodiscard]] inline auto& y(const std::size_t index) { return y_coordinates[index]; }
     [[nodiscard]] inline auto& z(const std::size_t index) { return z_coordinates[index]; }
@@ -118,6 +123,7 @@ namespace mudock {
 
     // utility functions to get the span of the whole molecule (read only)
     [[nodiscard]] inline const auto& elements(const std::size_t index) const { return atom_elements[index]; }
+    [[nodiscard]] inline const auto& autodock_type(const std::size_t index) const { return atom_autodock_type[index]; }
     [[nodiscard]] inline const auto& x(const std::size_t index) const { return x_coordinates[index]; }
     [[nodiscard]] inline const auto& y(const std::size_t index) const { return y_coordinates[index]; }
     [[nodiscard]] inline const auto& z(const std::size_t index) const { return z_coordinates[index]; }
@@ -157,6 +163,7 @@ namespace mudock {
     requires is_container_specification<container_aliases>
   void molecule<container_aliases>::resize(const std::size_t n_atoms, std::size_t n_bonds) {
     mudock::resize(atom_elements, n_atoms);
+    mudock::resize(atom_autodock_type, n_atoms);
     mudock::resize(x_coordinates, n_atoms);
     mudock::resize(y_coordinates, n_atoms);
     mudock::resize(z_coordinates, n_atoms);
@@ -178,6 +185,7 @@ namespace mudock {
   void molecule<container_aliases>::remove_atom(const std::size_t index) {
     // remove the target atom from all the containers
     mudock::remove_atom(atom_elements, index);
+    mudock::remove_atom(atom_autodock_type, index);
     mudock::remove_atom(x_coordinates, index);
     mudock::remove_atom(y_coordinates, index);
     mudock::remove_atom(z_coordinates, index);
