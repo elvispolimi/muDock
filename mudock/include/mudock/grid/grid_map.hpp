@@ -1,5 +1,7 @@
 #pragma once
 
+#include "mudock/chem/autodock_types.hpp"
+
 #include <iostream>
 #include <mudock/chem.hpp>
 #include <mudock/grid/mdindex.hpp>
@@ -56,7 +58,20 @@ namespace mudock {
     size_t is_hbonder{0};
   };
 
-  std::vector<grid_atom_map> generate_atom_grid_maps(dynamic_molecule&);
+  // TODO check if we should put it together with also other maps
+  class grid_atom_mapper {
+    // TODO @Davide
+    std::unordered_map<autodock_ff, grid_atom_map> grid_maps;
+
+  public:
+    grid_atom_mapper(std::vector<grid_atom_map> maps) {
+      for (auto& map: maps) { grid_maps.emplace(map.get_atom_type(), std::move(map)); }
+    }
+
+    inline const grid_atom_map& get_atom_map(const autodock_ff& type) const { return grid_maps.at(type); }
+  };
+
+  grid_atom_mapper generate_atom_grid_maps(dynamic_molecule&);
   grid_map generate_electrostatic_grid_map(dynamic_molecule&);
   grid_map generate_desolvation_grid_map(dynamic_molecule&);
 } // namespace mudock
