@@ -97,8 +97,10 @@ namespace mudock {
 
     scratchpad(const std::vector<autodock_ff> receptor_types,
                const autodock_ff& ligand_type,
-               const index3D& npts)
-        : atom_map(ligand_type, npts), grid_type_desc(get_description(atom_map.get_atom_type())) {
+               const index3D& npts,
+               const point3D& min,
+               const point3D& max)
+        : atom_map(ligand_type, npts, min, max), grid_type_desc(get_description(atom_map.get_atom_type())) {
       // Initialize data structure
       for (auto& receptor_t: receptor_types) {
         const auto& receptor_type_desc = get_description(receptor_t);
@@ -233,7 +235,7 @@ namespace mudock {
 
     for (auto ligand_type: ligand_types) {
       // grid_atom_maps.push_back({ligand_type, npts});
-      scratchpads.emplace_back(receptor_types, ligand_type, npts);
+      scratchpads.emplace_back(receptor_types, ligand_type, npts, grid_minimum, grid_maximum);
     }
 
     /* exponential function for receptor and ligand desolvation */
@@ -460,17 +462,6 @@ namespace mudock {
 
         if (nbond == 1) {
           /* calculate normalized N=C bond vector rvector[ia][] */
-
-          // rvector[index] = difference(point3D{receptor.x(index), receptor.y(index), receptor.z(index)},
-
-          //                             point3D{receptor.x(index_1), receptor.y(index_1), receptor.z(index_1)});
-          // fp_type square_distance = sum_components(square(rvector[index]));
-          // if (square_distance == fp_type{0}) {
-          //   error("Attempt to divide by zero was just prevented.");
-          //   square_distance = std::numeric_limits<fp_type>::epsilon();
-          // }
-          // fp_type inv_rd = fp_type{1} / sqrtf(square_distance);
-          // rvector[index] = scale(rvector[index], inv_rd);
           rvector[index] = normalize(point3D{receptor.x(index), receptor.y(index), receptor.z(index)},
 
                                      point3D{receptor.x(index_1), receptor.y(index_1), receptor.z(index_1)});
@@ -479,20 +470,6 @@ namespace mudock {
         /* two bonds: X1-N=X2 */
         if (nbond == 2) {
           /* normalized vector from Nitrogen to midpoint between X1 and X2 */
-
-          // rvector[index] = difference(
-          //     point3D{receptor.x(index), receptor.y(index), receptor.z(index)},
-
-          //     scalar_division(add(point3D{receptor.x(index_2), receptor.y(index_2), receptor.z(index_2)},
-          //                         point3D{receptor.x(index_1), receptor.y(index_1), receptor.z(index_1)}),
-          //                     2));
-          // fp_type square_distance = sum_components(square(rvector[index]));
-          // if (square_distance == fp_type{0}) {
-          //   error("Attempt to divide by zero was just prevented.");
-          //   square_distance = std::numeric_limits<fp_type>::epsilon();
-          // }
-          // fp_type inv_rd = fp_type{1} / sqrtf(square_distance);
-          // rvector[index] = scale(rvector[index], inv_rd);
           rvector[index] = normalize(difference(
               point3D{receptor.x(index), receptor.y(index), receptor.z(index)},
 
@@ -503,20 +480,6 @@ namespace mudock {
         /* three bonds: X1,X2,X3 */
         if (nbond == 3) {
           /* normalized vector from Nitrogen to midpoint between X1, X2, and X3 */
-          // rvector[index] = difference(
-          //     point3D{receptor.x(index), receptor.y(index), receptor.z(index)},
-
-          //     scalar_division(add(add(point3D{receptor.x(index_1), receptor.y(index_1), receptor.z(index_1)},
-          //                             point3D{receptor.x(index_2), receptor.y(index_2), receptor.z(index_2)}),
-          //                         point3D{receptor.x(index_3), receptor.y(index_3), receptor.z(index_3)}),
-          //                     3));
-          // fp_type square_distance = sum_components(square(rvector[index]));
-          // if (square_distance == fp_type{0}) {
-          //   error("Attempt to divide by zero was just prevented.");
-          //   square_distance = std::numeric_limits<fp_type>::epsilon();
-          // }
-          // fp_type inv_rd = fp_type{1} / sqrtf(square_distance);
-          // rvector[index] = scale(rvector[index], inv_rd);
           rvector[index] = normalize(difference(
               point3D{receptor.x(index), receptor.y(index), receptor.z(index)},
 
@@ -764,20 +727,12 @@ namespace mudock {
           /* adjust maps of hydrogen-bonding atoms by adding largest and
           * smallest interaction of all 'pair-wise' interactions with receptor atoms
           */
-          for (scratchpad& scratch: scratchpads) {
-            scratch.write_to_map(index_x, index_y, index_z);
-            // if (scratch.energy != fp_type{0} && scratch.energy>precision)
-            //   std::cout << "map " << scratch.grid_type_desc.name << "| coord " << coord_x << " " << coord_y
-            //             << " " << coord_z << " | value " << scratch.energy << std::endl;
-            // if (scratch.hbondflag)
-            //   std::cout << "map " << scratch.grid_type_desc.name << "| coord " << coord_x << " " << coord_y
-            //             << " " << coord_z << " | hbondmin " << scratch.hbondmin << " hbondmax "
-            //             << scratch.hbondmax << std::endl;
-          }
+          for (scratchpad& scratch: scratchpads) { scratch.write_to_map(index_x, index_y, index_z); }
         }
       }
     }
     // Allocate the results grid maps
+    // TODO check if it works with the move
     std::vector<grid_atom_map> grid_atom_maps;
     for (auto& scratch: scratchpads) grid_atom_maps.push_back(std::move(scratch.atom_map));
     return grid_atom_maps;

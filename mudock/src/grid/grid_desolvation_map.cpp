@@ -16,15 +16,17 @@ namespace mudock {
     const fp_type receptor_min_y = std::ranges::min(receptor.get_y());
     const fp_type receptor_min_z = std::ranges::min(receptor.get_z());
 
-    const index3D npts{
-        static_cast<size_t>(ceilf((receptor_max_x - receptor_min_x + cutoff_distance * 2) / grid_spacing)),
-        static_cast<size_t>(ceilf((receptor_max_y - receptor_min_y + cutoff_distance * 2) / grid_spacing)),
-        static_cast<size_t>(ceilf((receptor_max_z - receptor_min_z + cutoff_distance * 2) / grid_spacing))};
-    const point3D grid_minimum{floorf(receptor_min_x - cutoff_distance),
-                               floorf(receptor_min_y - cutoff_distance),
-                               floorf(receptor_min_z - cutoff_distance)};
+    const point3D grid_minimum{std::floor((receptor_min_x - cutoff_distance) * fp_type{2}) / fp_type{2},
+                               std::floor((receptor_min_y - cutoff_distance) * fp_type{2}) / fp_type{2},
+                               std::floor((receptor_min_z - cutoff_distance) * fp_type{2}) / fp_type{2}};
+    const point3D grid_maximum{std::ceil((receptor_max_x + cutoff_distance) * fp_type{2}) / fp_type{2},
+                               std::ceil((receptor_max_y + cutoff_distance) * fp_type{2}) / fp_type{2},
+                               std::ceil((receptor_max_z + cutoff_distance) * fp_type{2}) / fp_type{2}};
+    const index3D npts{static_cast<size_t>((grid_maximum.x - grid_minimum.x) / grid_spacing),
+                       static_cast<size_t>((grid_maximum.y - grid_minimum.y) / grid_spacing),
+                       static_cast<size_t>((grid_maximum.z - grid_minimum.z) / grid_spacing)};
 
-    grid_map desolvation_map{npts};
+    grid_map desolvation_map{npts, grid_minimum, grid_maximum};
 
     /* exponential function for receptor and ligand desolvation */
     /* note: the solvation term ranges beyond the non-bond cutoff 
