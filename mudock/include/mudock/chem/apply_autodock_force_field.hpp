@@ -40,14 +40,15 @@ namespace mudock {
 
     // fill the atom properties using the autodock force field
     for (std::size_t index{0}; index < num_atoms; ++index) {
-      const auto& ff_entry      = get_description(mol_autodock_types[index]);
-      molecule.Rii(index)       = ff_entry.Rii;
-      molecule.epsii(index)     = ff_entry.epsii;
-      molecule.vol(index)       = ff_entry.vol;
-      molecule.solpar(index)    = ff_entry.solpar;
-      molecule.Rij_hb(index)    = ff_entry.Rij_hb;
-      molecule.epsij_hb(index)  = ff_entry.epsij_hb;
-      molecule.num_hbond(index) = ff_entry.hbond;
+      const auto& ff_entry          = get_description(mol_autodock_types[index]);
+      molecule.autodock_type(index) = ff_entry.value;
+      molecule.Rii(index)           = ff_entry.Rii;
+      molecule.epsii(index)         = ff_entry.epsii;
+      molecule.vol(index)           = ff_entry.vol;
+      molecule.solpar(index)        = ff_entry.solpar;
+      molecule.Rij_hb(index)        = ff_entry.Rij_hb;
+      molecule.epsij_hb(index)      = ff_entry.epsij_hb;
+      molecule.num_hbond(index)     = ff_entry.hbond;
     }
   }
 } // namespace mudock

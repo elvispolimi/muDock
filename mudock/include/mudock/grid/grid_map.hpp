@@ -30,6 +30,11 @@ namespace mudock {
     inline fp_type& at(const size_t x, const size_t y, const size_t z) {
       return grid_values[index.to1D(x, y, z)];
     }
+
+    inline int outside_grid(const point3D& p) const {
+      return p.x < minimum.x || p.x > maximum.x || p.y < minimum.y || p.y > maximum.y || p.z < minimum.z ||
+             p.z > maximum.z;
+    }
   };
 
   class grid_atom_map: public grid_map {
