@@ -1,9 +1,4 @@
-#include "mudock/chem/autodock_parameters.hpp"
 #include "mudock/chem/autodock_types.hpp"
-#include "mudock/chem/grid_const.hpp"
-#include "mudock/grid/grid_map.hpp"
-#include "mudock/grid/point3D.hpp"
-
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -96,7 +91,7 @@ namespace mudock {
     fp_type energy;
     const autodock_ff_description& grid_type_desc;
 
-    scratchpad(const std::vector<autodock_ff> receptor_types,
+    scratchpad(const std::set<autodock_ff> receptor_types,
                const autodock_ff& ligand_type,
                const index3D& npts,
                const point3D& min,
@@ -173,34 +168,8 @@ namespace mudock {
     std::vector<scratchpad> scratchpads;
 
     // Get autodock types found in the receptor
-    const auto num_atoms = receptor.num_atoms();
-    // TODO???
-    typename dynamic_containers::template atoms_size<autodock_babel_ff> receptor_babel_types;
-    typename dynamic_containers::template atoms_size<autodock_ff> receptor_autodock_types;
-    mudock::resize(receptor_babel_types, num_atoms);
-    mudock::resize(receptor_autodock_types, num_atoms);
-
-    // create the graph of the molecule
-    const auto graph = make_graph(receptor.get_bonds());
-
-    // assign the autodock babel type
-    auto babel_type_span = make_span(receptor_babel_types, num_atoms);
-    assign_autodock_babel_types(babel_type_span,
-                                receptor.get_x(),
-                                receptor.get_y(),
-                                receptor.get_z(),
-                                receptor.get_elements(),
-                                graph);
-
-    // assign the autodock type
-    assign_autodock_types(make_span(receptor_autodock_types, num_atoms),
-                          receptor.get_elements(),
-                          receptor.get_is_aromatic(),
-                          babel_type_span,
-                          graph);
-    typename dynamic_containers::template atoms_size<autodock_ff> receptor_types = receptor_autodock_types;
-    std::sort(receptor_types.begin(), receptor_types.end());
-    receptor_types.erase(std::unique(receptor_types.begin(), receptor_types.end()), receptor_types.end());
+    const auto & receptor_autodock_types = receptor.get_autodock_type();
+    std::set<autodock_ff> receptor_types {receptor_autodock_types.begin(),receptor_autodock_types.end()};
     // TODO check if H should be removed
     // receptor_types.erase(std::remove(receptor_types.begin(), receptor_types.end(), mudock::autodock_ff::H));
 
