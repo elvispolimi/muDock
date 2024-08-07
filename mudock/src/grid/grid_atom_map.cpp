@@ -1,6 +1,7 @@
 #include "mudock/chem/autodock_parameters.hpp"
 #include "mudock/chem/autodock_types.hpp"
 #include "mudock/chem/grid_const.hpp"
+#include "mudock/grid/grid_map.hpp"
 #include "mudock/grid/point3D.hpp"
 
 #include <algorithm>
@@ -167,7 +168,7 @@ namespace mudock {
     std::unordered_map<autodock_ff, interaction> interactions;
   };
 
-  std::vector<grid_atom_map> generate_atom_grid_maps(dynamic_molecule& receptor) {
+  grid_atom_mapper generate_atom_grid_maps(dynamic_molecule& receptor) {
     // Allocate the correspondent scratchpads
     std::vector<scratchpad> scratchpads;
 
