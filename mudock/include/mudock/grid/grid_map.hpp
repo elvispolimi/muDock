@@ -13,8 +13,8 @@ namespace mudock {
 
   class grid_map {
     std::vector<fp_type> grid_values;
-    index3D index;
-    point3D minimum, maximum;
+    const index3D index;
+    const point3D minimum, maximum;
 
   public:
     grid_map(const index3D& npts, const point3D& min, const point3D& max)
@@ -22,13 +22,20 @@ namespace mudock {
       grid_values.resize(npts.size_x() * npts.size_y() * npts.size_z());
     }
     ~grid_map() = default;
-    grid_map(grid_map&& other): index(other.index) { grid_values.swap(other.grid_values); }
-    grid_map(const grid_map& other)      = delete;
-    grid_map& operator=(grid_map&&)      = default;
-    grid_map& operator=(const grid_map&) = delete;
+    grid_map(grid_map&& other): index(other.index), minimum(other.minimum), maximum(other.maximum) {
+      grid_values.swap(other.grid_values);
+    }
+    grid_map(const grid_map& other)       = delete;
+    grid_map& operator=(grid_map&& other) = delete;
+    grid_map& operator=(const grid_map&)  = delete;
 
     inline fp_type& at(const size_t x, const size_t y, const size_t z) {
       return grid_values[index.to1D(x, y, z)];
+    }
+
+    inline int outside_grid(const point3D& p) {
+      return p.x < minimum.x || p.x > maximum.x || p.y < minimum.y || p.y > maximum.y || p.z < minimum.z ||
+             p.z > maximum.z;
     }
   };
 
@@ -41,7 +48,7 @@ namespace mudock {
     ~grid_atom_map() = default;
     grid_atom_map(grid_atom_map&& other): grid_map(std::move(other)) { atom_type = other.atom_type; }
     grid_atom_map(const grid_atom_map& other)      = delete;
-    grid_atom_map& operator=(grid_atom_map&&)      = default;
+    grid_atom_map& operator=(grid_atom_map&&)      = delete;
     grid_atom_map& operator=(const grid_atom_map&) = delete;
 
     [[nodiscard]] inline auto get_atom_type() const { return atom_type; }
