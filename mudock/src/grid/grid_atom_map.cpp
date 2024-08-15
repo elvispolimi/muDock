@@ -1,4 +1,3 @@
-#include "mudock/chem/autodock_types.hpp"
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -168,8 +167,8 @@ namespace mudock {
     std::vector<scratchpad> scratchpads;
 
     // Get autodock types found in the receptor
-    const auto & receptor_autodock_types = receptor.get_autodock_type();
-    std::set<autodock_ff> receptor_types {receptor_autodock_types.begin(),receptor_autodock_types.end()};
+    const auto& receptor_autodock_types = receptor.get_autodock_type();
+    std::set<autodock_ff> receptor_types{receptor_autodock_types.begin(), receptor_autodock_types.end()};
     // TODO check if H should be removed
     // receptor_types.erase(std::remove(receptor_types.begin(), receptor_types.end(), mudock::autodock_ff::H));
 
