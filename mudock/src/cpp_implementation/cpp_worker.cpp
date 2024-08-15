@@ -6,11 +6,16 @@
 #include <string>
 
 namespace mudock {
-  cpp_worker::cpp_worker(std::shared_ptr<dynamic_molecule> protein,
+  cpp_worker::cpp_worker(std::shared_ptr<const dynamic_molecule> protein,
+                         std::shared_ptr<const grid_atom_mapper> grid_atom_maps,
+                         std::shared_ptr<const grid_map> electro_map,
+                         std::shared_ptr<const grid_map> desolv_map,
                          std::shared_ptr<safe_stack<static_molecule>> input_molecules,
                          std::shared_ptr<safe_stack<static_molecule>> output_molecules,
                          const std::size_t cpu_id)
-      : input_stack(input_molecules), output_stack(output_molecules), virtual_screen(protein) {
+      : input_stack(input_molecules),
+        output_stack(output_molecules),
+        virtual_screen(protein, grid_atom_maps, electro_map, desolv_map) {
     cpu_set_t cpuset;
     CPU_ZERO(&cpuset);
     CPU_SET(cpu_id, &cpuset); // Set affinity to the target CPU
