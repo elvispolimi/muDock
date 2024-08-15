@@ -80,7 +80,7 @@ namespace mudock {
       dest.z(mudock_atom_index)           = static_cast<fp_type>(z);
       dest.charge(mudock_atom_index)      = fp_type{0};
       std::string charge = atom->getProp<std::string>(RDKit::common_properties::_GasteigerCharge);
-      if(charge=="inf")
+      if (charge == "inf")
         // https://github.com/rdkit/rdkit/blob/master/rdkit/Chem/MolSurf.py line 213
         dest.charge(mudock_atom_index) = 0.0;
       else
