@@ -12,6 +12,16 @@ namespace mudock {
     fp_type x = fp_type{0.0};
     fp_type y = fp_type{0.0};
     fp_type z = fp_type{0.0};
+
+    point3D(const fp_type _x, const fp_type _y, const fp_type _z): x(_x), y(_y), z(_z){};
+    point3D(const fp_type v): x(v), y(v), z(v){};
+    point3D(){};
+
+    ~point3D()                          = default;
+    point3D(point3D&& other)            = default;
+    point3D(const point3D& other)       = default;
+    point3D& operator=(point3D&& other) = default;
+    point3D& operator=(const point3D&)  = default;
   };
 
   template<class point_type>
@@ -21,6 +31,16 @@ namespace mudock {
 
   template<class point_type, class... point_types>
   [[nodiscard]] constexpr std::remove_reference_t<point_type> add(point_type&& a, point_types&&... bs) {
+    return add(std::forward<point_type>(a), std::forward<point_type>(bs...));
+  }
+
+  template<class point_type>
+  [[nodiscard]] constexpr std::remove_reference_t<point_type> divide(point_type&& a, point_type&& b) {
+    return {a.x / b.x, a.y / b.y, a.z / b.z};
+  }
+
+  template<class point_type, class... point_types>
+  [[nodiscard]] constexpr std::remove_reference_t<point_type> divide(point_type&& a, point_types&&... bs) {
     return add(std::forward<point_type>(a), std::forward<point_type>(bs...));
   }
 
@@ -85,7 +105,7 @@ namespace mudock {
     return sqrtf(
         sum_components(square(difference(std::forward<point_type>(a), std::forward<point_type>(b)))));
   }
-  
+
   template<class point_type>
   [[nodiscard]] constexpr fp_type inner_product(point_type&& a, point_type&& b) {
     return a.x * b.x + a.y * b.y + a.z * b.z;
@@ -94,6 +114,11 @@ namespace mudock {
   template<class point_type>
   [[nodiscard]] constexpr std::remove_reference_t<point_type> product(point_type&& a, point_type&& b) {
     return {a.x * b.x, a.y * b.y, a.z * b.z};
+  }
+
+  template<class point_type, class... point_types>
+  [[nodiscard]] constexpr std::remove_reference_t<point_type> product(point_type&& a, point_types&&... bs) {
+    return product(std::forward<point_type>(a), std::forward<point_type>(bs...));
   }
 
   // this function consider the given point as the end of a vector that starts in the origin

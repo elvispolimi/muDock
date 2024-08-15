@@ -1,7 +1,7 @@
 #pragma once
 
-#include "mudock/chem/autodock_types.hpp"
-
+#include <cmath>
+#include <cstddef>
 #include <iostream>
 #include <mudock/chem.hpp>
 #include <mudock/grid/mdindex.hpp>
@@ -13,31 +13,67 @@
 
 namespace mudock {
 
-  class grid_map {
-    std::vector<fp_type> grid_values;
-    const index3D index;
+  template<class T, class index_type>
+    requires is_index<index_type>
+  class grid {
+    std::vector<T> grid_values;
+
+  public:
+    grid(const index_type _index): grid_values(_index.get_dim()), index(_index){};
+    ~grid() = default;
+    grid(grid&& other): index(other.index) { grid_values.swap(other.grid_values); }
+    grid(const grid& other)       = delete;
+    grid& operator=(grid&& other) = delete;
+    grid& operator=(const grid&)  = delete;
+
+    const index_type index;
+
+    template<typename... Indexes>
+    inline T& at(Indexes... indexes) {
+      return grid_values[index.to1D(indexes...)];
+    }
+
+    template<typename... Indexes>
+    inline T at(Indexes... indexes) const {
+      return grid_values[index.to1D(indexes...)];
+    }
+  };
+
+  class grid_map: public grid<fp_type, index3D> {
     const point3D minimum, maximum;
 
   public:
     grid_map(const index3D& npts, const point3D& min, const point3D& max)
-        : index(npts), minimum(min), maximum(max) {
-      grid_values.resize(npts.size_x() * npts.size_y() * npts.size_z());
-    }
+        : grid(npts), minimum(min), maximum(max) {}
     ~grid_map() = default;
-    grid_map(grid_map&& other): index(other.index), minimum(other.minimum), maximum(other.maximum) {
-      grid_values.swap(other.grid_values);
-    }
+    grid_map(grid_map&& other): grid(other.index), minimum(other.minimum), maximum(other.maximum) {}
     grid_map(const grid_map& other)       = delete;
     grid_map& operator=(grid_map&& other) = delete;
     grid_map& operator=(const grid_map&)  = delete;
 
-    inline fp_type& at(const size_t x, const size_t y, const size_t z) {
-      return grid_values[index.to1D(x, y, z)];
-    }
-
     inline int outside_grid(const point3D& p) const {
       return p.x < minimum.x || p.x > maximum.x || p.y < minimum.y || p.y > maximum.y || p.z < minimum.z ||
              p.z > maximum.z;
+    }
+
+    inline point3D get_index_from_coordinates(const point3D coord) const {
+      if (outside_grid(coord))
+        return {-1, -1, -1};
+      return {std::floor((coord.x - minimum.x) / grid_spacing),
+              std::floor((coord.y - minimum.y) / grid_spacing),
+              std::floor((coord.z - minimum.z) / grid_spacing)};
+    }
+
+    inline fp_type& at(const point3D& p) { return grid::at(p.x, p.y, p.z); }
+
+    inline fp_type at(const point3D& p) const { return grid::at(p.x, p.y, p.z); }
+
+    inline fp_type& at(const std::size_t x, const std::size_t y, const std::size_t z) {
+      return grid::at(x, y, z);
+    }
+
+    inline fp_type at(const std::size_t x, const std::size_t y, const std::size_t z) const {
+      return grid::at(x, y, z);
     }
   };
 
