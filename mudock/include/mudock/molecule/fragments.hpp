@@ -23,7 +23,8 @@ namespace mudock {
     // following meaning:
     //  0 - the atom does not belong to the rotatable fragment
     //  1 - the atom belongs to the rotatable fragment
-    //  2 - the atom is part of the rotatable bond
+    //  2 - the atom is part of the rotatable bond and it is in the first fragment
+    //  3 - the atom is part of the rotatable bond and it is in the second fragment
     mask_container_type mask;
     index2D index;
 

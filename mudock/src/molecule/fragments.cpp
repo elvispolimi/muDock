@@ -116,7 +116,7 @@ namespace mudock {
       *stop_index.get()  = g[source_vertex].atom_index;
     }
     mask[g[source_vertex].atom_index] = fragments<static_containers>::value_type{2};
-    mask[g[dest_vertex].atom_index]   = fragments<static_containers>::value_type{2};
+    mask[g[dest_vertex].atom_index]   = fragments<static_containers>::value_type{3};
     boost::add_edge(source_vertex, dest_vertex, g);
   }
 
