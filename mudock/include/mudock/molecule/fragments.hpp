@@ -49,38 +49,10 @@ namespace mudock {
     // store which is the atom index that define the rotatable bonds
     index_container_type start_atom_indices;
     index_container_type stop_atom_indices;
-    void fill_fragment_mask(const std::size_t index_mask,
-                            gsl::not_null<std::size_t*> start_index,
-                            gsl::not_null<std::size_t*> stop_index,
-                            const edge_description& rotatable_bond,
-                            molecule_graph_type& g);
-    void fill_rigid_pieces(molecule_graph_type& g);
 
   public:
     using value_type = fragment_mask_type;
-    fragments(molecule_graph_type& graph, const std::span<const bond>& bonds, const std::size_t num_atoms): index() {
-      // get the reotatable bonds from the molecule's graph
-      const auto [rotatable_edges, num_rotatable_edges] =
-          get_rotatable_edges<dynamic_containers>(bonds, graph);
-
-      // reset the containers set and recompute the index for the actual number of rotatable bonds
-      index = index2D(num_atoms, num_rotatable_edges);
-      resize(mask, num_atoms * num_rotatable_edges);
-      resize(start_atom_indices, num_rotatable_edges);
-      resize(start_atom_indices, num_rotatable_edges);
-      fill(mask, value_type{0});
-      fill(start_atom_indices, std::size_t{0});
-      fill(start_atom_indices, std::size_t{0});
-
-      // fill the fragment data structures
-      for (std::size_t i{0}; i < num_rotatable_edges; ++i) {
-        fill_fragment_mask(i, &start_atom_indices[i], &stop_atom_indices[i], rotatable_edges[i], graph);
-      }
-
-      resize(rigid_pieces, num_atoms);
-      fill(rigid_pieces, value_type{0});
-      fill_rigid_pieces(graph);
-    }
+    fragments(molecule_graph_type& graph, const std::span<const bond>& bonds, const std::size_t num_atoms);
 
     // utility functions to get the whole container
     [[nodiscard]] inline auto get_mask(const std::size_t bond_index) {
@@ -121,15 +93,15 @@ namespace mudock {
   // // Out-of-class method definitions
   // //===------------------------------------------------------------------------------------------------------
 
-  // template<>
-  // fragments<static_containers>::fragments(molecule_graph_type& graph,
-  //                                         const std::span<const bond>& bonds,
-  //                                         const std::size_t num_atoms);
+  template<>
+  fragments<static_containers>::fragments(molecule_graph_type& graph,
+                                          const std::span<const bond>& bonds,
+                                          const std::size_t num_atoms);
 
-  // template<>
-  // fragments<dynamic_containers>::fragments(molecule_graph_type& graph,
-  //                                          const std::span<const bond>& bonds,
-  //                                          const std::size_t num_atoms);
+  template<>
+  fragments<dynamic_containers>::fragments(molecule_graph_type& graph,
+                                           const std::span<const bond>& bonds,
+                                           const std::size_t num_atoms);
 
   //===------------------------------------------------------------------------------------------------------
   // Helper method definitions
