@@ -1,5 +1,3 @@
-#include "mudock/grid/point3D.hpp"
-
 #include <algorithm>
 #include <array>
 #include <limits>
@@ -9,25 +7,6 @@
 #include <vector>
 
 namespace mudock {
-  fp_type calc_ddd_Mehler_Solmajer(fp_type distance) {
-    /*____________________________________________________________________________
-     * Distance-dependent dielectric ewds: Mehler and Solmajer, Prot Eng 4, 903-910.
-     *____________________________________________________________________________*/
-    const fp_type lambda{0.003627};
-    const fp_type epsilon0{78.4};
-    const fp_type A{-8.5525};
-    const fp_type B = epsilon0 - A;
-    const fp_type rk{7.7839};
-    const fp_type lambda_B = -lambda * B;
-
-    fp_type epsilon = A + B / (fp_type{1} + rk * std::exp(lambda_B * distance));
-
-    if (epsilon < std::numeric_limits<fp_type>::epsilon()) {
-      epsilon = 1.0L;
-    }
-    return epsilon;
-  }
-
   grid_map generate_electrostatic_grid_map(dynamic_molecule& receptor) {
     //  Get maximum and minimum of the bounding box around the receptor
     const fp_type receptor_max_x = std::ranges::max(receptor.get_x());

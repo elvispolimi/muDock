@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <boost/graph/breadth_first_search.hpp>
+#include <boost/graph/connected_components.hpp>
 #include <cassert>
 #include <cstdint>
 #include <gsl/pointers>
@@ -17,17 +18,6 @@ namespace mudock {
   // Utility function to find the rotatable edge on a graph (using a consistent container type)
   //===------------------------------------------------------------------------------------------------------
   // NOTE: we define an edge with their two edges, to avoid problems in graph update
-  struct edge_description {
-    using vertex_type = typename molecule_graph_type::vertex_descriptor;
-    vertex_type source;
-    vertex_type dest;
-  };
-
-  using vertex_type = typename molecule_graph_type::vertex_descriptor;
-  template<class container_aliases>
-  std::pair<typename container_aliases::template bonds_size<edge_description>, std::size_t>
-      get_rotatable_edges(const std::span<const bond> &bonds, const molecule_graph_type &g);
-
   template<>
   std::pair<typename static_containers::template bonds_size<edge_description>, std::size_t>
       get_rotatable_edges<static_containers>(const std::span<const bond> &bonds,
@@ -94,89 +84,37 @@ namespace mudock {
   //===------------------------------------------------------------------------------------------------------
   // Utility function that fill the information of the fragments
   //===------------------------------------------------------------------------------------------------------
-
-  void fill_fragment_mask(std::span<fragments<static_containers>::value_type> mask,
-                          gsl::not_null<std::size_t *> start_index,
-                          gsl::not_null<std::size_t *> stop_index,
-                          const edge_description &rotatable_bond,
-                          molecule_graph_type &g) {
-    const auto source_vertex = rotatable_bond.source;
-    const auto dest_vertex   = rotatable_bond.dest;
+  template<class container_aliases>
+    requires is_container_specification<container_aliases>
+  void fragments<container_aliases>::fill_fragment_mask(const std::size_t index_mask,
+                                                        gsl::not_null<std::size_t *> start_index,
+                                                        gsl::not_null<std::size_t *> stop_index,
+                                                        const edge_description &rotatable_bond,
+                                                        molecule_graph_type &g) {
+    std::span<fragments<static_containers>::value_type> tmp_mask = get_mask(index_mask);
+    const auto source_vertex                                     = rotatable_bond.source;
+    const auto dest_vertex                                       = rotatable_bond.dest;
     boost::remove_edge(source_vertex, dest_vertex, g);
     std::size_t counter_source{0}, counter_dest{0};
     boost::breadth_first_search(g, source_vertex, boost::visitor(atom_counter{counter_source}));
     boost::breadth_first_search(g, dest_vertex, boost::visitor(atom_counter{counter_dest}));
     if (counter_source > counter_dest) {
-      boost::breadth_first_search(g, dest_vertex, boost::visitor(bitmask_setter{mask}));
+      boost::breadth_first_search(g, dest_vertex, boost::visitor(bitmask_setter{tmp_mask}));
       *start_index.get() = g[source_vertex].atom_index;
       *stop_index.get()  = g[dest_vertex].atom_index;
     } else {
-      boost::breadth_first_search(g, source_vertex, boost::visitor(bitmask_setter{mask}));
+      boost::breadth_first_search(g, source_vertex, boost::visitor(bitmask_setter{tmp_mask}));
       *start_index.get() = g[dest_vertex].atom_index;
       *stop_index.get()  = g[source_vertex].atom_index;
     }
-    mask[g[source_vertex].atom_index] = fragments<static_containers>::value_type{2};
-    mask[g[dest_vertex].atom_index]   = fragments<static_containers>::value_type{3};
+    tmp_mask[g[source_vertex].atom_index] = fragments<static_containers>::value_type{2};
+    tmp_mask[g[dest_vertex].atom_index]   = fragments<static_containers>::value_type{3};
     boost::add_edge(source_vertex, dest_vertex, g);
   }
 
-  //===------------------------------------------------------------------------------------------------------
-  // These are the actual constructor definition
-  //===------------------------------------------------------------------------------------------------------
-
-  template<>
-  fragments<static_containers>::fragments(molecule_graph_type &graph,
-                                          const std::span<const bond> &bonds,
-                                          const std::size_t num_atoms)
-      : index(num_atoms, bonds.size()) {
-    // make sure to initiate from a known state
-    assert(num_atoms < max_static_atoms());
-    assert(bonds.size() < max_static_bonds());
-    mask.fill(value_type{0});
-    start_atom_indices.fill(value_type{0});
-    stop_atom_indices.fill(value_type{0});
-
-    // get the rotatable bonds from the molecule's graph
-    const auto [rotatable_edges, num_rotatable_edges] = get_rotatable_edges<static_containers>(bonds, graph);
-
-    // recompute the index with the actual number of rotatable bonds
-    index = index2D(num_atoms, num_rotatable_edges);
-
-    // fill the fragment data structures
-    for (std::size_t i{0}; i < num_rotatable_edges; ++i) {
-      fill_fragment_mask(get_mask(i),
-                         &start_atom_indices[i],
-                         &stop_atom_indices[i],
-                         rotatable_edges[i],
-                         graph);
-    }
+  template<class container_aliases>
+    requires is_container_specification<container_aliases>
+  void fragments<container_aliases>::fill_rigid_pieces(molecule_graph_type &g) {
+    boost::connected_components(g, rigid_pieces.data());
   }
-
-  template<>
-  fragments<dynamic_containers>::fragments(molecule_graph_type &graph,
-                                           const std::span<const bond> &bonds,
-                                           const std::size_t num_atoms)
-      : mask(num_atoms * bonds.size(), value_type{0}),
-        index(num_atoms, bonds.size()),
-        start_atom_indices(bonds.size(), std::size_t{0}),
-        stop_atom_indices(bonds.size(), std::size_t{0}) {
-    // get the reotatable bonds from the molecule's graph
-    const auto [rotatable_edges, num_rotatable_edges] = get_rotatable_edges<dynamic_containers>(bonds, graph);
-
-    // reset the containers set and recompute the index for the actual number of rotatable bonds
-    index = index2D(num_atoms, num_rotatable_edges);
-    mask.resize(num_atoms * num_rotatable_edges);
-    start_atom_indices.resize(num_rotatable_edges);
-    start_atom_indices.resize(num_rotatable_edges);
-
-    // fill the fragment data structures
-    for (std::size_t i{0}; i < num_rotatable_edges; ++i) {
-      fill_fragment_mask(get_mask(i),
-                         &start_atom_indices[i],
-                         &stop_atom_indices[i],
-                         rotatable_edges[i],
-                         graph);
-    }
-  }
-
 } // namespace mudock

@@ -25,7 +25,7 @@ namespace mudock {
     std::size_t n_y = 0;
 
   public:
-    inline index2D(const std::size_t size_x, const std::size_t size_y): n_x(size_x), n_y(size_y) {}
+    inline index2D(const std::size_t size_x = 0, const std::size_t size_y = 0): n_x(size_x), n_y(size_y) {}
     [[nodiscard]] inline std::size_t to1D(const std::size_t index_x,
                                           const std::size_t index_y) const override {
       assert(index_x < n_x);
@@ -58,7 +58,7 @@ namespace mudock {
     std::size_t n_xy = 0;
 
   public:
-    inline index3D(const std::size_t size_x, const std::size_t size_y, const std::size_t size_z)
+    inline index3D(const std::size_t size_x = 0, const std::size_t size_y = 0, const std::size_t size_z = 0)
         : n_x(size_x), n_y(size_y), n_z(size_z), n_xy(size_x * size_y) {}
     [[nodiscard]] inline std::size_t to1D([[maybe_unused]] const std::size_t index_x,
                                           [[maybe_unused]] const std::size_t index_y) const override {

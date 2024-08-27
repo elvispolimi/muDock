@@ -124,8 +124,8 @@ namespace mudock {
           nbp_eps             = receptor_type_desc.epsij_hb * autodock_parameters::coeff_hbond;
         }; /*initialize energy parms for each possible receptor type*/
         // TODO to be checked later in line 1707 from main.cpp
-        fp_type cA = (nbp_eps / (xA - xB)) * std::pow(nbp_r, static_cast<fp_type>(xA)) * xB;
-        fp_type cB = nbp_eps / (xA - xB) * std::pow(nbp_r, static_cast<fp_type>(xB)) * xA;
+        const fp_type cA = (nbp_eps / (xA - xB)) * std::pow(nbp_r, static_cast<fp_type>(xA)) * xB;
+        const fp_type cB = nbp_eps / (xA - xB) * std::pow(nbp_r, static_cast<fp_type>(xB)) * xA;
 
         interactions.emplace(receptor_t, interaction{cA, cB, nbp_r, nbp_eps, xA, xB, hbonder, receptor_t});
       }
