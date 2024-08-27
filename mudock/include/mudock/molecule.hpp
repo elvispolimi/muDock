@@ -4,8 +4,8 @@
 #include <cassert>
 #include <concepts>
 #include <cstdint>
-#include <mudock/chem/elements.hpp>
 #include <mudock/chem/autodock_types.hpp>
+#include <mudock/chem/elements.hpp>
 #include <mudock/molecule/bond.hpp>
 #include <mudock/molecule/constraints.hpp>
 #include <mudock/molecule/containers.hpp>
@@ -124,7 +124,9 @@ namespace mudock {
 
     // utility functions to get the span of the whole molecule (read only)
     [[nodiscard]] inline const auto& elements(const std::size_t index) const { return atom_elements[index]; }
-    [[nodiscard]] inline const auto& autodock_type(const std::size_t index) const { return atom_autodock_type[index]; }
+    [[nodiscard]] inline const auto& autodock_type(const std::size_t index) const {
+      return atom_autodock_type[index];
+    }
     [[nodiscard]] inline const auto& x(const std::size_t index) const { return x_coordinates[index]; }
     [[nodiscard]] inline const auto& y(const std::size_t index) const { return y_coordinates[index]; }
     [[nodiscard]] inline const auto& z(const std::size_t index) const { return z_coordinates[index]; }
