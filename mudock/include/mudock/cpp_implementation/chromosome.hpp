@@ -3,6 +3,7 @@
 #include <array>
 #include <mudock/molecule.hpp>
 #include <mudock/type_alias.hpp>
+#include <span>
 
 namespace mudock {
 
@@ -23,9 +24,12 @@ namespace mudock {
    *
    * The actual number of genes depends on the given molecule
   */
-  class chromosome {
-    std::array<fp_type, 6 + max_static_bonds()> genes;
-    std::size_t size = 6;
-  };
+  using chromosome = std::array<fp_type, 6 + max_static_bonds()>;
+
+  void apply(std::span<fp_type> x,
+             std::span<fp_type> y,
+             std::span<fp_type> z,
+             const chromosome& c,
+             const fragments<static_containers>& fragments);
 
 } // namespace mudock
