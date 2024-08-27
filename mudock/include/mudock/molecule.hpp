@@ -9,6 +9,7 @@
 #include <mudock/molecule/bond.hpp>
 #include <mudock/molecule/constraints.hpp>
 #include <mudock/molecule/containers.hpp>
+#include <mudock/molecule/fragments.hpp>
 #include <mudock/molecule/graph.hpp>
 #include <mudock/molecule/properties.hpp>
 #include <mudock/molecule/property_table.hpp>
