@@ -24,7 +24,7 @@ namespace mudock {
   void rotate_fragment(std::span<fp_type> x,
                        std::span<fp_type> y,
                        std::span<fp_type> z,
-                       std::span<typename fragments<static_containers>::value_type> bitmask,
+                       std::span<const typename fragments<static_containers>::value_type> bitmask,
                        const std::size_t start_index,
                        const std::size_t stop_index,
                        const fp_type angle);
