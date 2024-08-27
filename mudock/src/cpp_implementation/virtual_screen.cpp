@@ -1,8 +1,7 @@
-#include "mudock/kernels/calc_energy_cpp.hpp"
-#include "mudock/molecule/containers.hpp"
-#include "mudock/molecule/fragments.hpp"
-
 #include <mudock/cpp_implementation/virtual_screen.hpp>
+#include <mudock/kernels.hpp>
+#include <mudock/molecule.hpp>
+#include <mudock/molecule/fragments.hpp>
 
 namespace mudock {
 

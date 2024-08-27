@@ -12,6 +12,24 @@
 #include <vector>
 
 namespace mudock {
+  inline fp_type calc_ddd_Mehler_Solmajer(fp_type distance) {
+    /*____________________________________________________________________________
+     * Distance-dependent dielectric ewds: Mehler and Solmajer, Prot Eng 4, 903-910.
+     *____________________________________________________________________________*/
+    const fp_type lambda{0.003627};
+    const fp_type epsilon0{78.4};
+    const fp_type A{-8.5525};
+    const fp_type B = epsilon0 - A;
+    const fp_type rk{7.7839};
+    const fp_type lambda_B = -lambda * B;
+
+    fp_type epsilon = A + B / (fp_type{1} + rk * std::exp(lambda_B * distance));
+
+    if (epsilon < std::numeric_limits<fp_type>::epsilon()) {
+      epsilon = 1.0L;
+    }
+    return epsilon;
+  }
 
   template<class T, class index_type>
     requires is_index<index_type>
@@ -40,11 +58,15 @@ namespace mudock {
   };
 
   class grid_map: public grid<fp_type, index3D> {
-    const point3D minimum, maximum;
-
   public:
+    const point3D minimum, maximum, center;
     grid_map(const index3D& npts, const point3D& min, const point3D& max)
-        : grid(npts), minimum(min), maximum(max) {}
+        : grid(npts),
+          minimum(min),
+          maximum(max),
+          center{(maximum.x - minimum.x) / 2 + minimum.x,
+                 (maximum.y - minimum.y) / 2 + minimum.y,
+                 (maximum.z - minimum.z) / 2 + minimum.z} {}
     ~grid_map() = default;
     grid_map(grid_map&& other): grid(other.index), minimum(other.minimum), maximum(other.maximum) {}
     grid_map(const grid_map& other)       = delete;
@@ -105,6 +127,12 @@ namespace mudock {
     }
 
     inline const grid_atom_map& get_atom_map(const autodock_ff& type) const { return grid_maps.at(type); }
+
+    [[nodiscard]] inline const point3D& get_minimum() const { return grid_maps.begin()->second.minimum; }
+
+    [[nodiscard]] inline const point3D& get_maximum() const { return grid_maps.begin()->second.maximum; }
+
+    [[nodiscard]] inline const point3D& get_center() const { return grid_maps.begin()->second.center; }
   };
 
   grid_atom_mapper generate_atom_grid_maps(dynamic_molecule&);
