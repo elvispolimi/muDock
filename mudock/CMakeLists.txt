@@ -68,6 +68,7 @@ list(APPEND source_files
   "${source_path}/chem/elements.cpp"
   "${source_path}/compute/parse_ids.cpp"
   "${source_path}/compute/reorder_buffer.cpp"
+  "${source_path}/cpp_implementation/chromosome.cpp"
   "${source_path}/cpp_implementation/cpp_manager.cpp"
   "${source_path}/cpp_implementation/cpp_worker.cpp"
   "${source_path}/cpp_implementation/geometric_transformations.cpp"
