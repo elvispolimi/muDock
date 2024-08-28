@@ -19,6 +19,7 @@ list(APPEND header_files
   "${header_path}/${header_prefix}/compute/reorder_buffer.hpp"
   "${header_path}/${header_prefix}/compute/safe_stack.hpp"
   "${header_path}/${header_prefix}/compute/threadpool.hpp"
+  "${header_path}/${header_prefix}/cpp_implementation/center_of_mass.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/chromosome.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/cpp_manager.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/cpp_worker.hpp"
