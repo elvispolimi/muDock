@@ -26,9 +26,10 @@ namespace mudock {
     auto graph = make_graph(ligand.get_bonds());
     const fragments<static_containers> ligand_fragments{graph, ligand.get_bonds(), ligand.num_atoms()};
 
-    calc_energy(*protein, ligand, ligand_fragments, *grid_atom_maps, *electro_map, *desolv_map);
+    const auto energy =
+        calc_energy(*protein, ligand, ligand_fragments, *grid_atom_maps, *electro_map, *desolv_map);
 
-    ligand.properties.assign(property_type::SCORE, std::to_string(dist(generator)));
+    ligand.properties.assign(property_type::SCORE, std::to_string(energy));
   }
 
 } // namespace mudock
