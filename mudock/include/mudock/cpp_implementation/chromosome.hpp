@@ -3,6 +3,7 @@
 #include <array>
 #include <mudock/molecule.hpp>
 #include <mudock/type_alias.hpp>
+#include <random>
 #include <span>
 
 namespace mudock {
