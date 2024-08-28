@@ -9,11 +9,11 @@
 
 namespace mudock {
 
-  virtual_screen_cpp::virtual_screen_cpp([[maybe_unused]] std::shared_ptr<const dynamic_molecule> &_protein,
-                                         std::shared_ptr<const grid_atom_mapper> _grid_atom_maps,
-                                         std::shared_ptr<const grid_map> _electro_map,
-                                         std::shared_ptr<const grid_map> _desolv_map,
-                                         const knobs knobs)
+  virtual_screen_cpp::virtual_screen_cpp(std::shared_ptr<const dynamic_molecule> &_protein,
+                                         std::shared_ptr<const grid_atom_mapper> &_grid_atom_maps,
+                                         std::shared_ptr<const grid_map> &_electro_map,
+                                         std::shared_ptr<const grid_map> &_desolv_map,
+                                         const knobs &knobs)
       : protein(_protein),
         grid_atom_maps(_grid_atom_maps),
         electro_map(_electro_map),
