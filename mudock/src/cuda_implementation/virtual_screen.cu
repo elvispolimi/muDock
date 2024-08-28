@@ -2,8 +2,9 @@
 #include <span>
 
 namespace mudock {
-  virtual_screen_cuda::virtual_screen_cuda([[maybe_unused]] std::shared_ptr<dynamic_molecule>& protein)
-      : generator(protein->num_atoms()), dist(fp_type{0}, fp_type{10}) {
+  virtual_screen_cuda::virtual_screen_cuda([[maybe_unused]] std::shared_ptr<dynamic_molecule>& protein,
+                                           const knobs k)
+      : generator(protein->num_atoms()), dist(fp_type{0}, fp_type{10}), configuration(k) {
     // NOTE: at the moment we don't care about the protein
   }
 
