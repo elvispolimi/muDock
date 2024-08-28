@@ -37,8 +37,10 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
       "Probability of a mutation to happen during GA");
 
   // parse them
+  po::options_description all("Allowed Options");
+  all.add(arguments_description).add(knobs_description);
   po::variables_map vm;
-  po::store(po::command_line_parser(argc, argv).options(arguments_description).run(), vm);
+  po::store(po::command_line_parser(argc, argv).options(all).run(), vm);
 
   // handle the help message
   if (vm.count("help") > 0) {
