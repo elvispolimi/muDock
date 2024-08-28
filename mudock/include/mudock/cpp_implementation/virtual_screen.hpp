@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <mudock/grid.hpp>
+#include <mudock/knobs.hpp>
 #include <mudock/molecule.hpp>
 #include <mudock/type_alias.hpp>
 #include <random>
@@ -21,11 +22,16 @@ namespace mudock {
     std::shared_ptr<const grid_map> electro_map;
     std::shared_ptr<const grid_map> desolv_map;
 
+
+    // the configuration of the GA algorithm
+    knobs configuration;
+
   public:
     virtual_screen_cpp(std::shared_ptr<const dynamic_molecule>& protein,
                        std::shared_ptr<const grid_atom_mapper> grid_atom_maps,
                        std::shared_ptr<const grid_map> electro_map,
-                       std::shared_ptr<const grid_map> desolv_map);
+                       std::shared_ptr<const grid_map> desolv_map,
+                       const knobs knobs);
 
     void operator()(static_molecule& ligand);
   };

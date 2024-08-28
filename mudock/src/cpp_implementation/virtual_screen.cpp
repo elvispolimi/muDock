@@ -1,20 +1,20 @@
 #include <mudock/cpp_implementation/virtual_screen.hpp>
 #include <mudock/kernels.hpp>
 #include <mudock/molecule.hpp>
-#include <mudock/molecule/fragments.hpp>
 
 namespace mudock {
 
   virtual_screen_cpp::virtual_screen_cpp([[maybe_unused]] std::shared_ptr<const dynamic_molecule> &_protein,
                                          std::shared_ptr<const grid_atom_mapper> _grid_atom_maps,
                                          std::shared_ptr<const grid_map> _electro_map,
-                                         std::shared_ptr<const grid_map> _desolv_map)
-      : generator(_protein->num_atoms()),
-        dist(fp_type{0}, fp_type{10}),
-        protein(_protein),
+                                         std::shared_ptr<const grid_map> _desolv_map,
+                                         const knobs knobs)
+      : protein(_protein),
         grid_atom_maps(_grid_atom_maps),
         electro_map(_electro_map),
-        desolv_map(_desolv_map) {
+        desolv_map(_desolv_map),
+        generator(_protein->num_atoms()),
+        configuration(knobs) {
     // NOTE: at the moment we don't care about the protein
   }
 
