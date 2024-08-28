@@ -1,4 +1,3 @@
-
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
@@ -28,22 +27,26 @@ namespace mudock {
   } non_bond_parameter;
 
   fp_type trilinear_interpolation(const grid_map& map, const point3D& coord) {
-    const point3D p1 = map.get_index_from_coordinates(coord);
-    const point3D p2 = map.get_index_from_coordinates(add(coord, point3D{grid_spacing}));
+    const point3D coordinates_in_grid = map.get_index_from_coordinates(coord);
+    const point3D coordinates_floored = point3D{std::floor(coordinates_in_grid.x),
+                                                std::floor(coordinates_in_grid.y),
+                                                std::floor(coordinates_in_grid.z)};
 
-    // TODO autodock use a different method, not much readable
-    const point3D xyz_d   = divide(difference(coord, p1), difference(p2, p1));
-    const point3D xyz_d_o = difference(static_cast<const point3D>(point3D{1}), xyz_d);
+    const fp_type delta_low_x = coordinates_in_grid.x - coordinates_floored.x;
+    const fp_type delta_low_y = coordinates_in_grid.y - coordinates_floored.y;
+    const fp_type delta_low_z = coordinates_in_grid.z - coordinates_floored.z;
 
-    const fp_type c00 = map.at(p1) * xyz_d_o.x + map.at({p2.x, p1.y, p1.z}) * xyz_d.x;
-    const fp_type c10 = map.at({p1.x, p2.y, p1.z}) * xyz_d_o.x + map.at({p2.x, p2.y, p1.z}) * xyz_d.x;
-    const fp_type c01 = map.at({p1.x, p1.y, p2.z}) * xyz_d_o.x + map.at({p2.x, p1.y, p2.z}) * xyz_d.x;
-    const fp_type c11 = map.at({p1.x, p2.y, p2.z}) * xyz_d_o.x + map.at({p1.x, p1.y, p1.z}) * xyz_d.x;
-
-    const fp_type c0 = c00 * xyz_d_o.y + c10 * xyz_d.y;
-    const fp_type c1 = c01 * xyz_d_o.y + c11 * xyz_d.y;
-
-    return c0 * xyz_d_o.z + c1 * xyz_d.z;
+    std::array<fp_type, 2> px{fp_type{1} - delta_low_x, delta_low_x};
+    std::array<fp_type, 2> py{fp_type{1} - delta_low_y, delta_low_y};
+    std::array<fp_type, 2> pz{fp_type{1} - delta_low_z, delta_low_z};
+    fp_type value{0};
+    for (size_t i = 0; i <= 1; ++i)
+      for (size_t j = 0; j <= 1; ++j)
+        for (size_t t = 0; t <= 1; ++t) {
+          value += px[t] * py[j] * pz[i] *
+                   map.at(coordinates_floored.x + t, coordinates_floored.y + j, coordinates_floored.z + i);
+        }
+    return value;
   }
 
   // nonbonds.cc for nbmatrix required by weed_bonds
@@ -189,8 +192,7 @@ namespace mudock {
     }   // i
   }
 
-  fp_type calc_energy(const dynamic_molecule& receptor,
-                      const static_molecule& ligand,
+  fp_type calc_energy(const static_molecule& ligand,
                       const fragments<static_containers>& ligand_fragments,
                       const grid_atom_mapper& grid_maps,
                       const grid_map& electro_map,
@@ -201,7 +203,7 @@ namespace mudock {
     for (size_t index = 0; index < ligand.num_atoms(); ++index) {
       const point3D coord{ligand.x(index), ligand.y(index), ligand.z(index)};
       const auto& atom_charge = ligand.charge(index);
-      const auto& atom_map    = grid_maps.get_atom_map(receptor.autodock_type(index));
+      const auto& atom_map    = grid_maps.get_atom_map(ligand.autodock_type(index));
 
       if (atom_map.outside_grid(coord)) {
         const fp_type dist = distance2(coord, grid_maps.get_center());

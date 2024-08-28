@@ -173,8 +173,9 @@ namespace mudock {
     // receptor_types.erase(std::remove(receptor_types.begin(), receptor_types.end(), mudock::autodock_ff::H));
 
     // Define the autodock ligand types
-    constexpr std::array<autodock_ff, 11> ligand_types{autodock_ff::A,
+    constexpr std::array<autodock_ff, 12> ligand_types{autodock_ff::A,
                                                        autodock_ff::C,
+                                                       autodock_ff::H,
                                                        autodock_ff::HD,
                                                        autodock_ff::N,
                                                        autodock_ff::NA,
