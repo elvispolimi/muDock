@@ -23,6 +23,18 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
       "population",
       po::value(&args.knobs.population_number)->default_value(args.knobs.population_number),
       "Number of individual(s) in the GA population");
+  knobs_description.add_options()(
+      "generations",
+      po::value(&args.knobs.num_generations)->default_value(args.knobs.num_generations),
+      "Number of generations that GA simulates");
+  knobs_description.add_options()(
+      "tournament_len",
+      po::value(&args.knobs.tournament_length)->default_value(args.knobs.tournament_length),
+      "Number of classes to select a parent in GA");
+  knobs_description.add_options()(
+      "mutation",
+      po::value(&args.knobs.mutation_prob)->default_value(args.knobs.mutation_prob),
+      "Probability of a mutation to happen during GA");
 
   // parse them
   po::variables_map vm;
