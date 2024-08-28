@@ -29,7 +29,7 @@ namespace mudock {
     auto best_individual      = selection_distribution(generator);
     for (std::size_t i = 0; i < num_iterations; ++i) {
       auto contendent = selection_distribution(generator);
-      if (population[contendent].score > population[best_individual].score) {
+      if (population[contendent].score < population[best_individual].score) {
         best_individual = contendent;
       }
     }
@@ -135,7 +135,7 @@ namespace mudock {
 
     // update the ligand position with the best one that we found
     const auto best_individual_it =
-        std::max_element(std::begin(next_population),
+        std::min_element(std::begin(next_population),
                          std::end(next_population),
                          [](const auto a, const auto b) { return a.score < b.score; });
     apply(x, y, z, best_individual_it->genes, ligand_fragments);
