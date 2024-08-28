@@ -6,7 +6,7 @@
 command_line_arguments parse_command_line_arguments(const int argc, char* argv[]) {
   namespace po = boost::program_options;
 
-  // define the command lines
+  // define the general command line arguments
   command_line_arguments args;
   po::options_description arguments_description("Available options");
   arguments_description.add_options()("help", "print this help message");
@@ -16,6 +16,13 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
   arguments_description.add_options()("use",
                                       po::value(&args.device_conf)->default_value(args.device_conf),
                                       "Map each implementation to the device");
+
+  // define the knobs command line arguments
+  po::options_description knobs_description("Virtual Screening Knobs");
+  knobs_description.add_options()(
+      "population",
+      po::value(&args.knobs.population_number)->default_value(args.knobs.population_number),
+      "Number of individual(s) in the GA population");
 
   // parse them
   po::variables_map vm;
@@ -27,10 +34,12 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
               << std::endl;
     std::cout << "print on the standard output the score of each of them" << std::endl;
     std::cout << std::endl;
-    std::cout << "USAGE: " << argv[0] << " --protein " << args.protein_path << " --use "
-              << args.device_conf << " < \"/path/to/ligands.mol2\"" << std::endl;
+    std::cout << "USAGE: " << argv[0] << " --protein " << args.protein_path << " --use " << args.device_conf
+              << " [KNOBS] < \"/path/to/ligands.mol2\"" << std::endl;
     std::cout << std::endl;
     std::cout << arguments_description << std::endl;
+    std::cout << std::endl;
+    std::cout << knobs_description << std::endl;
     std::cout << std::endl;
     std::cout << "The use flag is basically a list that describes which implementation the user" << std::endl
               << "would like to use and on which hardware it want to be run" << std::endl

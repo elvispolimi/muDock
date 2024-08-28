@@ -13,6 +13,7 @@ namespace mudock {
                   std::shared_ptr<const grid_atom_mapper> grid_atom_maps,
                   std::shared_ptr<const grid_map> electro_map,
                   std::shared_ptr<const grid_map> desolv_map,
+                  const knobs knobs,
                   std::shared_ptr<safe_stack<static_molecule>> input_molecules,
                   std::shared_ptr<safe_stack<static_molecule>> output_molecules) {
     // single out the CPP description
@@ -52,6 +53,7 @@ namespace mudock {
                                             grid_atom_maps,
                                             electro_map,
                                             desolv_map,
+                                            knobs,
                                             input_molecules,
                                             output_molecules,
                                             id);
