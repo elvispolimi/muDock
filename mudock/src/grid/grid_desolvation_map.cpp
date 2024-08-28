@@ -57,9 +57,6 @@ namespace mudock {
             const size_t indx_r = std::min<size_t>(std::floor(d * A_DIV), NDIEL - 1);
             energy += solpar_q * receptor.get_vol()[index] * sol_fn[indx_r];
           }
-          if (energy > 0)
-            std::cout << "coord " << coord_x << " " << coord_y << " " << coord_z << " | energy " << energy
-                      << std::endl;
         }
       }
     }
