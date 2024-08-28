@@ -20,4 +20,5 @@ namespace mudock {
       rotate_fragment(x, y, z, bitmask, start_index, stop_index, c[std::size_t{6} + i]);
     }
   }
+
 } // namespace mudock
