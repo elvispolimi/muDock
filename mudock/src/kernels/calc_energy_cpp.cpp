@@ -122,7 +122,7 @@ namespace mudock {
           nbmatrix.at(i, j) = 0;
         }
       } // i
-    }   // j
+    } // j
 
     /* 
     \   Weed out bonds across torsions,
@@ -190,7 +190,7 @@ namespace mudock {
           error(oss.str());
         }
       } // j
-    }   // i
+    } // i
   }
 
   fp_type calc_energy(const std::span<fp_type> ligand_x,

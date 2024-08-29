@@ -13,10 +13,7 @@ namespace mudock {
                            std::shared_ptr<safe_stack<static_molecule>> output_molecules,
                            std::shared_ptr<reorder_buffer> rb,
                            const std::size_t gpu_id)
-      : input_stack(input_molecules),
-        output_stack(output_molecules),
-        rob(rb),
-        virtual_screen(knobs) {
+      : input_stack(input_molecules), output_stack(output_molecules), rob(rb), virtual_screen(knobs) {
     MUDOCK_CHECK(cudaSetDevice(static_cast<int>(gpu_id)));
     info("Worker CUDA on duty! Set affinity to GPU ", gpu_id);
   }
