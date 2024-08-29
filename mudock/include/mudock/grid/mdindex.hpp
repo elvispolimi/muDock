@@ -55,10 +55,10 @@ namespace mudock {
           *index_it,
           [&index_it](const auto sum, const auto coef) { return sum + coef * (*++index_it); });
     }
-    [[nodiscard]] auto toND(const std::size_t indexes) const {
+    [[nodiscard]] auto toND(const std::size_t index) const {
       auto result = std::array<std::size_t, n>{};
-      result[0]   = indexes % _sizes[0];
-      for (std::size_t i = 0; i < n; ++i) { result[i] = (indexes / _coefs[i]) % _sizes[i]; }
+      result[0]   = index % _sizes[0];
+      for (std::size_t i = 0; i < n; ++i) { result[i] = (index / _coefs[i]) % _sizes[i]; }
       return result;
     }
 
