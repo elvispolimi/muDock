@@ -23,17 +23,6 @@ namespace mudock {
     std::array<std::size_t, n> _sizes;
     std::array<std::size_t, n> _coefs;
 
-    // compute the flat index given a list of indexes
-    std::size_t to_1D_list(std::initializer_list<std::size_t> indexes) const {
-      auto index_it          = std::begin(indexes);
-      const auto begin_coefs = std::begin(_coefs);
-      return std::accumulate(
-          begin_coefs + 1,
-          std::end(_coefs),
-          *index_it,
-          [&index_it](const auto sum, const auto coef) { return sum + coef * (*++index_it); });
-    }
-
   public:
     static constexpr auto num_dimensions = n;
 
@@ -57,7 +46,14 @@ namespace mudock {
     template<class... T>
     std::size_t to1D(T&&... indexes) const {
       static_assert(sizeof...(indexes) == n, "Mismatch between indexes and dimension numbers");
-      return to_1D_list(std::initializer_list{static_cast<std::size_t>(indexes)...});
+      const auto index_list  = std::initializer_list{static_cast<std::size_t>(indexes)...};
+      auto index_it          = std::begin(index_list);
+      const auto begin_coefs = std::begin(_coefs);
+      return std::accumulate(
+          begin_coefs + 1,
+          std::end(_coefs),
+          *index_it,
+          [&index_it](const auto sum, const auto coef) { return sum + coef * (*++index_it); });
     }
     auto toND(const std::size_t indexes) const {
       auto result = std::array<std::size_t, n>{};
@@ -65,6 +61,13 @@ namespace mudock {
       for (std::size_t i = 0; i < n; ++i) { result[i] = (indexes / _coefs[i]) % _sizes[i]; }
       return result;
     }
+
+    // utility function to get additional information
+    template<std::size_t index>
+    std::size_t size() {
+      return _sizes[index];
+    }
+    std::size_t flat_size() { return _sizes[0] * _coefs[n - 1]; }
   };
 
   //===------------------------------------------------------------------------------------------------------
