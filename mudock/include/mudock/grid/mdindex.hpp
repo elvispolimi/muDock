@@ -47,6 +47,7 @@ namespace mudock {
     template<class... T>
     [[nodiscard]] std::size_t to1D(T&&... indexes) const {
       static_assert(sizeof...(indexes) == n, "Mismatch between indexes and dimension numbers");
+      assert(is_inside(indexes...));
       const auto index_list  = std::initializer_list{static_cast<std::size_t>(indexes)...};
       auto index_it          = std::begin(index_list);
       const auto begin_coefs = std::begin(_coefs);
@@ -57,6 +58,7 @@ namespace mudock {
           [&index_it](const auto sum, const auto coef) { return sum + coef * (*++index_it); });
     }
     [[nodiscard]] auto toND(const std::size_t index) const {
+      assert(index < flat_size());
       auto result = std::array<std::size_t, n>{};
       result[0]   = index % _sizes[0];
       for (std::size_t i = 0; i < n; ++i) { result[i] = (index / _coefs[i]) % _sizes[i]; }
