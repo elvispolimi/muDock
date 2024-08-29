@@ -1,12 +1,67 @@
 #pragma once
 
+#include <array>
 #include <cassert>
-#include <cstddef>
 #include <cstdint>
+#include <initializer_list>
+#include <numeric>
 #include <stdexcept>
 #include <tuple>
 
 namespace mudock {
+
+  template<std::size_t n>
+  class md_index {
+    static_assert(n > 0, "A multi dimensional index must at least a dimension");
+
+    // the storage of sizes and coefficients for dealing with md indexes
+    std::array<std::size_t, n> _sizes;
+    std::array<std::size_t, n> _coefs;
+
+    // compute the flat index given a list of indexes
+    std::size_t to_1D_list(std::initializer_list<std::size_t> indexes) const {
+      auto index_it          = std::begin(indexes);
+      const auto begin_coefs = std::begin(_coefs);
+      return std::accumulate(
+          begin_coefs + 1,
+          std::end(_coefs),
+          *index_it,
+          [&index_it](const auto sum, const auto coef) { return sum + coef * (*++index_it); });
+    }
+
+  public:
+    static constexpr auto num_dimensions = n;
+
+    // by default we assume that we need a single element
+    md_index() {
+      _sizes.fill(1);
+      _coefs.fill(1);
+    }
+
+    // otherwise we initialize the index as requested by the user
+    template<class... T>
+    md_index(T&&... sizes) {
+      static_assert(sizeof...(sizes) == n, "Mismatch between sizes and dimension numbers");
+      const auto size_list = std::initializer_list{static_cast<std::size_t>(sizes)...};
+      std::copy(std::cbegin(size_list), std::cend(size_list), std::begin(_sizes));
+      _coefs[0] = std::size_t{1};
+      for (std::size_t i = 1; i < num_dimensions; ++i) { _coefs[i] = _coefs[i] * _sizes[i]; }
+    }
+
+    // function to perform the index conversion
+    template<class... T>
+    std::size_t to1D(T&&... indexes) const {
+      static_assert(sizeof...(indexes) == n, "Mismatch between indexes and dimension numbers");
+      return to_1D_list(std::initializer_list{static_cast<std::size_t>(indexes)...});
+    }
+    std::size_t toND(const std::size_t indexes) const {
+      auto result = std::array<std::size_t, n>{};
+      result[0]   = indexes % _sizes[0];
+      for (std::size_t i = 0; i < n; ++i) { result[i] = (indexes / _coefs[i]) % _sizes[i]; }
+      return result;
+    }
+  };
+
   //===------------------------------------------------------------------------------------------------------
   // Helper class to convert a 1D index to 2D
   //===------------------------------------------------------------------------------------------------------
