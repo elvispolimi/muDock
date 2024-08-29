@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <array>
 #include <cassert>
 #include <cstdint>
@@ -68,6 +69,16 @@ namespace mudock {
       return _sizes[index];
     }
     [[nodiscard]] std::size_t flat_size() { return _sizes[0] * _coefs[n - 1]; }
+
+    // utility function to perform boundaries check
+    template<class... T>
+    [[nodiscard]] auto is_inside(T&&... indexes) const {
+      static_assert(sizeof...(indexes) == n, "Mismatch between indexes and dimension numbers");
+      const auto index_list = std::initializer_list{static_cast<std::size_t>(indexes)...};
+      return std::none_of(std::begin(index_list),
+                          std::end(index_list),
+                          [coef_it = std::begin(_coefs)](const auto index) { return index >= *coef_it++; });
+    }
   };
 
   //===------------------------------------------------------------------------------------------------------
