@@ -18,11 +18,11 @@ namespace mudock {
 
     // operator to retrieve data
     template<class... Y>
-    auto& get(Y&&... indexes) {
+    [[nodiscard]] auto& get(Y&&... indexes) {
       return data[md_index<n>::to1D(indexes...)];
     }
     template<class... Y>
-    const auto& get(Y&&... indexes) const {
+    [[nodiscard]] const auto& get(Y&&... indexes) const {
       return data[md_index<n>::to1D(indexes...)];
     }
   };
