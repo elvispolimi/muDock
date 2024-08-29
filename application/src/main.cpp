@@ -62,7 +62,6 @@ int main(int argc, char* argv[]) {
     auto threadpool = mudock::threadpool();
     mudock::manage_cpp(args.device_conf,
                        threadpool,
-                       protein_ptr,
                        grid_atom_maps,
                        electrostatic_map,
                        desolvation_map,
