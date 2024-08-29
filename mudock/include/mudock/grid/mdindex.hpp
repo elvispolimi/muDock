@@ -44,7 +44,7 @@ namespace mudock {
 
     // function to perform the index conversion
     template<class... T>
-    std::size_t to1D(T&&... indexes) const {
+    [[nodiscard]] std::size_t to1D(T&&... indexes) const {
       static_assert(sizeof...(indexes) == n, "Mismatch between indexes and dimension numbers");
       const auto index_list  = std::initializer_list{static_cast<std::size_t>(indexes)...};
       auto index_it          = std::begin(index_list);
@@ -55,7 +55,7 @@ namespace mudock {
           *index_it,
           [&index_it](const auto sum, const auto coef) { return sum + coef * (*++index_it); });
     }
-    auto toND(const std::size_t indexes) const {
+    [[nodiscard]] auto toND(const std::size_t indexes) const {
       auto result = std::array<std::size_t, n>{};
       result[0]   = indexes % _sizes[0];
       for (std::size_t i = 0; i < n; ++i) { result[i] = (indexes / _coefs[i]) % _sizes[i]; }
@@ -64,10 +64,10 @@ namespace mudock {
 
     // utility function to get additional information
     template<std::size_t index>
-    std::size_t size() {
+    [[nodiscard]] std::size_t size() {
       return _sizes[index];
     }
-    std::size_t flat_size() { return _sizes[0] * _coefs[n - 1]; }
+    [[nodiscard]] std::size_t flat_size() { return _sizes[0] * _coefs[n - 1]; }
   };
 
   //===------------------------------------------------------------------------------------------------------
