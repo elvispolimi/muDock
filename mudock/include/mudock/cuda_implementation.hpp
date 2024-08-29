@@ -13,7 +13,6 @@
 namespace mudock {
   inline void manage_cuda(std::string_view,
                           threadpool&,
-                          std::shared_ptr<dynamic_molecule>,
                           const knobs,
                           std::shared_ptr<safe_stack<static_molecule> >,
                           std::shared_ptr<safe_stack<static_molecule> >) {
