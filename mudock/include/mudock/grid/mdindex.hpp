@@ -10,6 +10,11 @@
 
 namespace mudock {
 
+  /**
+   * This class converts a multidimensional index to a flat index and viceversa. The spinning direction is
+   * the lefmost index, i.e. we use the following formula to compute the multindex
+   *   flat_index = i0 + i1*d0 + i2*d0*d1 + i3*d0*d1*d2 + ... + in*d0*d1*d2*...*d(n-1)
+   */
   template<std::size_t n>
   class md_index {
     static_assert(n > 0, "A multi dimensional index must at least a dimension");
@@ -54,7 +59,7 @@ namespace mudock {
       static_assert(sizeof...(indexes) == n, "Mismatch between indexes and dimension numbers");
       return to_1D_list(std::initializer_list{static_cast<std::size_t>(indexes)...});
     }
-    std::size_t toND(const std::size_t indexes) const {
+    auto toND(const std::size_t indexes) const {
       auto result = std::array<std::size_t, n>{};
       result[0]   = indexes % _sizes[0];
       for (std::size_t i = 0; i < n; ++i) { result[i] = (indexes / _coefs[i]) % _sizes[i]; }
