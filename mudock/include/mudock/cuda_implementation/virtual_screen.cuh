@@ -21,7 +21,7 @@ namespace mudock {
     knobs configuration;
 
   public:
-    virtual_screen_cuda(std::shared_ptr<dynamic_molecule>& protein, const knobs k);
+    virtual_screen_cuda(const knobs k);
 
     void operator()(batch& incoming_batch);
   };

@@ -50,25 +50,26 @@ namespace mudock {
   }
 
   // nonbonds.cc for nbmatrix required by weed_bonds
-  void nonbonds(grid<uint_fast8_t, index2D>& nbmatrix, const static_molecule& ligand) {
+  void nonbonds(grid<uint_fast8_t, index2D>& nbmatrix,
+                const std::span<const bond> ligand_bond,
+                const std::size_t num_atoms) {
     //
     // in "nbmatrix", the values 1 (and 4) mean this pair of atoms will be included in the internal, non-bonded list
     //                           0                                         ignored
-    const size_t num_atoms = ligand.num_atoms();
 
     // set all nonbonds in nbmatrix to 1, except "1-1 interactions" (self interaction)
     for (size_t i = 0; i < num_atoms; i++) {
       for (size_t j = 0; j < num_atoms; j++) { nbmatrix.at(i, j) = 1; } // j
       nbmatrix.at(i, i) = 0;                                            /* 2005-01-10 RH & GMM */
     }
-    for (auto& bond: ligand.get_bonds()) {
+    for (auto& bond: ligand_bond) {
       // Ignore 1-2 Interactions
       nbmatrix.at(bond.source, bond.dest) = 0;
       nbmatrix.at(bond.dest, bond.source) = 0;
     }
 
-    for (auto& bond_1: ligand.get_bonds())
-      for (auto& bond_2: ligand.get_bonds()) { // loop over each atom "k" bonded to the current atom "j"
+    for (auto& bond_1: ligand_bond)
+      for (auto& bond_2: ligand_bond) { // loop over each atom "k" bonded to the current atom "j"
         if (bond_1.dest != bond_2.source)
           continue;
 
@@ -76,7 +77,7 @@ namespace mudock {
         nbmatrix.at(bond_2.dest, bond_1.source) = 0;
         nbmatrix.at(bond_1.source, bond_2.dest) = 0;
 
-        for (auto& bond_3: ligand.get_bonds()) {
+        for (auto& bond_3: ligand_bond) {
           if (bond_2.dest != bond_3.source)
             continue;
           nbmatrix.at(bond_1.source, bond_3.dest) = 0;
@@ -104,12 +105,12 @@ namespace mudock {
   */
   void weed_bonds(grid<uint_fast8_t, index2D>& nbmatrix,
                   std::vector<non_bond_parameter>& non_bond_list,
-                  const static_molecule& ligand,
+                  const std::size_t num_atoms,
                   const fragments<static_containers>& ligand_fragments) {
     const auto& ligand_rigid_pieces = ligand_fragments.get_rigid_pieces();
 
-    for (size_t j = 0; j < ligand.num_atoms(); ++j) {
-      for (size_t i = 0; i < ligand.num_atoms(); ++i) {
+    for (size_t j = 0; j < num_atoms; ++j) {
+      for (size_t i = 0; i < num_atoms; ++i) {
         // Is atom "i" in the same rigid piece as atom "j"?
         if (ligand_rigid_pieces[i] == ligand_rigid_pieces[j]) {
           // Set the entry for atoms "i" and "j" in the
@@ -159,7 +160,7 @@ namespace mudock {
           nbmatrix.at(atom_id1, atom_id3) = 0;
         }
       }
-      for (size_t k = 0; k < ligand.num_atoms(); ++k) {
+      for (size_t k = 0; k < num_atoms; ++k) {
         if (ligand_rigid_pieces[atom_id1] == ligand_rigid_pieces[k]) {
           nbmatrix.at(k, atom_id2) = 0;
           nbmatrix.at(atom_id2, k) = 0;
@@ -173,8 +174,8 @@ namespace mudock {
 
     // intramolecular non-bonds for ligand
     // TODO check what true_ligand_atoms is
-    for (size_t i = 0; i < ligand.num_atoms(); ++i) {
-      for (size_t j = i + 1; j < ligand.num_atoms(); ++j) {
+    for (size_t i = 0; i < num_atoms; ++i) {
+      for (size_t j = i + 1; j < num_atoms; ++j) {
         if ((nbmatrix.at(i, j) == 1 && nbmatrix.at(j, i) == 1)) {
           non_bond_list.emplace_back();
           auto& nbl        = non_bond_list.back();
@@ -192,7 +193,21 @@ namespace mudock {
     }   // i
   }
 
-  fp_type calc_energy(const static_molecule& ligand,
+  fp_type calc_energy(const std::span<fp_type> ligand_x,
+                      const std::span<fp_type> ligand_y,
+                      const std::span<fp_type> ligand_z,
+                      const std::span<fp_type> ligand_vol,
+                      const std::span<fp_type> ligand_solpar,
+                      const std::span<fp_type> ligand_charge,
+                      const std::span<std::size_t> ligand_num_hbond,
+                      const std::span<fp_type> ligand_Rij_hb,
+                      const std::span<fp_type> ligand_Rii,
+                      const std::span<fp_type> ligand_epsij_hb,
+                      const std::span<fp_type> ligand_epsii,
+                      const std::span<autodock_ff> ligand_autodock_type,
+                      const std::span<const bond> ligand_bond,
+                      const std::size_t num_atoms,
+                      const std::size_t num_bonds,
                       const fragments<static_containers>& ligand_fragments,
                       const grid_atom_mapper& grid_maps,
                       const grid_map& electro_map,
@@ -200,10 +215,10 @@ namespace mudock {
     fp_type elect_total = 0;
     fp_type emap_total  = 0;
     fp_type dmap_total  = 0;
-    for (size_t index = 0; index < ligand.num_atoms(); ++index) {
-      const point3D coord{ligand.x(index), ligand.y(index), ligand.z(index)};
-      const auto& atom_charge = ligand.charge(index);
-      const auto& atom_map    = grid_maps.get_atom_map(ligand.autodock_type(index));
+    for (size_t index = 0; index < num_atoms; ++index) {
+      const point3D coord{ligand_x[index], ligand_y[index], ligand_z[index]};
+      const auto& atom_charge = ligand_charge[index];
+      const auto& atom_map    = grid_maps.get_atom_map(ligand_autodock_type[index]);
 
       if (atom_map.outside_grid(coord)) {
         const fp_type dist = distance2(coord, grid_maps.get_center());
@@ -221,31 +236,30 @@ namespace mudock {
 
     const int n_torsions = ligand_fragments.get_num_rotatable_bonds();
     if (n_torsions > 0) {
-      const size_t num_atoms = ligand.num_atoms();
       // TODO @Davide suppose that the receptor does not have Flexible residues eintcal.cc:147
       // TODO
       grid<uint_fast8_t, index2D> nbmatrix{{num_atoms, num_atoms}};
-      nonbonds(nbmatrix, ligand);
-      std::vector<non_bond_parameter> non_bond_list(ligand.num_bonds());
-      weed_bonds(nbmatrix, non_bond_list, ligand, ligand_fragments);
+      nonbonds(nbmatrix, ligand_bond, num_atoms);
+      std::vector<non_bond_parameter> non_bond_list(num_bonds);
+      weed_bonds(nbmatrix, non_bond_list, num_atoms, ligand_fragments);
 
       for (const auto& non_bond: non_bond_list) {
         const int& a1 = non_bond.a1;
         const int& a2 = non_bond.a2;
 
-        fp_type distance = distance2(point3D{ligand.x(a1), ligand.y(a1), ligand.z(a1)},
-                                     point3D{ligand.x(a2), ligand.y(a2), ligand.z(a2)});
+        fp_type distance = distance2(point3D{ligand_x[a1], ligand_y[a1], ligand_z[a1]},
+                                     point3D{ligand_x[a2], ligand_y[a2], ligand_z[a2]});
         distance         = std::sqrt(std::clamp(distance, RMIN_ELEC * RMIN_ELEC, distance));
 
         //  Calculate  Electrostatic  Energy
         const fp_type r_dielectric = distance * calc_ddd_Mehler_Solmajer(distance);
-        const fp_type e_elec       = ligand.charge(non_bond.a1) * ligand.charge(non_bond.a2) * ELECSCALE *
+        const fp_type e_elec       = ligand_charge[non_bond.a1] * ligand_charge[non_bond.a2] * ELECSCALE *
                                autodock_parameters::coeff_estat * r_dielectric;
         elect_total += e_elec;
 
         const fp_type nb_desolv =
-            (ligand.vol(a2) * (ligand.solpar(a1) + qsolpar * std::fabs(ligand.charge(a1))) +
-             ligand.vol(a1) * (ligand.solpar(a2) + qsolpar * std::fabs(ligand.charge(a2))));
+            (ligand_vol[a2] * (ligand_solpar[a1] + qsolpar * std::fabs(ligand_charge[a1])) +
+             ligand_vol[a1] * (ligand_solpar[a2] + qsolpar * std::fabs(ligand_charge[a2])));
 
         const fp_type e_desolv = autodock_parameters::coeff_desolv *
                                  std::exp(fp_type{-0.5} * sigma * sigma * std::sqrt(distance)) * nb_desolv;
@@ -255,16 +269,16 @@ namespace mudock {
           //  Find internal energy parameters, i.e.  epsilon and r-equilibrium values...
           //  Lennard-Jones and Hydrogen Bond Potentials
           // This can be precomputed as in intnbtable.cc
-          const auto& hbond_i    = ligand.num_hbond(a1);
-          const auto& hbond_j    = ligand.num_hbond(a2);
-          const auto& Rij_hb_i   = ligand.Rij_hb(a1);
-          const auto& Rij_hb_j   = ligand.Rij_hb(a2);
-          const auto& Rii_i      = ligand.Rii(a1);
-          const auto& Rii_j      = ligand.Rii(a2);
-          const auto& epsij_hb_i = ligand.epsij_hb(a1);
-          const auto& epsij_hb_j = ligand.epsij_hb(a2);
-          const auto& epsii_i    = ligand.epsii(a1);
-          const auto& epsii_j    = ligand.epsii(a2);
+          const auto& hbond_i    = ligand_num_hbond[a1];
+          const auto& hbond_j    = ligand_num_hbond[a2];
+          const auto& Rij_hb_i   = ligand_Rij_hb[a1];
+          const auto& Rij_hb_j   = ligand_Rij_hb[a2];
+          const auto& Rii_i      = ligand_Rii[a1];
+          const auto& Rii_j      = ligand_Rii[a2];
+          const auto& epsij_hb_i = ligand_epsij_hb[a1];
+          const auto& epsij_hb_j = ligand_epsij_hb[a2];
+          const auto& epsii_i    = ligand_epsii[a1];
+          const auto& epsii_j    = ligand_epsii[a2];
 
           // we need to determine the correct xA and xB exponents
           size_t xA = 12; // for both LJ, 12-6 and HB, 12-10, xA is 12

@@ -8,8 +8,7 @@
 #include <string>
 
 namespace mudock {
-  cuda_worker::cuda_worker(std::shared_ptr<dynamic_molecule> protein,
-                           const knobs knobs,
+  cuda_worker::cuda_worker(const knobs knobs,
                            std::shared_ptr<safe_stack<static_molecule>> input_molecules,
                            std::shared_ptr<safe_stack<static_molecule>> output_molecules,
                            std::shared_ptr<reorder_buffer> rb,
@@ -17,7 +16,7 @@ namespace mudock {
       : input_stack(input_molecules),
         output_stack(output_molecules),
         rob(rb),
-        virtual_screen(protein, knobs) {
+        virtual_screen(knobs) {
     MUDOCK_CHECK(cudaSetDevice(static_cast<int>(gpu_id)));
     info("Worker CUDA on duty! Set affinity to GPU ", gpu_id);
   }

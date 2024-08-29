@@ -9,13 +9,11 @@
 
 namespace mudock {
 
-  virtual_screen_cpp::virtual_screen_cpp(std::shared_ptr<const dynamic_molecule> &_protein,
-                                         std::shared_ptr<const grid_atom_mapper> &_grid_atom_maps,
+  virtual_screen_cpp::virtual_screen_cpp(std::shared_ptr<const grid_atom_mapper> &_grid_atom_maps,
                                          std::shared_ptr<const grid_map> &_electro_map,
                                          std::shared_ptr<const grid_map> &_desolv_map,
                                          const knobs &knobs)
-      : protein(_protein),
-        grid_atom_maps(_grid_atom_maps),
+      : grid_atom_maps(_grid_atom_maps),
         electro_map(_electro_map),
         desolv_map(_desolv_map),
         population(knobs.population_number),
@@ -38,7 +36,7 @@ namespace mudock {
 
   void virtual_screen_cpp::operator()(static_molecule &ligand) {
     // Reset the random number generator to improve consistency
-    generator = std::mt19937{protein->num_atoms()};
+    generator = std::mt19937{ligand.num_atoms()};
 
     // Place the molecule to the center of the target protein
     const auto x = ligand.get_x(), y = ligand.get_y(), z = ligand.get_z();
@@ -98,8 +96,26 @@ namespace mudock {
 
         // compute the energy of the system
         // TODO: make this kernel depends on the span for information
-        // const auto energy = calc_energy(*protein, ligand, ligand_fragments, *grid_atom_maps, *electro_map, *desolv_map);
-        element.score = altered_x[0]; // dummy implementation to test the genetic
+        const auto energy = calc_energy(ligand.get_x(),
+                                        ligand.get_y(),
+                                        ligand.get_z(),
+                                        ligand.get_vol(),
+                                        ligand.get_solpar(),
+                                        ligand.get_charge(),
+                                        ligand.get_num_hbond(),
+                                        ligand.get_Rij_hb(),
+                                        ligand.get_Rii(),
+                                        ligand.get_epsij_hb(),
+                                        ligand.get_epsii(),
+                                        ligand.get_autodock_type(),
+                                        ligand.get_bonds(),
+                                        ligand.num_atoms(),
+                                        ligand.num_bonds(),
+                                        ligand_fragments,
+                                        *grid_atom_maps,
+                                        *electro_map,
+                                        *desolv_map);
+        // element.score = altered_x[0]; // dummy implementation to test the genetic
       }
 
       // Generate the new population

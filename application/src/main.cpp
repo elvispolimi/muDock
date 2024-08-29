@@ -69,7 +69,7 @@ int main(int argc, char* argv[]) {
                        args.knobs,
                        input_queue,
                        output_queue);
-    mudock::manage_cuda(args.device_conf, threadpool, protein_ptr, args.knobs, input_queue, output_queue);
+    mudock::manage_cuda(args.device_conf, threadpool, args.knobs, input_queue, output_queue);
     mudock::info("All workers have been created!");
   } // when we exit from this block the computation is complete
 

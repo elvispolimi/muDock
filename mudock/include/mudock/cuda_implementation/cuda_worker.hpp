@@ -24,8 +24,7 @@ namespace mudock {
 
   public:
     // the constructor intialize the kernel and set the CPU affinity to the correct device
-    cuda_worker(std::shared_ptr<dynamic_molecule> protein,
-                const knobs knobs,
+    cuda_worker(const knobs knobs,
                 std::shared_ptr<safe_stack<static_molecule>> input_molecules,
                 std::shared_ptr<safe_stack<static_molecule>> output_molecules,
                 std::shared_ptr<reorder_buffer> rb,
