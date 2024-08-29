@@ -62,7 +62,7 @@ namespace mudock {
       return result;
     }
 
-    // utility function to get additional information
+    // utility functions to get sizes in the index
     template<std::size_t index>
     [[nodiscard]] std::size_t size() {
       return _sizes[index];
