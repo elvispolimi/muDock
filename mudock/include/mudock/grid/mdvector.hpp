@@ -6,6 +6,9 @@
 
 namespace mudock {
 
+  /**
+   * This class represents a multidimensional vector that adapt a std::vector with more dimensions
+   */
   template<class T, std::size_t n>
   class md_vector: public md_index<n> {
     std::vector<T> data;
