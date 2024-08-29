@@ -1,7 +1,9 @@
 #pragma once
 
 #include <cassert>
+#include <cstddef>
 #include <cstdint>
+#include <gsl/pointers>
 #include <mudock/grid/mdindex.hpp>
 #include <mudock/molecule/bond.hpp>
 #include <mudock/molecule/containers.hpp>
@@ -11,20 +13,37 @@
 #include <utility>
 
 namespace mudock {
+  //===------------------------------------------------------------------------------------------------------
+  // Utility function to find the rotatable edge on a graph (using a consistent container type)
+  //===------------------------------------------------------------------------------------------------------
+  // NOTE: we define an edge with their two edges, to avoid problems in graph update
+  struct edge_description {
+    using vertex_type = typename molecule_graph_type::vertex_descriptor;
+    vertex_type source;
+    vertex_type dest;
+  };
+
+  using vertex_type = typename molecule_graph_type::vertex_descriptor;
+  template<class container_aliases>
+  std::pair<typename container_aliases::template bonds_size<edge_description>, std::size_t>
+      get_rotatable_edges(const std::span<const bond>& bonds, const molecule_graph_type& g);
 
   template<class container_aliases>
     requires is_container_specification<container_aliases>
   class fragments {
-    using fragment_mask_type   = int;
-    using mask_container_type  = container_aliases::template fragments_size<fragment_mask_type>;
-    using index_container_type = container_aliases::template fragments_size<std::size_t>;
+    using fragment_mask_type    = int;
+    using mask_container_type   = container_aliases::template fragments_size<fragment_mask_type>;
+    using pieces_container_type = container_aliases::template fragments_size<fragment_mask_type>;
+    using index_container_type  = container_aliases::template fragments_size<std::size_t>;
 
     // this is a 2D grid that keep track of which atom belong to the related fragment. Each atom mask has the
     // following meaning:
     //  0 - the atom does not belong to the rotatable fragment
     //  1 - the atom belongs to the rotatable fragment
-    //  2 - the atom is part of the rotatable bond
+    //  2 - the atom is part of the rotatable bond and it is in the first fragment
+    //  3 - the atom is part of the rotatable bond and it is in the second fragment
     mask_container_type mask;
+    pieces_container_type rigid_pieces;
     index2D index;
 
     // store which is the atom index that define the rotatable bonds
@@ -44,6 +63,7 @@ namespace mudock {
       assert(bond_index < index.size_y());
       return std::span(std::cbegin(mask) + index.to1D(0, bond_index), index.size_x());
     }
+    [[nodiscard]] inline auto get_rigid_pieces() const { return std::span(rigid_pieces); }
 
     // utility functions to access the data
     [[nodiscard]] inline int& get_mask(const std::size_t bond_index, const std::size_t atom_index) {
@@ -69,9 +89,9 @@ namespace mudock {
     [[nodiscard]] inline auto get_num_rotatable_bonds() const { return index.size_y(); }
   };
 
-  //===------------------------------------------------------------------------------------------------------
-  // Out-of-class method definitions
-  //===------------------------------------------------------------------------------------------------------
+  // //===------------------------------------------------------------------------------------------------------
+  // // Out-of-class method definitions
+  // //===------------------------------------------------------------------------------------------------------
 
   template<>
   fragments<static_containers>::fragments(molecule_graph_type& graph,
@@ -82,5 +102,19 @@ namespace mudock {
   fragments<dynamic_containers>::fragments(molecule_graph_type& graph,
                                            const std::span<const bond>& bonds,
                                            const std::size_t num_atoms);
+
+  //===------------------------------------------------------------------------------------------------------
+  // Helper method definitions
+  //===------------------------------------------------------------------------------------------------------
+
+  inline auto same_fragment(const std::span<const int>& mask, const int& atom_id1, const int& atom_id2) {
+    return mask[atom_id1] == mask[atom_id2] || (mask[atom_id1] == 0 && mask[atom_id2] == 2) ||
+           (mask[atom_id2] == 0 && mask[atom_id1] == 2) || (mask[atom_id1] == 1 && mask[atom_id2] == 3) ||
+           (mask[atom_id2] == 1 && mask[atom_id1] == 3);
+  }
+
+  inline auto rotable_atoms(const std::span<const int>& mask, const int& atom_id1, const int& atom_id2) {
+    return (mask[atom_id1] == 2 && mask[atom_id2] == 3) || (mask[atom_id2] == 2 && mask[atom_id1] == 3);
+  }
 
 } // namespace mudock

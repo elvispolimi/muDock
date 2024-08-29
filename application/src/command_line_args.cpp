@@ -6,7 +6,7 @@
 command_line_arguments parse_command_line_arguments(const int argc, char* argv[]) {
   namespace po = boost::program_options;
 
-  // define the command lines
+  // define the general command line arguments
   command_line_arguments args;
   po::options_description arguments_description("Available options");
   arguments_description.add_options()("help", "print this help message");
@@ -17,9 +17,30 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
                                       po::value(&args.device_conf)->default_value(args.device_conf),
                                       "Map each implementation to the device");
 
+  // define the knobs command line arguments
+  po::options_description knobs_description("Virtual Screening Knobs");
+  knobs_description.add_options()(
+      "population",
+      po::value(&args.knobs.population_number)->default_value(args.knobs.population_number),
+      "Number of individual(s) in the GA population");
+  knobs_description.add_options()(
+      "generations",
+      po::value(&args.knobs.num_generations)->default_value(args.knobs.num_generations),
+      "Number of generations that GA simulates");
+  knobs_description.add_options()(
+      "tournament_len",
+      po::value(&args.knobs.tournament_length)->default_value(args.knobs.tournament_length),
+      "Number of classes to select a parent in GA");
+  knobs_description.add_options()(
+      "mutation",
+      po::value(&args.knobs.mutation_prob)->default_value(args.knobs.mutation_prob),
+      "Probability of a mutation to happen during GA");
+
   // parse them
+  po::options_description all("Allowed Options");
+  all.add(arguments_description).add(knobs_description);
   po::variables_map vm;
-  po::store(po::command_line_parser(argc, argv).options(arguments_description).run(), vm);
+  po::store(po::command_line_parser(argc, argv).options(all).run(), vm);
 
   // handle the help message
   if (vm.count("help") > 0) {
@@ -27,10 +48,12 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
               << std::endl;
     std::cout << "print on the standard output the score of each of them" << std::endl;
     std::cout << std::endl;
-    std::cout << "USAGE: " << argv[0] << " --protein " << args.protein_path << " --device_conf "
-              << args.device_conf << " < \"/path/to/ligands.mol2\"" << std::endl;
+    std::cout << "USAGE: " << argv[0] << " --protein " << args.protein_path << " --use " << args.device_conf
+              << " [KNOBS] < \"/path/to/ligands.mol2\"" << std::endl;
     std::cout << std::endl;
     std::cout << arguments_description << std::endl;
+    std::cout << std::endl;
+    std::cout << knobs_description << std::endl;
     std::cout << std::endl;
     std::cout << "The use flag is basically a list that describes which implementation the user" << std::endl
               << "would like to use and on which hardware it want to be run" << std::endl

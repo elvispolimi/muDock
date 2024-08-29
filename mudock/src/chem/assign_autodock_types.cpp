@@ -47,8 +47,8 @@ namespace mudock {
                       const molecule_graph_type& graph,
                       const molecule_graph_type::vertex_descriptor v) -> autodock_ff {
     assert(elements[graph[v].atom_index] == element::S);
-    if (babel_type[graph[v].atom_index] == autodock_babel_ff::Sox ||
-        babel_type[graph[v].atom_index] == autodock_babel_ff::Sac) {
+    if (babel_type[graph[v].atom_index] != autodock_babel_ff::Sox ||
+        babel_type[graph[v].atom_index] != autodock_babel_ff::Sac) {
       return autodock_ff::SA;
     }
     return autodock_ff::S;

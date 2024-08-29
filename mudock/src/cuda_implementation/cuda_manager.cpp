@@ -10,7 +10,7 @@ namespace mudock {
 
   void manage_cuda(std::string_view configuration,
                    threadpool& pool,
-                   std::shared_ptr<dynamic_molecule> protein,
+                   const knobs knobs,
                    std::shared_ptr<safe_stack<static_molecule>> input_molecules,
                    std::shared_ptr<safe_stack<static_molecule>> output_molecules) {
     // single out the CUDA description
@@ -55,8 +55,8 @@ namespace mudock {
       // add the workers that we found parsing the configuration
       for (const auto id: gpu_ids) {
         // we spawn two workers for each GPU to implement the double buffer
-        pool.add_worker<mudock::cuda_worker>(protein, input_molecules, output_molecules, rob, id);
-        pool.add_worker<mudock::cuda_worker>(protein, input_molecules, output_molecules, rob, id);
+        pool.add_worker<mudock::cuda_worker>(knobs, input_molecules, output_molecules, rob, id);
+        pool.add_worker<mudock::cuda_worker>(knobs, input_molecules, output_molecules, rob, id);
       }
     }
   }

@@ -29,12 +29,12 @@ $ cmake --install /path/to/muDock/build
 
 This application reads from the standard input a ligand library in mol2 format. It will print on the standard output the best docked pose with the score as comment
 
-USAGE: ./build/application/muDock --protein "protein.pdb" --device_conf CPP:CPU:0 < "/path/to/ligands.mol2"
+USAGE: ./build/application/muDock --protein "protein.pdb" --use CPP:CPU:0 < "/path/to/ligands.mol2"
 
 Available options:
 --help print this help message
 --protein arg (="protein.pdb") Path to the protein file (in PDB)
---device_conf arg (=CPP:CPU:0) Devices configuration
+--use arg (=CPP:CPU:0) Devices configuration
 
 ### Devices Configuration
 

@@ -27,6 +27,9 @@ int main(int argc, char* argv[]) {
   const auto protein_description = read_from_stream(std::ifstream(args.protein_path));
   pdb.parse(protein, protein_description);
   mudock::apply_autodock_forcefield(protein);
+  auto grid_atom_maps    = std::make_shared<mudock::grid_atom_mapper>(generate_atom_grid_maps(protein));
+  auto electrostatic_map = std::make_shared<mudock::grid_map>(generate_electrostatic_grid_map(protein));
+  auto desolvation_map   = std::make_shared<mudock::grid_map>(generate_desolvation_grid_map(protein));
 
   // read  all the ligands description from the standard input and split them
   mudock::info("Reading ligands from the stdin ...");
@@ -57,8 +60,16 @@ int main(int argc, char* argv[]) {
   auto output_queue = std::make_shared<mudock::safe_stack<mudock::static_molecule>>();
   {
     auto threadpool = mudock::threadpool();
-    mudock::manage_cpp(args.device_conf, threadpool, protein_ptr, input_queue, output_queue);
-    mudock::manage_cuda(args.device_conf, threadpool, protein_ptr, input_queue, output_queue);
+    mudock::manage_cpp(args.device_conf,
+                       threadpool,
+                       protein_ptr,
+                       grid_atom_maps,
+                       electrostatic_map,
+                       desolvation_map,
+                       args.knobs,
+                       input_queue,
+                       output_queue);
+    mudock::manage_cuda(args.device_conf, threadpool, args.knobs, input_queue, output_queue);
     mudock::info("All workers have been created!");
   } // when we exit from this block the computation is complete
 
