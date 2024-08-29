@@ -13,9 +13,9 @@ namespace mudock {
     fp_type y = fp_type{0.0};
     fp_type z = fp_type{0.0};
 
-    point3D(const fp_type _x, const fp_type _y, const fp_type _z): x(_x), y(_y), z(_z){};
-    point3D(const fp_type v): x(v), y(v), z(v){};
-    point3D(){};
+    point3D(const fp_type _x, const fp_type _y, const fp_type _z): x(_x), y(_y), z(_z) {};
+    point3D(const fp_type v): x(v), y(v), z(v) {};
+    point3D() {};
 
     ~point3D()                          = default;
     point3D(point3D&& other)            = default;
