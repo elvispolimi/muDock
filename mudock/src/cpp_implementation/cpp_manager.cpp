@@ -49,8 +49,7 @@ namespace mudock {
 
       // add the workers that we found parsing the configuration
       for (const auto id: parse_ids(configuration)) {
-        pool.add_worker<mudock::cpp_worker>(protein,
-                                            grid_atom_maps,
+        pool.add_worker<mudock::cpp_worker>(grid_atom_maps,
                                             electro_map,
                                             desolv_map,
                                             knobs,
