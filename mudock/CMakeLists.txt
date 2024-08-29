@@ -38,6 +38,7 @@ list(
   "${header_path}/${header_prefix}/format/ob_wrapper.hpp"
   "${header_path}/${header_prefix}/format/supported_format.hpp"
   "${header_path}/${header_prefix}/grid/mdindex.hpp"
+  "${header_path}/${header_prefix}/grid/mdvector.hpp"
   "${header_path}/${header_prefix}/grid/grid_map.hpp"
   "${header_path}/${header_prefix}/grid/pi.hpp"
   "${header_path}/${header_prefix}/grid/point3D.hpp"
