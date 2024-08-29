@@ -115,7 +115,7 @@ namespace mudock {
                                         *grid_atom_maps,
                                         *electro_map,
                                         *desolv_map);
-        // element.score = altered_x[0]; // dummy implementation to test the genetic
+        element.score = energy; // dummy implementation to test the genetic
       }
 
       // Generate the new population
