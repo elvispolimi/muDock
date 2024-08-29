@@ -45,7 +45,7 @@ namespace mudock {
       const auto size_list = std::initializer_list{static_cast<std::size_t>(sizes)...};
       std::copy(std::cbegin(size_list), std::cend(size_list), std::begin(_sizes));
       _coefs[0] = std::size_t{1};
-      for (std::size_t i = 1; i < num_dimensions; ++i) { _coefs[i] = _coefs[i] * _sizes[i]; }
+      for (std::size_t i = 1; i < num_dimensions; ++i) { _coefs[i] = _coefs[i - 1] * _sizes[i - 1]; }
     }
 
     // function to perform the index conversion
