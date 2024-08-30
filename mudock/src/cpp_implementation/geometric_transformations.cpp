@@ -1,4 +1,5 @@
 #include <cassert>
+#include <mudock/cpp_implementation/center_of_mass.hpp>
 #include <mudock/cpp_implementation/geometric_transformations.hpp>
 #include <mudock/grid.hpp>
 
@@ -31,6 +32,9 @@ namespace mudock {
     assert(y.size() == num_atoms);
     assert(z.size() == num_atoms);
 
+    // compute the molecule center of mass
+    const auto c = compute_center_of_mass(x, y, z);
+
     // compute the angles sine and cosine
     const auto rad_x = deg_to_rad(angle_x), rad_y = deg_to_rad(angle_y), rad_z = deg_to_rad(angle_z);
     const auto cx = std::cos(rad_x), sx = std::sin(rad_x);
@@ -50,10 +54,10 @@ namespace mudock {
 
     // apply the rotation matrix
     for (std::size_t i = 0; i < num_atoms; ++i) {
-      const auto prev_x = x[i], prev_y = y[i], prev_z = z[i];
-      x[i] = prev_x * m00 + prev_y * m01 + prev_z * m02;
-      y[i] = prev_x * m10 + prev_y * m11 + prev_z * m12;
-      z[i] = prev_x * m20 + prev_y * m21 + prev_z * m22;
+      const auto translated_x = x[i] - c.x, translated_y = y[i] - c.y, translated_z = z[i] - c.z;
+      x[i] = translated_x * m00 + translated_y * m01 + translated_z * m02 + c.x;
+      y[i] = translated_x * m10 + translated_y * m11 + translated_z * m12 + c.y;
+      z[i] = translated_x * m20 + translated_y * m21 + translated_z * m22 + c.z;
     }
   }
 
