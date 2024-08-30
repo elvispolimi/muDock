@@ -11,6 +11,7 @@ namespace mudock {
    */
   template<class T, std::size_t n>
   class md_vector: public md_index<n> {
+  protected:
     std::vector<T> _data;
 
   public:
