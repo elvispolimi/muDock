@@ -42,6 +42,8 @@ list(
   "${header_path}/${header_prefix}/grid/grid_map.hpp"
   "${header_path}/${header_prefix}/grid/pi.hpp"
   "${header_path}/${header_prefix}/grid/point3D.hpp"
+  "${header_path}/${header_prefix}/grid/space_grid.hpp"
+  "${header_path}/${header_prefix}/kernels/calc_energy_cpp.hpp"
   "${header_path}/${header_prefix}/molecule/bond.hpp"
   "${header_path}/${header_prefix}/molecule/constraints.hpp"
   "${header_path}/${header_prefix}/molecule/containers.hpp"
