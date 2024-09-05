@@ -31,7 +31,7 @@ namespace mudock {
 
   template<class point_type, class... point_types>
   [[nodiscard]] constexpr std::remove_reference_t<point_type> add(point_type&& a, point_types&&... bs) {
-    return add(std::forward<point_type>(a), std::forward<point_type>(bs...));
+    return add(std::forward<point_type>(a), std::forward<point_type>(bs)...);
   }
 
   template<class point_type>
