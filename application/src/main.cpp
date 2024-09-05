@@ -6,6 +6,7 @@
 #include <memory>
 #include <mudock/chem/ligand_maps.hpp>
 #include <mudock/likwid_utils.hpp>
+#include <mudock/grid/grid_map.hpp>
 #include <mudock/mudock.hpp>
 #include <string>
 
