@@ -120,7 +120,7 @@ namespace mudock {
     std::unordered_map<autodock_ff, grid_atom_map> grid_maps;
 
   public:
-    grid_atom_mapper(std::vector<grid_atom_map> maps) {
+    grid_atom_mapper(std::vector<grid_atom_map>& maps) {
       for (auto& map: maps) { grid_maps.emplace(map.get_atom_type(), std::move(map)); }
     }
 
