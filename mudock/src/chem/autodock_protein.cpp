@@ -187,7 +187,6 @@ namespace mudock {
         const auto [neigh_begin, neigh_end] = boost::out_edges(*it, graph);
         auto bond_counter                   = std::size_t{0};
         auto neigh1_vertex                  = std::size_t{0};
-        auto neigh2_vertex                  = std::size_t{0};
         auto neigh1_index                   = std::size_t{0};
         auto neigh2_index                   = std::size_t{0};
         auto neigh1_point                   = point3D{};
@@ -210,10 +209,9 @@ namespace mudock {
                 break;
 
               case std::size_t{1}:
-                bond_counter  = 2;
-                neigh2_vertex = neigh_vertex;
-                neigh2_index  = neigh_index;
-                neigh2_point  = neigh_point;
+                bond_counter = 2;
+                neigh2_index = neigh_index;
+                neigh2_point = neigh_point;
                 break;
 
               default: throw std::runtime_error("Unsupported number of neighbors");
@@ -267,12 +265,7 @@ namespace mudock {
           throw std::runtime_error("Unexpected atom type");
         const auto [neigh_begin, neigh_end] = boost::out_edges(*it, graph);
         auto bond_counter                   = std::size_t{0};
-        auto neigh1_vertex                  = std::size_t{0};
-        auto neigh2_vertex                  = std::size_t{0};
-        auto neigh3_vertex                  = std::size_t{0};
         auto neigh1_index                   = std::size_t{0};
-        auto neigh2_index                   = std::size_t{0};
-        auto neigh3_index                   = std::size_t{0};
         auto neigh1_point                   = point3D{};
         auto neigh2_point                   = point3D{};
         auto neigh3_point                   = point3D{};
@@ -287,24 +280,19 @@ namespace mudock {
               (d2 < fp_type{1.69} && neigh_element == element::H)) {
             switch (bond_counter) {
               case std::size_t{0}:
-                bond_counter  = 1;
-                neigh1_vertex = neigh_vertex;
-                neigh1_index  = neigh_index;
-                neigh1_point  = neigh_point;
+                bond_counter = 1;
+                neigh1_index = neigh_index;
+                neigh1_point = neigh_point;
                 break;
 
               case std::size_t{1}:
-                bond_counter  = 2;
-                neigh2_vertex = neigh_vertex;
-                neigh2_index  = neigh_index;
-                neigh2_point  = neigh_point;
+                bond_counter = 2;
+                neigh2_point = neigh_point;
                 break;
 
               case std::size_t{2}:
-                bond_counter  = 3;
-                neigh3_vertex = neigh_vertex;
-                neigh3_index  = neigh_index;
-                neigh3_point  = neigh_point;
+                bond_counter = 3;
+                neigh3_point = neigh_point;
                 break;
 
               default: throw std::runtime_error("Unsupported number of neighbors");
@@ -335,7 +323,6 @@ namespace mudock {
   //===------------------------------------------------------------------------------------------------------
 
   static auto compute_dielectric_ewds() {
-    static constexpr auto epsilon  = fp_type{1.0};
     static constexpr auto lambda   = fp_type{0.003627};
     static constexpr auto epsilon0 = fp_type{78.4};
     static constexpr auto A        = fp_type{-8.5525};
