@@ -67,10 +67,10 @@ namespace mudock {
 
     // utility functions to get sizes in the index
     template<std::size_t index>
-    [[nodiscard]] std::size_t size() {
+    [[nodiscard]] std::size_t size() const {
       return _sizes[index];
     }
-    [[nodiscard]] std::size_t flat_size() { return _sizes[0] * _coefs[n - 1]; }
+    [[nodiscard]] std::size_t flat_size() const { return _sizes[0] * _coefs[n - 1]; }
 
     // utility function to perform boundaries check
     template<class... T>
