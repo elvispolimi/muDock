@@ -4,6 +4,7 @@
 #include <fstream>
 #include <iostream>
 #include <memory>
+#include <mudock/grid/grid_map.hpp>
 #include <mudock/mudock.hpp>
 #include <stdexcept>
 #include <string>
