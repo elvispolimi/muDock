@@ -57,6 +57,7 @@ namespace mudock {
             const size_t indx_r = std::min<size_t>(std::floor(d * A_DIV), NDIEL - 1);
             energy += solpar_q * receptor.get_vol()[index] * sol_fn[indx_r];
           }
+          desolvation_map.at(index_x, index_y, index_z) = energy;
         }
       }
     }
