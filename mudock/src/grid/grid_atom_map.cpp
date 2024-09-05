@@ -1,3 +1,5 @@
+#include "mudock/chem/autodock_types.hpp"
+
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -36,7 +38,7 @@ namespace mudock {
       if (i_smooth > 0) {
         for (size_t indx_r = 0; indx_r < NEINT; ++indx_r) {
           const auto temp = indx_r - i_smooth;
-          size_t j        = temp <= indx_r ? temp : size_t{0};
+          size_t j        = temp <= size_t{0} ? size_t{0} : temp;
           for (; j < std::min(size_t{NEINT}, indx_r + i_smooth + 1); j++)
             energy_smooth[indx_r] = std::min(energy_smooth[indx_r], e_vdW_Hb[j]);
         }
@@ -79,7 +81,7 @@ namespace mudock {
           xB(_xB),
           hbonder(_hbonder),
           receptor_type(_receptor_type),
-          vdw_hb_table(cA, cB, xA, xB) {};
+          vdw_hb_table(cA, cB, xA, xB){};
   };
 
   struct scratchpad {
@@ -102,8 +104,8 @@ namespace mudock {
 
         fp_type nbp_r = (grid_type_desc.Rii + receptor_type_desc.Rii) / fp_type{2.};
         // TODO check if it is ok to use the floating point version
-        fp_type nbp_eps = sqrtf(grid_type_desc.epsii * autodock_parameters::coeff_vdW *
-                                receptor_type_desc.epsii * autodock_parameters::coeff_vdW);
+        fp_type nbp_eps = std::sqrt(grid_type_desc.epsii * autodock_parameters::coeff_vdW *
+                                    receptor_type_desc.epsii * autodock_parameters::coeff_vdW);
         // TODO probably they are constant
         size_t xA      = 12;
         size_t xB      = 6;
@@ -126,7 +128,6 @@ namespace mudock {
         // TODO to be checked later in line 1707 from main.cpp
         const fp_type cA = (nbp_eps / (xA - xB)) * std::pow(nbp_r, static_cast<fp_type>(xA)) * xB;
         const fp_type cB = nbp_eps / (xA - xB) * std::pow(nbp_r, static_cast<fp_type>(xB)) * xA;
-
         interactions.emplace(receptor_t, interaction{cA, cB, nbp_r, nbp_eps, xA, xB, hbonder, receptor_t});
       }
     }
@@ -258,7 +259,7 @@ namespace mudock {
                 square_distance = std::numeric_limits<fp_type>::epsilon();
               }
 
-              const fp_type inv_rd = fp_type{1} / sqrtf(square_distance);
+              const fp_type inv_rd = fp_type{1} / std::sqrt(square_distance);
               /*
               * N-H: Set exponent rexp to 2 for m/m H-atom,
               */
@@ -362,7 +363,7 @@ namespace mudock {
               }
             }
           } /*i2-loop*/
-        } /* endif nbond==1 */
+        }   /* endif nbond==1 */
 
         /* two bonds: Hydroxyl or Ether Oxygen X1-O-X2 */
         if (nbond == 2) {
@@ -490,7 +491,7 @@ namespace mudock {
                 closestH = index;
               }
             } /* Hydrogen test */
-          } /* ia loop */
+          }   /* ia loop */
           /* END NEW2: Find Min Hbond */
 
           for (size_t index = 0; index < receptor.num_atoms(); ++index) {
@@ -499,7 +500,7 @@ namespace mudock {
             const auto receptor_hbond      = receptor.num_hbond(index);
             point3D dist = difference(point3D{receptor.x(index), receptor.y(index), receptor.z(index)},
                                       point3D{coord_x, coord_y, coord_z});
-            fp_type d    = sqrtf(sum_components(square(dist)));
+            fp_type d    = std::sqrt(sum_components(square(dist)));
             dist         = normalize(dist);
 
             const size_t indx_n = std::min<size_t>(std::floor(d * A_DIV), NEINT - 1);
