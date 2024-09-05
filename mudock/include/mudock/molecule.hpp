@@ -91,7 +91,7 @@ namespace mudock {
     [[nodiscard]] inline auto get_num_hbond() { return make_span(atom_num_hbond, atoms_size); }
 
     // utility functions to get the span of the whole molecule (read only)
-    [[nodiscard]] inline auto get_element() const { return make_span(atom_elements, atoms_size); }
+    [[nodiscard]] inline auto get_elements() const { return make_span(atom_elements, atoms_size); }
     [[nodiscard]] inline auto get_autodock_type() const { return make_span(atom_autodock_type, atoms_size); }
     [[nodiscard]] inline auto get_x() const { return make_span(x_coordinates, atoms_size); }
     [[nodiscard]] inline auto get_y() const { return make_span(y_coordinates, atoms_size); }
