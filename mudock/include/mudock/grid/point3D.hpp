@@ -96,6 +96,11 @@ namespace mudock {
   }
 
   template<class point_type>
+  [[nodiscard]] constexpr std::remove_reference_t<point_type> cross_product(point_type&& a, point_type&& b) {
+    return point3D{a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x};
+  }
+
+  template<class point_type>
   [[nodiscard]] constexpr fp_type distance2(point_type&& a, point_type&& b) {
     return sum_components(square(difference(std::forward<point_type>(a), std::forward<point_type>(b))));
   }
