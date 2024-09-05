@@ -54,6 +54,16 @@ namespace mudock {
     [[nodiscard]] inline const fp_type& get(point3D p) const {
       return md_vector<fp_type, 3>::_data[get_index(p)];
     }
+
+    // forward functions to access data using indexes instead of coordinates
+    template<class... Y>
+    [[nodiscard]] inline fp_type& get(Y&&... indexes) {
+      return md_vector<fp_type, 3>::get(indexes...);
+    }
+    template<class... Y>
+    [[nodiscard]] inline const fp_type& get(Y&&... indexes) const {
+      return md_vector<fp_type, 3>::get(indexes...);
+    }
   };
 
 } // namespace mudock
