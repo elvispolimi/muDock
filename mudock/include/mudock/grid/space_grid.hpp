@@ -42,6 +42,13 @@ namespace mudock {
              (p.z > _max.z);
     }
 
+    // function to convert the index to the coordinate of the point
+    [[nodiscard]] inline auto to_coord(const std::size_t x, const std::size_t y, const std::size_t z) const {
+      return point3D{static_cast<fp_type>(x) * _inv_resolution + _min.x,
+                     static_cast<fp_type>(y) * _inv_resolution + _min.y,
+                     static_cast<fp_type>(z) * _inv_resolution + _min.z};
+    }
+
     // function to access data of the space grid w/out checking if the point is actually inside
     [[nodiscard]] inline fp_type& get(point3D p) { return md_vector<fp_type, 3>::_data[get_index(p)]; }
     [[nodiscard]] inline const fp_type& get(point3D p) const {
