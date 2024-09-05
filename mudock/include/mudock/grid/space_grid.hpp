@@ -37,14 +37,16 @@ namespace mudock {
                   (max.z + min.z / fp_type{2}) + min.z) {}
 
     // function to check if the point fall inside the space grid
-    inline bool is_outside(point3D p) {
+    [[nodiscard]] inline bool is_outside(point3D p) {
       return (p.x < _min.x) || (p.x > _max.x) || (p.y < _min.y) || (p.y > _max.y) || (p.z < _min.z) ||
              (p.z > _max.z);
     }
 
     // function to access data of the space grid w/out checking if the point is actually inside
-    inline fp_type& get(point3D p) { return md_vector<fp_type, 3>::_data[get_index(p)]; }
-    inline const fp_type& get(point3D p) const { return md_vector<fp_type, 3>::_data[get_index(p)]; }
+    [[nodiscard]] inline fp_type& get(point3D p) { return md_vector<fp_type, 3>::_data[get_index(p)]; }
+    [[nodiscard]] inline const fp_type& get(point3D p) const {
+      return md_vector<fp_type, 3>::_data[get_index(p)];
+    }
   };
 
 } // namespace mudock
