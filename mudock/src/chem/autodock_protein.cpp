@@ -98,7 +98,7 @@ namespace mudock {
                               (num_radius_angstrom / static_cast<fp_type>(num_radius_tick));
           const auto rA              = std::pow(radius, shape.xA);
           const auto rB              = std::pow(radius, shape.xB);
-          const auto proposed_energy = cA / rA - cB / rA;
+          const auto proposed_energy = cA / rA - cB / rB;
           energy_table.get(radius_index, prot_type_index, lig_type_index) =
               std::min(fp_type{100000}, proposed_energy);
         }
@@ -225,7 +225,7 @@ namespace mudock {
           throw std::runtime_error("Oxygen with no bonded atoms");
         else if (bond_counter == std::size_t{1}) { // in this case we have lone pairs
           // so we need to explore the neighbor's neighbor for Carbonyl Oxygen O=C-X
-          if (elements[neigh1_vertex] != element::C) [[unlikly]]
+          if (elements[neigh1_index] != element::C) [[unlikely]]
             throw std::runtime_error("The original autogrid was not expecting a non C atom with a O");
           result.vector1[atom_index]              = normalize(difference(atom_point, neigh1_point));
           auto found                              = false;
@@ -233,7 +233,7 @@ namespace mudock {
           for (auto c_neigh = c_neigh_begin; c_neigh != c_neigh_end; ++c_neigh) {
             const auto c_neigh_index   = graph[c_neigh->m_target].atom_index;
             const auto c_neigh_point   = point3D{x[c_neigh_index], y[c_neigh_index], z[c_neigh_index]};
-            const auto c_diff          = difference(neigh1_point, c_neigh_point);
+            const auto c_diff          = difference(std::as_const(neigh1_point), c_neigh_point);
             const auto c_d2            = sum_components(square(c_diff));
             const auto c_neigh_element = elements[c_neigh_index];
             if ((c_d2 < fp_type{2.89} && c_neigh_element != element::H) ||
@@ -315,7 +315,7 @@ namespace mudock {
         if (bond_counter == std::size_t{0}) [[unlikely]]
           throw std::runtime_error("Nitrogen with no bonded atoms");
         else if (bond_counter == std::size_t{1}) { // Azide Nitrogen N=C bond vector
-          if (elements[neigh1_vertex] != element::C) [[unlikly]]
+          if (elements[neigh1_index] != element::C) [[unlikely]]
             throw std::runtime_error("The original autogrid was not expecting a non C atom with an N");
           result.vector1[atom_index] = normalize(difference(atom_point, neigh1_point));
         } else if (bond_counter == std::size_t{2}) { // two bonds: X1-N=X2
@@ -439,7 +439,7 @@ namespace mudock {
                                d * (static_cast<fp_type>(num_radius_tick) / num_radius_angstrom)));
               electrostatic_energy +=
                   charge[i] * (fp_type{1} / std::max(d, fp_type{0.5})) * autodock_parameters::coeff_estat;
-              desolvation_energy += fp_type{0.01097} * volume[i] * desolvation_energies[electrostatic_energy];
+              desolvation_energy += fp_type{0.01097} * volume[i] * desolvation_energies[radius_index];
             }
           }
 
