@@ -357,6 +357,7 @@ namespace mudock {
         }
       }
     }
+    return result;
   }
 
   //===------------------------------------------------------------------------------------------------------
@@ -476,6 +477,8 @@ namespace mudock {
         }
       }
     }
+
+    return result;
   }
 
 } // namespace mudock
