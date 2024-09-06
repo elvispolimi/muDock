@@ -3,6 +3,7 @@
 #include <mudock/chem.hpp>
 #include <mudock/chem/mehler_solmajer.hpp>
 #include <mudock/grid.hpp>
+#include <mudock/grid/grid_map.hpp>
 #include <mudock/type_alias.hpp>
 
 namespace mudock {

@@ -4,6 +4,7 @@
 #include <array>
 #include <mudock/chem.hpp>
 #include <mudock/grid.hpp>
+#include <mudock/grid/grid_map.hpp>
 #include <vector>
 
 namespace mudock {
@@ -14,8 +15,8 @@ namespace mudock {
     const auto& npts         = desolvation_map.index;
 
     /* exponential function for receptor and ligand desolvation */
-    /* note: the solvation term ranges beyond the non-bond cutoff 
-    * and will not be smoothed 
+    /* note: the solvation term ranges beyond the non-bond cutoff
+    * and will not be smoothed
     */
     std::array<fp_type, NDIEL> sol_fn;
     for (int indx_r = 1; indx_r < NDIEL; indx_r++) {
