@@ -292,10 +292,9 @@ namespace mudock {
             result.vector1[atom_index] = normalize(difference(atom_point, neigh2_point));
           } else if (neigh1_element == element::H && neigh2_element == element::H) {
             result.vector2[atom_index] = normalize(difference(neigh2_point, neigh1_point));
-            result.vector1[atom_index] =
-                normalize(add(scale(std::as_const(result.vector2[atom_index]),
-                                    sum_components(difference(atom_point, std::as_const(neigh1_point)))),
-                              atom_point));
+            const auto p               = scale(std::as_const(result.vector2[atom_index]),
+                                 sum_components(difference(atom_point, std::as_const(neigh1_point))));
+            result.vector1[atom_index] = normalize(add(p, atom_point));
           } else [[unlikely]]
             throw std::runtime_error("The original autogrid was not expecting a non C atom");
         }
@@ -349,11 +348,9 @@ namespace mudock {
           result.vector1[atom_index] = normalize(
               difference(atom_point, scale(add(neigh1_point, neigh2_point), fp_type{1} / fp_type{2})));
         } else if (bond_counter == std::size_t{3}) { // three bonds
-          result.vector1[atom_index] = normalize(difference(
-              atom_point,
-              scale(
-                  add(std::as_const(neigh1_point), std::as_const(neigh2_point), std::as_const(neigh3_point)),
-                  fp_type{1} / fp_type{3})));
+          const auto p1              = add(std::as_const(neigh1_point), std::as_const(neigh2_point));
+          const auto p2              = scale(add(p1, std::as_const(neigh3_point)), fp_type{1} / fp_type{3});
+          result.vector1[atom_index] = normalize(difference(atom_point, p2));
         }
       }
     }

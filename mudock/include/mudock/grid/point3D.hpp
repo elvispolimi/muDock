@@ -29,23 +29,9 @@ namespace mudock {
     return {a.x + b.x, a.y + b.y, a.z + b.z};
   }
 
-  template<class point_type, class... point_types>
-  [[nodiscard]] constexpr std::remove_reference_t<point_type>
-      add(point_type&& a, point_type&& b, point_types&&... bs) {
-    return add(add(std::forward<point_type>(a), std::forward<point_type>(a)),
-               std::forward<point_type>(bs)...);
-  }
-
   template<class point_type>
   [[nodiscard]] constexpr std::remove_reference_t<point_type> divide(point_type&& a, point_type&& b) {
     return {a.x / b.x, a.y / b.y, a.z / b.z};
-  }
-
-  template<class point_type, class... point_types>
-  [[nodiscard]] constexpr std::remove_reference_t<point_type>
-      divide(point_type&& a, point_type&& b, point_types&&... bs) {
-    return divide(divide(std::forward<point_type>(a), std::forward<point_type>(b)),
-                  std::forward<point_type>(bs...));
   }
 
   template<class point_type>
