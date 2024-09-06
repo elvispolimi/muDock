@@ -83,24 +83,62 @@ namespace mudock {
   // It returns a multi vector of float with the energy values
   // Dimension 0 -> Energy values as changing the distance
   // Dimension 1 -> protein types, Dimension 2 -> ligand types
+  // NOTE: we apply a smoothing function on the theoretical value by looking at previous value
   static auto compute_vdw_interaction_energies() {
     static const md_vector<vdw_shape, 2> vdw_shapes = compute_vdw_interaction_shapes();
     md_vector<fp_type, 3> energy_table(vdw_shapes.size<0>(), vdw_shapes.size<1>(), num_radius_tick);
     for (std::size_t lig_type_index = 0; lig_type_index < vdw_shapes.size<2>(); ++lig_type_index) {
       for (std::size_t prot_type_index = 0; prot_type_index < vdw_shapes.size<1>(); ++prot_type_index) {
+        // compute the  energy shape
         const auto& shape     = vdw_shapes.get(lig_type_index, prot_type_index);
         const auto temp_const = shape.nbp_eps / (shape.xA - shape.xB);
         const auto cA         = temp_const * std::pow(shape.nbp_r, shape.xA) * shape.xB;
         const auto cB         = temp_const * std::pow(shape.nbp_r, shape.xB) * shape.xA;
-        energy_table.get(0, prot_type_index, lig_type_index) = fp_type{0};
+        auto& voxel           = energy_table.get(0, prot_type_index, lig_type_index);
+        voxel                 = fp_type{0};
         for (std::size_t radius_index = 1; radius_index < num_radius_tick; ++radius_index) {
           const auto radius = static_cast<fp_type>(radius_index) *
                               (num_radius_angstrom / static_cast<fp_type>(num_radius_tick));
           const auto rA              = std::pow(radius, shape.xA);
           const auto rB              = std::pow(radius, shape.xB);
           const auto proposed_energy = cA / rA - cB / rB;
-          energy_table.get(radius_index, prot_type_index, lig_type_index) =
-              std::min(fp_type{100000}, proposed_energy);
+          const auto clapped_energy  = std::min(fp_type{100000}, proposed_energy);
+          energy_table.get(radius_index, prot_type_index, lig_type_index) = clapped_energy;
+        }
+
+        // apply a "smoothing" process that actually discretize the shape
+        // NOTE: the diameter of the smoothing is 0.5A
+        static constexpr auto smooth_diameter = static_cast<std::size_t>(
+            (static_cast<fp_type>(num_radius_tick) / num_radius_angstrom) * fp_type{0.5});
+        static constexpr auto smooth_radius = smooth_diameter / std::size_t{2};
+        if constexpr (auto* energy_row = &voxel; smooth_diameter < num_radius_tick) {
+          for (std::size_t radius_index = 0; radius_index < smooth_radius; radius_index++) {
+            auto min_value       = energy_row[0];
+            const auto end_index = radius_index + smooth_radius;
+            for (std::size_t i = 1; i < end_index; ++i) { min_value = std::min(min_value, energy_row[i]); }
+            energy_row[radius_index] = min_value;
+          }
+          static constexpr auto middle_end = num_radius_tick - smooth_radius;
+          for (std::size_t radius_index = smooth_radius; radius_index < middle_end; ++radius_index) {
+            const auto begin_index   = radius_index - smooth_radius;
+            const auto end_condition = radius_index + smooth_radius;
+            auto min_value           = energy_row[begin_index];
+            for (std::size_t i = begin_index + std::size_t{1}; i < end_condition; ++i) {
+              min_value = std::min(min_value, energy_row[i]);
+            }
+            energy_row[radius_index] = min_value;
+          }
+          for (std::size_t radius_index = middle_end; radius_index < num_radius_tick; ++radius_index) {
+            const auto begin_index = radius_index - smooth_radius;
+            auto min_value         = energy_row[begin_index];
+            for (std::size_t i = begin_index + std::size_t{1}; i < num_radius_tick; ++i) {
+              min_value = std::min(min_value, energy_row[i]);
+            }
+            energy_row[radius_index] = min_value;
+          }
+        } else { // we have really low vlaues
+          const auto min_value = *std::min_element(energy_row, energy_row + num_radius_tick);
+          for (std::size_t i = 0; i < num_radius_tick; ++i) { energy_row[i] = min_value; }
         }
       }
     }
