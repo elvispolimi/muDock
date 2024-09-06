@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <mudock/chem.hpp>
 #include <mudock/grid.hpp>
+#include <mudock/grid/grid_map.hpp>
 #include <mudock/kernels/calc_energy_cpp.hpp>
 #include <mudock/molecule.hpp>
 #include <stdexcept>
@@ -124,7 +125,7 @@ namespace mudock {
       } // i
     } // j
 
-    /* 
+    /*
     \   Weed out bonds across torsions,
     \______________________________________________________________
     */
@@ -135,7 +136,7 @@ namespace mudock {
       nbmatrix.at(atom_id2, atom_id1) = 0;
     } // i
 
-    /* 
+    /*
     \  Weed out bonds from atoms directly connected to rigid pieces,
     \_ we think these are 1-3 interactions mp+rh, 10-2008______________________
     */

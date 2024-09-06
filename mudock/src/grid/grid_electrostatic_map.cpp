@@ -3,6 +3,7 @@
 #include <limits>
 #include <mudock/chem.hpp>
 #include <mudock/grid.hpp>
+#include <mudock/grid/grid_map.hpp>
 #include <mudock/type_alias.hpp>
 #include <vector>
 
