@@ -3,6 +3,7 @@
 #include <memory>
 #include <mudock/compute.hpp>
 #include <mudock/grid.hpp>
+#include <mudock/grid/grid_map.hpp>
 #include <mudock/knobs.hpp>
 #include <mudock/molecule.hpp>
 #include <string_view>
