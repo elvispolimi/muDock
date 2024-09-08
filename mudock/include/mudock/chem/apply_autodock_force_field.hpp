@@ -1,5 +1,6 @@
 #pragma once
 
+#include "mudock/chem/autodock_parameters.hpp"
 #include "mudock/molecule/graph.hpp"
 
 #include <mudock/chem/assign_autodock_babel_types.hpp>
@@ -43,11 +44,11 @@ namespace mudock {
       const auto& ff_entry          = get_description(mol_autodock_types[index]);
       molecule.autodock_type(index) = ff_entry.value;
       molecule.Rii(index)           = ff_entry.Rii;
-      molecule.epsii(index)         = ff_entry.epsii;
+      molecule.epsii(index)         = ff_entry.epsii*autodock_parameters::coeff_vdW;
       molecule.vol(index)           = ff_entry.vol;
       molecule.solpar(index)        = ff_entry.solpar;
       molecule.Rij_hb(index)        = ff_entry.Rij_hb;
-      molecule.epsij_hb(index)      = ff_entry.epsij_hb;
+      molecule.epsij_hb(index)      = ff_entry.epsij_hb*autodock_parameters::coeff_hbond;
       molecule.num_hbond(index)     = ff_entry.hbond;
     }
   }
