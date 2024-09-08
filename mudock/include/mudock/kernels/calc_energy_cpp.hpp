@@ -21,7 +21,6 @@ namespace mudock {
                       const std::span<autodock_ff> ligand_autodock_type,
                       const std::span<const bond> ligand_bond,
                       const std::size_t num_atoms,
-                      const std::size_t num_bonds,
                       const fragments<static_containers>& ligand_fragments,
                       const grid_atom_mapper& grid_maps,
                       const grid_map& electro_map,

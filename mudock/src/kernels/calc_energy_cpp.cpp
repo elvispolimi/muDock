@@ -1,3 +1,7 @@
+#include "mudock/chem/autodock_parameters.hpp"
+#include "mudock/chem/grid_const.hpp"
+#include "mudock/type_alias.hpp"
+
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
@@ -12,8 +16,10 @@ namespace mudock {
   static constexpr fp_type RMIN_ELEC{0.5};
   static constexpr fp_type ELECSCALE{332.06363};
   static constexpr fp_type qsolpar{0.01097};
+  static constexpr fp_type r_smooth{
+      0.0}; // vdw nonbond smoothing range, not radius, Ang - default 0.5 matches AutoGrid recommendations
   // Non bond cutoff
-  static constexpr fp_type nbc2{64 * 64};
+  static constexpr fp_type nbc2{64}; // 8*8
   static constexpr fp_type ENERGYPENALTY{500};
 
   /* ______________________________________________________________________________ */
@@ -62,6 +68,7 @@ namespace mudock {
       for (size_t j = 0; j < num_atoms; j++) { nbmatrix.at(i, j) = 1; } // j
       nbmatrix.at(i, i) = 0;                                            /* 2005-01-10 RH & GMM */
     }
+
     for (auto& bond: ligand_bond) {
       // Ignore 1-2 Interactions
       nbmatrix.at(bond.source, bond.dest) = 0;
@@ -70,18 +77,47 @@ namespace mudock {
 
     for (auto& bond_1: ligand_bond)
       for (auto& bond_2: ligand_bond) { // loop over each atom "k" bonded to the current atom "j"
-        if (bond_1.dest != bond_2.source)
+        std::size_t outer_1{0};
+        std::size_t outer_2{0};
+        if (bond_1.dest == bond_2.source) {
+          outer_1 = bond_1.source;
+          outer_2 = bond_2.dest;
+        } else if (bond_1.dest == bond_2.dest) {
+          outer_1 = bond_1.source;
+          outer_2 = bond_2.source;
+        } else if (bond_1.source == bond_2.source) {
+          outer_1 = bond_1.dest;
+          outer_2 = bond_2.dest;
+        } else if (bond_1.source == bond_2.dest) {
+          outer_1 = bond_1.dest;
+          outer_2 = bond_2.source;
+        } else
           continue;
 
         // Ignore "1-3 Interactions"
-        nbmatrix.at(bond_2.dest, bond_1.source) = 0;
-        nbmatrix.at(bond_1.source, bond_2.dest) = 0;
+        nbmatrix.at(outer_2, outer_1) = 0;
+        nbmatrix.at(outer_1, outer_2) = 0;
 
         for (auto& bond_3: ligand_bond) {
-          if (bond_2.dest != bond_3.source)
+          std::size_t outer_3{0};
+          std::size_t outer_4{0};
+          if (outer_2 == bond_3.source) {
+            outer_3 = bond_3.dest;
+            outer_4 = outer_1;
+          } else if (outer_2 == bond_3.dest) {
+            outer_3 = bond_3.source;
+            outer_4 = outer_1;
+          } else if (outer_1 == bond_3.source) {
+            outer_3 = bond_1.dest;
+            outer_4 = outer_2;
+          } else if (outer_1 == bond_3.dest) {
+            outer_3 = bond_1.source;
+            outer_4 = outer_2;
+          } else
             continue;
-          nbmatrix.at(bond_1.source, bond_3.dest) = 0;
-          nbmatrix.at(bond_3.dest, bond_1.source) = 0;
+
+          nbmatrix.at(outer_4, outer_3) = 0;
+          nbmatrix.at(outer_3, outer_4) = 0;
         }
       }
   }
@@ -122,8 +158,7 @@ namespace mudock {
           nbmatrix.at(i, j) = 0;
         }
       } // i
-    } // j
-
+    }   // j
     /* 
     \   Weed out bonds across torsions,
     \______________________________________________________________
@@ -190,7 +225,7 @@ namespace mudock {
           error(oss.str());
         }
       } // j
-    } // i
+    }   // i
   }
 
   fp_type calc_energy(const std::span<fp_type> ligand_x,
@@ -207,14 +242,13 @@ namespace mudock {
                       const std::span<autodock_ff> ligand_autodock_type,
                       const std::span<const bond> ligand_bond,
                       const std::size_t num_atoms,
-                      const std::size_t num_bonds,
                       const fragments<static_containers>& ligand_fragments,
                       const grid_atom_mapper& grid_maps,
                       const grid_map& electro_map,
                       const grid_map& desolv_map) {
-    fp_type elect_total = 0;
-    fp_type emap_total  = 0;
-    fp_type dmap_total  = 0;
+    fp_type elect_total_trilinear = 0;
+    fp_type emap_total_trilinear  = 0;
+    fp_type dmap_total_trilinear  = 0;
     for (size_t index = 0; index < num_atoms; ++index) {
       const point3D coord{ligand_x[index], ligand_y[index], ligand_z[index]};
       const auto& atom_charge = ligand_charge[index];
@@ -224,48 +258,50 @@ namespace mudock {
         const fp_type dist = distance2(coord, grid_maps.get_center());
 
         const fp_type epenalty = dist * ENERGYPENALTY;
-        elect_total += epenalty;
-        emap_total += epenalty;
+        elect_total_trilinear += epenalty;
+        emap_total_trilinear += epenalty;
       } else {
         // Trilinear Interpolation
-        elect_total += trilinear_interpolation(electro_map, coord) * atom_charge;
-        emap_total += trilinear_interpolation(atom_map, coord);
-        dmap_total += trilinear_interpolation(desolv_map, coord) * std::fabs(atom_charge);
+        elect_total_trilinear += trilinear_interpolation(electro_map, coord) * atom_charge;
+        emap_total_trilinear += trilinear_interpolation(atom_map, coord);
+        dmap_total_trilinear += trilinear_interpolation(desolv_map, coord) * std::fabs(atom_charge);
       }
     }
 
     const int n_torsions = ligand_fragments.get_num_rotatable_bonds();
+    fp_type elect_total_eintcal{0}, emap_total_eintcal{0}, dmap_total_eintcal{0};
     if (n_torsions > 0) {
       // TODO @Davide suppose that the receptor does not have Flexible residues eintcal.cc:147
       // TODO
       grid<uint_fast8_t, index2D> nbmatrix{{num_atoms, num_atoms}};
       nonbonds(nbmatrix, ligand_bond, num_atoms);
-      std::vector<non_bond_parameter> non_bond_list(num_bonds);
+      std::vector<non_bond_parameter> non_bond_list;
       weed_bonds(nbmatrix, non_bond_list, num_atoms, ligand_fragments);
 
       for (const auto& non_bond: non_bond_list) {
         const int& a1 = non_bond.a1;
         const int& a2 = non_bond.a2;
 
-        fp_type distance = distance2(point3D{ligand_x[a1], ligand_y[a1], ligand_z[a1]},
-                                     point3D{ligand_x[a2], ligand_y[a2], ligand_z[a2]});
-        distance         = std::sqrt(std::clamp(distance, RMIN_ELEC * RMIN_ELEC, distance));
+        const fp_type distance_two       = distance2(point3D{ligand_x[a1], ligand_y[a1], ligand_z[a1]},
+                                               point3D{ligand_x[a2], ligand_y[a2], ligand_z[a2]});
+        const fp_type distance_two_clamp = std::clamp(distance_two, RMIN_ELEC * RMIN_ELEC, distance_two);
+        const fp_type distance           = std::sqrt(distance_two_clamp);
 
         //  Calculate  Electrostatic  Energy
-        const fp_type r_dielectric = distance * calc_ddd_Mehler_Solmajer(distance);
+        const fp_type r_dielectric = fp_type{1} / (distance * calc_ddd_Mehler_Solmajer(distance));
         const fp_type e_elec       = ligand_charge[non_bond.a1] * ligand_charge[non_bond.a2] * ELECSCALE *
                                autodock_parameters::coeff_estat * r_dielectric;
-        elect_total += e_elec;
+        elect_total_eintcal += e_elec;
 
         const fp_type nb_desolv =
             (ligand_vol[a2] * (ligand_solpar[a1] + qsolpar * std::fabs(ligand_charge[a1])) +
              ligand_vol[a1] * (ligand_solpar[a2] + qsolpar * std::fabs(ligand_charge[a2])));
 
         const fp_type e_desolv = autodock_parameters::coeff_desolv *
-                                 std::exp(fp_type{-0.5} * sigma * sigma * std::sqrt(distance)) * nb_desolv;
-        dmap_total += e_desolv;
+                                 std::exp(fp_type{-0.5} / (sigma * sigma) * distance_two_clamp) * nb_desolv;
+        dmap_total_eintcal += e_desolv;
         fp_type e_vdW_Hb{0};
-        if (distance < nbc2) {
+        if (distance_two_clamp < nbc2) {
           //  Find internal energy parameters, i.e.  epsilon and r-equilibrium values...
           //  Lennard-Jones and Hydrogen Bond Potentials
           // This can be precomputed as in intnbtable.cc
@@ -312,16 +348,38 @@ namespace mudock {
             const fp_type rB = std::pow(distance, static_cast<fp_type>(xB));
 
             e_vdW_Hb = std::min(EINTCLAMP, (cA / rA - cB / rB));
+
+            /* smooth with min function; 
+              r_smooth is Angstrom range of "smoothing" */
+            // TODO rework considering this precomputing with other values
+            if (r_smooth > 0) {
+              const fp_type rlow  = distance - r_smooth / 2;
+              const fp_type rhigh = distance + r_smooth / 2;
+              fp_type energy_smooth{100000};
+              // ((((int)((r)*A_DIV)) > NEINT_1) ? NEINT_1 : ((int)((r)*A_DIV))
+              for (std::size_t j = std::max(fp_type{0}, std::min(rlow * A_DIV, fp_type{NEINT - 1}));
+                   j <= std::min(fp_type{NEINT - 1}, std::min(rhigh * A_DIV, fp_type{NEINT - 1}));
+                   ++j)
+                energy_smooth = std::min(energy_smooth, e_vdW_Hb);
+
+              e_vdW_Hb = energy_smooth;
+            } /* endif smoothing */
+
             // TODO check energy smoothing intnbtable.cc:215
             // with NOSQRT to False it seems to be the same as calmping to EINTCLAMP
           } else {
             throw std::runtime_error("ERROR: Exponents must be different, to avoid division by zero!");
           }
         }
-        emap_total += e_vdW_Hb;
+        emap_total_eintcal += e_vdW_Hb;
       }
     }
-    return elect_total + emap_total + dmap_total;
+    const fp_type tors_free_energy = n_torsions * autodock_parameters::coeff_tors;
+
+    const fp_type total_trilnear = emap_total_trilinear + elect_total_trilinear + dmap_total_trilinear;
+    const fp_type total_eintcal = emap_total_eintcal + elect_total_eintcal + dmap_total_eintcal;
+
+    return total_trilnear + total_eintcal + tors_free_energy;
   }
 
 } // namespace mudock
