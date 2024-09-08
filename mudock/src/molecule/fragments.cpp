@@ -110,8 +110,17 @@ namespace mudock {
   }
 
   void fill_rigid_pieces(std::span<fragments<static_containers>::value_type> rigid_pieces,
+                         const std::span<const edge_description> rotatable_edges,
+                         const std::size_t num_atoms,
                          molecule_graph_type &g) {
-    boost::connected_components(g, rigid_pieces.data());
+    for (std::size_t i{0}; i < rotatable_edges.size(); ++i)
+      boost::remove_edge(rotatable_edges[i].source, rotatable_edges[i].dest, g);
+    std::vector<int> tmp(num_atoms);
+    boost::connected_components(g, tmp.data());
+    for (std::size_t i{0}; i < num_atoms; ++i) rigid_pieces[g[i].atom_index] = tmp[i];
+    // boost::write_graphviz(std::cout, g); // This prints the graph in Graphviz DOT format
+    for (std::size_t i{0}; i < rotatable_edges.size(); ++i)
+      boost::add_edge(rotatable_edges[i].source, rotatable_edges[i].dest, g);
   }
 
   template<>
@@ -126,10 +135,10 @@ namespace mudock {
     index = index2D(num_atoms, num_rotatable_edges);
     resize(mask, num_atoms * num_rotatable_edges);
     resize(start_atom_indices, num_rotatable_edges);
-    resize(start_atom_indices, num_rotatable_edges);
+    resize(stop_atom_indices, num_rotatable_edges);
     fill(mask, value_type{0});
     fill(start_atom_indices, std::size_t{0});
-    fill(start_atom_indices, std::size_t{0});
+    fill(stop_atom_indices, std::size_t{0});
 
     // fill the fragment data structures
     for (std::size_t i{0}; i < num_rotatable_edges; ++i) {
@@ -142,7 +151,10 @@ namespace mudock {
 
     resize(rigid_pieces, num_atoms);
     fill(rigid_pieces, value_type{0});
-    fill_rigid_pieces(make_span(rigid_pieces, rigid_pieces.size()), graph);
+    fill_rigid_pieces(make_span(rigid_pieces, rigid_pieces.size()),
+                      make_span(rotatable_edges, num_rotatable_edges),
+                      num_atoms,
+                      graph);
   }
 
   template<>
@@ -157,10 +169,10 @@ namespace mudock {
     index = index2D(num_atoms, num_rotatable_edges);
     resize(mask, num_atoms * num_rotatable_edges);
     resize(start_atom_indices, num_rotatable_edges);
-    resize(start_atom_indices, num_rotatable_edges);
+    resize(stop_atom_indices, num_rotatable_edges);
     fill(mask, value_type{0});
     fill(start_atom_indices, std::size_t{0});
-    fill(start_atom_indices, std::size_t{0});
+    fill(stop_atom_indices, std::size_t{0});
 
     // fill the fragment data structures
     for (std::size_t i{0}; i < num_rotatable_edges; ++i) {
@@ -173,7 +185,10 @@ namespace mudock {
 
     resize(rigid_pieces, num_atoms);
     fill(rigid_pieces, value_type{0});
-    fill_rigid_pieces(make_span(rigid_pieces, rigid_pieces.size()), graph);
+    fill_rigid_pieces(make_span(rigid_pieces, rigid_pieces.size()),
+                      make_span(rotatable_edges, num_rotatable_edges),
+                      num_atoms,
+                      graph);
   }
 
 } // namespace mudock
