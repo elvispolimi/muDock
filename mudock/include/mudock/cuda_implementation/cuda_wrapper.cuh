@@ -20,26 +20,27 @@ namespace mudock {
     container_type<T, args...> host;
 
     inline void alloc(const std::size_t num_elements) {
-      host.alloc(num_elements);
+      host.resize(num_elements);
       cuda_object<T>::alloc(num_elements);
     };
-    inline void alloc(const std::size_t num_elements, const T value = T{}) {
-      host.alloc(num_elements, value);
+    inline void alloc(const std::size_t num_elements, const T value) {
+      host.resize(num_elements, value);
       cuda_object<T>::alloc(host.size());
-      cuda_object<T>::memset(value);
+      cuda_object<T>::set_to_value(value);
     };
 
     inline void copy_host2device() {
-      cuda_object<T>::resize(host.size());
+      cuda_object<T>::alloc(host.size());
       cuda_object<T>::copy_host2device(host.data());
     };
     inline void copy_device2host() {
-      host.resize(cuda_object<T>::num_elements());
+      host.alloc(cuda_object<T>::num_elements());
       cuda_object<T>::copy_device2host(host.data());
     };
 
     [[nodiscard]] inline auto dev_pointer() const { return cuda_object<T>::dev_pointer(); }
     [[nodiscard]] inline auto host_pointer() const { return host.data(); }
+    [[nodiscard]] inline auto host_pointer() { return host.data(); }
     [[nodiscard]] inline auto num_elements() const {
       assert(cuda_object<T>::num_elements() == host.size());
       return cuda_object<T>::num_elements();

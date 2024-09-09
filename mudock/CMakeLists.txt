@@ -19,12 +19,13 @@ list(APPEND header_files
   "${header_path}/${header_prefix}/compute/reorder_buffer.hpp"
   "${header_path}/${header_prefix}/compute/safe_stack.hpp"
   "${header_path}/${header_prefix}/compute/threadpool.hpp"
-  "${header_path}/${header_prefix}/cpp_implementation/center_of_mass.hpp"
-  "${header_path}/${header_prefix}/cpp_implementation/chromosome.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/cpp_manager.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/cpp_worker.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/geometric_transformations.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/virtual_screen.hpp"
+  "${header_path}/${header_prefix}/cpp_implementation/chromosome.hpp"
+  "${header_path}/${header_prefix}/cpp_implementation/mutate.hpp"
+  "${header_path}/${header_prefix}/cpp_implementation/center_of_mass.hpp"
   "${header_path}/${header_prefix}/format/concept.hpp"
   "${header_path}/${header_prefix}/format/dot.hpp"
   "${header_path}/${header_prefix}/format/mol2.hpp"
@@ -70,9 +71,9 @@ list(APPEND source_files
   "${source_path}/chem/elements.cpp"
   "${source_path}/compute/parse_ids.cpp"
   "${source_path}/compute/reorder_buffer.cpp"
-  "${source_path}/cpp_implementation/chromosome.cpp"
   "${source_path}/cpp_implementation/cpp_manager.cpp"
   "${source_path}/cpp_implementation/cpp_worker.cpp"
+  "${source_path}/cpp_implementation/mutate.cpp"
   "${source_path}/cpp_implementation/geometric_transformations.cpp"
   "${source_path}/cpp_implementation/virtual_screen.cpp"
   "${source_path}/format/dot.cpp"
@@ -89,7 +90,7 @@ list(APPEND source_files
 )
 
 # declare the CUDA sources
-if (MUDOCK_ENABLE_CUDA)
+if(MUDOCK_ENABLE_CUDA)
   list(APPEND header_files
     "${header_path}/${header_prefix}/cuda_implementation/cuda_batch_sizer.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/cuda_check_error_macro.cuh"
@@ -98,12 +99,18 @@ if (MUDOCK_ENABLE_CUDA)
     "${header_path}/${header_prefix}/cuda_implementation/cuda_worker.hpp"
     "${header_path}/${header_prefix}/cuda_implementation/cuda_wrapper.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/virtual_screen.cuh"
+    "${header_path}/${header_prefix}/cuda_implementation/evaluate_fitness.cuh"
+    "${header_path}/${header_prefix}/cuda_implementation/geometric_transformations.cuh"
+    "${header_path}/${header_prefix}/cuda_implementation/mutate.cuh"
   )
   list(APPEND source_files
     "${source_path}/cuda_implementation/cuda_batch_sizer.cu"
     "${source_path}/cuda_implementation/cuda_manager.cpp"
     "${source_path}/cuda_implementation/cuda_worker.cpp"
     "${source_path}/cuda_implementation/virtual_screen.cu"
+    "${source_path}/cuda_implementation/evaluate_fitness.cu"
+    "${source_path}/cuda_implementation/geometric_transformations.cu"
+    "${source_path}/cuda_implementation/mutate.cu"
   )
 endif()
 
@@ -128,10 +135,17 @@ target_link_libraries(libmudock PUBLIC Microsoft.GSL::GSL)
 add_rdkit_dep(libmudock)
 
 # check if we need to activate the compilation flag that signals CUDA
-if (MUDOCK_ENABLE_CUDA)
+if(MUDOCK_ENABLE_CUDA)
   target_compile_definitions(libmudock PUBLIC MUDOCK_USE_CUDA)
+  set_target_properties(libmudock
+    PROPERTIES
+    CUDA_STANDARD 20
+    CUDA_STANDARD_REQUIRED ON
+    CUDA_EXTENSIONS OFF
+    CUDA_SEPARABLE_COMPILATION ON)
+  SET(CMAKE_CUDA_FLAGS_RELEASE "-O3 -use_fast_math --expt-relaxed-constexpr")
+  SET(CMAKE_CUDA_FLAGS_DEBUG "-G -Xptxas -v --expt-relaxed-constexpr")
 endif()
-
 
 # ########################################################################
 # ### Declare the install step

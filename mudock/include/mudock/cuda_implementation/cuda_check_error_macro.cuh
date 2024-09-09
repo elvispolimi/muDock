@@ -4,6 +4,7 @@
 #include <mudock/log.hpp>
 #include <stdexcept>
 
+// TODO check -Wterminate
 #define MUDOCK_CHECK(call)                                                             \
   {                                                                                    \
     const cudaError_t err = call;                                                      \
