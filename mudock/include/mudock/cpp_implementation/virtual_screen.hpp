@@ -24,10 +24,6 @@ namespace mudock {
     std::shared_ptr<const grid_map> desolv_map;
 
     // define the GA population
-    struct individual {
-      chromosome genes;
-      fp_type score;
-    };
     std::vector<individual> population;
     std::vector<individual> next_population;
 
