@@ -11,7 +11,7 @@ namespace mudock {
   public:
     virtual void main() = 0;
 
-    virtual ~worker_interface() {}
+    virtual ~worker_interface() noexcept(false) {}
   };
 
   class threadpool {
