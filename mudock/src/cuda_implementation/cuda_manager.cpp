@@ -11,8 +11,11 @@ namespace mudock {
   void manage_cuda(std::string_view configuration,
                    threadpool& pool,
                    const knobs knobs,
-                   std::shared_ptr<safe_stack<static_molecule>> input_molecules,
-                   std::shared_ptr<safe_stack<static_molecule>> output_molecules) {
+                   std::shared_ptr<const grid_atom_mapper>& grid_atom_maps,
+                   std::shared_ptr<const grid_map>& electro_map,
+                   std::shared_ptr<const grid_map>& desolv_map,
+                   std::shared_ptr<safe_stack<static_molecule>>& input_molecules,
+                   std::shared_ptr<safe_stack<static_molecule>>& output_molecules) {
     // single out the CUDA description
     const auto begin_cuda_description = configuration.find(cuda_token);
     const auto end_cuda_description   = configuration.find(";", begin_cuda_description);
@@ -55,8 +58,22 @@ namespace mudock {
       // add the workers that we found parsing the configuration
       for (const auto id: gpu_ids) {
         // we spawn two workers for each GPU to implement the double buffer
-        pool.add_worker<mudock::cuda_worker>(knobs, input_molecules, output_molecules, rob, id);
-        pool.add_worker<mudock::cuda_worker>(knobs, input_molecules, output_molecules, rob, id);
+        pool.add_worker<mudock::cuda_worker>(knobs,
+                                             grid_atom_maps,
+                                             electro_map,
+                                             desolv_map,
+                                             input_molecules,
+                                             output_molecules,
+                                             rob,
+                                             id);
+        pool.add_worker<mudock::cuda_worker>(knobs,
+                                             grid_atom_maps,
+                                             electro_map,
+                                             desolv_map,
+                                             input_molecules,
+                                             output_molecules,
+                                             rob,
+                                             id);
       }
     }
   }
