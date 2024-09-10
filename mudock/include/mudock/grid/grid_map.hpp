@@ -1,5 +1,7 @@
 #pragma once
 
+#include "mudock/type_alias.hpp"
+
 #include <cmath>
 #include <cstddef>
 #include <iostream>
@@ -12,6 +14,7 @@
 #include <vector>
 
 namespace mudock {
+  // TODO move it away from here
   inline fp_type calc_ddd_Mehler_Solmajer(fp_type distance) {
     /*____________________________________________________________________________
      * Distance-dependent dielectric ewds: Mehler and Solmajer, Prot Eng 4, 903-910.
@@ -37,14 +40,16 @@ namespace mudock {
     std::vector<T> grid_values;
 
   public:
-    grid(const index_type _index): grid_values(_index.get_dim()), index(_index) {};
+    grid(const index_type _index): grid_values(_index.get_dim()), index(_index){};
     ~grid()                       = default;
     grid(grid&& other)            = default;
-    grid(const grid& other)       = delete;
+    grid(const grid& other)       = default;
     grid& operator=(grid&& other) = default;
-    grid& operator=(const grid&)  = delete;
+    grid& operator=(const grid&)  = default;
 
     const index_type index;
+
+    [[nodiscard]] inline auto* data() const { return grid_values.data(); }
 
     template<typename... Indexes>
     [[nodiscard]] inline T& at(Indexes... indexes) {
@@ -69,9 +74,9 @@ namespace mudock {
                  (maximum.z - minimum.z) / 2 + minimum.z} {}
     ~grid_map()                           = default;
     grid_map(grid_map&& other)            = default;
-    grid_map(const grid_map& other)       = delete;
+    grid_map(const grid_map& other)       = default;
     grid_map& operator=(grid_map&& other) = default;
-    grid_map& operator=(const grid_map&)  = delete;
+    grid_map& operator=(const grid_map&)  = default;
 
     [[nodiscard]] inline int outside_grid(const point3D& p) const {
       return p.x < minimum.x || p.x > maximum.x || p.y < minimum.y || p.y > maximum.y || p.z < minimum.z ||
@@ -79,7 +84,7 @@ namespace mudock {
     }
 
     [[nodiscard]] inline point3D get_index_from_coordinates(const point3D coord) const {
-      return {(coord.x - minimum.x) / grid_spacing,
+    return {(coord.x - minimum.x) / grid_spacing,
               (coord.y - minimum.y) / grid_spacing,
               (coord.z - minimum.z) / grid_spacing};
     }
@@ -95,6 +100,8 @@ namespace mudock {
     [[nodiscard]] inline fp_type at(const std::size_t x, const std::size_t y, const std::size_t z) const {
       return grid::at(x, y, z);
     }
+
+    [[nodiscard]] inline auto* data() const { return grid::data(); }
   };
 
   class grid_atom_map: public grid_map {
@@ -105,9 +112,9 @@ namespace mudock {
         : grid_map(npts, min, max), atom_type(type) {}
     ~grid_atom_map()                               = default;
     grid_atom_map(grid_atom_map&& other)           = default;
-    grid_atom_map(const grid_atom_map& other)      = delete;
+    grid_atom_map(const grid_atom_map& other)      = default;
     grid_atom_map& operator=(grid_atom_map&&)      = default;
-    grid_atom_map& operator=(const grid_atom_map&) = delete;
+    grid_atom_map& operator=(const grid_atom_map&) = default;
 
     [[nodiscard]] inline auto get_atom_type() const { return atom_type; }
     // Check this
