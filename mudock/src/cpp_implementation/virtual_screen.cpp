@@ -96,10 +96,9 @@ namespace mudock {
               ligand_fragments);
 
         // compute the energy of the system
-        // TODO: make this kernel depends on the span for information
-        const auto energy = calc_energy(ligand.get_x(),
-                                        ligand.get_y(),
-                                        ligand.get_z(),
+        const auto energy = calc_energy(altered_x,
+                                        altered_y,
+                                        altered_z,
                                         ligand.get_vol(),
                                         ligand.get_solpar(),
                                         ligand.get_charge(),
