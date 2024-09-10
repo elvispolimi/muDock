@@ -1,8 +1,8 @@
 #include <algorithm>
 #include <mudock/cpp_implementation/center_of_mass.hpp>
 #include <mudock/cpp_implementation/chromosome.hpp>
-#include <mudock/cpp_implementation/mutate.hpp>
 #include <mudock/cpp_implementation/geometric_transformations.hpp>
+#include <mudock/cpp_implementation/mutate.hpp>
 #include <mudock/cpp_implementation/virtual_screen.hpp>
 #include <mudock/kernels.hpp>
 #include <mudock/molecule.hpp>

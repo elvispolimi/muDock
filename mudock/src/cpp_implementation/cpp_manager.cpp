@@ -9,12 +9,12 @@ namespace mudock {
 
   void manage_cpp(std::string_view configuration,
                   threadpool& pool,
-                  std::shared_ptr<const grid_atom_mapper> grid_atom_maps,
-                  std::shared_ptr<const grid_map> electro_map,
-                  std::shared_ptr<const grid_map> desolv_map,
+                  std::shared_ptr<const grid_atom_mapper>& grid_atom_maps,
+                  std::shared_ptr<const grid_map>& electro_map,
+                  std::shared_ptr<const grid_map>& desolv_map,
                   const knobs knobs,
-                  std::shared_ptr<safe_stack<static_molecule>> input_molecules,
-                  std::shared_ptr<safe_stack<static_molecule>> output_molecules) {
+                  std::shared_ptr<safe_stack<static_molecule>>& input_molecules,
+                  std::shared_ptr<safe_stack<static_molecule>>& output_molecules) {
     // single out the CPP description
     const auto begin_cpp_description = configuration.find(cpp_token);
     const auto end_cpp_description   = configuration.find(";", begin_cpp_description);

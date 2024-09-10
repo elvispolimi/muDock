@@ -14,6 +14,9 @@ namespace mudock {
   inline void manage_cuda(std::string_view,
                           threadpool&,
                           const knobs,
+                          std::shared_ptr<const grid_atom_mapper> grid_atom_maps,
+                          std::shared_ptr<const grid_map> electro_map,
+                          std::shared_ptr<const grid_map> desolv_map,
                           std::shared_ptr<safe_stack<static_molecule> >,
                           std::shared_ptr<safe_stack<static_molecule> >) {
     warning("The CUDA implementation is disabled");
