@@ -9,11 +9,17 @@
 
 namespace mudock {
   cuda_worker::cuda_worker(const knobs knobs,
-                           std::shared_ptr<safe_stack<static_molecule>> input_molecules,
-                           std::shared_ptr<safe_stack<static_molecule>> output_molecules,
+                           std::shared_ptr<const grid_atom_mapper>& grid_atom_maps,
+                           std::shared_ptr<const grid_map>& electro_map,
+                           std::shared_ptr<const grid_map>& desolv_map,
+                           std::shared_ptr<safe_stack<static_molecule>>& input_molecules,
+                           std::shared_ptr<safe_stack<static_molecule>>& output_molecules,
                            std::shared_ptr<reorder_buffer> rb,
                            const std::size_t gpu_id)
-      : input_stack(input_molecules), output_stack(output_molecules), rob(rb), virtual_screen(knobs) {
+      : input_stack(input_molecules),
+        output_stack(output_molecules),
+        rob(rb),
+        virtual_screen(knobs, grid_atom_maps, electro_map, desolv_map) {
     MUDOCK_CHECK(cudaSetDevice(static_cast<int>(gpu_id)));
     info("Worker CUDA on duty! Set affinity to GPU ", gpu_id);
   }
