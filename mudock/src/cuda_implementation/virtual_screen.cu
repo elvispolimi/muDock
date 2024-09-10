@@ -1,15 +1,64 @@
 #include <alloca.h>
 #include <cstddef>
 #include <cstring>
+#include <cuda_runtime.h>
 #include <mudock/cpp_implementation/center_of_mass.hpp>
 #include <mudock/cuda_implementation/evaluate_fitness.cuh>
 #include <mudock/cuda_implementation/virtual_screen.cuh>
+#include <mudock/grid.hpp>
 #include <span>
 
 #define BLOCK_SIZE 32
 
 namespace mudock {
-  virtual_screen_cuda::virtual_screen_cuda(const knobs k): dist(fp_type{0}, fp_type{10}), configuration(k) {}
+
+  void init_texture_memory(std::shared_ptr<const grid_map> &map, cudaTextureObject_t tex_obj) {
+    // Create 3D CUDA array for the texture
+    cudaArray *d_array;
+    cudaChannelFormatDesc channel_desc = cudaCreateChannelDesc<fp_type>();
+
+    const index3D map_index = map.get()->index;
+    cudaExtent extent       = make_cudaExtent(map_index.size_x(), map_index.size_y(), map_index.size_z());
+    cudaMalloc3DArray(&d_array, &channel_desc, extent);
+
+    // Copy data from host to the 3D CUDA array
+    cudaMemcpy3DParms copyParams = {0};
+    copyParams.srcPtr            = make_cudaPitchedPtr((void *) map.get()->data(),
+                                            map_index.size_x() * sizeof(fp_type),
+                                            map_index.size_y(),
+                                            map_index.size_z());
+    copyParams.dstArray          = d_array;
+    copyParams.extent            = extent;
+    copyParams.kind              = cudaMemcpyHostToDevice;
+    cudaMemcpy3D(&copyParams);
+
+    // Create texture object
+    struct cudaResourceDesc res_desc;
+    memset(&res_desc, 0, sizeof(res_desc));
+    res_desc.resType         = cudaResourceTypeArray;
+    res_desc.res.array.array = d_array;
+
+    struct cudaTextureDesc tex_desc;
+    memset(&tex_desc, 0, sizeof(tex_desc));
+    tex_desc.addressMode[0]   = cudaAddressModeClamp;
+    tex_desc.addressMode[1]   = cudaAddressModeClamp;
+    tex_desc.addressMode[2]   = cudaAddressModeClamp;
+    tex_desc.filterMode       = cudaFilterModeLinear; // Enable linear interpolation
+    tex_desc.readMode         = cudaReadModeElementType;
+    tex_desc.normalizedCoords = 0; // We will use unnormalized coordinates
+
+    // Create the texture object
+    cudaCreateTextureObject(&tex_obj, &res_desc, &tex_desc, NULL);
+  }
+
+  virtual_screen_cuda::virtual_screen_cuda(const knobs k,
+                                           std::shared_ptr<const grid_atom_mapper> &grid_atom_maps,
+                                           std::shared_ptr<const grid_map> &electro_map,
+                                           std::shared_ptr<const grid_map> &desolv_map)
+      : dist(fp_type{0}, fp_type{10}), configuration(k) {
+    // Allocate grid maps
+    init_texture_memory(electro_map, electro_tex);
+  }
 
   void virtual_screen_cuda::operator()(batch &incoming_batch) {
     const std::size_t batch_atoms    = incoming_batch.batch_max_atoms;
@@ -189,7 +238,10 @@ namespace mudock {
                                                       frag_start_atom_indices.dev_pointer(),
                                                       frag_stop_atom_indices.dev_pointer(),
                                                       population.dev_pointer(),
-                                                      NULL, NULL, NULL, ligand_scores.dev_pointer());
+                                                      NULL,
+                                                      NULL,
+                                                      NULL,
+                                                      ligand_scores.dev_pointer());
       MUDOCK_CHECK_KERNELCALL();
       MUDOCK_CHECK(cudaDeviceSynchronize());
 
