@@ -14,10 +14,10 @@ namespace mudock {
              fp_type* __restrict__ z,
              const fp_type* chromosome,
              const int* __restrict__ fragments,
-             const std::size_t* __restrict__ fragments_start_index,
-             const std::size_t* __restrict__ fragments_stop_index,
-             const std::size_t num_rotamers,
-             const std::size_t stride_atoms,
-             const std::size_t num_atoms);
+             const int* __restrict__ fragments_start_index,
+             const int* __restrict__ fragments_stop_index,
+             const int num_rotamers,
+             const int stride_atoms,
+             const int num_atoms);
 
 } // namespace mudock
