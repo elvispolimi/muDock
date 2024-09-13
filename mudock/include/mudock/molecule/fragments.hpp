@@ -25,7 +25,7 @@ namespace mudock {
 
   using vertex_type = typename molecule_graph_type::vertex_descriptor;
   template<class container_aliases>
-  std::pair<typename container_aliases::template bonds_size<edge_description>, std::size_t>
+  std::pair<typename container_aliases::template bonds_size<edge_description>, int>
       get_rotatable_edges(const std::span<const bond>& bonds, const molecule_graph_type& g);
 
   template<class container_aliases>
@@ -34,7 +34,7 @@ namespace mudock {
     using fragment_mask_type    = int;
     using mask_container_type   = container_aliases::template fragments_size<fragment_mask_type>;
     using pieces_container_type = container_aliases::template fragments_size<fragment_mask_type>;
-    using index_container_type  = container_aliases::template fragments_size<std::size_t>;
+    using index_container_type  = container_aliases::template fragments_size<int>;
 
     // this is a 2D grid that keep track of which atom belong to the related fragment. Each atom mask has the
     // following meaning:
@@ -52,35 +52,33 @@ namespace mudock {
 
   public:
     using value_type = fragment_mask_type;
-    fragments(molecule_graph_type& graph, const std::span<const bond>& bonds, const std::size_t num_atoms);
+    fragments(molecule_graph_type& graph, const std::span<const bond>& bonds, const int num_atoms);
 
     // utility functions to get the whole container
-    [[nodiscard]] inline auto get_mask(const std::size_t bond_index) {
+    [[nodiscard]] inline auto get_mask(const int bond_index) {
       assert(bond_index < index.size_y());
       return std::span(std::begin(mask) + index.to1D(0, bond_index), index.size_x());
     }
-    [[nodiscard]] inline auto get_mask(const std::size_t bond_index) const {
+    [[nodiscard]] inline auto get_mask(const int bond_index) const {
       assert(bond_index < index.size_y());
       return std::span(std::cbegin(mask) + index.to1D(0, bond_index), index.size_x());
     }
     [[nodiscard]] inline auto get_rigid_pieces() const { return std::span(rigid_pieces); }
 
     // utility functions to access the data
-    [[nodiscard]] inline int& get_mask(const std::size_t bond_index, const std::size_t atom_index) {
+    [[nodiscard]] inline int& get_mask(const int bond_index, const int atom_index) {
       assert(bond_index < index.size_y());
       assert(atom_index < index.size_x());
       return mask[index.to1D(atom_index, bond_index)];
     }
-    [[nodiscard]] inline const int& get_mask(const std::size_t bond_index,
-                                             const std::size_t atom_index) const {
+    [[nodiscard]] inline const int& get_mask(const int bond_index, const int atom_index) const {
       assert(bond_index < index.size_y());
       assert(atom_index < index.size_x());
       return mask[index.to1D(atom_index, bond_index)];
     }
 
     // utility function to get the indices of the atoms related to the rotatable bonds
-    [[nodiscard]] inline std::pair<std::size_t, std::size_t>
-        get_rotatable_atoms(const std::size_t bond_index) const {
+    [[nodiscard]] inline std::pair<int, int> get_rotatable_atoms(const int bond_index) const {
       assert(bond_index < index.size_y());
       return std::make_pair(start_atom_indices[bond_index], stop_atom_indices[bond_index]);
     }
@@ -96,12 +94,12 @@ namespace mudock {
   template<>
   fragments<static_containers>::fragments(molecule_graph_type& graph,
                                           const std::span<const bond>& bonds,
-                                          const std::size_t num_atoms);
+                                          const int num_atoms);
 
   template<>
   fragments<dynamic_containers>::fragments(molecule_graph_type& graph,
                                            const std::span<const bond>& bonds,
-                                           const std::size_t num_atoms);
+                                           const int num_atoms);
 
   //===------------------------------------------------------------------------------------------------------
   // Helper method definitions
