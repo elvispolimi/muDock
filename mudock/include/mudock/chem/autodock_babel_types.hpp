@@ -14,7 +14,7 @@
 namespace mudock {
 
   // this is the list of all the known atoms
-  enum class autodock_babel_ff : std::size_t {
+  enum class autodock_babel_ff : int {
     H       = 0,   // H
     HC      = 1,   // HC
     He      = 2,   // He
@@ -172,8 +172,8 @@ namespace mudock {
 
   // utility functions to work with them
   inline const autodock_babel_ff_description& get_description(const autodock_babel_ff a) {
-    assert(AUTODOCK_BABEL_FF_DICTIONARY[static_cast<std::size_t>(a)].value == a);
-    return AUTODOCK_BABEL_FF_DICTIONARY[static_cast<std::size_t>(a)];
+    assert(AUTODOCK_BABEL_FF_DICTIONARY[static_cast<int>(a)].value == a);
+    return AUTODOCK_BABEL_FF_DICTIONARY[static_cast<int>(a)];
   }
 
 } // namespace mudock
