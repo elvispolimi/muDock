@@ -11,10 +11,10 @@
 
 namespace mudock {
   template<class container_aliases>
-    requires is_container_specification<container_aliases>
+  requires is_container_specification<container_aliases>
   void apply_autodock_forcefield(molecule<container_aliases>& molecule) {
     // allocate memory for the support vectors required to allocate the atoms type
-    const auto num_atoms = molecule.num_atoms();
+    const std::size_t num_atoms = molecule.num_atoms();
     typename container_aliases::template atoms_size<autodock_babel_ff> mol_autodock_babel_types;
     typename container_aliases::template atoms_size<autodock_ff> mol_autodock_types;
     mudock::resize(mol_autodock_babel_types, num_atoms);
@@ -44,11 +44,11 @@ namespace mudock {
       const auto& ff_entry          = get_description(mol_autodock_types[index]);
       molecule.autodock_type(index) = ff_entry.value;
       molecule.Rii(index)           = ff_entry.Rii;
-      molecule.epsii(index)         = ff_entry.epsii*autodock_parameters::coeff_vdW;
+      molecule.epsii(index)         = ff_entry.epsii * autodock_parameters::coeff_vdW;
       molecule.vol(index)           = ff_entry.vol;
       molecule.solpar(index)        = ff_entry.solpar;
       molecule.Rij_hb(index)        = ff_entry.Rij_hb;
-      molecule.epsij_hb(index)      = ff_entry.epsij_hb*autodock_parameters::coeff_hbond;
+      molecule.epsij_hb(index)      = ff_entry.epsij_hb * autodock_parameters::coeff_hbond;
       molecule.num_hbond(index)     = ff_entry.hbond;
     }
   }
