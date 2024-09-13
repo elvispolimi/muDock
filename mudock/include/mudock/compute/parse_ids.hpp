@@ -6,6 +6,6 @@
 
 namespace mudock {
 
-  std::vector<std::size_t> parse_ids(std::string_view description);
+  std::vector<int> parse_ids(std::string_view description);
 
 }
