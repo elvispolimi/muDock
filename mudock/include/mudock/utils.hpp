@@ -9,3 +9,11 @@ constexpr void constexpr_for(F&& f) {
     constexpr_for<Start + Inc, End, Inc>(f);
   }
 }
+
+constexpr auto is_debug() {
+#ifdef DNDEBUG
+  return true;
+#else
+  return false;
+#endif
+}
