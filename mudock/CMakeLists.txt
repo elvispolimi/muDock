@@ -23,9 +23,12 @@ list(APPEND header_files
   "${header_path}/${header_prefix}/cpp_implementation/cpp_worker.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/geometric_transformations.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/virtual_screen.hpp"
+  "${header_path}/${header_prefix}/cpp_implementation/trilinear_interpolation.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/chromosome.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/mutate.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/center_of_mass.hpp"
+  "${header_path}/${header_prefix}/cpp_implementation/weed_bonds.hpp"
+  "${header_path}/${header_prefix}/cpp_implementation/calc_energy_cpp.hpp"
   "${header_path}/${header_prefix}/format/concept.hpp"
   "${header_path}/${header_prefix}/format/dot.hpp"
   "${header_path}/${header_prefix}/format/mol2.hpp"
@@ -35,7 +38,6 @@ list(APPEND header_files
   "${header_path}/${header_prefix}/grid/grid_map.hpp"
   "${header_path}/${header_prefix}/grid/pi.hpp"
   "${header_path}/${header_prefix}/grid/point3D.hpp"
-  "${header_path}/${header_prefix}/kernels/calc_energy_cpp.hpp"
   "${header_path}/${header_prefix}/molecule/bond.hpp"
   "${header_path}/${header_prefix}/molecule/constraints.hpp"
   "${header_path}/${header_prefix}/molecule/containers.hpp"
@@ -50,7 +52,6 @@ list(APPEND header_files
   "${header_path}/${header_prefix}/cuda_implementation.hpp"
   "${header_path}/${header_prefix}/format.hpp"
   "${header_path}/${header_prefix}/grid.hpp"
-  "${header_path}/${header_prefix}/kernels.hpp"
   "${header_path}/${header_prefix}/knobs.hpp"
   "${header_path}/${header_prefix}/log.hpp"
   "${header_path}/${header_prefix}/molecule.hpp"
@@ -76,13 +77,14 @@ list(APPEND source_files
   "${source_path}/cpp_implementation/mutate.cpp"
   "${source_path}/cpp_implementation/geometric_transformations.cpp"
   "${source_path}/cpp_implementation/virtual_screen.cpp"
+  "${source_path}/cpp_implementation/weed_bonds.cpp"
+  "${source_path}/cpp_implementation/calc_energy_cpp.cpp"
   "${source_path}/format/dot.cpp"
   "${source_path}/format/mol2.cpp"
   "${source_path}/format/rdkit_wrapper.cpp"
   "${source_path}/grid/grid_atom_map.cpp"
   "${source_path}/grid/grid_electrostatic_map.cpp"
   "${source_path}/grid/grid_desolvation_map.cpp"
-  "${source_path}/kernels/calc_energy_cpp.cpp"
   "${source_path}/molecule/fragments.cpp"
   "${source_path}/molecule/graph.cpp"
   "${source_path}/molecule/property_table.cpp"
@@ -92,25 +94,30 @@ list(APPEND source_files
 # declare the CUDA sources
 if(MUDOCK_ENABLE_CUDA)
   list(APPEND header_files
+    "${header_path}/${header_prefix}/cuda_implementation/calc_energy.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/cuda_batch_sizer.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/cuda_check_error_macro.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/cuda_manager.hpp"
+    "${header_path}/${header_prefix}/cuda_implementation/cuda_random.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/cuda_object.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/cuda_worker.hpp"
     "${header_path}/${header_prefix}/cuda_implementation/cuda_wrapper.cuh"
-    "${header_path}/${header_prefix}/cuda_implementation/virtual_screen.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/evaluate_fitness.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/geometric_transformations.cuh"
+    "${header_path}/${header_prefix}/cuda_implementation/map_textures.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/mutate.cuh"
+    "${header_path}/${header_prefix}/cuda_implementation/virtual_screen.cuh"
   )
   list(APPEND source_files
+    "${source_path}/cuda_implementation/calc_energy.cu"
     "${source_path}/cuda_implementation/cuda_batch_sizer.cu"
     "${source_path}/cuda_implementation/cuda_manager.cpp"
     "${source_path}/cuda_implementation/cuda_worker.cpp"
-    "${source_path}/cuda_implementation/virtual_screen.cu"
+    "${source_path}/cuda_implementation/cuda_random.cu"
     "${source_path}/cuda_implementation/evaluate_fitness.cu"
     "${source_path}/cuda_implementation/geometric_transformations.cu"
     "${source_path}/cuda_implementation/mutate.cu"
+    "${source_path}/cuda_implementation/virtual_screen.cu"
   )
 endif()
 
@@ -144,7 +151,7 @@ if(MUDOCK_ENABLE_CUDA)
     CUDA_EXTENSIONS OFF
     CUDA_SEPARABLE_COMPILATION ON)
   SET(CMAKE_CUDA_FLAGS_RELEASE "-O3 -use_fast_math --expt-relaxed-constexpr")
-  SET(CMAKE_CUDA_FLAGS_DEBUG "-G -Xptxas -v --expt-relaxed-constexpr")
+  SET(CMAKE_CUDA_FLAGS_DEBUG "-G -g -Xptxas -v --expt-relaxed-constexpr")
 endif()
 
 # ########################################################################
