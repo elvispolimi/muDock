@@ -13,7 +13,7 @@
 namespace mudock {
 
   // this is the list of all the known atoms
-  enum class element : std::size_t {
+  enum class element : int {
     H   = 0,   // Hydrogen
     He  = 1,   // Helium
     Li  = 2,   // Lithium
@@ -147,8 +147,8 @@ namespace mudock {
 
   // utility functions to work with them
   inline const element_description& get_description(const element e) {
-    assert(ELEMENT_DICTIONARY[static_cast<std::size_t>(e)].value == e);
-    return ELEMENT_DICTIONARY[static_cast<std::size_t>(e)];
+    assert(ELEMENT_DICTIONARY[static_cast<int>(e)].value == e);
+    return ELEMENT_DICTIONARY[static_cast<int>(e)];
   }
   std::optional<element> parse_element_symbol(const std::string_view symbol);
 
