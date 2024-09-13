@@ -10,12 +10,12 @@ namespace mudock {
   // this struct describes a bundle of ligands. To limit the number of dynamic mallocs, we use a static
   // allocation. For this reason we have a maximum number of ligands in a batch, and the actual size
   struct batch {
-    static constexpr auto max_batch_size = std::size_t{100};
+    static constexpr auto max_batch_size = int{100};
 
     std::array<std::unique_ptr<static_molecule>, max_batch_size> molecules;
-    std::size_t num_ligands        = 0;
-    std::size_t batch_max_atoms    = 0;
-    std::size_t batch_max_rotamers = 0;
+    int num_ligands        = 0;
+    int batch_max_atoms    = 0;
+    int batch_max_rotamers = 0;
 
     batch()  = default;
     ~batch() = default;
