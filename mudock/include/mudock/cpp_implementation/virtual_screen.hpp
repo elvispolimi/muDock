@@ -29,12 +29,25 @@ namespace mudock {
 
     // this algorithm requires a random source to work
     std::mt19937 generator;
+    std::uniform_real_distribution<fp_type> dist{fp_type{0.0}, fp_type{1.0}};
+
+    // TODO
+    // random_generator<int> rnd_gen;
 
     // the configuration of the GA algorithm
     knobs configuration;
 
     // utility function to select a parent for the crossover
     const chromosome& tournament_selection();
+
+    template<typename T>
+    [[nodiscard]] const T random_gen_cpp(const T& min, const T& max);
+
+    [[nodiscard]] int get_selection_distribution();
+    [[nodiscard]] int get_init_change_distribution();
+    [[nodiscard]] int get_mutation_change_distribution();
+    [[nodiscard]] fp_type get_mutation_coin_distribution();
+    [[nodiscard]] int get_crossover_distribution(const int& num_rotamers);
 
   public:
     virtual_screen_cpp(std::shared_ptr<const grid_atom_mapper>& grid_atom_maps,
