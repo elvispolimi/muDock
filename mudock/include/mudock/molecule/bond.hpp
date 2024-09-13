@@ -6,10 +6,10 @@
 namespace mudock {
 
   struct bond {
-    std::size_t source = std::size_t{0};
-    std::size_t dest   = std::size_t{0};
-    bond_type type     = bond_type::SINGLE;
-    bool can_rotate    = false;
+    int source      = int{0};
+    int dest        = int{0};
+    bond_type type  = bond_type::SINGLE;
+    bool can_rotate = false;
   };
 
 } // namespace mudock

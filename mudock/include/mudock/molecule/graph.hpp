@@ -9,10 +9,10 @@ namespace mudock {
 
   // graph description
   struct molecule_edge_type {
-    std::size_t bond_index;
+    int bond_index;
   };
   struct molecule_vertex_type {
-    std::size_t atom_index;
+    int atom_index;
   };
   using molecule_graph_type = boost::
       adjacency_list<boost::setS, boost::vecS, boost::undirectedS, molecule_vertex_type, molecule_edge_type>;

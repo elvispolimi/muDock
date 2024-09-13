@@ -11,8 +11,8 @@ namespace mudock {
     std::array<std::string, property_type_size()> map;
 
     inline constexpr auto to_index(const property_type type) const {
-      assert(static_cast<std::size_t>(type) < property_type_size());
-      return static_cast<std::size_t>(type);
+      assert(static_cast<int>(type) < property_type_size());
+      return static_cast<int>(type);
     }
 
   public:
