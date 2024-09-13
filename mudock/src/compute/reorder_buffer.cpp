@@ -2,10 +2,10 @@
 #include <mudock/compute/reorder_buffer.hpp>
 
 namespace mudock {
-  reorder_buffer::reorder_buffer(std::function<std::size_t(const std::size_t, const std::size_t)> get_size) {
+  reorder_buffer::reorder_buffer(std::function<int(const int, const int)> get_size) {
     // make sure to have a sizer function
     if (!get_size) {
-      get_size = [](const std::size_t, const std::size_t) -> std::size_t { return std::size_t{1}; };
+      get_size = [](const int, const int) -> int { return int{1}; };
     }
 
     // populate the array of maximum sizes
@@ -29,7 +29,7 @@ namespace mudock {
   std::pair<batch, bool> reorder_buffer::flush_one() {
     std::lock_guard lock{mutex};
     for (auto& cluster: clusters) {
-      const auto num_ligands = cluster.num_ligands;
+      const std::size_t num_ligands = cluster.num_ligands;
       if (num_ligands > std::size_t{0}) {
         return std::make_pair(std::move(cluster), true);
       }

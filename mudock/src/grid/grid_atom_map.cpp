@@ -18,7 +18,7 @@ namespace mudock {
   struct vdw_hb_energy_table {
     vdw_hb_energy_table(const fp_type cA, const fp_type cB, const fp_type dxA, const fp_type dxB) {
       e_vdW_Hb[0] = EINTCLAMP;
-      for (size_t indx_r = 1; indx_r < NEINT - 1; ++indx_r) {
+      for (int indx_r = 1; indx_r < NEINT - 1; ++indx_r) {
         const fp_type r  = indx_r / A_DIV;
         const fp_type rA = std::pow(r, dxA);
         const fp_type rB = std::pow(r, dxB);
@@ -32,21 +32,21 @@ namespace mudock {
       /* Angstrom is divided by A_DIV in look-up table. */
       /* Typical value of r_smooth is 0.5 Angstroms  */
       /* so i_smooth = 0.5 * 100. / 2 = 25 */
-      const size_t i_smooth = std::floor(r_smooth * A_DIV / fp_type{2});
+      const int i_smooth = std::floor(r_smooth * A_DIV / fp_type{2});
       std::vector<fp_type> energy_smooth;
       energy_smooth.resize(NEINT, EINTCLAMP);
       if (i_smooth > 0) {
-        for (size_t indx_r = 0; indx_r < NEINT; ++indx_r) {
+        for (int indx_r = 0; indx_r < NEINT; ++indx_r) {
           const auto temp = indx_r - i_smooth;
-          size_t j        = temp <= size_t{0} ? size_t{0} : temp;
-          for (; j < std::min(size_t{NEINT}, indx_r + i_smooth + 1); j++)
+          int j           = temp <= int{0} ? int{0} : temp;
+          for (; j < std::min(int{NEINT}, indx_r + i_smooth + 1); j++)
             energy_smooth[indx_r] = std::min(energy_smooth[indx_r], e_vdW_Hb[j]);
         }
-        for (size_t indx_r = 0; indx_r < NEINT; indx_r++) { e_vdW_Hb[indx_r] = energy_smooth[indx_r]; }
+        for (int indx_r = 0; indx_r < NEINT; indx_r++) { e_vdW_Hb[indx_r] = energy_smooth[indx_r]; }
       } /* endif smoothing */
     };
 
-    fp_type operator[](const size_t index) const { return e_vdW_Hb[index]; }
+    fp_type operator[](const int index) const { return e_vdW_Hb[index]; }
 
   private:
     static constexpr fp_type r_smooth{0.5}; //Angstrom
@@ -59,9 +59,9 @@ namespace mudock {
     const fp_type cB;      // coefficients if specified in gpf
     const fp_type nbp_r;   // radius of energy-well minimum
     const fp_type nbp_eps; // depth of energy-well minimum
-    const size_t xA;       // generally 12
-    const size_t xB;       // 6 for non-hbonders 10 for h-bonders
-    const size_t hbonder;
+    const int xA;          // generally 12
+    const int xB;          // 6 for non-hbonders 10 for h-bonders
+    const int hbonder;
     const autodock_ff receptor_type;
     const vdw_hb_energy_table vdw_hb_table;
 
@@ -69,9 +69,9 @@ namespace mudock {
                 const fp_type _cB,
                 const fp_type _nbp_r,
                 const fp_type _nbp_eps,
-                const size_t _xA,
-                const size_t _xB,
-                const size_t _hbonder,
+                const int _xA,
+                const int _xB,
+                const int _hbonder,
                 const autodock_ff _receptor_type)
         : cA(_cA),
           cB(_cB),
@@ -107,9 +107,9 @@ namespace mudock {
         fp_type nbp_eps = std::sqrt(grid_type_desc.epsii * autodock_parameters::coeff_vdW *
                                     receptor_type_desc.epsii * autodock_parameters::coeff_vdW);
         // TODO probably they are constant
-        size_t xA      = 12;
-        size_t xB      = 6;
-        size_t hbonder = 0;
+        int xA      = 12;
+        int xB      = 6;
+        int hbonder = 0;
         if (grid_type_desc.hbond > 2 && (receptor_type_desc.hbond == 1 ||
                                          receptor_type_desc.hbond == 2)) { /*AS,A1,A2 map vs DS,D1 probe*/
           xB                  = 10;
@@ -140,7 +140,7 @@ namespace mudock {
       return;
     }
 
-    inline void write_to_map(const size_t coord_x, const size_t coord_y, const size_t coord_z) {
+    inline void write_to_map(const int coord_x, const int coord_y, const int coord_z) {
       energy += hbondmin + hbondmax;
       /*
       * O U T P U T . . .
@@ -200,9 +200,9 @@ namespace mudock {
     const point3D grid_maximum{std::ceil((receptor_max_x + cutoff_distance) * fp_type{2}) / fp_type{2},
                                std::ceil((receptor_max_y + cutoff_distance) * fp_type{2}) / fp_type{2},
                                std::ceil((receptor_max_z + cutoff_distance) * fp_type{2}) / fp_type{2}};
-    const index3D npts{static_cast<size_t>((grid_maximum.x - grid_minimum.x) / grid_spacing),
-                       static_cast<size_t>((grid_maximum.y - grid_minimum.y) / grid_spacing),
-                       static_cast<size_t>((grid_maximum.z - grid_minimum.z) / grid_spacing)};
+    const index3D npts{static_cast<int>((grid_maximum.x - grid_minimum.x) / grid_spacing),
+                       static_cast<int>((grid_maximum.y - grid_minimum.y) / grid_spacing),
+                       static_cast<int>((grid_maximum.z - grid_minimum.z) / grid_spacing)};
 
     for (auto ligand_type: ligand_types) {
       // grid_atom_maps.push_back({ligand_type, npts});
@@ -214,7 +214,7 @@ namespace mudock {
     * and will not be smoothed 
     */
     std::array<fp_type, NDIEL> sol_fn;
-    for (size_t indx_r = 1; indx_r < NDIEL; ++indx_r) {
+    for (int indx_r = 1; indx_r < NDIEL; ++indx_r) {
       const fp_type r = indx_r / A_DIV;
       sol_fn[indx_r] =
           autodock_parameters::coeff_desolv * std::exp(-(r * r) / (fp_type{2} * (sigma * sigma)));
@@ -226,9 +226,9 @@ namespace mudock {
     // TODO why rvector2? Seems to be like the square of the previous one
     std::vector<point3D> rvector2(receptor.num_atoms());
     // TODO seems to be often 0....
-    std::vector<size_t> rexp(receptor.num_atoms());
+    std::vector<int> rexp(receptor.num_atoms());
     // TODO all scale with inv_rd should become a method of point3D for normalizing? Vector stuff?
-    for (size_t index = 0; index < receptor.num_atoms(); ++index) {
+    for (int index = 0; index < receptor.num_atoms(); ++index) {
       const auto receptor_type = receptor_autodock_types[index];
       /*
       * If 'ia' is a hydrogen atom, it could be a
@@ -236,10 +236,10 @@ namespace mudock {
       */
       // TODO we should create an enum for hbond types
       const auto temp          = index - range_near_atom_receptor;
-      const auto from_neighbor = temp <= index ? temp : size_t{0};
+      const auto from_neighbor = temp <= index ? temp : int{0};
       const auto to_neighbor   = std::min(index + range_near_atom_receptor, receptor.num_atoms());
       if (receptor.num_hbond(index) == 2) {
-        for (size_t other_index = from_neighbor; other_index < to_neighbor; ++other_index)
+        for (int other_index = from_neighbor; other_index < to_neighbor; ++other_index)
           if (index != other_index) {
             /*
             * =>  NH-> or OH->
@@ -293,8 +293,8 @@ namespace mudock {
          * determine number of atoms bonded to the oxygen
          */
         // TODO check these index_1 and _2, seems odd to me
-        size_t nbond = 0, index_1 = 0, index_2 = 0;
-        for (size_t other_index = from_neighbor; other_index < to_neighbor; ++other_index)
+        int nbond = 0, index_1 = 0, index_2 = 0;
+        for (int other_index = from_neighbor; other_index < to_neighbor; ++other_index)
           if (index != other_index) {
             const fp_type square_distance =
                 distance2(point3D{receptor.x(index), receptor.y(index), receptor.z(index)},
@@ -363,7 +363,7 @@ namespace mudock {
               }
             }
           } /*i2-loop*/
-        }   /* endif nbond==1 */
+        } /* endif nbond==1 */
 
         /* two bonds: Hydroxyl or Ether Oxygen X1-O-X2 */
         if (nbond == 2) {
@@ -397,8 +397,8 @@ namespace mudock {
         **        to (ia+5)th m/m-atom
         ** determine number of atoms bonded to the oxygen
         */
-        size_t nbond = 0, index_1 = 0, index_2 = 0, index_3 = 0;
-        for (size_t other_index = from_neighbor; other_index < to_neighbor; ++other_index)
+        int nbond = 0, index_1 = 0, index_2 = 0, index_3 = 0;
+        for (int other_index = from_neighbor; other_index < to_neighbor; ++other_index)
           if (index != other_index) {
             const fp_type square_distance =
                 distance2(point3D{receptor.x(index), receptor.y(index), receptor.z(index)},
@@ -466,23 +466,23 @@ namespace mudock {
     /*
     * Iterate over all grid points, Z( Y ( X ) ) (X is fastest)...
     */
-    for (size_t index_z = 0; index_z < npts.size_z(); ++index_z) {
+    for (int index_z = 0; index_z < npts.size_z(); ++index_z) {
       /*
       *  c[0:2] contains the current grid point.
       */
       const fp_type coord_z = grid_minimum.z + index_z * grid_spacing;
-      for (size_t index_y = 0; index_y < npts.size_y(); ++index_y) {
+      for (int index_y = 0; index_y < npts.size_y(); ++index_y) {
         const fp_type coord_y = grid_minimum.y + index_y * grid_spacing;
-        for (size_t index_x = 0; index_x < npts.size_x(); ++index_x) {
+        for (int index_x = 0; index_x < npts.size_x(); ++index_x) {
           const fp_type coord_x = grid_minimum.x + index_x * grid_spacing;
 
           /* Initialize Min Hbond variables  for each new point*/
           for (auto& scracth: scratchpads) scracth.reset();
 
           /* NEW2: Find Closest Hbond */
-          fp_type rmin    = std::numeric_limits<fp_type>::max();
-          size_t closestH = 0;
-          for (size_t index = 0; index < receptor.num_atoms(); ++index) {
+          fp_type rmin = std::numeric_limits<fp_type>::max();
+          int closestH = 0;
+          for (int index = 0; index < receptor.num_atoms(); ++index) {
             if (receptor.num_hbond(index) == 1 || receptor.num_hbond(index) == 2) { /*DS or D1*/
               const fp_type d = distance(point3D{receptor.x(index), receptor.y(index), receptor.z(index)},
                                          point3D{coord_x, coord_y, coord_z});
@@ -491,10 +491,10 @@ namespace mudock {
                 closestH = index;
               }
             } /* Hydrogen test */
-          }   /* ia loop */
+          } /* ia loop */
           /* END NEW2: Find Min Hbond */
 
-          for (size_t index = 0; index < receptor.num_atoms(); ++index) {
+          for (int index = 0; index < receptor.num_atoms(); ++index) {
             const auto receptor_type       = receptor_autodock_types[index];
             const auto& receptor_type_desc = get_description(receptor_type);
             const auto receptor_hbond      = receptor.num_hbond(index);
@@ -503,8 +503,8 @@ namespace mudock {
             fp_type d    = std::sqrt(sum_components(square(dist)));
             dist         = normalize(dist);
 
-            const size_t indx_n = std::min<size_t>(std::floor(d * A_DIV), NEINT - 1);
-            const size_t indx_r = std::min<size_t>(std::floor(d * A_DIV), NDIEL - 1);
+            const int indx_n = std::min<int>(std::floor(d * A_DIV), NEINT - 1);
+            const int indx_r = std::min<int>(std::floor(d * A_DIV), NDIEL - 1);
 
             /*
             * If distance from grid point to atom ia is too large,
