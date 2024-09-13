@@ -62,10 +62,10 @@ namespace mudock {
 
     // fill the atom information (we assume a single conformation)
     // NOTE: we need to store the mapping between our atom index and the rdkit one
-    std::unordered_map<unsigned int, std::size_t> index_translator;
+    std::unordered_map<unsigned int, int> index_translator;
     assert(source->getNumConformers() == 1);
     const auto conformation = source->getConformer(0);
-    auto mudock_atom_index  = std::size_t{0};
+    auto mudock_atom_index  = int{0};
     for (const auto& atom: source->atoms()) {
       const auto atom_id      = atom->getIdx();
       const auto [x, y, z]    = conformation.getAtomPos(atom_id);
@@ -86,7 +86,7 @@ namespace mudock {
       else
         dest.charge(mudock_atom_index) = std::stof(charge);
       index_translator.emplace(atom_id, mudock_atom_index);
-      mudock_atom_index += std::size_t{1};
+      mudock_atom_index += int{1};
     }
 
     // define the SMARTS pattern of the rotatable bonds
@@ -112,23 +112,23 @@ namespace mudock {
                           useChirality,
                           useQueryQueryMatches,
                           maxMatches);
-    assert(matched_bonds.size() < static_cast<std::size_t>(maxMatches) && "Too many rotatable bonds");
+    assert(matched_bonds.size() < static_cast<int>(maxMatches) && "Too many rotatable bonds");
 
     // fill the bond information
-    auto mudock_bond_index = std::size_t{0};
+    auto mudock_bond_index = int{0};
     for (const auto& rdkit_bond: source->bonds()) {
-      const auto atom_id_source = rdkit_bond->getBeginAtomIdx();
-      const auto atom_id_dest   = rdkit_bond->getEndAtomIdx();
-      auto& bond                = dest.bonds(mudock_bond_index);
-      bond.source               = index_translator.at(atom_id_source);
-      bond.dest                 = index_translator.at(atom_id_dest);
-      bond.type                 = parse_rdkit_bond_type(rdkit_bond->getBondType());
+      const int atom_id_source = rdkit_bond->getBeginAtomIdx();
+      const int atom_id_dest   = rdkit_bond->getEndAtomIdx();
+      auto& bond               = dest.bonds(mudock_bond_index);
+      bond.source              = index_translator.at(atom_id_source);
+      bond.dest                = index_translator.at(atom_id_dest);
+      bond.type                = parse_rdkit_bond_type(rdkit_bond->getBondType());
 
       // check if it can rotate
       for (const auto& rotatable_bond: matched_bonds) {
-        assert(rotatable_bond.size() == std::size_t{2}); // make sure that we have a single bond
-        const auto atom_id_1 = index_translator.at(rotatable_bond[0].second);
-        const auto atom_id_2 = index_translator.at(rotatable_bond[1].second);
+        assert(rotatable_bond.size() == int{2}); // make sure that we have a single bond
+        const int atom_id_1 = index_translator.at(rotatable_bond[0].second);
+        const int atom_id_2 = index_translator.at(rotatable_bond[1].second);
         if ((atom_id_source == atom_id_1 && atom_id_dest == atom_id_2) ||
             (atom_id_source == atom_id_2 && atom_id_dest == atom_id_1)) {
           bond.can_rotate = true;
