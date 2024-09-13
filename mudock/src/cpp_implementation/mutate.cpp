@@ -14,10 +14,10 @@ namespace mudock {
 
     // change the molecule shape
     const auto num_rotamers = fragments.get_num_rotatable_bonds();
-    for (std::size_t i = 0; i < num_rotamers; ++i) {
+    for (int i = 0; i < num_rotamers; ++i) {
       const auto bitmask                   = fragments.get_mask(i);
       const auto [start_index, stop_index] = fragments.get_rotatable_atoms(i);
-      rotate_fragment(x, y, z, bitmask, start_index, stop_index, c[std::size_t{6} + i]);
+      rotate_fragment(x, y, z, bitmask, start_index, stop_index, c[int{6} + i]);
     }
   }
 

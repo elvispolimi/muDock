@@ -65,13 +65,13 @@ namespace mudock {
                        std::span<fp_type> y,
                        std::span<fp_type> z,
                        std::span<const typename fragments<static_containers>::value_type> bitmask,
-                       const std::size_t start_index,
-                       const std::size_t stop_index,
+                       const int start_index,
+                       const int stop_index,
                        const fp_type angle) {
     // get the molecule number of atoms
-    const auto num_atoms = x.size();
-    assert(y.size() == num_atoms);
-    assert(z.size() == num_atoms);
+    const int num_atoms = x.size();
+    assert(static_cast<int>(y.size()) == num_atoms);
+    assert(static_cast<int>(z.size()) == num_atoms);
     assert(start_index < num_atoms);
     assert(stop_index < num_atoms);
 
@@ -111,7 +111,7 @@ namespace mudock {
         ((origz * (u2 + v2) - w * (origx * u + origy * v)) * one_minus_c + (origx * v - origy * u) * ls) / l2;
 
     // apply the rotation matrix
-    for (std::size_t i = 0; i < num_atoms; ++i) {
+    for (int i = 0; i < num_atoms; ++i) {
       if (bitmask[i] == 1) {
         const auto prev_x = x[i], prev_y = y[i], prev_z = z[i];
         x[i] = prev_x * m00 + prev_y * m01 + prev_z * m02 + m03;
