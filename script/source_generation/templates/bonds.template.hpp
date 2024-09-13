@@ -13,7 +13,7 @@
 namespace mudock {
 
   // this is the list of all the the types of intramolecular bond that we know about
-  enum class bond_type : std::size_t {{% for bond in data %}
+  enum class bond_type : int {{% for bond in data %}
     {@ bond.value @} = {@ bond.index @}, // {@ bond.name @}{% endfor %}
   };
 
@@ -26,8 +26,8 @@ namespace mudock {
 
   // utility functions to work with them
   inline const bond_type_description& get_description(const bond_type b) {
-    assert(BOND_DICTIONARY[static_cast<std::size_t>(b)].value == b);
-    return BOND_DICTIONARY[static_cast<std::size_t>(b)];
+    assert(BOND_DICTIONARY[static_cast<int>(b)].value == b);
+    return BOND_DICTIONARY[static_cast<int>(b)];
   }
 
 } // namespace mudock
