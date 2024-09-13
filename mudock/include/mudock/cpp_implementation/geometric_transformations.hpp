@@ -25,8 +25,8 @@ namespace mudock {
                        std::span<fp_type> y,
                        std::span<fp_type> z,
                        std::span<const typename fragments<static_containers>::value_type> bitmask,
-                       const std::size_t start_index,
-                       const std::size_t stop_index,
+                       const int start_index,
+                       const int stop_index,
                        const fp_type angle);
 
 } // namespace mudock
