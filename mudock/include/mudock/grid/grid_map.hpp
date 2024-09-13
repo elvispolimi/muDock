@@ -29,7 +29,7 @@ namespace mudock {
     fp_type epsilon = A + B / (fp_type{1} + rk * std::exp(lambda_B * distance));
 
     if (epsilon < std::numeric_limits<fp_type>::epsilon()) {
-      epsilon = 1.0L;
+      epsilon = fp_type{1.0};
     }
     return epsilon;
   }
@@ -84,7 +84,7 @@ namespace mudock {
     }
 
     [[nodiscard]] inline point3D get_index_from_coordinates(const point3D coord) const {
-    return {(coord.x - minimum.x) / grid_spacing,
+      return {(coord.x - minimum.x) / grid_spacing,
               (coord.y - minimum.y) / grid_spacing,
               (coord.z - minimum.z) / grid_spacing};
     }
@@ -93,13 +93,9 @@ namespace mudock {
 
     [[nodiscard]] inline fp_type at(const point3D& p) const { return grid::at(p.x, p.y, p.z); }
 
-    [[nodiscard]] inline fp_type& at(const std::size_t x, const std::size_t y, const std::size_t z) {
-      return grid::at(x, y, z);
-    }
+    [[nodiscard]] inline fp_type& at(const int x, const int y, const int z) { return grid::at(x, y, z); }
 
-    [[nodiscard]] inline fp_type at(const std::size_t x, const std::size_t y, const std::size_t z) const {
-      return grid::at(x, y, z);
-    }
+    [[nodiscard]] inline fp_type at(const int x, const int y, const int z) const { return grid::at(x, y, z); }
 
     [[nodiscard]] inline auto* data() const { return grid::data(); }
   };
@@ -118,7 +114,7 @@ namespace mudock {
 
     [[nodiscard]] inline auto get_atom_type() const { return atom_type; }
     // Check this
-    size_t is_hbonder{0};
+    int is_hbonder{0};
   };
 
   // TODO check if we should put it together with also other maps
@@ -140,6 +136,8 @@ namespace mudock {
     [[nodiscard]] inline const point3D& get_maximum() const { return grid_maps.begin()->second.maximum; }
 
     [[nodiscard]] inline const point3D& get_center() const { return grid_maps.begin()->second.center; }
+
+    [[nodiscard]] inline const index3D& get_index() const { return grid_maps.begin()->second.index; }
   };
 
   [[nodiscard]] grid_atom_mapper generate_atom_grid_maps(dynamic_molecule&);
