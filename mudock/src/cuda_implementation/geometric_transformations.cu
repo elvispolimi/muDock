@@ -4,13 +4,13 @@
 
 namespace mudock {
 
-  __device__ void translate_molecule(fp_type* __restrict__ x,
-                                     fp_type* __restrict__ y,
-                                     fp_type* __restrict__ z,
-                                     const fp_type* offset_x,
-                                     const fp_type* offset_y,
-                                     const fp_type* offset_z,
-                                     const std::size_t num_atoms) {
+  __device__ void translate_molecule_cuda(fp_type* __restrict__ x,
+                                          fp_type* __restrict__ y,
+                                          fp_type* __restrict__ z,
+                                          const fp_type* offset_x,
+                                          const fp_type* offset_y,
+                                          const fp_type* offset_z,
+                                          const int num_atoms) {
     for (int i = threadIdx.x; i < num_atoms; i += blockDim.x) {
       x[i] += *offset_x;
       y[i] += *offset_y;
@@ -18,13 +18,13 @@ namespace mudock {
     }
   }
 
-  __device__ void rotate_molecule(fp_type* __restrict__ x,
-                                  fp_type* __restrict__ y,
-                                  fp_type* __restrict__ z,
-                                  const fp_type* angle_x,
-                                  const fp_type* angle_y,
-                                  const fp_type* angle_z,
-                                  const std::size_t num_atoms) {
+  __device__ void rotate_molecule_cuda(fp_type* __restrict__ x,
+                                       fp_type* __restrict__ y,
+                                       fp_type* __restrict__ z,
+                                       const fp_type* angle_x,
+                                       const fp_type* angle_y,
+                                       const fp_type* angle_z,
+                                       const int num_atoms) {
     // compute the angles sine and cosine
     const auto rad_x = deg_to_rad(*angle_x), rad_y = deg_to_rad(*angle_y), rad_z = deg_to_rad(*angle_z);
     const auto cx = std::cos(rad_x), sx = std::sin(rad_x);
@@ -51,14 +51,14 @@ namespace mudock {
     }
   }
 
-  __device__ void rotate_fragment(fp_type* __restrict__ x,
-                                  fp_type* __restrict__ y,
-                                  fp_type* __restrict__ z,
-                                  const typename fragments<static_containers>::value_type* bitmask,
-                                  const std::size_t start_index,
-                                  const std::size_t stop_index,
-                                  const fp_type* angle,
-                                  const std::size_t num_atoms) {
+  __device__ void rotate_fragment_cuda(fp_type* __restrict__ x,
+                                       fp_type* __restrict__ y,
+                                       fp_type* __restrict__ z,
+                                       const int* bitmask,
+                                       const int start_index,
+                                       const int stop_index,
+                                       const fp_type* angle,
+                                       const int num_atoms) {
     // compute the axis vector (and some properties)
     const auto origx = x[start_index], origy = y[start_index], origz = z[start_index];
     const auto destx = x[stop_index], desty = y[stop_index], destz = z[stop_index];
