@@ -2,6 +2,7 @@
 #include <array>
 #include <cassert>
 #include <cstdint>
+#include <limits>
 #include <mudock/chem/autodock_parameters.hpp>
 #include <mudock/chem/autodock_protein.hpp>
 #include <mudock/grid.hpp>
@@ -15,8 +16,9 @@ namespace mudock {
   // Global parameters for deriving the pre-computation grid
   //===------------------------------------------------------------------------------------------------------
 
-  static constexpr auto boundaries_cutoff   = fp_type{8};
+  static constexpr auto energy_cutoff       = fp_type{8};
   static constexpr auto resolution          = fp_type{0.5};
+  static constexpr auto half_resolution     = resolution / fp_type{2};
   static constexpr auto num_radius_tick     = std::size_t{2048};
   static constexpr auto num_radius_angstrom = fp_type{20.48};
 
@@ -170,7 +172,7 @@ namespace mudock {
   struct hbond_geometries {
     std::vector<point3D> vector1;
     std::vector<point3D> vector2;
-    std::vector<fp_type> exp;
+    std::vector<int> exp;
     std::vector<int> disorder;
 
     inline hbond_geometries(const std::size_t n)
@@ -210,10 +212,10 @@ namespace mudock {
           if (d2 < fp_type{1.9}) {
             const auto neigh_element = elements[neigh_index];
             if (neigh_element == element::O || neigh_element == element::S) {
-              result.exp[atom_index]      = fp_type{4};
+              result.exp[atom_index]      = 4;
               result.disorder[atom_index] = 1;
             } else {
-              result.exp[atom_index]      = fp_type{2};
+              result.exp[atom_index]      = 2;
               result.disorder[atom_index] = 1;
             }
             result.vector1[atom_index] = normalize(diff);
@@ -403,9 +405,8 @@ namespace mudock {
     }
 
     // find the protein boundaries and its center
-    auto min    = point3D{x[0], y[0], z[0]};
-    auto max    = point3D{x[0], y[0], z[0]};
-    auto center = point3D{x[0], y[0], z[0]};
+    auto min = point3D{x[0], y[0], z[0]};
+    auto max = point3D{x[0], y[0], z[0]};
     for (std::size_t i = 1; i < num_atoms; ++i) {
       min.x = std::min(min.x, x[i]);
       min.y = std::min(min.y, y[i]);
@@ -413,21 +414,15 @@ namespace mudock {
       max.x = std::max(max.x, x[i]);
       max.y = std::max(max.y, y[i]);
       max.z = std::max(max.z, z[i]);
-      center.x += x[i];
-      center.y += y[i];
-      center.z += z[i];
     }
-    center.x /= static_cast<fp_type>(num_atoms);
-    center.y /= static_cast<fp_type>(num_atoms);
-    center.z /= static_cast<fp_type>(num_atoms);
 
-    // cap the boundaries in a box of 8A of radius
-    min.x = std::max(min.x, center.x - fp_type{boundaries_cutoff});
-    min.y = std::max(min.y, center.y - fp_type{boundaries_cutoff});
-    min.z = std::max(min.z, center.z - fp_type{boundaries_cutoff});
-    max.x = std::max(max.x, center.x + fp_type{boundaries_cutoff});
-    max.y = std::max(max.y, center.y + fp_type{boundaries_cutoff});
-    max.z = std::max(max.z, center.z + fp_type{boundaries_cutoff});
+    // make sure to enlarge the grid to consider all the interactions
+    min.x = std::floor(min.x - fp_type{energy_cutoff});
+    min.y = std::floor(min.y - fp_type{energy_cutoff});
+    min.z = std::floor(min.z - fp_type{energy_cutoff});
+    max.x = std::ceil(max.x + fp_type{energy_cutoff});
+    max.y = std::ceil(max.y + fp_type{energy_cutoff});
+    max.z = std::ceil(max.z + fp_type{energy_cutoff});
 
     // find out the geometries of HBonds from the protein
     const auto [vector1, vector2, exp, disorder] =
@@ -444,38 +439,115 @@ namespace mudock {
     }
 
     // get the remaining protein information
-    const auto charge = protein.get_charge();
-    const auto volume = protein.get_vol();
-    const auto size_x = result.electrostatic.size<0>();
-    const auto size_y = result.electrostatic.size<1>();
-    const auto size_z = result.electrostatic.size<2>();
+    const auto charge     = protein.get_charge();
+    const auto volume     = protein.get_vol();
+    const auto elements   = protein.get_elements();
+    const auto num_hbonds = protein.get_num_hbond();
+    const auto size_x     = result.electrostatic.size<0>();
+    const auto size_y     = result.electrostatic.size<1>();
+    const auto size_z     = result.electrostatic.size<2>();
     for (std::size_t index_z = 0; index_z < size_z; ++index_z) {
       for (std::size_t index_y = 0; index_y < size_y; ++index_y) {
         for (std::size_t index_x = 0; index_x < size_x; ++index_x) {
-          const auto voxel_point    = result.electrostatic.to_coord(index_x, index_y, index_z);
+          // get the voxel point
+          const auto voxel_point = result.electrostatic.to_coord(index_x + half_resolution,
+                                                                 index_y + half_resolution,
+                                                                 index_z + half_resolution);
+
+          // add electrostatic and desolvation energy + find the nearest Hbond
+          auto nearest_H_index      = std::size_t{0};
+          auto nearest_H_distance   = distance(point3D{x[0], y[0], z[0]}, point3D{voxel_point});
+          auto nearest_H_valid      = num_hbonds[0] == 1 || num_hbonds[0] == 2;
           auto electrostatic_energy = fp_type{0};
           auto desolvation_energy   = fp_type{0};
           for (std::size_t i = 0; i < num_atoms; ++i) {
+            // compute properties of the given atom
             const auto atom_point = point3D{x[i], y[i], z[i]};
             const auto d          = distance(atom_point, voxel_point);
-            if (d < boundaries_cutoff) {
+            const auto inv_d      = fp_type{1} / d;
+            const auto inv_dmax   = fp_type{1} / std::max(fp_type{0.5}, d);
+
+            // add the electrostatic constribution
+            electrostatic_energy += charge[i] * inv_dmax * autodock_parameters::coeff_estat;
+
+            // find the nearest Hbond
+            const auto is_valid = num_hbonds[i] == 1 || num_hbonds[i] == 2;
+            if ((d < nearest_H_distance && is_valid) || (!nearest_H_valid && is_valid)) {
+              nearest_H_distance = d;
+              nearest_H_index    = i;
+              nearest_H_valid    = is_valid;
+            }
+
+            // add the desolvation contribute
+            if (d < energy_cutoff || elements[i] != element::H || disorder[i] == 0) {
               const auto radius_index =
                   std::min(num_radius_tick - std::size_t{1},
                            static_cast<std::size_t>(
                                d * (static_cast<fp_type>(num_radius_tick) / num_radius_angstrom)));
-              electrostatic_energy +=
-                  charge[i] * (fp_type{1} / std::max(d, fp_type{0.5})) * autodock_parameters::coeff_estat;
               desolvation_energy += fp_type{0.01097} * volume[i] * desolvation_energies[radius_index];
             }
           }
 
           // commit the values in the actual grid maps
           result.electrostatic.get(index_x, index_y, index_z) = electrostatic_energy;
+          result.desolvation.get(index_x, index_y, index_z)   = desolvation_energy;
+
+          // find out the Hbond parameters
+          auto racc = fp_type{1}, rdon = fp_type{1}, Hramp = fp_type{1}, cos_theta = fp_type{0};
+          if (nearest_H_valid) {
+            for (std::size_t i = 0; i < num_atoms; ++i) {
+              const auto atom_point = point3D{x[i], y[i], z[i]};
+              const auto diff       = difference(atom_point, voxel_point);
+              switch (num_hbonds[i]) {
+                case std::size_t{2}:
+                  cos_theta = -sum_components(product(diff, vector1[i]));
+                  if (cos_theta <= fp_type{0}) {
+                    racc = fp_type{0};
+                  } else {
+                    switch (exp[i]) {
+                      case 0: racc = cos_theta; break;
+                      case 1: racc = cos_theta; break;
+                      case 2: racc = cos_theta * cos_theta; break;
+                      case 4:
+                        racc = cos_theta * cos_theta;
+                        racc = racc * racc;
+                        break;
+                      default: throw std::runtime_error("Unexpected exponent " + std::to_string(exp[i]));
+                    }
+                    if (i == nearest_H_index) {
+                      Hramp = fp_type{1};
+                    } else {
+                      cos_theta = sum_components(product(vector1[nearest_H_index], vector1[i]));
+                      cos_theta = std::min(fp_type{1}, std::max(cos_theta, fp_type{-1}));
+                      Hramp     = fp_type{0.5} -
+                              fp_type{0.5} * std::cos(std::acos(cos_theta) * fp_type{120} / fp_type{90});
+                    }
+                  }
+                  break;
+
+                case std::size_t{4}:
+                  cos_theta = -sum_components(product(diff, vector1[i]));
+                  if (cos_theta <= fp_type{0}) {
+                    rdon = fp_type{0};
+                  } else {
+                    rdon = cos_theta * cos_theta;
+                  }
+                  break;
+
+                case std::size_t{5}:
+                  if (disorder[i] == 0) {
+                  } else {
+                  }
+                  break;
+
+                default: break;
+              }
+            }
+          }
         }
       }
+
+      return result;
     }
 
-    return result;
-  }
-
-} // namespace mudock
+  } // namespace mudock
