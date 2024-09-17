@@ -155,7 +155,6 @@ namespace mudock {
 
     const fp_type total_trilinear = emap_total_trilinear + elect_total_trilinear + dmap_total_trilinear;
     const fp_type total_eintcal   = emap_total_eintcal + elect_total_eintcal + dmap_total_eintcal;
-    printf("TOTAL %f\n", total_trilinear + total_eintcal + tors_free_energy);
     return total_trilinear + total_eintcal + tors_free_energy;
   }
 
