@@ -24,16 +24,17 @@ namespace mudock {
 
   __device__ fp_type trilinear_interpolation_cuda(const fp_type coord[], const cudaTextureObject_t& tex) {
     // Interpolation CUDA
-    fp_type p0u, p0v, p0w;
+    const int u0      = coord[0];
+    const fp_type p0u = coord[0] - static_cast<fp_type>(u0);
+    const fp_type p1u = fp_type{1} - p0u;
 
-    const int u0      = (int) (coord[0]) + 1;
-    const fp_type p1u = fp_type{1} - (p0u = coord[0] - static_cast<fp_type>(u0));
+    const int v0      = coord[1];
+    const fp_type p0v = coord[1] - static_cast<fp_type>(v0);
+    const fp_type p1v = fp_type{1} - p0v;
 
-    const int v0      = (int) (coord[1]) + 1;
-    const fp_type p1v = fp_type{1} - (p0v = coord[1] - static_cast<fp_type>(v0));
-
-    const int w0      = (int) (coord[2]) + 1;
-    const fp_type p1w = fp_type{1} - (p0w = coord[2] - static_cast<fp_type>(w0));
+    const int w0      = coord[2];
+    const fp_type p0w = coord[2] - static_cast<fp_type>(w0);
+    const fp_type p1w = fp_type{1} - p0w;
 
     const fp_type pu[2] = {p1u, p0u};
     const fp_type pv[2] = {p1v, p0v};
@@ -50,14 +51,14 @@ namespace mudock {
 
   template<typename T>
   __device__ const T random_gen_cuda(curandState* state, const T min, const T max) {
-    T value;
+    fp_type value;
     if constexpr (is_debug())
       // TODO value here for debug
-      value = T{0.5};
+      value = fp_type{0.5};
     else {
       value = curand_uniform(state);
     }
-    return static_cast<T>(value * (max - min) + min);
+    return (value * static_cast<fp_type>(max - min)) + min;
   }
 
   __device__ int get_selection_distribution(curandState* state, const int* population_number) {
@@ -122,12 +123,13 @@ namespace mudock {
                                    const int* __restrict__ frag_start_atom_index,
                                    const int* __restrict__ frag_stop_atom_index,
                                    chromosome* __restrict__ chromosomes,
-                                   const cudaTextureObject_t* atom_textures,
-                                   const int* atom_tex_indexes,
+                                   const cudaTextureObject_t* __restrict__ atom_textures,
+                                   const int* __restrict__ atom_tex_indexes,
                                    const cudaTextureObject_t electro_texture,
                                    const cudaTextureObject_t desolv_texture,
-                                   curandState* state,
-                                   fp_type* ligand_scores) {
+                                   curandState* __restrict__ state,
+                                   fp_type* __restrict__ ligand_scores,
+                                   chromosome* __restrict__ best_chromosomes) {
     const int ligand_id = blockIdx.x;
     const int threadId  = threadIdx.x + blockDim.x * blockIdx.x;
 
@@ -164,6 +166,9 @@ namespace mudock {
     // Generate initial population
     for (int chromosome_index = threadIdx.x; chromosome_index < chromosome_number;
          chromosome_index += blockDim.x) {
+      // Set initial score value
+      s_chromosome_scores[chromosome_index] = std::numeric_limits<fp_type>::infinity();
+
       chromosome* chromo = l_chromosomes + chromosome_index;
 #pragma unroll
       for (int i{0}; i < 3; ++i) { // initialize the rigid translation
@@ -180,16 +185,16 @@ namespace mudock {
       for (int chromosome_index = 0; chromosome_index < chromosome_number; ++chromosome_index) {
         // Modify coordinates
         // TODO verify first the CPP version
-        // apply_cuda(l_ligand_x,
-        //            l_ligand_y,
-        //            l_ligand_z,
-        //            l_individual->genes.data(),
-        //            l_fragments,
-        //            l_frag_start_atom_index,
-        //            l_frag_stop_atom_index,
-        //            num_rotamers,
-        //            atom_stride,
-        //            num_atoms);
+        apply_cuda(l_ligand_x,
+                   l_ligand_y,
+                   l_ligand_z,
+                   l_chromosomes + chromosome_index,
+                   l_fragments,
+                   l_frag_start_atom_index,
+                   l_frag_stop_atom_index,
+                   num_rotamers,
+                   atom_stride,
+                   num_atoms);
 
         __syncwarp();
 
@@ -270,7 +275,7 @@ namespace mudock {
       for (int chromosome_index = threadIdx.x; chromosome_index < chromosome_number;
            chromosome_index += blockDim.x) {
         chromosome* next_chromosome = l_next_chromosomes + chromosome_index;
-        // for (auto& next_individual: next_population) {
+
         // select the parent
         const chromosome* parent1 = tournament_selection_cuda(l_state,
                                                               tournament_length,
@@ -302,11 +307,40 @@ namespace mudock {
                 static_cast<fp_type>(get_mutation_change_distribution(l_state)) * angle_step;
         }
       }
-
       // Swap the actual population with the next one
       chromosome* tmp_chromosomes = l_chromosomes;
       l_chromosomes               = l_next_chromosomes;
       l_next_chromosomes          = tmp_chromosomes;
     }
+
+    // Output
+    fp_type* l_scores = ligand_scores + threadId;
+    // Compute the maximum value within the warp
+    // Assuming each warp has 32 threads
+    fp_type min_score = s_chromosome_scores[threadIdx.x];
+    int min_index     = threadIdx.x;
+    for (int chromosome_index = threadIdx.x + blockDim.x; chromosome_index < chromosome_number;
+         chromosome_index += blockDim.x) {
+      if (min_score > s_chromosome_scores[chromosome_index]) {
+        min_index = chromosome_index;
+        min_score = s_chromosome_scores[chromosome_index];
+      }
+    }
+    // Intra warp reduction
+    for (int offset = warpSize / 2; offset > 0; offset /= 2) {
+      fp_type other_min_score = __shfl_down_sync(0xFFFFFFFF, min_score, offset);
+      int other_min_index     = __shfl_down_sync(0xFFFFFFFF, min_index, offset);
+      if (other_min_score < min_score) {
+        min_score = other_min_score;
+        min_index = other_min_index;
+      }
+    }
+    if (threadIdx.x == 0) {
+      l_scores[ligand_id] = min_score;
+      memcpy(best_chromosomes + ligand_id,
+             l_chromosomes + min_index,
+             sizeof(fp_type) * (6 + max_static_bonds()));
+    }
+    __syncwarp();
   }
 } // namespace mudock
