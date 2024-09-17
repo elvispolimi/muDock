@@ -34,7 +34,7 @@ namespace mudock {
       cuda_object<T>::copy_host2device(host.data());
     };
     inline void copy_device2host() {
-      host.alloc(cuda_object<T>::num_elements());
+      host.resize(cuda_object<T>::num_elements());
       cuda_object<T>::copy_device2host(host.data());
     };
 
