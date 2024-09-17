@@ -11,7 +11,7 @@ constexpr void constexpr_for(F&& f) {
 }
 
 constexpr auto is_debug() {
-#ifdef DNDEBUG
+#ifndef NDEBUG
   return true;
 #else
   return false;
