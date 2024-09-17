@@ -27,10 +27,10 @@ namespace mudock {
 
   template<typename T>
   [[nodiscard]] const T virtual_screen_cpp::random_gen_cpp(const T &min, const T &max) {
-    T value;
+    fp_type value;
     if constexpr (is_debug())
       // TODO value here for debug
-      value = T{0.5};
+      value = fp_type{0.5};
     else {
       value = dist(generator);
     }
@@ -49,8 +49,6 @@ namespace mudock {
   };
 
   const chromosome &virtual_screen_cpp::tournament_selection() {
-    // auto selection_distribution =
-    //     std::uniform_int_distribution<std::size_t>(std::size_t{0}, population.size() - 1);
     const auto num_iterations = configuration.tournament_length;
     auto best_individual      = get_selection_distribution();
     for (std::size_t i = 0; i < num_iterations; ++i) {
@@ -65,26 +63,21 @@ namespace mudock {
   void virtual_screen_cpp::operator()(static_molecule &ligand) {
     // Reset the random number generator to improve consistency
     generator = std::mt19937{static_cast<size_t>(ligand.num_atoms())};
-    // random_generator = {ligand.num_atoms(), ligand.num_rotamers(), configuration.population_number};
 
     // Place the molecule to the center of the target protein
     const auto x = ligand.get_x(), y = ligand.get_y(), z = ligand.get_z();
     const auto ligand_center_of_mass = compute_center_of_mass(x, y, z);
-    // translate_molecule(x,
-    //                    y,
-    //                    z,
-    //                    electro_map->center.x - ligand_center_of_mass.x,
-    //                    electro_map->center.y - ligand_center_of_mass.y,
-    //                    electro_map->center.z - ligand_center_of_mass.z);
+    translate_molecule(x,
+                       y,
+                       z,
+                       electro_map->center.x - ligand_center_of_mass.x,
+                       electro_map->center.y - ligand_center_of_mass.y,
+                       electro_map->center.z - ligand_center_of_mass.z);
 
     // Find out the rotatable bonds in the ligand
     auto graph = make_graph(ligand.get_bonds());
     const fragments<static_containers> ligand_fragments{graph, ligand.get_bonds(), ligand.num_atoms()};
 
-    // Define the range that we can use to mutate and generate the chromosome
-    // auto init_change_distribution     = std::uniform_int_distribution(-45, 45);
-    // auto mutation_change_distribution = std::uniform_int_distribution(-10, 10);
-    // auto mutation_coin_distribution   = std::uniform_real_distribution{fp_type{0}, fp_type{1.0}};
     const auto coordinate_step = fp_type{0.2};
     const auto angle_step      = fp_type{4};
 
@@ -99,9 +92,12 @@ namespace mudock {
       }
     }
 
-    // Define the distribution for choosing the splitting point
-    // auto crossover_distribution =
-    //     std::uniform_int_distribution<std::size_t>(std::size_t{0}, std::size_t{6} + num_rotamers);
+    // Get weed bonds and non bonds lists
+    const int num_atoms = ligand.num_atoms();
+    grid<uint_fast8_t, index2D> nbmatrix{{num_atoms, num_atoms}};
+    nonbonds(nbmatrix, ligand.get_bonds(), num_atoms);
+    std::vector<non_bond_parameter> non_bond_list;
+    weed_bonds(nbmatrix, non_bond_list, num_atoms, ligand_fragments);
 
     // Simulate the population evolution for the given amount of time
     const auto num_generations = configuration.num_generations;
@@ -117,17 +113,11 @@ namespace mudock {
         std::copy(std::cbegin(z), std::cend(z), std::begin(altered_z));
         // TODO check it it makes sense -> print the MOL2
         // apply the transformation encoded in the element genes to the original ligand
-        // apply(std::span(std::begin(altered_x), x.size()),
-        //       std::span(std::begin(altered_y), y.size()),
-        //       std::span(std::begin(altered_z), z.size()),
-        //       element.genes,
-        //       ligand_fragments);
-
-        const int num_atoms = ligand.num_atoms();
-        grid<uint_fast8_t, index2D> nbmatrix{{num_atoms, num_atoms}};
-        nonbonds(nbmatrix, ligand.get_bonds(), num_atoms);
-        std::vector<non_bond_parameter> non_bond_list;
-        weed_bonds(nbmatrix, non_bond_list, num_atoms, ligand_fragments);
+        apply(std::span(std::begin(altered_x), x.size()),
+              std::span(std::begin(altered_y), y.size()),
+              std::span(std::begin(altered_z), z.size()),
+              element.genes,
+              ligand_fragments);
 
         // compute the energy of the system
         const auto energy = calc_energy(altered_x,
@@ -149,7 +139,6 @@ namespace mudock {
                                         *electro_map,
                                         *desolv_map);
         element.score     = energy; // dummy implementation to test the genetic
-        exit(-1);
       }
 
       // Generate the new population
