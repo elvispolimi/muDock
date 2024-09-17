@@ -7,7 +7,7 @@ namespace mudock {
   __device__ void apply_cuda(fp_type* __restrict__ x,
                              fp_type* __restrict__ y,
                              fp_type* __restrict__ z,
-                             const fp_type* chromosome,
+                             const chromosome* chromosome,
                              const int* __restrict__ fragments,
                              const int* __restrict__ fragments_start_index,
                              const int* __restrict__ fragments_stop_index,
@@ -15,8 +15,8 @@ namespace mudock {
                              const int stride_atoms,
                              const int num_atoms) {
     // apply rigid transformations
-    translate_molecule_cuda(x, y, z, chromosome, chromosome + 1, chromosome + 2, num_atoms);
-    rotate_molecule_cuda(x, y, z, chromosome + 3, chromosome + 4, chromosome + 5, num_atoms);
+    translate_molecule_cuda(x, y, z, &(*chromosome)[0], &(*chromosome)[1], &(*chromosome)[2], num_atoms);
+    rotate_molecule_cuda(x, y, z, &(*chromosome)[3], &(*chromosome)[4], &(*chromosome)[5], num_atoms);
 
     // change the molecule shape
     for (int i = 0; i < num_rotamers; ++i) {
@@ -27,7 +27,7 @@ namespace mudock {
                            bitmask,
                            fragments_start_index[i],
                            fragments_stop_index[i],
-                           chromosome + 6 + i,
+                           &(*chromosome)[6 + i],
                            num_atoms);
     }
   }
