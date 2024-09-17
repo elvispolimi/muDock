@@ -5,6 +5,7 @@
 #include <mudock/cpp_implementation/center_of_mass.hpp>
 #include <mudock/cpp_implementation/geometric_transformations.hpp>
 #include <mudock/cpp_implementation/weed_bonds.hpp>
+#include <mudock/cpp_implementation/mutate.hpp>
 #include <mudock/cuda_implementation/evaluate_fitness.cuh>
 #include <mudock/cuda_implementation/virtual_screen.cuh>
 #include <mudock/grid.hpp>
@@ -66,14 +67,12 @@ namespace mudock {
     assert(electro_map.get()->index == desolv_map.get()->index &&
            desolv_map.get()->index == grid_atom_maps.get()->get_index());
     init_texture_memory(*electro_map.get(), electro_tex);
-    // for (int i = 0; i < 53; i++)
-    //   for (int t = 0; t < 48; t++)
-    //     for (int w = 0; w < 51; w++) printf("HOST %d %d %d %f\n", i, t, w, electro_map.get()->at(i, t, w));
-    // fflush(stdout);
+
     init_texture_memory(*desolv_map.get(), desolv_tex);
-    std::size_t index{0};
+
     // TODO precompute the indexes for each ligand atom?grid_atom_map
     // Could be done once for each new ligand
+    std::size_t index{0};
     atom_texs.alloc(num_cuda_map_textures());
     for (auto &atom_tex: atom_texs.host) {
       const grid_map &grid_atom =
@@ -116,7 +115,8 @@ namespace mudock {
     ligand_num_hbond.alloc(tot_atoms_in_batch, int{0});
     ligand_num_atoms.alloc(batch_ligands, int{0});
     ligand_num_rotamers.alloc(batch_ligands, int{0});
-    ligand_scores.alloc(batch_ligands, fp_type{0});
+    ligand_scores.alloc(batch_ligands, std::numeric_limits<fp_type>::infinity());
+    best_chromosomes.alloc(batch_ligands);
     // Bonds
     num_nonbonds.alloc(batch_ligands);
     nonbond_a1.alloc(batch_nonbonds);
@@ -126,15 +126,12 @@ namespace mudock {
     // Support data precomputation
     map_texture_index.alloc(tot_atoms_in_batch);
 
-    // Define the range that we can use to mutate and generate the chromosome
-    // auto init_change_distribution = std::uniform_int_distribution(-45, 45);
-    // auto mutation_change_distribution = std::uniform_int_distribution(-10, 10);
-    // auto mutation_coin_distribution   = std::uniform_real_distribution{fp_type{0}, fp_type{1.0}};
-    // const auto coordinate_step = fp_type{0.2};
-    // const auto angle_step      = fp_type{4};
-
     // Copy data
     std::size_t index{0};
+    // TODO pragma OMP improve performance
+    // Keep the fragments for the output
+    std::vector<fragments<static_containers>> batch_fragments;
+    batch_fragments.reserve(batch_ligands);
     for (auto &ligand: std::span(incoming_batch.molecules.data(), batch_ligands)) {
       const int stride_atoms = index * batch_atoms;
       // Atoms and bonds
@@ -144,12 +141,12 @@ namespace mudock {
       // Place the molecule to the center of the target protein
       const auto x = ligand.get()->get_x(), y = ligand.get()->get_y(), z = ligand.get()->get_z();
       const auto ligand_center_of_mass = compute_center_of_mass(x, y, z);
-      // translate_molecule(x,
-      //                    y,
-      //                    z,
-      //                    center_maps.x - ligand_center_of_mass.x,
-      //                    center_maps.y - ligand_center_of_mass.y,
-      //                    center_maps.z - ligand_center_of_mass.z);
+      translate_molecule(x,
+                         y,
+                         z,
+                         center_maps.x - ligand_center_of_mass.x,
+                         center_maps.y - ligand_center_of_mass.y,
+                         center_maps.z - ligand_center_of_mass.z);
       // Coordinates
       for (std::size_t i = 0; i < configuration.population_number; ++i) {
         const int stride_ligand_in_batch      = stride_atoms * configuration.population_number;
@@ -166,10 +163,10 @@ namespace mudock {
       }
       // Fragments
       // Find out the rotatable bonds in the ligand
-      auto graph = make_graph(ligand.get()->get_bonds());
-      const fragments<static_containers> l_fragments{graph,
-                                                     ligand.get()->get_bonds(),
-                                                     ligand.get()->num_atoms()};
+      auto graph              = make_graph(ligand.get()->get_bonds());
+      // TODO check this assignment
+      batch_fragments[index]  = {graph, ligand.get()->get_bonds(), ligand.get()->num_atoms()};
+      const auto &l_fragments = batch_fragments[index];
 
       // Randomly initialize the population
       const auto num_rotamers                   = l_fragments.get_num_rotatable_bonds();
@@ -180,12 +177,13 @@ namespace mudock {
         std::memcpy((void *) (ligand_fragments.host_pointer() + stride_masks + rot * batch_atoms),
                     l_fragments.get_mask(rot).data(),
                     num_atoms * sizeof(int));
-        const auto [start_index, stop_index]                    = l_fragments.get_rotatable_atoms(rot);
-        frag_start_atom_indices.host_pointer()[stride_rotamers] = start_index;
-        frag_stop_atom_indices.host_pointer()[stride_rotamers]  = stop_index;
+        const auto [start_index, stop_index]                          = l_fragments.get_rotatable_atoms(rot);
+        frag_start_atom_indices.host_pointer()[stride_rotamers + rot] = start_index;
+        frag_stop_atom_indices.host_pointer()[stride_rotamers + rot]  = stop_index;
       }
 
       // Weed bonds
+      // TODO can be accelerated on the GPU
       grid<uint_fast8_t, index2D> nbmatrix{{num_atoms, num_atoms}};
       nonbonds(nbmatrix, ligand.get()->get_bonds(), num_atoms);
       std::vector<non_bond_parameter> non_bond_list;
@@ -227,16 +225,6 @@ namespace mudock {
                   ligand.get()->get_num_hbond().data(),
                   num_atoms * sizeof(int));
 
-      // for (std::size_t i = 0; i < configuration.population_number; ++i) {
-      //   auto &element = population.host[index * population_stride + i];
-      //   for (int i{0}; i < 3; ++i) { // initialize the rigid translation
-      //     element.genes[i] = static_cast<fp_type>(init_change_distribution(generator)) * coordinate_step;
-      //   }
-      //   for (int i{3}; i < 3 + num_rotamers; ++i) { // initialize the rotations
-      //     element.genes[i] = static_cast<fp_type>(init_change_distribution(generator)) * angle_step;
-      //   }
-      // }
-
       std::size_t atom_index{0};
       for (auto &autodock_t: ligand.get()->get_autodock_type()) {
         const auto map_index = static_cast<int>(map_from_autodock_type(autodock_t));
@@ -263,7 +251,6 @@ namespace mudock {
     ligand_epsij_hb.copy_host2device();
     ligand_epsii.copy_host2device();
     ligand_num_hbond.copy_host2device();
-    // population.copy_host2device();
     map_texture_index.copy_host2device();
     num_nonbonds.copy_host2device();
     nonbond_a1.copy_host2device();
@@ -278,53 +265,64 @@ namespace mudock {
     const auto num_generations = configuration.num_generations;
     // TODO checks if everything fit into shared memory
     // The shared memory contains:
-    // - batch_ligands values of ligand's population scores
-    evaluate_fitness<<<batch_ligands, BLOCK_SIZE, batch_ligands * sizeof(fp_type)>>>(
-        num_generations,
-        configuration.tournament_length,
-        configuration.mutation_prob,
-        configuration.population_number,
-        population_stride,
-        batch_atoms,
-        batch_rotamers,
-        max_non_bonds,
-        ligand_x.dev_pointer(),
-        ligand_y.dev_pointer(),
-        ligand_z.dev_pointer(),
-        ligand_vol.dev_pointer(),
-        ligand_solpar.dev_pointer(),
-        ligand_charge.dev_pointer(),
-        ligand_num_hbond.dev_pointer(),
-        ligand_Rij_hb.dev_pointer(),
-        ligand_Rii.dev_pointer(),
-        ligand_epsij_hb.dev_pointer(),
-        ligand_epsii.dev_pointer(),
-        num_nonbonds.dev_pointer(),
-        nonbond_a1.dev_pointer(),
-        nonbond_a2.dev_pointer(),
-        ligand_num_atoms.dev_pointer(),
-        ligand_num_rotamers.dev_pointer(),
-        ligand_fragments.dev_pointer(),
-        frag_start_atom_indices.dev_pointer(),
-        frag_stop_atom_indices.dev_pointer(),
-        chromosomes.dev_pointer(),
-        atom_texs.dev_pointer(),
-        map_texture_index.dev_pointer(),
-        electro_tex,
-        desolv_tex,
-        curand_states.dev_pointer(),
-        ligand_scores.dev_pointer());
+    // - each chromosome's score at last population evaluation
+    // Max due to the reduction at the end to find the highest scores per each chromosome
+    const std::size_t min_energy_reduction_s_mem =
+        std::max(configuration.population_number, static_cast<std::size_t>(BLOCK_SIZE)) * sizeof(fp_type);
+    const std::size_t shared_mem = min_energy_reduction_s_mem;
+    evaluate_fitness<<<batch_ligands, BLOCK_SIZE, shared_mem>>>(num_generations,
+                                                                configuration.tournament_length,
+                                                                configuration.mutation_prob,
+                                                                configuration.population_number,
+                                                                population_stride,
+                                                                batch_atoms,
+                                                                batch_rotamers,
+                                                                max_non_bonds,
+                                                                ligand_x.dev_pointer(),
+                                                                ligand_y.dev_pointer(),
+                                                                ligand_z.dev_pointer(),
+                                                                ligand_vol.dev_pointer(),
+                                                                ligand_solpar.dev_pointer(),
+                                                                ligand_charge.dev_pointer(),
+                                                                ligand_num_hbond.dev_pointer(),
+                                                                ligand_Rij_hb.dev_pointer(),
+                                                                ligand_Rii.dev_pointer(),
+                                                                ligand_epsij_hb.dev_pointer(),
+                                                                ligand_epsii.dev_pointer(),
+                                                                num_nonbonds.dev_pointer(),
+                                                                nonbond_a1.dev_pointer(),
+                                                                nonbond_a2.dev_pointer(),
+                                                                ligand_num_atoms.dev_pointer(),
+                                                                ligand_num_rotamers.dev_pointer(),
+                                                                ligand_fragments.dev_pointer(),
+                                                                frag_start_atom_indices.dev_pointer(),
+                                                                frag_stop_atom_indices.dev_pointer(),
+                                                                chromosomes.dev_pointer(),
+                                                                atom_texs.dev_pointer(),
+                                                                map_texture_index.dev_pointer(),
+                                                                electro_tex,
+                                                                desolv_tex,
+                                                                curand_states.dev_pointer(),
+                                                                ligand_scores.dev_pointer(),
+                                                                best_chromosomes.dev_pointer());
     MUDOCK_CHECK_KERNELCALL();
     MUDOCK_CHECK(cudaDeviceSynchronize());
-    // TODO
-    exit(-1);
+
+    // Copy back chromosomes and scores
+    best_chromosomes.copy_device2host();
+    ligand_scores.copy_device2host();
 
     // update the ligand position with the best one that we found
-    // TODO
-    // for (auto& ligand: std::span(incoming_batch.molecules.data(), incoming_batch.num_ligands)) {
-    //   // Reset the random number generator to improve consistency
-    //   generator = std::mt19937{ligand.get()->num_atoms()};
-    //   ligand->properties.assign(property_type::SCORE, std::to_string(dist(generator)));
-    // }
+    index = 0;
+    for (auto &ligand: std::span(incoming_batch.molecules.data(), incoming_batch.num_ligands)) {
+      // Reset the random number generator to improve consistency
+      apply(ligand.get()->get_x(),
+            ligand.get()->get_y(),
+            ligand.get()->get_z(),
+            *(best_chromosomes.host_pointer() + index),
+            batch_fragments[index]);
+      ligand->properties.assign(property_type::SCORE, std::to_string(ligand_scores.host_pointer()[index]));
+      ++index;
+    }
   }
 } // namespace mudock

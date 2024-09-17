@@ -44,5 +44,6 @@ namespace mudock {
                                    const cudaTextureObject_t electro_texture,
                                    const cudaTextureObject_t desolv_texture,
                                    curandState* state,
-                                   fp_type* ligand_scores);
+                                   fp_type* ligand_scores,
+                                   chromosome* best_chromosomes);
 } // namespace mudock
