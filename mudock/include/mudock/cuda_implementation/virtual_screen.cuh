@@ -40,6 +40,7 @@ namespace mudock {
 
     // define the GA population
     cuda_wrapper<std::vector, chromosome> chromosomes;
+    cuda_wrapper<std::vector, chromosome> best_chromosomes;
 
     // Grid Maps
     const index3D index_maps;
