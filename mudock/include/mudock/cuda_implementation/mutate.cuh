@@ -12,7 +12,7 @@ namespace mudock {
   __device__ void apply_cuda(fp_type* __restrict__ x,
              fp_type* __restrict__ y,
              fp_type* __restrict__ z,
-             const chromosome* chromosome,
+             const chromosome& chromosome,
              const int* __restrict__ fragments,
              const int* __restrict__ fragments_start_index,
              const int* __restrict__ fragments_stop_index,
