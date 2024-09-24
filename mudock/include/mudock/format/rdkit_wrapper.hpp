@@ -42,7 +42,7 @@ namespace mudock {
   //===------------------------------------------------------------------------------------------------------
 
   template<class molecule_type>
-    requires is_molecule<molecule_type>
+  requires is_molecule<molecule_type>
   void convert(molecule_type&& dest, const rw_mol_wrapper& source) {
     // set the molecule geometry
     // NOTE: for static molecules we need to enforce the constraint on the maximum number

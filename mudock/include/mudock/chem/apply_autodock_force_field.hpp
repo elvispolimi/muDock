@@ -11,7 +11,7 @@
 
 namespace mudock {
   template<class container_aliases>
-    requires is_container_specification<container_aliases>
+  requires is_container_specification<container_aliases>
   void apply_autodock_forcefield(molecule<container_aliases>& molecule) {
     // allocate memory for the support vectors required to allocate the atoms type
     const std::size_t num_atoms = molecule.num_atoms();

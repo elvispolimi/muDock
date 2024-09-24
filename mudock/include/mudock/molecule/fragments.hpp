@@ -29,7 +29,7 @@ namespace mudock {
       get_rotatable_edges(const std::span<const bond>& bonds, const molecule_graph_type& g);
 
   template<class container_aliases>
-    requires is_container_specification<container_aliases>
+  requires is_container_specification<container_aliases>
   class fragments {
     using fragment_mask_type    = int;
     using mask_container_type   = container_aliases::template fragments_size<fragment_mask_type>;

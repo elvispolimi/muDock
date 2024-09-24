@@ -83,7 +83,7 @@ namespace mudock {
   };
 
   template<class T>
-  concept is_index =
-      (std::same_as<std::remove_cvref_t<T>, index2D> || std::same_as<std::remove_cvref_t<T>, index3D>);
+  concept is_index = (std::same_as<std::remove_cvref_t<T>, index2D> ||
+                      std::same_as<std::remove_cvref_t<T>, index3D>);
 
 } // namespace mudock

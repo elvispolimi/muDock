@@ -35,7 +35,7 @@ namespace mudock {
   }
 
   template<class T, class index_type>
-    requires is_index<index_type>
+  requires is_index<index_type>
   class grid {
     std::vector<T> grid_values;
 
