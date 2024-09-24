@@ -9,19 +9,25 @@
 
 namespace mudock {
   extern __device__ __constant__ fp_type map_min[3];
-  void setup_constant_memory(const point3D& minimum, const fp_type inv_grid_spacing);
+  void setup_constant_memory(const point3D& minimum,
+                             const point3D& maximum,
+                             const point3D& center,
+                             const fp_type inv_grid_spacing);
 
   __global__ void evaluate_fitness(const int num_generations,
                                    const int tournament_length,
-                                   const int mutation_prob,
+                                   const fp_type mutation_prob,
                                    const int chromosome_number,
                                    const int chromosome_stride,
                                    const int atom_stride,
                                    const int rotamers_stride,
                                    const int nonbond_stride,
-                                   fp_type* __restrict__ ligand_x,
-                                   fp_type* __restrict__ ligand_y,
-                                   fp_type* __restrict__ ligand_z,
+                                   const fp_type* __restrict__ original_ligand_x,
+                                   const fp_type* __restrict__ original_ligand_y,
+                                   const fp_type* __restrict__ original_ligand_z,
+                                   fp_type* __restrict__ sratch_ligand_x,
+                                   fp_type* __restrict__ sratch_ligand_y,
+                                   fp_type* __restrict__ sratch_ligand_z,
                                    const fp_type* __restrict__ ligand_vol,
                                    const fp_type* __restrict__ ligand_solpar,
                                    const fp_type* __restrict__ ligand_charge,
