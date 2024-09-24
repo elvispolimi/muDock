@@ -48,6 +48,8 @@ namespace mudock {
       x[i] = prev_x * m00 + prev_y * m01 + prev_z * m02;
       y[i] = prev_x * m10 + prev_y * m11 + prev_z * m12;
       z[i] = prev_x * m20 + prev_y * m21 + prev_z * m22;
+      if (isnan(x[i]) || isnan(y[i]) || isnan(z[i]))
+        printf("%f %f %f\n", prev_x, prev_y, prev_z);
     }
   }
 
@@ -62,12 +64,18 @@ namespace mudock {
     // compute the axis vector (and some properties)
     const auto origx = x[start_index], origy = y[start_index], origz = z[start_index];
     const auto destx = x[stop_index], desty = y[stop_index], destz = z[stop_index];
-    const auto u  = destx - origx;
-    const auto v  = desty - origy;
-    const auto w  = destz - origz;
+    const auto u = destx - origx;
+    const auto v = desty - origy;
+    const auto w = destz - origz;
+
     const auto u2 = u * u, v2 = v * v, w2 = w * w;
     const auto l2 = u * u + v * v + w * w;
-    const auto l  = std::sqrt(l2);
+    // Check if origin and dest coincide
+    // No need to continue the intramolecular energy will be very high
+    if (isinf(l2) || l2 == fp_type{0} || isnan(l2))
+      // TODO print error?
+      return;
+    const auto l = std::sqrt(l2);
 
     // compute the angle sine and cosine
     const auto rad = deg_to_rad(*angle);
@@ -101,6 +109,8 @@ namespace mudock {
         x[i] = prev_x * m00 + prev_y * m01 + prev_z * m02 + m03;
         y[i] = prev_x * m10 + prev_y * m11 + prev_z * m12 + m13;
         z[i] = prev_x * m20 + prev_y * m21 + prev_z * m22 + m23;
+        if (isnan(x[i]) || isnan(y[i]) || isnan(z[i]))
+          printf("nan\n");
       }
     }
   }
