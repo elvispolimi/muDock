@@ -22,9 +22,9 @@ namespace mudock {
     const point3D grid_maximum{std::ceil((receptor_max_x + cutoff_distance) * fp_type{2}) / fp_type{2},
                                std::ceil((receptor_max_y + cutoff_distance) * fp_type{2}) / fp_type{2},
                                std::ceil((receptor_max_z + cutoff_distance) * fp_type{2}) / fp_type{2}};
-    const index3D npts{static_cast<int>((grid_maximum.x - grid_minimum.x) / grid_spacing),
-                       static_cast<int>((grid_maximum.y - grid_minimum.y) / grid_spacing),
-                       static_cast<int>((grid_maximum.z - grid_minimum.z) / grid_spacing)};
+    const index3D npts{static_cast<int>((grid_maximum.x - grid_minimum.x) / grid_spacing) + 1,
+                       static_cast<int>((grid_maximum.y - grid_minimum.y) / grid_spacing) + 1,
+                       static_cast<int>((grid_maximum.z - grid_minimum.z) / grid_spacing) + 1};
 
     grid_map electrostatic_map{npts, grid_minimum, grid_maximum};
 

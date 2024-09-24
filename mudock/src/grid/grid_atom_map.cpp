@@ -200,9 +200,10 @@ namespace mudock {
     const point3D grid_maximum{std::ceil((receptor_max_x + cutoff_distance) * fp_type{2}) / fp_type{2},
                                std::ceil((receptor_max_y + cutoff_distance) * fp_type{2}) / fp_type{2},
                                std::ceil((receptor_max_z + cutoff_distance) * fp_type{2}) / fp_type{2}};
-    const index3D npts{static_cast<int>((grid_maximum.x - grid_minimum.x) / grid_spacing),
-                       static_cast<int>((grid_maximum.y - grid_minimum.y) / grid_spacing),
-                       static_cast<int>((grid_maximum.z - grid_minimum.z) / grid_spacing)};
+    //  add 2 point in each axis to allow trilinear interpolation
+    const index3D npts{static_cast<int>((grid_maximum.x - grid_minimum.x) / grid_spacing) + 1,
+                       static_cast<int>((grid_maximum.y - grid_minimum.y) / grid_spacing) + 1,
+                       static_cast<int>((grid_maximum.z - grid_minimum.z) / grid_spacing) + 1};
 
     for (auto ligand_type: ligand_types) {
       // grid_atom_maps.push_back({ligand_type, npts});
@@ -363,7 +364,7 @@ namespace mudock {
               }
             }
           } /*i2-loop*/
-        } /* endif nbond==1 */
+        }   /* endif nbond==1 */
 
         /* two bonds: Hydroxyl or Ether Oxygen X1-O-X2 */
         if (nbond == 2) {
@@ -491,7 +492,7 @@ namespace mudock {
                 closestH = index;
               }
             } /* Hydrogen test */
-          } /* ia loop */
+          }   /* ia loop */
           /* END NEW2: Find Min Hbond */
 
           for (int index = 0; index < receptor.num_atoms(); ++index) {
