@@ -30,7 +30,7 @@ namespace mudock {
     fp_type value;
     if constexpr (is_debug())
       // TODO value here for debug
-      value = fp_type{0.5};
+      value = fp_type{0.4};
     else {
       value = dist(generator);
     }
@@ -41,8 +41,8 @@ namespace mudock {
     return random_gen_cpp<int>(0, configuration.population_number - 1);
   };
 
-  int virtual_screen_cpp::get_init_change_distribution() { return random_gen_cpp<int>(-45, 45); }
-  int virtual_screen_cpp::get_mutation_change_distribution() { return random_gen_cpp<int>(-10, 10); };
+  fp_type virtual_screen_cpp::get_init_change_distribution() { return random_gen_cpp<fp_type>(-45, 45); }
+  fp_type virtual_screen_cpp::get_mutation_change_distribution() { return random_gen_cpp<fp_type>(-10, 10); };
   fp_type virtual_screen_cpp::get_mutation_coin_distribution() { return random_gen_cpp<fp_type>(0, 1); };
   int virtual_screen_cpp::get_crossover_distribution(const int &num_rotamers) {
     return random_gen_cpp<int>(0, 6 + num_rotamers);
@@ -85,10 +85,10 @@ namespace mudock {
     const auto num_rotamers = ligand_fragments.get_num_rotatable_bonds();
     for (auto &element: population) {
       for (int i{0}; i < 3; ++i) { // initialize the rigid translation
-        element.genes[i] = static_cast<fp_type>(get_init_change_distribution()) * coordinate_step;
+        element.genes[i] = get_init_change_distribution() * coordinate_step;
       }
-      for (int i{3}; i < 3 + num_rotamers; ++i) { // initialize the rotations
-        element.genes[i] = static_cast<fp_type>(get_init_change_distribution()) * angle_step;
+      for (int i{3}; i < 6 + num_rotamers; ++i) { // initialize the rotations
+        element.genes[i] = get_init_change_distribution() * angle_step;
       }
     }
 
@@ -103,7 +103,8 @@ namespace mudock {
     const auto num_generations = configuration.num_generations;
     for (std::size_t generation = 0; generation < num_generations; ++generation) {
       // Evaluate the fitness of the population
-      for (auto &element: population) {
+      for (std::size_t element_index = 0; element_index < population.size(); ++element_index) {
+        auto &element = population[element_index];
         // copy the ligand original coordinates in temporary array
         auto altered_x = static_containers::atoms_size<fp_type>{};
         auto altered_y = static_containers::atoms_size<fp_type>{};
@@ -120,6 +121,7 @@ namespace mudock {
               ligand_fragments);
 
         // compute the energy of the system
+        // printf("%ld %ld ", generation, element_index);
         const auto energy = calc_energy(altered_x,
                                         altered_y,
                                         altered_z,
@@ -158,12 +160,11 @@ namespace mudock {
         // mutate the offspring
         for (int i{0}; i < 3; ++i) {
           if (get_mutation_coin_distribution() < configuration.mutation_prob)
-            next_individual.genes[i] +=
-                static_cast<fp_type>(get_mutation_change_distribution()) * coordinate_step;
+            next_individual.genes[i] += get_mutation_change_distribution() * coordinate_step;
         }
-        for (int i{3}; i < 3 + num_rotamers; ++i) {
+        for (int i{3}; i < 6 + num_rotamers; ++i) {
           if (get_mutation_coin_distribution() < configuration.mutation_prob)
-            next_individual.genes[i] += static_cast<fp_type>(get_mutation_change_distribution()) * angle_step;
+            next_individual.genes[i] += get_mutation_change_distribution() * angle_step;
         }
       }
 
