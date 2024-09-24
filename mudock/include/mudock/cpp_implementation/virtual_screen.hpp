@@ -44,8 +44,8 @@ namespace mudock {
     [[nodiscard]] const T random_gen_cpp(const T& min, const T& max);
 
     [[nodiscard]] int get_selection_distribution();
-    [[nodiscard]] int get_init_change_distribution();
-    [[nodiscard]] int get_mutation_change_distribution();
+    [[nodiscard]] fp_type get_init_change_distribution();
+    [[nodiscard]] fp_type get_mutation_change_distribution();
     [[nodiscard]] fp_type get_mutation_coin_distribution();
     [[nodiscard]] int get_crossover_distribution(const int& num_rotamers);
 
