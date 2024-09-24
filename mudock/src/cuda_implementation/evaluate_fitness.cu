@@ -11,13 +11,28 @@ namespace mudock {
   static constexpr fp_type coordinate_step{0.2};
   static constexpr fp_type angle_step{4};
 
+  // static constexpr fp_type max_angle{360};
+  // static constexpr fp_type min_angle{360};
+
   __device__ __constant__ fp_type map_min_const[3];
+  __device__ __constant__ fp_type map_max_const[3];
+  __device__ __constant__ fp_type map_center_const[3];
   __device__ __constant__ fp_type inv_spacing_const;
 
-  void setup_constant_memory(const point3D& minimum, const fp_type inv_grid_spacing) {
-    fp_type l_map_min[3]{minimum.x, minimum.y, minimum.z};
+  void setup_constant_memory(const point3D& minimum,
+                             const point3D& maximum,
+                             const point3D& center,
+                             const fp_type inv_grid_spacing) {
+    const fp_type l_map_min[3]{minimum.x, minimum.y, minimum.z};
+    const fp_type l_map_max[3]{maximum.x, maximum.y, maximum.z};
+    const fp_type l_map_center[3]{center.x, center.y, center.z};
+
     MUDOCK_CHECK(
         cudaMemcpyToSymbol(map_min_const, &l_map_min, 3 * sizeof(fp_type), 0, cudaMemcpyHostToDevice));
+    MUDOCK_CHECK(
+        cudaMemcpyToSymbol(map_max_const, &l_map_max, 3 * sizeof(fp_type), 0, cudaMemcpyHostToDevice));
+    MUDOCK_CHECK(
+        cudaMemcpyToSymbol(map_center_const, &l_map_center, 3 * sizeof(fp_type), 0, cudaMemcpyHostToDevice));
     MUDOCK_CHECK(
         cudaMemcpyToSymbol(inv_spacing_const, &inv_grid_spacing, sizeof(fp_type), 0, cudaMemcpyHostToDevice));
   }
@@ -50,62 +65,67 @@ namespace mudock {
   }
 
   template<typename T>
-  __device__ const T random_gen_cuda(curandState* state, const T min, const T max) {
+  __device__ const T random_gen_cuda(curandState& state, const T min, const T max) {
     fp_type value;
     if constexpr (is_debug())
       // TODO value here for debug
-      value = fp_type{0.5};
+      value = fp_type{0.4};
     else {
-      value = curand_uniform(state);
+      value = curand_uniform(&state);
     }
-    return (value * static_cast<fp_type>(max - min)) + min;
+    return static_cast<T>((value * static_cast<fp_type>(max - min)) + min);
   }
 
-  __device__ int get_selection_distribution(curandState* state, const int* population_number) {
+  __device__ int get_selection_distribution(curandState& state, const int* population_number) {
     return random_gen_cuda<int>(state, 0, *population_number - 1);
   };
 
-  __device__ int get_init_change_distribution(curandState* state) {
-    return random_gen_cuda<int>(state, -45, 45);
+  __device__ fp_type get_init_change_distribution(curandState& state) {
+    return random_gen_cuda<fp_type>(state, -45, 45);
   }
-  __device__ int get_mutation_change_distribution(curandState* state) {
-    return random_gen_cuda<int>(state, -10, 10);
+  __device__ fp_type get_mutation_change_distribution(curandState& state) {
+    return random_gen_cuda<fp_type>(state, -10, 10);
   };
-  __device__ fp_type get_mutation_coin_distribution(curandState* state) {
+  __device__ fp_type get_mutation_coin_distribution(curandState& state) {
     return random_gen_cuda<fp_type>(state, 0, 1);
   };
-  __device__ int get_crossover_distribution(curandState* state, const int* num_rotamers) {
+  __device__ int get_crossover_distribution(curandState& state, const int* num_rotamers) {
     return random_gen_cuda<int>(state, 0, 6 + *num_rotamers);
   };
 
-  __device__ chromosome* tournament_selection_cuda(curandState* state,
-                                                   const int tournament_length,
-                                                   chromosome* __restrict__ chromosomes,
-                                                   const int chromosome_number,
-                                                   fp_type* scores) {
+  __device__ const int tournament_selection_cuda(curandState& state,
+                                                 const int tournament_length,
+                                                 const int chromosome_number,
+                                                 const fp_type* __restrict__ scores) {
     const int num_iterations = tournament_length;
-    auto best_individual     = get_selection_distribution(state, &chromosome_number);
-    for (std::size_t i = 0; i < num_iterations; ++i) {
-      auto contendent = get_selection_distribution(state, &chromosome_number);
-      if (scores[contendent] < scores[best_individual]) {
-        best_individual = contendent;
+    int best_individual      = get_selection_distribution(state, &chromosome_number);
+    // auto best_individual = static_cast<int>(curand_uniform(&state) * fp_type(chromosome_number - 1));
+    for (int i = 0; i < num_iterations; ++i) {
+      auto contended = get_selection_distribution(state, &chromosome_number);
+      // auto contended = static_cast<int>(curand_uniform(&state) * fp_type(chromosome_number - 1));
+      if (scores[contended] < scores[best_individual]) {
+        best_individual = contended;
       }
     }
-    return chromosomes + best_individual;
+    return best_individual;
   }
 
+  // TODO check the syncwarp
   //TODO template parameter based on number of atoms
   __global__ void evaluate_fitness(const int num_generations,
                                    const int tournament_length,
-                                   const int mutation_prob,
+                                   const fp_type mutation_prob,
                                    const int chromosome_number,
                                    const int chromosome_stride,
                                    const int atom_stride,
                                    const int rotamers_stride,
                                    const int nonbond_stride,
-                                   fp_type* __restrict__ ligand_x,
-                                   fp_type* __restrict__ ligand_y,
-                                   fp_type* __restrict__ ligand_z,
+                                   const fp_type* __restrict__ original_ligand_x,
+                                   const fp_type* __restrict__ original_ligand_y,
+                                   const fp_type* __restrict__ original_ligand_z,
+                                   fp_type* __restrict__ scratch_ligand_x,
+                                   fp_type* __restrict__ scratch_ligand_y,
+                                   fp_type* __restrict__ scratch_ligand_z,
                                    const fp_type* __restrict__ ligand_vol,
                                    const fp_type* __restrict__ ligand_solpar,
                                    const fp_type* __restrict__ ligand_charge,
@@ -137,18 +157,21 @@ namespace mudock {
     const int num_nonbonds = ligand_num_nonbonds[ligand_id];
     const int num_rotamers = ligand_num_rotamers[ligand_id];
 
-    fp_type* l_ligand_x              = ligand_x + chromosome_number * ligand_id * atom_stride;
-    fp_type* l_ligand_y              = ligand_y + chromosome_number * ligand_id * atom_stride;
-    fp_type* l_ligand_z              = ligand_z + chromosome_number * ligand_id * atom_stride;
-    const fp_type* l_ligand_vol      = ligand_vol + ligand_id * atom_stride;
-    const fp_type* l_ligand_solpar   = ligand_solpar + ligand_id * atom_stride;
-    const fp_type* l_ligand_charge   = ligand_charge + ligand_id * atom_stride;
-    const int* l_ligand_num_hbond    = ligand_num_hbond + ligand_id * atom_stride;
-    const fp_type* l_ligand_Rij_hb   = ligand_Rij_hb + ligand_id * atom_stride;
-    const fp_type* l_ligand_Rii      = ligand_Rii + ligand_id * atom_stride;
-    const fp_type* l_ligand_epsij_hb = ligand_epsij_hb + ligand_id * atom_stride;
-    const fp_type* l_ligand_epsii    = ligand_epsii + ligand_id * atom_stride;
-    chromosome* l_chromosomes        = chromosomes + ligand_id * chromosome_stride;
+    const fp_type* l_original_ligand_x = original_ligand_x + ligand_id * atom_stride;
+    const fp_type* l_original_ligand_y = original_ligand_y + ligand_id * atom_stride;
+    const fp_type* l_original_ligand_z = original_ligand_z + ligand_id * atom_stride;
+    fp_type* l_scratch_ligand_x        = scratch_ligand_x + ligand_id * atom_stride;
+    fp_type* l_scratch_ligand_y        = scratch_ligand_y + ligand_id * atom_stride;
+    fp_type* l_scratch_ligand_z        = scratch_ligand_z + ligand_id * atom_stride;
+    const fp_type* l_ligand_vol        = ligand_vol + ligand_id * atom_stride;
+    const fp_type* l_ligand_solpar     = ligand_solpar + ligand_id * atom_stride;
+    const fp_type* l_ligand_charge     = ligand_charge + ligand_id * atom_stride;
+    const int* l_ligand_num_hbond      = ligand_num_hbond + ligand_id * atom_stride;
+    const fp_type* l_ligand_Rij_hb     = ligand_Rij_hb + ligand_id * atom_stride;
+    const fp_type* l_ligand_Rii        = ligand_Rii + ligand_id * atom_stride;
+    const fp_type* l_ligand_epsij_hb   = ligand_epsij_hb + ligand_id * atom_stride;
+    const fp_type* l_ligand_epsii      = ligand_epsii + ligand_id * atom_stride;
+    chromosome* l_chromosomes          = chromosomes + ligand_id * chromosome_stride;
     // Point to the next population buffer
     chromosome* l_next_chromosomes      = chromosomes + ligand_id * chromosome_stride + chromosome_number;
     const auto* l_fragments             = ligand_fragments + ligand_id * atom_stride;
@@ -157,38 +180,46 @@ namespace mudock {
     const auto* l_atom_tex_indexes      = atom_tex_indexes + ligand_id * atom_stride;
     const int* l_ligand_nonbond_a1      = ligand_nonbond_a1 + ligand_id * nonbond_stride;
     const int* l_ligand_nonbond_a2      = ligand_nonbond_a2 + ligand_id * nonbond_stride;
-    curandState* l_state                = state + threadId;
+    curandState& l_state                = (state[threadId]);
 
     // Shared memory
     extern __shared__ fp_type shared_data[];
     fp_type* s_chromosome_scores = shared_data;
 
     // Generate initial population
-    for (int chromosome_index = threadIdx.x; chromosome_index < chromosome_number;
+    for (int chromosome_index = threadIdx.x; chromosome_index < max(chromosome_number, blockDim.x);
          chromosome_index += blockDim.x) {
       // Set initial score value
       s_chromosome_scores[chromosome_index] = std::numeric_limits<fp_type>::infinity();
 
-      chromosome* chromo = l_chromosomes + chromosome_index;
+      chromosome& chromo = *(l_chromosomes + chromosome_index);
 #pragma unroll
       for (int i{0}; i < 3; ++i) { // initialize the rigid translation
-        (*chromo)[i] = static_cast<fp_type>(get_init_change_distribution(l_state)) * coordinate_step;
+        chromo[i] = get_init_change_distribution(l_state) * coordinate_step;
+        // chromo[i] = ((curand_uniform(&l_state) * fp_type{90}) - fp_type{45}) * coordinate_step;
       }
 #pragma unroll
-      for (int i{3}; i < 3 + num_rotamers; ++i) { // initialize the rotations
-        (*chromo)[i] = static_cast<fp_type>(get_init_change_distribution(l_state)) * angle_step;
+      for (int i{3}; i < 6 + num_rotamers; ++i) { // initialize the rotations
+        chromo[i] = get_init_change_distribution(l_state) * angle_step;
+        // chromo[i] = ((curand_uniform(&l_state) * fp_type{90}) - fp_type{45}) * angle_step;
       }
     }
-
+    __syncwarp();
     // TODO maybe template parameter?
     for (int generation = 0; generation < num_generations; ++generation) {
       for (int chromosome_index = 0; chromosome_index < chromosome_number; ++chromosome_index) {
+        // Copy original coordinates
+        // TODO shared memory?
+        for (int atom_index = threadIdx.x; atom_index < num_atoms; atom_index += blockDim.x) {
+          l_scratch_ligand_x[atom_index] = l_original_ligand_x[atom_index];
+          l_scratch_ligand_y[atom_index] = l_original_ligand_y[atom_index];
+          l_scratch_ligand_z[atom_index] = l_original_ligand_z[atom_index];
+        }
         // Modify coordinates
-        // TODO verify first the CPP version
-        apply_cuda(l_ligand_x,
-                   l_ligand_y,
-                   l_ligand_z,
-                   l_chromosomes + chromosome_index,
+        apply_cuda(l_scratch_ligand_x,
+                   l_scratch_ligand_y,
+                   l_scratch_ligand_z,
+                   *(l_chromosomes + chromosome_index),
                    l_fragments,
                    l_frag_start_atom_index,
                    l_frag_stop_atom_index,
@@ -203,35 +234,51 @@ namespace mudock {
         fp_type emap_total_trilinear  = 0;
         fp_type dmap_total_trilinear  = 0;
         for (int atom_index = threadIdx.x; atom_index < num_atoms; atom_index += blockDim.x) {
-          fp_type coord_tex[3]{(l_ligand_x[atom_index] - map_min_const[0]) * inv_spacing_const,
-                               (l_ligand_y[atom_index] - map_min_const[1]) * inv_spacing_const,
-                               (l_ligand_z[atom_index] - map_min_const[2]) * inv_spacing_const};
+          fp_type coord_tex[3]{l_scratch_ligand_x[atom_index], l_scratch_ligand_y[atom_index], l_scratch_ligand_z[atom_index]};
+          if (coord_tex[0] < map_min_const[0] || coord_tex[0] > map_max_const[0] ||
+              coord_tex[1] < map_min_const[1] || coord_tex[1] > map_max_const[1] ||
+              coord_tex[2] < map_min_const[2] || coord_tex[2] > map_max_const[2]) {
+            // Is outside
+            const fp_type distance_two = powf(fabs(coord_tex[0] - map_center_const[0]), fp_type{2}) +
+                                         powf(fabs(coord_tex[1] - map_center_const[1]), fp_type{2}) +
+                                         powf(fabs(coord_tex[2] - map_center_const[2]), fp_type{2});
 
-          //  TODO check approximations with in hardware interpolation
-          // elect_total_trilinear += tex3D<fp_type>(electro_texture, coord_tex[0], coord_tex[1], coord_tex[2]) *
-          //                          l_ligand_charge[atom_index];
-          // dmap_total_trilinear += tex3D<fp_type>(desolv_texture, coord_tex[0], coord_tex[1], coord_tex[2]);
-          // emap_total_trilinear += tex3D<fp_type>(atom_textures[l_atom_tex_indexes[atom_index]],
-          //                                        coord_tex[0],
-          //                                        coord_tex[1],
-          //                                        coord_tex[2]) *
-          //                         fabsf(l_ligand_charge[atom_index]);
+            const fp_type epenalty = distance_two * ENERGYPENALTY;
+            elect_total_trilinear += epenalty;
+            emap_total_trilinear += epenalty;
+          } else {
+            // Is inside
 
-          elect_total_trilinear +=
-              trilinear_interpolation_cuda(coord_tex, electro_texture) * l_ligand_charge[atom_index];
-          dmap_total_trilinear +=
-              trilinear_interpolation_cuda(coord_tex, desolv_texture) * fabsf(l_ligand_charge[atom_index]);
-          emap_total_trilinear +=
-              trilinear_interpolation_cuda(coord_tex, atom_textures[l_atom_tex_indexes[atom_index]]);
+            // Center atom coordinates on the grid center
+            coord_tex[0] = (l_scratch_ligand_x[atom_index] - map_min_const[0]) * inv_spacing_const,
+            coord_tex[1] = (l_scratch_ligand_y[atom_index] - map_min_const[1]) * inv_spacing_const;
+            coord_tex[2] = (l_scratch_ligand_z[atom_index] - map_min_const[2]) * inv_spacing_const;
+            //  TODO check approximations with in hardware interpolation
+            // elect_total_trilinear += tex3D<fp_type>(electro_texture, coord_tex[0], coord_tex[1], coord_tex[2]) *
+            //                          l_ligand_charge[atom_index];
+            // dmap_total_trilinear += tex3D<fp_type>(desolv_texture, coord_tex[0], coord_tex[1], coord_tex[2]);
+            // emap_total_trilinear += tex3D<fp_type>(atom_textures[l_atom_tex_indexes[atom_index]],
+            //                                        coord_tex[0],
+            //                                        coord_tex[1],
+            //                                        coord_tex[2]) *
+            //                         fabsf(l_ligand_charge[atom_index]);
+
+            elect_total_trilinear +=
+                trilinear_interpolation_cuda(coord_tex, electro_texture) * l_ligand_charge[atom_index];
+            dmap_total_trilinear +=
+                trilinear_interpolation_cuda(coord_tex, desolv_texture) * fabsf(l_ligand_charge[atom_index]);
+            emap_total_trilinear +=
+                trilinear_interpolation_cuda(coord_tex, atom_textures[l_atom_tex_indexes[atom_index]]);
+          }
         }
 
         __syncwarp();
 
         fp_type elect_total_eintcal{0}, emap_total_eintcal{0}, dmap_total_eintcal{0};
         if (num_rotamers > 0)
-          calc_intra_energy(l_ligand_x,
-                            l_ligand_y,
-                            l_ligand_z,
+          calc_intra_energy(l_scratch_ligand_x,
+                            l_scratch_ligand_y,
+                            l_scratch_ligand_z,
                             l_ligand_vol,
                             l_ligand_solpar,
                             l_ligand_charge,
@@ -266,55 +313,104 @@ namespace mudock {
           s_chromosome_scores[chromosome_index] = elect_total_trilinear + dmap_total_trilinear +
                                                   emap_total_trilinear + elect_total_eintcal +
                                                   emap_total_eintcal + dmap_total_eintcal + tors_free_energy;
+          // printf("%d %d | %f %f %f %f %f %f %f\n",
+          //        generation,
+          //        chromosome_index,
+          //        elect_total_trilinear,
+          //        dmap_total_trilinear,
+          //        emap_total_trilinear,
+          //        elect_total_eintcal,
+          //        emap_total_eintcal,
+          //        dmap_total_eintcal,
+          //        s_chromosome_scores[chromosome_index]);
+          // if (isnan(s_chromosome_scores[chromosome_index]))
+          //   printf("score middle nan\n");
         }
 
         __syncwarp();
       }
 
+      // if (threadIdx.x == 0) {
+      //   for (int chromosome_index = 0; chromosome_index < chromosome_number; ++chromosome_index) {
+      //     printf("Before Gen %d %d\n", generation, chromosome_index);
+      //     for (int i = 0; i < 6 + num_rotamers; ++i) printf("%f ", (*(l_chromosomes + chromosome_index))[i]);
+      //     printf("\n");
+      //   }
+      // }
+      // __syncwarp();
+
       // Generate the new population
       for (int chromosome_index = threadIdx.x; chromosome_index < chromosome_number;
            chromosome_index += blockDim.x) {
-        chromosome* next_chromosome = l_next_chromosomes + chromosome_index;
+        chromosome& next_chromosome = *(l_next_chromosomes + chromosome_index);
 
         // select the parent
-        const chromosome* parent1 = tournament_selection_cuda(l_state,
-                                                              tournament_length,
-                                                              l_chromosomes,
-                                                              chromosome_number,
-                                                              s_chromosome_scores);
-        const chromosome* parent2 = tournament_selection_cuda(l_state,
-                                                              tournament_length,
-                                                              l_chromosomes,
-                                                              chromosome_number,
-                                                              s_chromosome_scores);
+        const int best_individual_1 =
+            tournament_selection_cuda(l_state, tournament_length, chromosome_number, s_chromosome_scores);
+        const int best_individual_2 =
+            tournament_selection_cuda(l_state, tournament_length, chromosome_number, s_chromosome_scores);
 
         // generate the offspring
         const int split_index = get_crossover_distribution(l_state, &num_rotamers);
-        std::memcpy(next_chromosome, parent1, split_index);
-        std::memcpy(next_chromosome + split_index, parent2 + split_index, parent2->size() - split_index);
+        // const auto split_index =
+        // static_cast<int>(curand_uniform(&l_state) * static_cast<fp_type>(6 + num_rotamers));
+        // memcpy(next_chromosome.data(), parent1.data(), split_index * sizeof(fp_type));
+        // const int parent2_copy_size = 6 + num_rotamers - split_index;
+        // // printf("split %d %d\n", split_index, parent2_copy_size);
+        // if (parent2_copy_size > 0)
+        //   memcpy(next_chromosome.data() + split_index,
+        //          parent2.data() + split_index,
+        //          parent2_copy_size * sizeof(fp_type));
+        // printf("best %d %d %d\n", threadIdx.x, chromosome_index, best_individual);
+        for (int i{0}; i < 6 + num_rotamers; ++i) {
+          if (i < split_index)
+            next_chromosome[i] = l_chromosomes[best_individual_1][i];
+          else
+            next_chromosome[i] = l_chromosomes[best_individual_2][i];
+        }
 
 // mutate the offspring
 #pragma unroll
         for (int i{0}; i < 3; ++i) {
           if (get_mutation_coin_distribution(l_state) < mutation_prob)
-            (*next_chromosome)[i] +=
-                static_cast<fp_type>(get_mutation_change_distribution(l_state)) * coordinate_step;
+            // if (curand_uniform(&l_state) < mutation_prob)
+            next_chromosome[i] += get_mutation_change_distribution(l_state) * coordinate_step;
+          // next_chromosome[i] += (curand_uniform(&l_state) * fp_type{20} - fp_type{10}) * coordinate_step;
         }
 #pragma unroll
-        for (int i{3}; i < 3 + num_rotamers; ++i) {
-          if (get_mutation_coin_distribution(l_state) < mutation_prob)
-            (*next_chromosome)[i] +=
-                static_cast<fp_type>(get_mutation_change_distribution(l_state)) * angle_step;
+        for (int i{3}; i < 6 + num_rotamers; ++i) {
+          if (get_mutation_coin_distribution(l_state) < mutation_prob) {
+            // if (curand_uniform(&l_state) < mutation_prob) {
+            next_chromosome[i] += get_mutation_change_distribution(l_state) * angle_step;
+            // auto value = curand_uniform(&l_state);
+            // printf("%d %f\n", threadId, value);
+            // next_chromosome[i] += (value * fp_type{20} - fp_type{10}) * angle_step;
+            // next_chromosome[i] = min(max(next_chromosome[i], min_angle), max_angle);
+          }
+          if (isnan(next_chromosome[i]))
+            printf("nan\n");
         }
       }
+      // __syncwarp();
+      // if (threadIdx.x == 0) {
+      //   for (int chromosome_index = 0; chromosome_index < chromosome_number; ++chromosome_index) {
+      //     printf("After Gen %d %d\n", generation, chromosome_index);
+      //     for (int i = 0; i < 6 + num_rotamers; ++i)
+      //       printf("%f ", (*(l_next_chromosomes + chromosome_index))[i]);
+      //     printf("\n");
+      //   }
+      // }
+      // __syncwarp();
       // Swap the actual population with the next one
-      chromosome* tmp_chromosomes = l_chromosomes;
-      l_chromosomes               = l_next_chromosomes;
-      l_next_chromosomes          = tmp_chromosomes;
+      // TODO check const
+      chromosome* const tmp_chromosomes = l_chromosomes;
+      l_chromosomes                     = l_next_chromosomes;
+      l_next_chromosomes                = tmp_chromosomes;
+      __syncwarp();
     }
 
     // Output
-    fp_type* l_scores = ligand_scores + threadId;
+
     // Compute the maximum value within the warp
     // Assuming each warp has 32 threads
     fp_type min_score = s_chromosome_scores[threadIdx.x];
@@ -336,10 +432,10 @@ namespace mudock {
       }
     }
     if (threadIdx.x == 0) {
-      l_scores[ligand_id] = min_score;
-      memcpy(best_chromosomes + ligand_id,
-             l_chromosomes + min_index,
-             sizeof(fp_type) * (6 + max_static_bonds()));
+      ligand_scores[ligand_id] = min_score;
+      memcpy((*(best_chromosomes + ligand_id)).data(),
+             (*(l_chromosomes + min_index)).data(),
+             sizeof(fp_type) * (6 + num_rotamers));
     }
     __syncwarp();
   }
