@@ -4,8 +4,8 @@
 #include <cuda_runtime.h>
 #include <mudock/cpp_implementation/center_of_mass.hpp>
 #include <mudock/cpp_implementation/geometric_transformations.hpp>
-#include <mudock/cpp_implementation/weed_bonds.hpp>
 #include <mudock/cpp_implementation/mutate.hpp>
+#include <mudock/cpp_implementation/weed_bonds.hpp>
 #include <mudock/cuda_implementation/evaluate_fitness.cuh>
 #include <mudock/cuda_implementation/virtual_screen.cuh>
 #include <mudock/grid.hpp>
@@ -63,6 +63,7 @@ namespace mudock {
                                            std::shared_ptr<const grid_map> &electro_map,
                                            std::shared_ptr<const grid_map> &desolv_map)
       : configuration(k), index_maps(electro_map.get()->index), center_maps(electro_map.get()->center) {
+    // TODO move this part into the cuda_worker -> once per GPU
     // Allocate grid maps
     assert(electro_map.get()->index == desolv_map.get()->index &&
            desolv_map.get()->index == grid_atom_maps.get()->get_index());
@@ -83,7 +84,10 @@ namespace mudock {
     atom_texs.copy_host2device();
 
     // Grid spacing fixed to 0.5 Angstrom
-    setup_constant_memory(electro_map.get()->minimum, fp_type{2});
+    setup_constant_memory(electro_map.get()->minimum,
+                          electro_map.get()->maximum,
+                          electro_map.get()->center,
+                          fp_type{2});
   }
 
   void virtual_screen_cuda::operator()(batch &incoming_batch) {
@@ -98,9 +102,12 @@ namespace mudock {
     const std::size_t batch_nonbonds              = batch_atoms * max_non_bonds;
     // Use double buffering on the GPU for actual and next population at each iteration
     const std::size_t population_stride = configuration.population_number * 2;
-    ligand_x.alloc(tot_atoms_in_population, fp_type{0});
-    ligand_y.alloc(tot_atoms_in_population, fp_type{0});
-    ligand_z.alloc(tot_atoms_in_population, fp_type{0});
+    original_ligand_x.alloc(tot_atoms_in_batch, fp_type{0});
+    original_ligand_y.alloc(tot_atoms_in_batch, fp_type{0});
+    original_ligand_z.alloc(tot_atoms_in_batch, fp_type{0});
+    scratch_ligand_x.alloc(tot_atoms_in_batch, fp_type{0});
+    scratch_ligand_y.alloc(tot_atoms_in_batch, fp_type{0});
+    scratch_ligand_z.alloc(tot_atoms_in_batch, fp_type{0});
     ligand_fragments.alloc(tot_rotamers_atoms_in_batch);
     frag_start_atom_indices.alloc(tot_rotamers_in_batch);
     frag_stop_atom_indices.alloc(tot_rotamers_in_batch);
@@ -122,7 +129,7 @@ namespace mudock {
     nonbond_a1.alloc(batch_nonbonds);
     nonbond_a2.alloc(batch_nonbonds);
     // GA Data structures
-    chromosomes.alloc(configuration.population_number * batch_ligands);
+    chromosomes.alloc(population_stride * batch_ligands);
     // Support data precomputation
     map_texture_index.alloc(tot_atoms_in_batch);
 
@@ -148,22 +155,31 @@ namespace mudock {
                          center_maps.y - ligand_center_of_mass.y,
                          center_maps.z - ligand_center_of_mass.z);
       // Coordinates
-      for (std::size_t i = 0; i < configuration.population_number; ++i) {
-        const int stride_ligand_in_batch      = stride_atoms * configuration.population_number;
-        const int stride_ligand_in_population = i * batch_atoms;
-        std::memcpy((void *) (ligand_x.host_pointer() + stride_ligand_in_batch + stride_ligand_in_population),
-                    x.data(),
-                    num_atoms * sizeof(fp_type));
-        std::memcpy((void *) (ligand_y.host_pointer() + stride_ligand_in_batch + stride_ligand_in_population),
-                    y.data(),
-                    num_atoms * sizeof(fp_type));
-        std::memcpy((void *) (ligand_z.host_pointer() + stride_ligand_in_batch + stride_ligand_in_population),
-                    z.data(),
-                    num_atoms * sizeof(fp_type));
-      }
+      // for (std::size_t i = 0; i < configuration.population_number; ++i) {
+      //   const int stride_ligand_in_batch      = stride_atoms * configuration.population_number;
+      //   const int stride_ligand_in_population = i * batch_atoms;
+      //   std::memcpy((void *) (ligand_x.host_pointer() + stride_ligand_in_batch + stride_ligand_in_population),
+      //               x.data(),
+      //               num_atoms * sizeof(fp_type));
+      //   std::memcpy((void *) (ligand_y.host_pointer() + stride_ligand_in_batch + stride_ligand_in_population),
+      //               y.data(),
+      //               num_atoms * sizeof(fp_type));
+      //   std::memcpy((void *) (ligand_z.host_pointer() + stride_ligand_in_batch + stride_ligand_in_population),
+      //               z.data(),
+      //               num_atoms * sizeof(fp_type));
+      // }
+      std::memcpy((void *) (original_ligand_x.host_pointer() + stride_atoms),
+                  x.data(),
+                  num_atoms * sizeof(fp_type));
+      std::memcpy((void *) (original_ligand_y.host_pointer() + stride_atoms),
+                  y.data(),
+                  num_atoms * sizeof(fp_type));
+      std::memcpy((void *) (original_ligand_z.host_pointer() + stride_atoms),
+                  z.data(),
+                  num_atoms * sizeof(fp_type));
       // Fragments
       // Find out the rotatable bonds in the ligand
-      auto graph              = make_graph(ligand.get()->get_bonds());
+      auto graph = make_graph(ligand.get()->get_bonds());
       // TODO check this assignment
       batch_fragments[index]  = {graph, ligand.get()->get_bonds(), ligand.get()->num_atoms()};
       const auto &l_fragments = batch_fragments[index];
@@ -236,9 +252,9 @@ namespace mudock {
     }
     // Copy in
     ligand_num_atoms.copy_host2device();
-    ligand_x.copy_host2device();
-    ligand_y.copy_host2device();
-    ligand_z.copy_host2device();
+    original_ligand_x.copy_host2device();
+    original_ligand_y.copy_host2device();
+    original_ligand_z.copy_host2device();
     ligand_fragments.copy_host2device();
     ligand_num_rotamers.copy_host2device();
     frag_start_atom_indices.copy_host2device();
@@ -278,9 +294,12 @@ namespace mudock {
                                                                 batch_atoms,
                                                                 batch_rotamers,
                                                                 max_non_bonds,
-                                                                ligand_x.dev_pointer(),
-                                                                ligand_y.dev_pointer(),
-                                                                ligand_z.dev_pointer(),
+                                                                original_ligand_x.dev_pointer(),
+                                                                original_ligand_y.dev_pointer(),
+                                                                original_ligand_z.dev_pointer(),
+                                                                scratch_ligand_x.dev_pointer(),
+                                                                scratch_ligand_y.dev_pointer(),
+                                                                scratch_ligand_z.dev_pointer(),
                                                                 ligand_vol.dev_pointer(),
                                                                 ligand_solpar.dev_pointer(),
                                                                 ligand_charge.dev_pointer(),
