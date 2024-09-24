@@ -44,8 +44,9 @@ namespace mudock {
       const int& a1 = ligand_nonbond_a1[nonbond_list];
       const int& a2 = ligand_nonbond_a2[nonbond_list];
 
-      const fp_type distance_two = powf(ligand_x[a1] - ligand_x[a2], 2) +
-                                   pow(ligand_y[a1] - ligand_y[a2], 2) + powf(ligand_z[a1] - ligand_z[a2], 2);
+      const fp_type distance_two = powf(fabs(ligand_x[a1] - ligand_x[a2]), fp_type{2}) +
+                                   powf(fabs(ligand_y[a1] - ligand_y[a2]), fp_type{2}) +
+                                   powf(fabs(ligand_z[a1] - ligand_z[a2]), fp_type{2});
       const fp_type distance_two_clamp = std::clamp(distance_two, RMIN_ELEC * RMIN_ELEC, distance_two);
       const fp_type distance           = sqrtf(distance_two_clamp);
 
