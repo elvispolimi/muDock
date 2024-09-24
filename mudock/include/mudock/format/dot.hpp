@@ -12,7 +12,7 @@ namespace mudock {
   class dot {
   public:
     template<class molecule_type>
-      requires is_molecule<molecule_type>
+    requires is_molecule<molecule_type>
     void print(molecule_type&& molecule, std::ostream& out) const {
       out << "graph G {" << std::endl;
       out << "  node [ style=rounded ]" << std::endl;

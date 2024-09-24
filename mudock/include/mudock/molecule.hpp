@@ -20,7 +20,7 @@ namespace mudock {
 
   // this is the generic definition of a molecule, that depends on the used type of storage
   template<class container_aliases>
-    requires is_container_specification<container_aliases>
+  requires is_container_specification<container_aliases>
   class molecule {
   public:
     template<typename T>
@@ -159,7 +159,7 @@ namespace mudock {
   //===------------------------------------------------------------------------------------------------------
 
   template<class container_aliases>
-    requires is_container_specification<container_aliases>
+  requires is_container_specification<container_aliases>
   void molecule<container_aliases>::resize(const int n_atoms, int n_bonds) {
     mudock::resize(atom_elements, n_atoms);
     mudock::resize(atom_autodock_type, n_atoms);
@@ -180,7 +180,7 @@ namespace mudock {
     bonds_size = n_bonds;
   }
   template<class container_aliases>
-    requires is_container_specification<container_aliases>
+  requires is_container_specification<container_aliases>
   void molecule<container_aliases>::remove_atom(const int index) {
     // remove the target atom from all the containers
     mudock::remove_atom(atom_elements, index);
