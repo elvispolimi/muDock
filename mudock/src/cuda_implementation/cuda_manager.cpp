@@ -74,6 +74,38 @@ namespace mudock {
                                              output_molecules,
                                              rob,
                                              id);
+        pool.add_worker<mudock::cuda_worker>(knobs,
+                                             grid_atom_maps,
+                                             electro_map,
+                                             desolv_map,
+                                             input_molecules,
+                                             output_molecules,
+                                             rob,
+                                             id);
+        pool.add_worker<mudock::cuda_worker>(knobs,
+                                             grid_atom_maps,
+                                             electro_map,
+                                             desolv_map,
+                                             input_molecules,
+                                             output_molecules,
+                                             rob,
+                                             id);
+        pool.add_worker<mudock::cuda_worker>(knobs,
+                                             grid_atom_maps,
+                                             electro_map,
+                                             desolv_map,
+                                             input_molecules,
+                                             output_molecules,
+                                             rob,
+                                             id);
+        pool.add_worker<mudock::cuda_worker>(knobs,
+                                             grid_atom_maps,
+                                             electro_map,
+                                             desolv_map,
+                                             input_molecules,
+                                             output_molecules,
+                                             rob,
+                                             id);
       }
     }
   }
