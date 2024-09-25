@@ -94,9 +94,9 @@ namespace mudock {
   };
 
   __device__ int tournament_selection_cuda(curandState& state,
-                                                 const int tournament_length,
-                                                 const int chromosome_number,
-                                                 const fp_type* __restrict__ scores) {
+                                           const int tournament_length,
+                                           const int chromosome_number,
+                                           const fp_type* __restrict__ scores) {
     const int num_iterations = tournament_length;
     int best_individual      = get_selection_distribution(state, &chromosome_number);
     // auto best_individual = static_cast<int>(curand_uniform(&state) * fp_type(chromosome_number - 1));
@@ -174,7 +174,7 @@ namespace mudock {
     chromosome* l_chromosomes          = chromosomes + ligand_id * chromosome_stride;
     // Point to the next population buffer
     chromosome* l_next_chromosomes      = chromosomes + ligand_id * chromosome_stride + chromosome_number;
-    const auto* l_fragments             = ligand_fragments + ligand_id * atom_stride;
+    const auto* l_fragments             = ligand_fragments + ligand_id * atom_stride * rotamers_stride;
     const auto* l_frag_start_atom_index = frag_start_atom_index + ligand_id * rotamers_stride;
     const auto* l_frag_stop_atom_index  = frag_stop_atom_index + ligand_id * rotamers_stride;
     const auto* l_atom_tex_indexes      = atom_tex_indexes + ligand_id * atom_stride;
@@ -234,7 +234,9 @@ namespace mudock {
         fp_type emap_total_trilinear  = 0;
         fp_type dmap_total_trilinear  = 0;
         for (int atom_index = threadIdx.x; atom_index < num_atoms; atom_index += blockDim.x) {
-          fp_type coord_tex[3]{l_scratch_ligand_x[atom_index], l_scratch_ligand_y[atom_index], l_scratch_ligand_z[atom_index]};
+          fp_type coord_tex[3]{l_scratch_ligand_x[atom_index],
+                               l_scratch_ligand_y[atom_index],
+                               l_scratch_ligand_z[atom_index]};
           if (coord_tex[0] < map_min_const[0] || coord_tex[0] > map_max_const[0] ||
               coord_tex[1] < map_min_const[1] || coord_tex[1] > map_max_const[1] ||
               coord_tex[2] < map_min_const[2] || coord_tex[2] > map_max_const[2]) {
@@ -271,60 +273,48 @@ namespace mudock {
                 trilinear_interpolation_cuda(coord_tex, atom_textures[l_atom_tex_indexes[atom_index]]);
           }
         }
+        fp_type total_trilinear = elect_total_trilinear + dmap_total_trilinear + emap_total_trilinear;
 
         __syncwarp();
 
-        fp_type elect_total_eintcal{0}, emap_total_eintcal{0}, dmap_total_eintcal{0};
+        fp_type total_eintcal{0};
         if (num_rotamers > 0)
-          calc_intra_energy(l_scratch_ligand_x,
-                            l_scratch_ligand_y,
-                            l_scratch_ligand_z,
-                            l_ligand_vol,
-                            l_ligand_solpar,
-                            l_ligand_charge,
-                            l_ligand_num_hbond,
-                            l_ligand_Rij_hb,
-                            l_ligand_Rii,
-                            l_ligand_epsij_hb,
-                            l_ligand_epsii,
-                            num_atoms,
-                            num_nonbonds,
-                            l_ligand_nonbond_a1,
-                            l_ligand_nonbond_a2,
-                            &elect_total_eintcal,
-                            &emap_total_eintcal,
-                            &dmap_total_eintcal);
+          total_eintcal += calc_intra_energy(l_scratch_ligand_x,
+                                             l_scratch_ligand_y,
+                                             l_scratch_ligand_z,
+                                             l_ligand_vol,
+                                             l_ligand_solpar,
+                                             l_ligand_charge,
+                                             l_ligand_num_hbond,
+                                             l_ligand_Rij_hb,
+                                             l_ligand_Rii,
+                                             l_ligand_epsij_hb,
+                                             l_ligand_epsii,
+                                             num_atoms,
+                                             num_nonbonds,
+                                             l_ligand_nonbond_a1,
+                                             l_ligand_nonbond_a2);
 
         __syncwarp();
 
         // Perform a tree reduction using __shfl_down_sync
         // TODO check performance
         for (int offset = 16; offset > 0; offset /= 2) {
-          elect_total_trilinear += __shfl_down_sync(0xffffffff, elect_total_trilinear, offset);
-          dmap_total_trilinear += __shfl_down_sync(0xffffffff, dmap_total_trilinear, offset);
-          emap_total_trilinear += __shfl_down_sync(0xffffffff, emap_total_trilinear, offset);
-
-          elect_total_eintcal += __shfl_down_sync(0xffffffff, elect_total_eintcal, offset);
-          emap_total_eintcal += __shfl_down_sync(0xffffffff, emap_total_eintcal, offset);
-          dmap_total_eintcal += __shfl_down_sync(0xffffffff, dmap_total_eintcal, offset);
+          total_trilinear += __shfl_down_sync(0xffffffff, total_trilinear, offset);
+          total_eintcal += __shfl_down_sync(0xffffffff, total_eintcal, offset);
         }
+
         if (threadIdx.x == 0) {
           const fp_type tors_free_energy        = num_rotamers * autodock_parameters::coeff_tors;
-          s_chromosome_scores[chromosome_index] = elect_total_trilinear + dmap_total_trilinear +
-                                                  emap_total_trilinear + elect_total_eintcal +
-                                                  emap_total_eintcal + dmap_total_eintcal + tors_free_energy;
-          // printf("%d %d | %f %f %f %f %f %f %f\n",
+          s_chromosome_scores[chromosome_index] = total_trilinear + total_eintcal + tors_free_energy;
+          // printf("%d %d %d | %f %f %f %f\n",
           //        generation,
           //        chromosome_index,
-          //        elect_total_trilinear,
-          //        dmap_total_trilinear,
-          //        emap_total_trilinear,
-          //        elect_total_eintcal,
-          //        emap_total_eintcal,
-          //        dmap_total_eintcal,
+          //        ligand_id,
+          //        total_trilinear,
+          //        total_eintcal,
+          //        tors_free_energy,
           //        s_chromosome_scores[chromosome_index]);
-          // if (isnan(s_chromosome_scores[chromosome_index]))
-          //   printf("score middle nan\n");
         }
 
         __syncwarp();
