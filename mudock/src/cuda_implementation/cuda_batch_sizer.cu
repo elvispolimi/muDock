@@ -3,6 +3,6 @@
 namespace mudock {
   int compute_batch_size([[maybe_unused]] const int num_atoms, [[maybe_unused]] const int num_rotamers) {
     // TODO make something useful
-    return 10;
+    return 1000;
   }
 } // namespace mudock
