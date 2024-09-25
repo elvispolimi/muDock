@@ -30,7 +30,7 @@ namespace mudock {
     inline void alloc(const size_t num_elements) {
       if (size < num_elements) {
         if (dev_ptr != nullptr)
-          MUDOCK_CHECK(cudaFree(&dev_ptr));
+          MUDOCK_CHECK(cudaFree(dev_ptr));
         MUDOCK_CHECK(cudaMalloc(&dev_ptr, sizeof(T) * num_elements));
       }
       size = num_elements;
