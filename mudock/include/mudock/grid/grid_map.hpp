@@ -60,6 +60,8 @@ namespace mudock {
     [[nodiscard]] inline T at(Indexes... indexes) const {
       return grid_values[index.to1D(indexes...)];
     }
+
+    void reset() { std::fill(grid_values.begin(), grid_values.end(), 0); }
   };
 
   class grid_map: public grid<fp_type, index3D> {
