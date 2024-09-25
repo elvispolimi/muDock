@@ -22,24 +22,22 @@ namespace mudock {
   }
 
   // TODO check math functions if they are from CUDA
-  __device__ void calc_intra_energy(const fp_type* ligand_x,
-                                    const fp_type* ligand_y,
-                                    const fp_type* ligand_z,
-                                    const fp_type* ligand_vol,
-                                    const fp_type* ligand_solpar,
-                                    const fp_type* ligand_charge,
-                                    const int* ligand_num_hbond,
-                                    const fp_type* ligand_Rij_hb,
-                                    const fp_type* ligand_Rii,
-                                    const fp_type* ligand_epsij_hb,
-                                    const fp_type* ligand_epsii,
-                                    const int num_atoms,
-                                    const int ligand_num_nonbonds,
-                                    const int* __restrict__ ligand_nonbond_a1,
-                                    const int* __restrict__ ligand_nonbond_a2,
-                                    fp_type* elect_total_eintcal,
-                                    fp_type* emap_total_eintcal,
-                                    fp_type* dmap_total_eintcal) {
+  __device__ fp_type calc_intra_energy(const fp_type* ligand_x,
+                                       const fp_type* ligand_y,
+                                       const fp_type* ligand_z,
+                                       const fp_type* ligand_vol,
+                                       const fp_type* ligand_solpar,
+                                       const fp_type* ligand_charge,
+                                       const int* ligand_num_hbond,
+                                       const fp_type* ligand_Rij_hb,
+                                       const fp_type* ligand_Rii,
+                                       const fp_type* ligand_epsij_hb,
+                                       const fp_type* ligand_epsii,
+                                       const int num_atoms,
+                                       const int ligand_num_nonbonds,
+                                       const int* __restrict__ ligand_nonbond_a1,
+                                       const int* __restrict__ ligand_nonbond_a2) {
+    fp_type elect_total_eintcal{0}, emap_total_eintcal{0}, dmap_total_eintcal{0};
     for (int nonbond_list = threadIdx.x; nonbond_list < ligand_num_nonbonds; nonbond_list += blockDim.x) {
       const int& a1 = ligand_nonbond_a1[nonbond_list];
       const int& a2 = ligand_nonbond_a2[nonbond_list];
@@ -54,15 +52,15 @@ namespace mudock {
       const fp_type r_dielectric = fp_type{1} / (distance * calc_ddd_Mehler_Solmajer_cuda(distance));
       const fp_type e_elec =
           ligand_charge[a1] * ligand_charge[a2] * ELECSCALE * autodock_parameters::coeff_estat * r_dielectric;
-      *elect_total_eintcal += e_elec;
+      elect_total_eintcal += e_elec;
 
-      // Calcuare desolv
+      // Calcuate desolv
       const fp_type nb_desolv = (ligand_vol[a2] * (ligand_solpar[a1] + qsolpar * fabsf(ligand_charge[a1])) +
                                  ligand_vol[a1] * (ligand_solpar[a2] + qsolpar * fabsf(ligand_charge[a2])));
 
       const fp_type e_desolv = autodock_parameters::coeff_desolv *
                                expf(fp_type{-0.5} / (sigma * sigma) * distance_two_clamp) * nb_desolv;
-      *dmap_total_eintcal += e_desolv;
+      dmap_total_eintcal += e_desolv;
 
       fp_type e_vdW_Hb{0};
       if (distance_two_clamp < nbc2) {
@@ -95,8 +93,8 @@ namespace mudock {
         }
         if (xA != xB) {
           const fp_type tmp = epsij / (xA - xB);
-          const fp_type cA  = tmp * powf(Rij, static_cast<fp_type>(xA)) * xB;
-          const fp_type cB  = tmp * powf(Rij, static_cast<fp_type>(xB)) * xA;
+          const fp_type cA  = tmp * powf(Rij, xA) * xB;
+          const fp_type cB  = tmp * powf(Rij, xB) * xA;
 
           const fp_type rA = powf(distance, static_cast<fp_type>(xA));
           const fp_type rB = powf(distance, static_cast<fp_type>(xB));
@@ -116,7 +114,8 @@ namespace mudock {
           }
         }
       }
-      *emap_total_eintcal += e_vdW_Hb;
+      emap_total_eintcal += e_vdW_Hb;
     }
+    return elect_total_eintcal + emap_total_eintcal + dmap_total_eintcal;
   }
 } // namespace mudock
