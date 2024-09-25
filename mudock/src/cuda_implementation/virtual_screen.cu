@@ -226,7 +226,7 @@ namespace mudock {
       std::memcpy((void *) (ligand_epsii.host_pointer() + stride_atoms),
                   ligand.get()->get_epsii().data(),
                   num_atoms * sizeof(fp_type));
-      std::memcpy((void *) (ligand_num_hbond.host_pointer() + index),
+      std::memcpy((void *) (ligand_num_hbond.host_pointer() + stride_atoms),
                   ligand.get()->get_num_hbond().data(),
                   num_atoms * sizeof(int));
 
