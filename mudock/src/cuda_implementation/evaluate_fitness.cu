@@ -196,12 +196,10 @@ namespace mudock {
 #pragma unroll
       for (int i{0}; i < 3; ++i) { // initialize the rigid translation
         chromo[i] = get_init_change_distribution(l_state) * coordinate_step;
-        // chromo[i] = ((curand_uniform(&l_state) * fp_type{90}) - fp_type{45}) * coordinate_step;
       }
 #pragma unroll
       for (int i{3}; i < 6 + num_rotamers; ++i) { // initialize the rotations
         chromo[i] = get_init_change_distribution(l_state) * angle_step;
-        // chromo[i] = ((curand_uniform(&l_state) * fp_type{90}) - fp_type{45}) * angle_step;
       }
     }
     __syncwarp();
@@ -307,27 +305,10 @@ namespace mudock {
         if (threadIdx.x == 0) {
           const fp_type tors_free_energy        = num_rotamers * autodock_parameters::coeff_tors;
           s_chromosome_scores[chromosome_index] = total_trilinear + total_eintcal + tors_free_energy;
-          // printf("%d %d %d | %f %f %f %f\n",
-          //        generation,
-          //        chromosome_index,
-          //        ligand_id,
-          //        total_trilinear,
-          //        total_eintcal,
-          //        tors_free_energy,
-          //        s_chromosome_scores[chromosome_index]);
         }
 
         __syncwarp();
       }
-
-      // if (threadIdx.x == 0) {
-      //   for (int chromosome_index = 0; chromosome_index < chromosome_number; ++chromosome_index) {
-      //     printf("Before Gen %d %d\n", generation, chromosome_index);
-      //     for (int i = 0; i < 6 + num_rotamers; ++i) printf("%f ", (*(l_chromosomes + chromosome_index))[i]);
-      //     printf("\n");
-      //   }
-      // }
-      // __syncwarp();
 
       // Generate the new population
       for (int chromosome_index = threadIdx.x; chromosome_index < chromosome_number;
@@ -342,53 +323,27 @@ namespace mudock {
 
         // generate the offspring
         const int split_index = get_crossover_distribution(l_state, &num_rotamers);
-        // const auto split_index =
-        // static_cast<int>(curand_uniform(&l_state) * static_cast<fp_type>(6 + num_rotamers));
-        // memcpy(next_chromosome.data(), parent1.data(), split_index * sizeof(fp_type));
-        // const int parent2_copy_size = 6 + num_rotamers - split_index;
-        // // printf("split %d %d\n", split_index, parent2_copy_size);
-        // if (parent2_copy_size > 0)
-        //   memcpy(next_chromosome.data() + split_index,
-        //          parent2.data() + split_index,
-        //          parent2_copy_size * sizeof(fp_type));
-        // printf("best %d %d %d\n", threadIdx.x, chromosome_index, best_individual);
-        for (int i{0}; i < 6 + num_rotamers; ++i) {
-          if (i < split_index)
-            next_chromosome[i] = l_chromosomes[best_individual_1][i];
-          else
-            next_chromosome[i] = l_chromosomes[best_individual_2][i];
-        }
+        memcpy(next_chromosome.data(), &(l_chromosomes[best_individual_1][0]), split_index * sizeof(fp_type));
+        const int parent2_copy_size = 6 + num_rotamers - split_index;
+        if (parent2_copy_size > 0)
+          memcpy(next_chromosome.data() + split_index,
+                 &(l_chromosomes[best_individual_2][split_index]),
+                 parent2_copy_size * sizeof(fp_type));
 
 // mutate the offspring
 #pragma unroll
         for (int i{0}; i < 3; ++i) {
           if (get_mutation_coin_distribution(l_state) < mutation_prob)
-            // if (curand_uniform(&l_state) < mutation_prob)
             next_chromosome[i] += get_mutation_change_distribution(l_state) * coordinate_step;
-          // next_chromosome[i] += (curand_uniform(&l_state) * fp_type{20} - fp_type{10}) * coordinate_step;
         }
 #pragma unroll
         for (int i{3}; i < 6 + num_rotamers; ++i) {
           if (get_mutation_coin_distribution(l_state) < mutation_prob) {
-            // if (curand_uniform(&l_state) < mutation_prob) {
             next_chromosome[i] += get_mutation_change_distribution(l_state) * angle_step;
-            // auto value = curand_uniform(&l_state);
-            // printf("%d %f\n", threadId, value);
-            // next_chromosome[i] += (value * fp_type{20} - fp_type{10}) * angle_step;
-            // next_chromosome[i] = min(max(next_chromosome[i], min_angle), max_angle);
           }
         }
       }
-      // __syncwarp();
-      // if (threadIdx.x == 0) {
-      //   for (int chromosome_index = 0; chromosome_index < chromosome_number; ++chromosome_index) {
-      //     printf("After Gen %d %d\n", generation, chromosome_index);
-      //     for (int i = 0; i < 6 + num_rotamers; ++i)
-      //       printf("%f ", (*(l_next_chromosomes + chromosome_index))[i]);
-      //     printf("\n");
-      //   }
-      // }
-      // __syncwarp();
+
       // Swap the actual population with the next one
       // TODO check const
       chromosome* const tmp_chromosomes = l_chromosomes;
