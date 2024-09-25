@@ -13,8 +13,9 @@
 
 // Keep it to 32 to enable warp optimizations
 #define BLOCK_SIZE 32
+
 namespace mudock {
-  static constexpr std::size_t max_non_bonds{1024};
+  static constexpr std::size_t max_non_bonds{2048};
 
   void init_texture_memory(const grid_map &map, cudaTextureObject_t &tex_obj) {
     // Create 3D CUDA array for the texture
@@ -95,34 +96,34 @@ namespace mudock {
     const std::size_t batch_rotamers = incoming_batch.batch_max_rotamers;
     const std::size_t batch_ligands  = incoming_batch.num_ligands;
     // Resize data structures
-    const std::size_t tot_atoms_in_batch          = batch_ligands * batch_atoms;
-    const std::size_t tot_atoms_in_population     = tot_atoms_in_batch * configuration.population_number;
+    const std::size_t tot_atoms_in_batch = batch_ligands * batch_atoms;
+    // const std::size_t tot_atoms_in_population     = tot_atoms_in_batch * configuration.population_number;
     const std::size_t tot_rotamers_atoms_in_batch = tot_atoms_in_batch * batch_rotamers;
     const std::size_t tot_rotamers_in_batch       = batch_ligands * batch_rotamers;
-    const std::size_t batch_nonbonds              = batch_atoms * max_non_bonds;
+    const std::size_t batch_nonbonds              = batch_ligands * max_non_bonds;
     // Use double buffering on the GPU for actual and next population at each iteration
     const std::size_t population_stride = configuration.population_number * 2;
-    original_ligand_x.alloc(tot_atoms_in_batch, fp_type{0});
-    original_ligand_y.alloc(tot_atoms_in_batch, fp_type{0});
-    original_ligand_z.alloc(tot_atoms_in_batch, fp_type{0});
-    scratch_ligand_x.alloc(tot_atoms_in_batch, fp_type{0});
-    scratch_ligand_y.alloc(tot_atoms_in_batch, fp_type{0});
-    scratch_ligand_z.alloc(tot_atoms_in_batch, fp_type{0});
+    original_ligand_x.alloc(tot_atoms_in_batch);
+    original_ligand_y.alloc(tot_atoms_in_batch);
+    original_ligand_z.alloc(tot_atoms_in_batch);
+    scratch_ligand_x.alloc(tot_atoms_in_batch);
+    scratch_ligand_y.alloc(tot_atoms_in_batch);
+    scratch_ligand_z.alloc(tot_atoms_in_batch);
     ligand_fragments.alloc(tot_rotamers_atoms_in_batch);
     frag_start_atom_indices.alloc(tot_rotamers_in_batch);
     frag_stop_atom_indices.alloc(tot_rotamers_in_batch);
-    ligand_vol.alloc(tot_atoms_in_batch, fp_type{0});
-    ligand_solpar.alloc(tot_atoms_in_batch, fp_type{0});
-    ligand_charge.alloc(tot_atoms_in_batch, fp_type{0});
-    ligand_Rij_hb.alloc(tot_atoms_in_batch, fp_type{0});
-    ligand_Rii.alloc(tot_atoms_in_batch, fp_type{0});
-    ligand_epsij_hb.alloc(tot_atoms_in_batch, fp_type{0});
-    ligand_epsii.alloc(tot_atoms_in_batch, fp_type{0});
+    ligand_vol.alloc(tot_atoms_in_batch);
+    ligand_solpar.alloc(tot_atoms_in_batch);
+    ligand_charge.alloc(tot_atoms_in_batch);
+    ligand_Rij_hb.alloc(tot_atoms_in_batch);
+    ligand_Rii.alloc(tot_atoms_in_batch);
+    ligand_epsij_hb.alloc(tot_atoms_in_batch);
+    ligand_epsii.alloc(tot_atoms_in_batch);
     // TODO check if it is required
-    ligand_num_hbond.alloc(tot_atoms_in_batch, int{0});
-    ligand_num_atoms.alloc(batch_ligands, int{0});
-    ligand_num_rotamers.alloc(batch_ligands, int{0});
-    ligand_scores.alloc(batch_ligands, std::numeric_limits<fp_type>::infinity());
+    ligand_num_hbond.alloc(tot_atoms_in_batch);
+    ligand_num_atoms.alloc(batch_ligands);
+    ligand_num_rotamers.alloc(batch_ligands);
+    ligand_scores.alloc(batch_ligands);
     best_chromosomes.alloc(batch_ligands);
     // Bonds
     num_nonbonds.alloc(batch_ligands);
@@ -154,20 +155,7 @@ namespace mudock {
                          center_maps.x - ligand_center_of_mass.x,
                          center_maps.y - ligand_center_of_mass.y,
                          center_maps.z - ligand_center_of_mass.z);
-      // Coordinates
-      // for (std::size_t i = 0; i < configuration.population_number; ++i) {
-      //   const int stride_ligand_in_batch      = stride_atoms * configuration.population_number;
-      //   const int stride_ligand_in_population = i * batch_atoms;
-      //   std::memcpy((void *) (ligand_x.host_pointer() + stride_ligand_in_batch + stride_ligand_in_population),
-      //               x.data(),
-      //               num_atoms * sizeof(fp_type));
-      //   std::memcpy((void *) (ligand_y.host_pointer() + stride_ligand_in_batch + stride_ligand_in_population),
-      //               y.data(),
-      //               num_atoms * sizeof(fp_type));
-      //   std::memcpy((void *) (ligand_z.host_pointer() + stride_ligand_in_batch + stride_ligand_in_population),
-      //               z.data(),
-      //               num_atoms * sizeof(fp_type));
-      // }
+
       std::memcpy((void *) (original_ligand_x.host_pointer() + stride_atoms),
                   x.data(),
                   num_atoms * sizeof(fp_type));
@@ -189,6 +177,7 @@ namespace mudock {
       ligand_num_rotamers.host_pointer()[index] = num_rotamers;
       const int stride_masks                    = index * batch_rotamers * batch_atoms;
       const int stride_rotamers                 = index * batch_rotamers;
+      assert(batch_rotamers > ligand.get()->num_rotamers());
       for (int rot = 0; rot < num_rotamers; ++rot) {
         std::memcpy((void *) (ligand_fragments.host_pointer() + stride_masks + rot * batch_atoms),
                     l_fragments.get_mask(rot).data(),
@@ -207,7 +196,7 @@ namespace mudock {
       assert(max_non_bonds >= non_bond_list.size());
 
       num_nonbonds.host_pointer()[index] = non_bond_list.size();
-      const int stride_nonbonds          = index * batch_nonbonds;
+      const int stride_nonbonds          = index * max_non_bonds;
       int nonbond_index{0};
       for (auto &bond: non_bond_list) {
         nonbond_a1.host_pointer()[stride_nonbonds + nonbond_index] = bond.a1;
