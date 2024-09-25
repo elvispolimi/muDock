@@ -20,7 +20,7 @@ namespace mudock {
   public:
     // the description of how we generate the clusters
     static constexpr std::array<int, 6> atoms_clusters   = {{32, 64, 128, 160, 192, 256}};
-    static constexpr std::array<int, 6> rotamer_clusters = {{1, 2, 4, 8, 16, 32}};
+    static constexpr std::array<int, 7> rotamer_clusters = {{1, 2, 4, 8, 16, 32, 40}};
 
   private:
     // the actual containers of ligand batches, with the related maximum sizes
@@ -32,7 +32,7 @@ namespace mudock {
     static constexpr auto get_flattened_index(const int num_atoms, const int num_rotamers) {
       auto index_atoms = static_cast<std::size_t>(
           std::count_if(std::begin(atoms_clusters), std::end(atoms_clusters), [&num_atoms](const auto a) {
-            return a < num_atoms;
+            return a <= num_atoms;
           }));
       if (index_atoms >= atoms_clusters.size()) {
         throw std::runtime_error("Molecule with " + std::to_string(num_atoms) + " atoms, it is too large");
@@ -40,12 +40,12 @@ namespace mudock {
       auto index_rotamers =
           static_cast<std::size_t>(std::count_if(std::begin(rotamer_clusters),
                                                  std::end(rotamer_clusters),
-                                                 [&num_rotamers](const auto r) { return r < num_rotamers; }));
+                                                 [&num_rotamers](const auto r) { return r <= num_rotamers; }));
       if (index_rotamers >= rotamer_clusters.size()) {
         throw std::runtime_error("Molecule with " + std::to_string(num_rotamers) +
                                  " rotamers, it is too flexible");
       }
-      return (index_atoms * atoms_clusters.size()) + index_rotamers;
+      return (index_atoms * rotamer_clusters.size()) + index_rotamers;
     }
 
   public:
