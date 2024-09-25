@@ -41,8 +41,8 @@ namespace mudock {
       auto [new_batch, is_valid] = rob->add_ligand(std::move(new_ligand));
       if (is_valid) {
         process(new_batch);
-        new_ligand = std::move(input_stack->dequeue());
       }
+      new_ligand = std::move(input_stack->dequeue());
     }
 
     // finish the half empty batches in the rob
