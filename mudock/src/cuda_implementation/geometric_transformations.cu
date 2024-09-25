@@ -48,8 +48,6 @@ namespace mudock {
       x[i] = prev_x * m00 + prev_y * m01 + prev_z * m02;
       y[i] = prev_x * m10 + prev_y * m11 + prev_z * m12;
       z[i] = prev_x * m20 + prev_y * m21 + prev_z * m22;
-      if (isnan(x[i]) || isnan(y[i]) || isnan(z[i]))
-        printf("%f %f %f\n", prev_x, prev_y, prev_z);
     }
   }
 
@@ -109,8 +107,6 @@ namespace mudock {
         x[i] = prev_x * m00 + prev_y * m01 + prev_z * m02 + m03;
         y[i] = prev_x * m10 + prev_y * m11 + prev_z * m12 + m13;
         z[i] = prev_x * m20 + prev_y * m21 + prev_z * m22 + m23;
-        if (isnan(x[i]) || isnan(y[i]) || isnan(z[i]))
-          printf("nan\n");
       }
     }
   }

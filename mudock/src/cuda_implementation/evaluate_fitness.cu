@@ -93,7 +93,7 @@ namespace mudock {
     return random_gen_cuda<int>(state, 0, 6 + *num_rotamers);
   };
 
-  __device__ const int tournament_selection_cuda(curandState& state,
+  __device__ int tournament_selection_cuda(curandState& state,
                                                  const int tournament_length,
                                                  const int chromosome_number,
                                                  const fp_type* __restrict__ scores) {
@@ -387,8 +387,6 @@ namespace mudock {
             // next_chromosome[i] += (value * fp_type{20} - fp_type{10}) * angle_step;
             // next_chromosome[i] = min(max(next_chromosome[i], min_angle), max_angle);
           }
-          if (isnan(next_chromosome[i]))
-            printf("nan\n");
         }
       }
       // __syncwarp();
