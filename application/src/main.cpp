@@ -31,31 +31,34 @@ int main(int argc, char* argv[]) {
   const auto protein_description = read_from_stream(std::ifstream(args.protein_path));
   pdb.parse(protein, protein_description);
   ///////////////
-  std::ifstream infile("/home/gianmarco/ht_dataset/1a30_pocket.pdbqt");
+  // std::ifstream infile("/home/gianmarco/ht_dataset/1a30_pocket.pdbqt");
 
-  std::string line;
-  size_t index{0};
-  while (std::getline(infile, line)) {
-    // Only process lines that start with "ATOM" or "HETATM"
-    if (line.substr(0, 4) == "ATOM" || line.substr(0, 6) == "HETATM") {
-      // Extract atom type and charge
-      protein.charge(index) = std::stod(line.substr(70, 6)); // Charge (column 71-76)
+  // std::string line;
+  // size_t index{0};
+  // while (std::getline(infile, line)) {
+  //   // Only process lines that start with "ATOM" or "HETATM"
+  //   if (line.substr(0, 4) == "ATOM" || line.substr(0, 6) == "HETATM") {
+  //     // Extract atom type and charge
+  //     protein.charge(index) = std::stod(line.substr(70, 6)); // Charge (column 71-76)
 
-      index++;
-    }
-  }
+  //     index++;
+  //   }
+  // }
   ////////////////////
 
   mudock::apply_autodock_forcefield(protein);
-  // auto grid_atom_maps    = std::make_shared<mudock::grid_atom_mapper>(generate_atom_grid_maps(protein));
-  // auto electrostatic_map = std::make_shared<mudock::grid_map>(generate_electrostatic_grid_map(protein));
-  // auto desolvation_map   = std::make_shared<mudock::grid_map>(generate_desolvation_grid_map(protein));
-  auto sv                = std::vector<mudock::grid_atom_map>{};
-  auto grid_atom_maps    = std::make_shared<const mudock::grid_atom_mapper>(sv);
-  auto tp                = mudock::point3D{};
-  auto itp               = mudock::index3D{};
-  auto electrostatic_map = std::make_shared<const mudock::grid_map>(itp, tp, tp);
-  auto desolvation_map   = std::make_shared<const mudock::grid_map>(itp, tp, tp);
+  auto grid_atom_maps    = std::make_shared<const mudock::grid_atom_mapper>(generate_atom_grid_maps(protein));
+  auto electrostatic_map = std::make_shared<const mudock::grid_map>(generate_electrostatic_grid_map(protein));
+  auto desolvation_map   = std::make_shared<const mudock::grid_map>(generate_desolvation_grid_map(protein));
+  //   auto tp  = mudock::point3D{};
+  //   auto itp = mudock::index3D{1, 1, 1};
+  //   auto sv  = std::vector<mudock::grid_atom_map>{};
+  // #include <mudock/cuda_implementation/map_textures.cuh>
+  //   for (int i = 0; i < mudock::num_cuda_map_textures(); ++i)
+  //     sv.emplace_back(mudock::autodock_type_from_map(static_cast<mudock::cuda_map_textures>(i)), itp, tp, tp);
+  //   auto grid_atom_maps    = std::make_shared<const mudock::grid_atom_mapper>(sv);
+  //   auto electrostatic_map = std::make_shared<const mudock::grid_map>(itp, tp, tp);
+  //   auto desolvation_map   = std::make_shared<const mudock::grid_map>(itp, tp, tp);
 
   // read  all the ligands description from the standard input and split them
   mudock::info("Reading ligands from the stdin ...");
@@ -73,28 +76,28 @@ int main(int argc, char* argv[]) {
       auto ligand = std::make_unique<mudock::static_molecule>();
       mol2.parse(*ligand, description);
       ///////////////
-      infile = std::ifstream{"/home/gianmarco/ht_dataset/1a30_ligand.pdbqt"};
+      // infile = std::ifstream{"/home/gianmarco/ht_dataset/1a30_ligand.pdbqt"};
 
-      while (std::getline(infile, line)) {
-        // Only process lines that start with "ATOM" or "HETATM"
-        if (line.substr(0, 4) == "ATOM") {
-          // Extract atom type and charge
-          mudock::fp_type x = std::stod(line.substr(32, 6));
-          mudock::fp_type y = std::stod(line.substr(40, 6));
-          mudock::fp_type z = std::stod(line.substr(49, 6));
-          for (index = 0; std::abs(ligand.get()->x(index) - x) > mudock::fp_type{0.001} ||
-                          std::fabs(ligand.get()->y(index) - y) > mudock::fp_type{0.001} ||
-                          std::fabs(ligand.get()->z(index) - z) > mudock::fp_type{0.001};
-               ++index);
-          ligand.get()->charge(index) = std::stod(line.substr(70, 6)); // Charge (column 71-76)
+      // while (std::getline(infile, line)) {
+      //   // Only process lines that start with "ATOM" or "HETATM"
+      //   if (line.substr(0, 4) == "ATOM") {
+      //     // Extract atom type and charge
+      //     mudock::fp_type x = std::stod(line.substr(32, 6));
+      //     mudock::fp_type y = std::stod(line.substr(40, 6));
+      //     mudock::fp_type z = std::stod(line.substr(49, 6));
+      //     for (index = 0; std::abs(ligand.get()->x(index) - x) > mudock::fp_type{0.001} ||
+      //                     std::fabs(ligand.get()->y(index) - y) > mudock::fp_type{0.001} ||
+      //                     std::fabs(ligand.get()->z(index) - z) > mudock::fp_type{0.001};
+      //          ++index);
+      //     ligand.get()->charge(index) = std::stod(line.substr(70, 6)); // Charge (column 71-76)
 
-          index++;
-        }
-      }
+      //     index++;
+      //   }
+      // }
       ////////////////////
       mudock::apply_autodock_forcefield(*ligand);
       input_queue->enqueue(std::move(ligand));
-    } catch (const std::runtime_error& e) {
+    } catch (const std::exception& e) {
       std::cerr << "Unable to parse the following ligand: " << std::endl;
       std::cerr << description << std::endl;
       std::cerr << "Due to: " << e.what() << std::endl;
