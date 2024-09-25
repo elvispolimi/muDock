@@ -35,7 +35,7 @@ namespace mudock {
       }
       size = num_elements;
     }
-    inline void set_to_value(const T value) { MUDOCK_CHECK(cudaMemset(dev_ptr, value, size)); }
+    inline void set_to_value(const T value) { MUDOCK_CHECK(cudaMemset(dev_ptr, value, sizeof(T) * size)); }
 
     inline void copy_host2device(const T* const host) {
       MUDOCK_CHECK(cudaMemcpy(dev_ptr, host, sizeof(T) * size, cudaMemcpyHostToDevice));
