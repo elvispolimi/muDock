@@ -15,7 +15,7 @@
 #define BLOCK_SIZE 32
 
 namespace mudock {
-  static constexpr std::size_t max_non_bonds{2048};
+  static constexpr std::size_t max_non_bonds{1024 * 3};
 
   void init_texture_memory(const grid_map &map, cudaTextureObject_t &tex_obj) {
     // Create 3D CUDA array for the texture
@@ -140,6 +140,10 @@ namespace mudock {
     // Keep the fragments for the output
     std::vector<fragments<static_containers>> batch_fragments;
     batch_fragments.reserve(batch_ligands);
+    // Support data structures
+    grid<uint_fast8_t, index2D> nbmatrix{{static_cast<int>(batch_atoms), static_cast<int>(batch_atoms)}};
+    std::vector<non_bond_parameter> non_bond_list;
+    non_bond_list.reserve(max_non_bonds);
     for (auto &ligand: std::span(incoming_batch.molecules.data(), batch_ligands)) {
       const int stride_atoms = index * batch_atoms;
       // Atoms and bonds
@@ -189,9 +193,10 @@ namespace mudock {
 
       // Weed bonds
       // TODO can be accelerated on the GPU
-      grid<uint_fast8_t, index2D> nbmatrix{{num_atoms, num_atoms}};
+      // No need to move data -> already computed on the GPU
+      nbmatrix.reset();
       nonbonds(nbmatrix, ligand.get()->get_bonds(), num_atoms);
-      std::vector<non_bond_parameter> non_bond_list;
+      non_bond_list.clear();
       weed_bonds(nbmatrix, non_bond_list, num_atoms, l_fragments);
       assert(max_non_bonds >= non_bond_list.size());
 
