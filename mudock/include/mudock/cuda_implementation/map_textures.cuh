@@ -5,9 +5,9 @@
 #include <stdexcept>
 
 namespace mudock {
-  enum class cuda_map_textures : int { A = 0, C, H, HD, N, NA, OA, SA, Cl, F, S, Br };
+  enum class cuda_map_textures : int { A = 0, C, H, HD, N, NA, OA, SA, Cl, F, S, Br, P, I };
 
-  static constexpr int num_cuda_map_textures() { return 12; }
+  static constexpr int num_cuda_map_textures() { return 14; }
 
   inline cuda_map_textures map_from_autodock_type(const autodock_ff& autodock_type) {
     switch (autodock_type) {
@@ -23,6 +23,8 @@ namespace mudock {
       case autodock_ff::F: return cuda_map_textures::F;
       case autodock_ff::S: return cuda_map_textures::S;
       case autodock_ff::Br: return cuda_map_textures::Br;
+      case autodock_ff::P: return cuda_map_textures::P;
+      case autodock_ff::I: return cuda_map_textures::I;
       default:
         throw std::runtime_error("Missing map texture " + std::string{get_description(autodock_type).name});
     }
@@ -42,6 +44,8 @@ namespace mudock {
       case cuda_map_textures::F: return autodock_ff::F;
       case cuda_map_textures::S: return autodock_ff::S;
       case cuda_map_textures::Br: return autodock_ff::Br;
+      case cuda_map_textures::P: return autodock_ff::P;
+      case cuda_map_textures::I: return autodock_ff::I;
       default: throw std::runtime_error("Missing autodock type from texture!");
     }
   }

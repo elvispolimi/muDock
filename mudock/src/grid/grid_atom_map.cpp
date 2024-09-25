@@ -174,7 +174,7 @@ namespace mudock {
     // receptor_types.erase(std::remove(receptor_types.begin(), receptor_types.end(), mudock::autodock_ff::H));
 
     // Define the autodock ligand types
-    constexpr std::array<autodock_ff, 12> ligand_types{autodock_ff::A,
+    constexpr std::array<autodock_ff, 14> ligand_types{autodock_ff::A,
                                                        autodock_ff::C,
                                                        autodock_ff::H,
                                                        autodock_ff::HD,
@@ -185,7 +185,9 @@ namespace mudock {
                                                        autodock_ff::Cl,
                                                        autodock_ff::F,
                                                        autodock_ff::S,
-                                                       autodock_ff::Br};
+                                                       autodock_ff::Br,
+                                                       autodock_ff::P,
+                                                       autodock_ff::I};
     //  Get maximum and minimum of the bounding box around the receptor
     const fp_type receptor_max_x = std::ranges::max(receptor.get_x());
     const fp_type receptor_max_y = std::ranges::max(receptor.get_y());
