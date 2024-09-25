@@ -11,9 +11,6 @@ namespace mudock {
   static constexpr fp_type coordinate_step{0.2};
   static constexpr fp_type angle_step{4};
 
-  // static constexpr fp_type max_angle{360};
-  // static constexpr fp_type min_angle{360};
-
   __device__ __constant__ fp_type map_min_const[3];
   __device__ __constant__ fp_type map_max_const[3];
   __device__ __constant__ fp_type map_center_const[3];
@@ -99,10 +96,8 @@ namespace mudock {
                                            const fp_type* __restrict__ scores) {
     const int num_iterations = tournament_length;
     int best_individual      = get_selection_distribution(state, &chromosome_number);
-    // auto best_individual = static_cast<int>(curand_uniform(&state) * fp_type(chromosome_number - 1));
     for (int i = 0; i < num_iterations; ++i) {
       auto contended = get_selection_distribution(state, &chromosome_number);
-      // auto contended = static_cast<int>(curand_uniform(&state) * fp_type(chromosome_number - 1));
       if (scores[contended] < scores[best_individual]) {
         best_individual = contended;
       }
