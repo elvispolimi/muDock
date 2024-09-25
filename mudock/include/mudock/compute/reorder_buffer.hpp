@@ -37,10 +37,10 @@ namespace mudock {
       if (index_atoms >= atoms_clusters.size()) {
         throw std::runtime_error("Molecule with " + std::to_string(num_atoms) + " atoms, it is too large");
       }
-      auto index_rotamers =
-          static_cast<std::size_t>(std::count_if(std::begin(rotamer_clusters),
-                                                 std::end(rotamer_clusters),
-                                                 [&num_rotamers](const auto r) { return r <= num_rotamers; }));
+      auto index_rotamers = static_cast<std::size_t>(
+          std::count_if(std::begin(rotamer_clusters),
+                        std::end(rotamer_clusters),
+                        [&num_rotamers](const auto r) { return r <= num_rotamers; }));
       if (index_rotamers >= rotamer_clusters.size()) {
         throw std::runtime_error("Molecule with " + std::to_string(num_rotamers) +
                                  " rotamers, it is too flexible");
