@@ -89,8 +89,9 @@ namespace mudock {
     return scale(diff, inv_rd);
   }
 
+  // TODO fix the constexpr here
   template<class point_type>
-  [[nodiscard]] constexpr std::remove_reference_t<point_type> normalize(point_type&& a, point_type&& b) {
+  [[nodiscard]] std::remove_reference_t<point_type> normalize(point_type&& a, point_type&& b) {
     point3D diff = difference(point3D{a.x, a.y, a.z}, point3D{b.x, b.y, b.z});
     return normalize(diff);
   }
