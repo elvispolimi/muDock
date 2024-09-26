@@ -72,8 +72,6 @@ namespace mudock {
 
     init_texture_memory(*desolv_map.get(), desolv_tex);
 
-    // TODO precompute the indexes for each ligand atom?grid_atom_map
-    // Could be done once for each new ligand
     std::size_t index{0};
     atom_texs.alloc(num_cuda_map_textures());
     for (auto &atom_tex: atom_texs.host) {

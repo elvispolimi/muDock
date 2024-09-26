@@ -2,7 +2,6 @@
 
 #include <mudock/batch.hpp>
 #include <mudock/cpp_implementation/chromosome.hpp>
-#include <mudock/cuda_implementation/cuda_object.cuh>
 #include <mudock/cuda_implementation/cuda_random.cuh>
 #include <mudock/cuda_implementation/cuda_wrapper.cuh>
 #include <mudock/cuda_implementation/map_textures.cuh>
