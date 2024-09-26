@@ -125,6 +125,14 @@ int main(int argc, char* argv[]) {
                         desolvation_map,
                         input_queue,
                         output_queue);
+    mudock::manage_sycl(args.device_conf,
+                        threadpool,
+                        args.knobs,
+                        grid_atom_maps,
+                        electrostatic_map,
+                        desolvation_map,
+                        input_queue,
+                        output_queue);
     mudock::info("All workers have been created!");
   } // when we exit from this block the computation is complete
 
