@@ -18,9 +18,8 @@ namespace mudock {
     std::shared_ptr<reorder_buffer> rob;
 
     // this is the functor tha actually implement the virtual screening
-    // TODO
-    virtual_screen_sycl virtual_screen;
     sycl::queue queue;
+    virtual_screen_sycl virtual_screen;
 
     // utility function to process a single batch of ligands
     void process(batch& b);
