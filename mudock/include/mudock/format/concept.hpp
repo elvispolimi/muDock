@@ -20,7 +20,7 @@ namespace mudock {
 
   template<class T, class molecule_type>
   concept can_print = requires(T t) {
-    {t.print(molecule_type(), std::ostream())};
+    {t.print(molecule_type(), std::cout)};
   }
   &&is_molecule<molecule_type>;
 
