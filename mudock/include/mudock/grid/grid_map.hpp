@@ -77,8 +77,8 @@ namespace mudock {
     ~grid_map()                           = default;
     grid_map(grid_map&& other)            = default;
     grid_map(const grid_map& other)       = default;
-    grid_map& operator=(grid_map&& other) = default;
-    grid_map& operator=(const grid_map&)  = default;
+    grid_map& operator=(grid_map&& other) = delete;
+    grid_map& operator=(const grid_map&)  = delete;
 
     [[nodiscard]] inline int outside_grid(const point3D& p) const {
       return p.x < minimum.x || p.x > maximum.x || p.y < minimum.y || p.y > maximum.y || p.z < minimum.z ||
@@ -111,8 +111,8 @@ namespace mudock {
     ~grid_atom_map()                               = default;
     grid_atom_map(grid_atom_map&& other)           = default;
     grid_atom_map(const grid_atom_map& other)      = default;
-    grid_atom_map& operator=(grid_atom_map&&)      = default;
-    grid_atom_map& operator=(const grid_atom_map&) = default;
+    grid_atom_map& operator=(grid_atom_map&&)      = delete;
+    grid_atom_map& operator=(const grid_atom_map&) = delete;
 
     [[nodiscard]] inline auto get_atom_type() const { return atom_type; }
     // Check this
