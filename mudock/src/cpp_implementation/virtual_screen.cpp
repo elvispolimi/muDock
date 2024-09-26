@@ -110,7 +110,6 @@ namespace mudock {
                                         ligand.get_autodock_type(),
                                         ligand.get_bonds(),
                                         ligand.num_atoms(),
-                                        ligand.num_bonds(),
                                         ligand_fragments,
                                         *grid_atom_maps,
                                         *electro_map,
