@@ -85,7 +85,7 @@ namespace mudock {
       square_distance = std::numeric_limits<fp_type>::epsilon();
     }
     // TODO ask @Davide about this
-    fp_type inv_rd = fp_type{1} / sqrtf(square_distance);
+    fp_type inv_rd = fp_type{1} / std::sqrt(square_distance);
     return scale(diff, inv_rd);
   }
 
@@ -102,7 +102,7 @@ namespace mudock {
 
   template<class point_type>
   [[nodiscard]] constexpr fp_type distance(point_type&& a, point_type&& b) {
-    return sqrtf(
+    return std::sqrt(
         sum_components(square(difference(std::forward<point_type>(a), std::forward<point_type>(b)))));
   }
 

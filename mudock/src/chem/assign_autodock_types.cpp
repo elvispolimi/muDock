@@ -14,7 +14,7 @@ namespace mudock {
       // IS AN HYDROGEN ATOM -> ONLY ON BOND
       // Element type A -> Should be an aromatic carbon -> babel_type does not exists -> ASSUMPTION no check required
       // AutoDockTools/atomTypeTools.py:378
-      if (elements[*ai] != element::C)
+      if (elements[graph[*ai].atom_index] != element::C)
         return autodock_ff::HD;
     } else {
       return autodock_ff::HD;
