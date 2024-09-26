@@ -50,6 +50,7 @@ list(APPEND header_files
   "${header_path}/${header_prefix}/compute.hpp"
   "${header_path}/${header_prefix}/cpp_implementation.hpp"
   "${header_path}/${header_prefix}/cuda_implementation.hpp"
+  "${header_path}/${header_prefix}/sycl_implementation.hpp"
   "${header_path}/${header_prefix}/format.hpp"
   "${header_path}/${header_prefix}/grid.hpp"
   "${header_path}/${header_prefix}/knobs.hpp"
@@ -121,6 +122,22 @@ if(MUDOCK_ENABLE_CUDA)
   )
 endif()
 
+# declare the SYCL sources
+if(MUDOCK_ENABLE_SYCL)
+  list(APPEND header_files
+    "${header_path}/${header_prefix}/sycl_implementation/sycl_manager.hpp"
+    "${header_path}/${header_prefix}/sycl_implementation/sycl_worker.hpp"
+    "${header_path}/${header_prefix}/sycl_implementation/sycl_batch_sizer.hpp"
+    "${header_path}/${header_prefix}/sycl_implementation/virtual_screen.hpp"
+  )
+  list(APPEND source_files
+    "${source_path}/sycl_implementation/sycl_manager.cpp"
+    "${source_path}/sycl_implementation/sycl_worker.cpp"
+    "${source_path}/sycl_implementation/sycl_batch_sizer.cpp"
+    "${source_path}/sycl_implementation/virtual_screen.cpp"
+  )
+endif()
+
 # ########################################################################
 # ### Declare the compile step
 # ########################################################################
@@ -139,6 +156,7 @@ set_target_properties(libmudock
   CXX_EXTENSIONS OFF
 )
 target_link_libraries(libmudock PUBLIC Microsoft.GSL::GSL)
+target_compile_options(libmudock PUBLIC $<$<AND:$<CONFIG:RELEASE>,$<COMPILE_LANGUAGE:CXX>>:${release_flags}>)
 add_rdkit_dep(libmudock)
 
 # check if we need to activate the compilation flag that signals CUDA
@@ -152,6 +170,31 @@ if(MUDOCK_ENABLE_CUDA)
     CUDA_SEPARABLE_COMPILATION ON)
   SET(CMAKE_CUDA_FLAGS_RELEASE "-O3 -use_fast_math --expt-relaxed-constexpr")
   SET(CMAKE_CUDA_FLAGS_DEBUG "-G -g -Xptxas -v --expt-relaxed-constexpr")
+endif()
+
+# check if we need to activate the compilation flag that signals SYCL
+if(MUDOCK_ENABLE_SYCL)
+  target_compile_definitions(libmudock PUBLIC MUDOCK_USE_SYCL)
+
+  # Link runtime device libraries (if needed)
+  string(FIND "${ACPP_TARGETS}" "cuda" position)
+
+  if(${position} GREATER -1)
+    target_link_libraries(libmudock PUBLIC cudart)
+  endif()
+
+  # TODO only with AdaptiveCpp
+  # Manually adding acpp library
+  # NOTE: the compiler should be a clang version with sycl
+  # target_link_libraries(libmudock PUBLIC acpp-rt)
+  # list(APPEND SYCL_FLAGS "-fsycl" "-fsycl-targets=${ACPP_TARGETS}")
+  # target_compile_options(libmudock PUBLIC $<$<COMPILE_LANGUAGE:CXX>:${SYCL_FLAGS}>)
+  # target_link_options(libmudock PUBLIC $<$<COMPILE_LANGUAGE:CXX>:${SYCL_FLAGS}>)
+
+  # Automatic configuration
+  # NOTE: the compiler will be set by default to the AdaptiveCpp one
+  # NOTE: AdaptiveCpp Single pass compiler optimizations are not required
+  add_sycl_to_target(TARGET libmudock SOURCES)
 endif()
 
 # ########################################################################
