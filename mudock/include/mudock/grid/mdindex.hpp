@@ -78,12 +78,13 @@ namespace mudock {
     [[nodiscard]] inline auto size_x() const { return n_x; }
     [[nodiscard]] inline auto size_y() const { return n_y; }
     [[nodiscard]] inline auto size_z() const { return n_z; }
+    [[nodiscard]] inline auto size_xy() const { return n_xy; }
 
     [[nodiscard]] inline int get_dim() const override { return n_xy * n_z; }
   };
 
   template<class T>
-  concept is_index = (std::same_as<std::remove_cvref_t<T>, index2D> ||
-                      std::same_as<std::remove_cvref_t<T>, index3D>);
+  concept is_index =
+      (std::same_as<std::remove_cvref_t<T>, index2D> || std::same_as<std::remove_cvref_t<T>, index3D>);
 
 } // namespace mudock
