@@ -33,7 +33,6 @@ namespace mudock {
                                        const fp_type* ligand_Rii,
                                        const fp_type* ligand_epsij_hb,
                                        const fp_type* ligand_epsii,
-                                       const int num_atoms,
                                        const int ligand_num_nonbonds,
                                        const int* __restrict__ ligand_nonbond_a1,
                                        const int* __restrict__ ligand_nonbond_a2) {
