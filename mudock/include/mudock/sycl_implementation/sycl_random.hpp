@@ -1,12 +1,15 @@
 #pragma once
 
 #include <mudock/sycl_implementation/sycl_wrapper.hpp>
+#include <mudock/type_alias.hpp>
 
 namespace mudock {
   // XORWOW state
+  // Should be the default one from curand state in CUDA
+  // Taken from Wikipedia https://en.wikipedia.org/wiki/Xorshift#xorwow
   struct XORWOWState {
-    std::array<int, 5> state; // State array
-    int index;                // Current index in the state array
+    std::array<unsigned int, 5> state; // State array
+    int index;                         // Current index in the state array
 
     XORWOWState() = default;
 
@@ -20,28 +23,25 @@ namespace mudock {
     }
 
     // Generate the next random number
-    unsigned int next() {
+    fp_type next() {
       /* Algorithm "xorwow" from p. 5 of Marsaglia, "Xorshift RNGs" */
-      uint32_t t = state[4];
+      unsigned int t = state[4];
 
-      uint32_t s = state[0]; /* Perform a contrived 32-bit rotate. */
-      state[4]   = state[3];
-      state[3]   = state[2];
-      state[2]   = state[1];
-      state[1]   = s;
+      const unsigned int s = state[0]; /* Perform a contrived 32-bit rotate. */
+      state[4]             = state[3];
+      state[3]             = state[2];
+      state[2]             = state[1];
+      state[1]             = s;
 
       t ^= t >> 2;
       t ^= t << 1;
       t ^= s ^ (s << 4);
       state[0] = t;
       index += 362437;
-      return t + index;
+      return static_cast<fp_type>(t + index) / static_cast<fp_type>(std::numeric_limits<unsigned int>::max());
     }
   };
-
-  // Generate a uniform random float in the range [0, 1)
-  float uniform_real(XORWOWState &state);
-
+  
   struct sycl_random_object: private sycl_wrapper<std::vector, XORWOWState> {
     sycl_random_object(sycl::queue &_queue): sycl_wrapper<std::vector, XORWOWState>(_queue){};
     sycl_random_object(const sycl_random_object &)            = delete;

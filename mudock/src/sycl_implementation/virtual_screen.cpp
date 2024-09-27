@@ -3,6 +3,7 @@
 #include <mudock/cpp_implementation/mutate.hpp>
 #include <mudock/cpp_implementation/weed_bonds.hpp>
 #include <mudock/cuda_implementation/map_textures.cuh>
+#include <mudock/sycl_implementation/evaluate_fitness.hpp>
 #include <mudock/sycl_implementation/virtual_screen.hpp>
 
 namespace mudock {
@@ -64,6 +65,7 @@ namespace mudock {
     init_texture_memory(*desolv_map.get(), desolv_tex);
 
     atom_texs.wrappers_pointer.alloc(num_cuda_map_textures());
+    atom_texs.wrappers.reserve(num_cuda_map_textures());
     for (int index{0}; index < num_cuda_map_textures(); ++index) {
       atom_texs.wrappers.emplace_back(queue);
       sycl_object<fp_type> &atom_tex = atom_texs.wrappers.back();
@@ -171,7 +173,7 @@ namespace mudock {
       ligand_num_rotamers.host_pointer()[index] = num_rotamers;
       const int stride_masks                    = index * batch_rotamers * batch_atoms;
       const int stride_rotamers                 = index * batch_rotamers;
-      assert(batch_rotamers > ligand.get()->num_rotamers());
+      assert(static_cast<int>(batch_rotamers) > ligand.get()->num_rotamers());
       for (int rot = 0; rot < num_rotamers; ++rot) {
         std::memcpy((void *) (ligand_fragments.host_pointer() + stride_masks + rot * batch_atoms),
                     l_fragments.get_mask(rot).data(),
@@ -269,10 +271,105 @@ namespace mudock {
     const std::size_t min_energy_reduction_s_mem =
         std::max(configuration.population_number, static_cast<std::size_t>(subgroup_size)) * sizeof(fp_type);
     const std::size_t shared_mem = min_energy_reduction_s_mem;
+    queue
+        .submit([&](sycl::handler &h) {
+          const auto *original_ligand_x_k       = original_ligand_x.dev_pointer();
+          const auto *original_ligand_y_k       = original_ligand_y.dev_pointer();
+          const auto *original_ligand_z_k       = original_ligand_z.dev_pointer();
+          auto *scratch_ligand_x_k              = scratch_ligand_x.dev_pointer();
+          auto *scratch_ligand_y_k              = scratch_ligand_y.dev_pointer();
+          auto *scratch_ligand_z_k              = scratch_ligand_z.dev_pointer();
+          const auto *ligand_vol_k              = ligand_vol.dev_pointer();
+          const auto *ligand_solpar_k           = ligand_solpar.dev_pointer();
+          const auto *ligand_charge_k           = ligand_charge.dev_pointer();
+          const auto *ligand_num_hbond_k        = ligand_num_hbond.dev_pointer();
+          const auto *ligand_Rij_hb_k           = ligand_Rij_hb.dev_pointer();
+          const auto *ligand_Rii_k              = ligand_Rii.dev_pointer();
+          const auto *ligand_epsij_hb_k         = ligand_epsij_hb.dev_pointer();
+          const auto *ligand_epsii_k            = ligand_epsii.dev_pointer();
+          const auto *num_nonbonds_k            = num_nonbonds.dev_pointer();
+          const auto *nonbond_a1_k              = nonbond_a1.dev_pointer();
+          const auto *nonbond_a2_k              = nonbond_a2.dev_pointer();
+          const auto *ligand_num_atoms_k        = ligand_num_atoms.dev_pointer();
+          const auto *ligand_num_rotamers_k     = ligand_num_rotamers.dev_pointer();
+          const auto *ligand_fragments_k        = ligand_fragments.dev_pointer();
+          const auto *frag_start_atom_indices_k = frag_start_atom_indices.dev_pointer();
+          const auto *frag_stop_atom_indices_k  = frag_stop_atom_indices.dev_pointer();
+          auto *chromosomes_k                   = chromosomes.dev_pointer();
+          const auto *wrappers_pointer_k        = atom_texs.wrappers_pointer.dev_pointer();
+          const auto *map_texture_index_k       = map_texture_index.dev_pointer();
+          const auto *electro_tex_k             = electro_tex.dev_pointer();
+          const auto *desolv_tex_k              = desolv_tex.dev_pointer();
+          auto *random_states_k                 = random_states.dev_pointer();
+          auto *ligand_scores_k                 = ligand_scores.dev_pointer();
+          auto *best_chromosomes_k              = best_chromosomes.dev_pointer();
 
-    queue.submit([&](sycl::handler &h) {
-      // TODO
-    });
+          sycl::local_accessor<fp_type> shm_acc(sycl::range<1>(shared_mem), h);
+
+          const auto num_generations_l   = num_generations;
+          const auto tournament_length_l = configuration.tournament_length;
+          const auto mutation_prob_l     = configuration.mutation_prob;
+          const auto chromosome_number_l = configuration.population_number;
+          const auto chromosome_stride_l = population_stride;
+          const auto atom_stride_l       = batch_atoms;
+          const auto rotamers_stride_l   = batch_rotamers;
+          const auto nonbond_stride_l    = max_non_bonds;
+          const auto minimum_l           = minimum;
+          const auto maximum_l           = maximum;
+          const auto center_l            = center;
+          const auto index_l             = index;
+          const auto inv_spacing_l       = inv_spacing;
+
+          h.parallel_for(sycl::nd_range<1>{batch_ligands * subgroup_size, subgroup_size},
+                         [=](sycl::nd_item<1> it) {
+                           evaluate_fitness(num_generations_l,
+                                            tournament_length_l,
+                                            mutation_prob_l,
+                                            chromosome_number_l,
+                                            chromosome_stride_l,
+                                            atom_stride_l,
+                                            rotamers_stride_l,
+                                            nonbond_stride_l,
+                                            original_ligand_x_k,
+                                            original_ligand_y_k,
+                                            original_ligand_z_k,
+                                            scratch_ligand_x_k,
+                                            scratch_ligand_y_k,
+                                            scratch_ligand_z_k,
+                                            ligand_vol_k,
+                                            ligand_solpar_k,
+                                            ligand_charge_k,
+                                            ligand_num_hbond_k,
+                                            ligand_Rij_hb_k,
+                                            ligand_Rii_k,
+                                            ligand_epsij_hb_k,
+                                            ligand_epsii_k,
+                                            num_nonbonds_k,
+                                            nonbond_a1_k,
+                                            nonbond_a2_k,
+                                            ligand_num_atoms_k,
+                                            ligand_num_rotamers_k,
+                                            ligand_fragments_k,
+                                            frag_start_atom_indices_k,
+                                            frag_stop_atom_indices_k,
+                                            chromosomes_k,
+                                            minimum_l,
+                                            maximum_l,
+                                            center_l,
+                                            index_l,
+                                            inv_spacing_l,
+                                            wrappers_pointer_k,
+                                            map_texture_index_k,
+                                            electro_tex_k,
+                                            desolv_tex_k,
+                                            random_states_k,
+                                            shm_acc.get_pointer(),
+                                            ligand_scores_k,
+                                            best_chromosomes_k,
+                                            it);
+                         });
+        })
+        .wait();
 
     // Copy back chromosomes and scores
     best_chromosomes.copy_device2host();

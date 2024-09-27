@@ -46,6 +46,7 @@ namespace mudock {
     sycl_wrapper<std::vector, chromosome> best_chromosomes;
 
     // Grid Maps
+    // Can be moved inside shared memory for example
     const index3D index_maps;
     const point3D center, minimum, maximum;
     // TODO maps and textures

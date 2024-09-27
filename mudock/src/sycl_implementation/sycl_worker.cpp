@@ -14,11 +14,12 @@ namespace mudock {
                            std::shared_ptr<safe_stack<static_molecule>>& output_molecules,
                            std::shared_ptr<reorder_buffer> rb,
                            const std::size_t device_id,
-                           sycl::device& dev)
+                           sycl::device _dev)
       : input_stack(input_molecules),
         output_stack(output_molecules),
         rob(rb),
-        queue(dev, sycl::property::queue::in_order{}),
+        device(_dev),
+        queue(device, sycl::property::queue::in_order{}),
         virtual_screen(knobs, grid_atom_maps, electro_map, desolv_map, queue) {
     info("Worker SYCL on duty! Set affinity to device ", device_id);
   }
