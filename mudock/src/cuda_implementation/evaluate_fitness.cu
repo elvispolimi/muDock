@@ -283,7 +283,6 @@ namespace mudock {
                                              l_ligand_Rii,
                                              l_ligand_epsij_hb,
                                              l_ligand_epsii,
-                                             num_atoms,
                                              num_nonbonds,
                                              l_ligand_nonbond_a1,
                                              l_ligand_nonbond_a2);
@@ -351,8 +350,8 @@ namespace mudock {
 
     // Compute the maximum value within the warp
     // Assuming each warp has 32 threads
-    fp_type min_score = s_chromosome_scores[threadIdx.x];
     int min_index     = threadIdx.x;
+    fp_type min_score = s_chromosome_scores[min_index];
     for (int chromosome_index = threadIdx.x + blockDim.x; chromosome_index < chromosome_number;
          chromosome_index += blockDim.x) {
       if (min_score > s_chromosome_scores[chromosome_index]) {
