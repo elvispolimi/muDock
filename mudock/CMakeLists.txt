@@ -126,12 +126,16 @@ endif()
 if(MUDOCK_ENABLE_SYCL)
   list(APPEND header_files
     "${header_path}/${header_prefix}/sycl_implementation/sycl_manager.hpp"
+    "${header_path}/${header_prefix}/sycl_implementation/calc_energy.hpp"
+    "${header_path}/${header_prefix}/sycl_implementation/mutate.hpp"
+    "${header_path}/${header_prefix}/sycl_implementation/geometric_transformations.hpp"
     "${header_path}/${header_prefix}/sycl_implementation/sycl_random.hpp"
     "${header_path}/${header_prefix}/sycl_implementation/sycl_object.hpp"
     "${header_path}/${header_prefix}/sycl_implementation/sycl_wrapper.hpp"
     "${header_path}/${header_prefix}/sycl_implementation/sycl_worker.hpp"
     "${header_path}/${header_prefix}/sycl_implementation/sycl_batch_sizer.hpp"
     "${header_path}/${header_prefix}/sycl_implementation/virtual_screen.hpp"
+    "${header_path}/${header_prefix}/sycl_implementation/evaluate_fitness.hpp"
   )
   list(APPEND source_files
     "${source_path}/sycl_implementation/sycl_manager.cpp"
