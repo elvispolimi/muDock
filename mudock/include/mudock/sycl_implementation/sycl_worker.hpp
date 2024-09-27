@@ -18,6 +18,7 @@ namespace mudock {
     std::shared_ptr<reorder_buffer> rob;
 
     // this is the functor tha actually implement the virtual screening
+    sycl::device device;
     sycl::queue queue;
     virtual_screen_sycl virtual_screen;
 
@@ -34,7 +35,7 @@ namespace mudock {
                 std::shared_ptr<safe_stack<static_molecule>>& output_molecules,
                 std::shared_ptr<reorder_buffer> rb,
                 const std::size_t device_id,
-                sycl::device& dev);
+                sycl::device dev);
 
     // this is the thread "main" loop (it will fetch ligands from the queue and compute them)
     void main() override final;

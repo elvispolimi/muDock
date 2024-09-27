@@ -1,23 +1,16 @@
 #include <mudock/sycl_implementation/sycl_random.hpp>
 
 namespace mudock {
-  unsigned int hash(unsigned int x) {
-    return (x ^ (x >> 16)) * 0x45d9f301; // A simple hash function
-  }
-
-  float uniform_real(XORWOWState& state) {
-    return static_cast<float>(state.next()) / static_cast<float>(0xFFFFFFFFU);
-  }
 
   void sycl_random_object::alloc(const std::size_t num_elements) {
     const bool init = num_elements > sycl_wrapper<std::vector, XORWOWState>::num_elements();
     sycl_wrapper<std::vector, XORWOWState>::alloc(num_elements);
-    // TODO maybe initialize brand new
+    auto generator = std::mt19937{
+    static_cast<unsigned>(std::chrono::high_resolution_clock::now().time_since_epoch().count())};
+    auto dist = std::uniform_int_distribution();
     if (init) {
-      int index{0};
       for (auto& s: host) {
-        s.set_seed(hash(index));
-        ++index;
+        s.set_seed(dist(generator));
       }
       sycl_wrapper<std::vector, XORWOWState>::copy_host2device();
     }
