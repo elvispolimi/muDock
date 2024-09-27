@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.25 FATAL_ERROR)
 project(muDock VERSION 1.0)
+cmake_policy(SET CMP0167 NEW)
 enable_language(CXX)
 
 # ########################################################################
@@ -76,7 +77,12 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # ########################################################################
 
 # Third-party libraries that must be manually installed
-find_package(Boost CONFIG REQUIRED COMPONENTS program_options graph)
+if(MUDOCK_ENABLE_SYCL)
+    find_package(Boost CONFIG REQUIRED COMPONENTS program_options graph fiber)
+else()
+    find_package(Boost CONFIG REQUIRED COMPONENTS program_options graph fiber)
+endif()
+
 find_package(rdkit REQUIRED)
 
 # Third-party libraries that we download and compile
