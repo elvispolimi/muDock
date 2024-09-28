@@ -190,7 +190,11 @@ namespace mudock {
       nonbonds(nbmatrix, ligand.get()->get_bonds(), num_atoms);
       non_bond_list.clear();
       weed_bonds(nbmatrix, non_bond_list, num_atoms, l_fragments);
-      assert(max_non_bonds >= non_bond_list.size());
+      if constexpr (is_debug())
+        if (non_bond_list.size() >= max_non_bonds) {
+          throw std::runtime_error("Bond list size exceed maximum value " +
+                                   std::to_string(non_bond_list.size()) + ".");
+        }
 
       num_nonbonds.host_pointer()[index] = non_bond_list.size();
       const int stride_nonbonds          = index * max_non_bonds;
