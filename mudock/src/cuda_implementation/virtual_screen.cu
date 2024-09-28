@@ -9,13 +9,13 @@
 #include <mudock/cuda_implementation/evaluate_fitness.cuh>
 #include <mudock/cuda_implementation/virtual_screen.cuh>
 #include <mudock/grid.hpp>
+#include <mudock/utils.hpp>
 #include <span>
 
 // Keep it to 32 to enable warp optimizations
 #define BLOCK_SIZE 32
-
 namespace mudock {
-  static constexpr std::size_t max_non_bonds{1024 * 3};
+  static constexpr std::size_t max_non_bonds{1024 * 10};
 
   void init_texture_memory(const grid_map &map, cudaTextureObject_t &tex_obj) {
     // Create 3D CUDA array for the texture
@@ -49,8 +49,8 @@ namespace mudock {
     memset(&tex_desc, 0, sizeof(cudaTextureDesc));
     tex_desc.addressMode[0] = cudaAddressModeClamp;
     tex_desc.addressMode[1] = cudaAddressModeClamp;
-    tex_desc.addressMode[2] = cudaAddressModeClamp;
-    // tex_desc.filterMode     = cudaFilterModeLinear; // Enable linear interpolation
+    // tex_desc.addressMode[2] = cudaAddressModeClamp;
+    tex_desc.filterMode     = cudaFilterModeLinear; // Enable linear interpolation
     tex_desc.filterMode       = cudaFilterModePoint;
     tex_desc.readMode         = cudaReadModeElementType;
     tex_desc.normalizedCoords = false; // We will use unnormalized coordinates
@@ -196,7 +196,10 @@ namespace mudock {
       nonbonds(nbmatrix, ligand.get()->get_bonds(), num_atoms);
       non_bond_list.clear();
       weed_bonds(nbmatrix, non_bond_list, num_atoms, l_fragments);
-      assert(max_non_bonds >= non_bond_list.size());
+      if constexpr (is_debug())
+        if (non_bond_list.size() >= max_non_bonds) {
+          throw std::runtime_error("Bond list size exceed maximum value " + std::to_string(non_bond_list.size())+ ".");
+        }
 
       num_nonbonds.host_pointer()[index] = non_bond_list.size();
       const int stride_nonbonds          = index * max_non_bonds;
