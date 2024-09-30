@@ -6,17 +6,27 @@ enable_language(CXX)
 # ########################################################################
 # ### Define the compile options
 # ########################################################################
-set(MUDOCK_CPU_ARCHITECTURES "none" CACHE STRING "Optimize for specific target CPU architecture (generic to disable)")
-set(MUDOCK_GPU_ARCHITECTURES "none" CACHE STRING "Optimize for specific target GPU architecture (none to disable, otherwise cuda:sm_$$ or hip:$$)")
+# CPU
+option(MUDOCK_ENABLE_NATIVE "Enable Optimize for specific target CPU architecture" OFF)
+# Check if specific target architectures should be used
+# TODO check this
+if(MUDOCK_ENABLE_NATIVE)
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "IntelLLVM")
+        list(APPEND release_flags "-march=native")
+    else()
+        message(WARNING "Unable to optimize for the native architecture: unknown compiler \"${CMAKE_CXX_COMPILER_ID}\"")
+    endif()
+endif()
 
+# CUDA
 option(MUDOCK_ENABLE_CUDA "Enable the CUDA kernel implementation" OFF)
-
+set(MUDOCK_GPU_ARCHITECTURES "none" CACHE STRING "Optimize for specific target GPU architecture (none to disable, otherwise cuda:sm_$$ or hip:$$)")
 if(MUDOCK_ENABLE_CUDA)
     enable_language(CUDA)
 endif()
 
+# SYCL
 option(MUDOCK_ENABLE_SYCL "Enable the SYCL kernel implementation" OFF)
-
 if(MUDOCK_ENABLE_SYCL)
     # handle AdaptiveCPP
     # check if we need to enable the openmp backend for SYCL
@@ -40,22 +50,6 @@ if(MUDOCK_ENABLE_SYCL)
     find_package(AdaptiveCpp REQUIRED)
 
     # TODO OneAPI
-endif()
-
-# Check if specific target architectures should be used
-# TODO check this
-if(NOT MUDOCK_CPU_ARCHITECTURE STREQUAL "generic")
-    if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-        list(APPEND release_flags "-march=native")
-
-        if(CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL "ppc64le")
-            list(APPEND release_flags "-mcpu=native")
-        endif()
-    elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "IntelLLVM")
-        list(APPEND release_flags "-march=native")
-    else()
-        message(WARNING "Unable to optimize for the native architecture: unknown compiler \"${CMAKE_CXX_COMPILER_ID}\"")
-    endif()
 endif()
 
 # ########################################################################
@@ -128,15 +122,15 @@ message(STATUS "//===---------------------------===//")
 message(STATUS "Build type..........................: ${CMAKE_BUILD_TYPE} (CMAKE_BUILD_TYPE)")
 message(STATUS "Install prefix......................: ${CMAKE_INSTALL_PREFIX} (CMAKE_INSTALL_PREFIX)")
 
-message(STATUS "Enable CUDA.........................: ${MUDOCK_ENABLE_CUDA} (MUDOCK_ENABLE_CUDA)")
+message(STATUS "Enable native.......................: ${MUDOCK_ENABLE_NATIVE} (MUDOCK_ENABLE_NATIVE)")
 
+message(STATUS "Enable CUDA.........................: ${MUDOCK_ENABLE_CUDA} (MUDOCK_ENABLE_CUDA)")
 if(MUDOCK_ENABLE_CUDA)
     # TODO use instead the MUDOCK_GPU_ARCHITECTURES
     message(STATUS "Target CUDA architecture............: ${CMAKE_CUDA_ARCHITECTURES} (CMAKE_CUDA_ARCHITECTURES)")
 endif()
 
 message(STATUS "Enable SYCL.........................: ${MUDOCK_ENABLE_SYCL} (MUDOCK_ENABLE_SYCL)")
-
 if(MUDOCK_ENABLE_SYCL)
     message(STATUS "Target SYCL architecture............: ${MUDOCK_GPU_ARCHITECTURES} (MUDOCK_GPU_ARCHITECTURES)")
 endif()
