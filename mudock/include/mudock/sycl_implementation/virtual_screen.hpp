@@ -47,8 +47,7 @@ namespace mudock {
 
     // Grid Maps
     // Can be moved inside shared memory for example
-    const index3D index_maps;
-    const point3D center, minimum, maximum;
+    const point3D center, minimum_coord, maximum_coord;
     // TODO maps and textures
     sycl_object<fp_type> electro_tex, desolv_tex;
     wrappers_container atom_texs;

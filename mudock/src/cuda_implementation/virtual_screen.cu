@@ -63,7 +63,7 @@ namespace mudock {
                                            std::shared_ptr<const grid_atom_mapper> &grid_atom_maps,
                                            std::shared_ptr<const grid_map> &electro_map,
                                            std::shared_ptr<const grid_map> &desolv_map)
-      : configuration(k), index_maps(electro_map.get()->index), center_maps(electro_map.get()->center) {
+      : configuration(k), center_maps(electro_map.get()->center) {
     // TODO move this part into the cuda_worker -> once per GPU
     // Allocate grid maps
     assert(electro_map.get()->index == desolv_map.get()->index &&
@@ -83,8 +83,8 @@ namespace mudock {
     atom_texs.copy_host2device();
 
     // Grid spacing fixed to 0.5 Angstrom
-    setup_constant_memory(electro_map.get()->minimum,
-                          electro_map.get()->maximum,
+    setup_constant_memory(electro_map.get()->minimum_coord,
+                          electro_map.get()->maximum_coord,
                           electro_map.get()->center,
                           fp_type{2});
   }
@@ -198,7 +198,8 @@ namespace mudock {
       weed_bonds(nbmatrix, non_bond_list, num_atoms, l_fragments);
       if constexpr (is_debug())
         if (non_bond_list.size() >= max_non_bonds) {
-          throw std::runtime_error("Bond list size exceed maximum value " + std::to_string(non_bond_list.size())+ ".");
+          throw std::runtime_error("Bond list size exceed maximum value " +
+                                   std::to_string(non_bond_list.size()) + ".");
         }
 
       num_nonbonds.host_pointer()[index] = non_bond_list.size();
