@@ -49,8 +49,8 @@ namespace mudock {
     memset(&tex_desc, 0, sizeof(cudaTextureDesc));
     tex_desc.addressMode[0] = cudaAddressModeClamp;
     tex_desc.addressMode[1] = cudaAddressModeClamp;
-    // tex_desc.addressMode[2] = cudaAddressModeClamp;
-    tex_desc.filterMode     = cudaFilterModeLinear; // Enable linear interpolation
+    tex_desc.addressMode[2] = cudaAddressModeClamp;
+    // tex_desc.filterMode     = cudaFilterModeLinear; // Enable linear interpolation
     tex_desc.filterMode       = cudaFilterModePoint;
     tex_desc.readMode         = cudaReadModeElementType;
     tex_desc.normalizedCoords = false; // We will use unnormalized coordinates

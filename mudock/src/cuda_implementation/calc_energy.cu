@@ -37,6 +37,7 @@ namespace mudock {
                                        const int* __restrict__ ligand_nonbond_a1,
                                        const int* __restrict__ ligand_nonbond_a2) {
     fp_type elect_total_eintcal{0}, emap_total_eintcal{0}, dmap_total_eintcal{0};
+    // TODO OPT: precompute value from branch rework_cpp
     for (int nonbond_list = threadIdx.x; nonbond_list < ligand_num_nonbonds; nonbond_list += blockDim.x) {
       const int& a1 = ligand_nonbond_a1[nonbond_list];
       const int& a2 = ligand_nonbond_a2[nonbond_list];
