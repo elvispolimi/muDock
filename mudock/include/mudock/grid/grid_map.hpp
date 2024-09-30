@@ -81,8 +81,9 @@ namespace mudock {
     grid_map& operator=(const grid_map&)  = delete;
 
     [[nodiscard]] inline int outside_grid(const point3D& p) const {
-      return p.x < minimum.x || p.x > maximum.x || p.y < minimum.y || p.y > maximum.y || p.z < minimum.z ||
-             p.z > maximum.z;
+      // TODO fix me to enbale interpolation
+      return p.x < (minimum.x+grid_spacing) || p.x > (maximum.x-grid_spacing) || p.y < (minimum.y+grid_spacing) || p.y > (maximum.y-grid_spacing) || p.z < (minimum.z+grid_spacing) ||
+             p.z > (maximum.z-grid_spacing);
     }
 
     [[nodiscard]] inline point3D get_index_from_coordinates(const point3D coord) const {
