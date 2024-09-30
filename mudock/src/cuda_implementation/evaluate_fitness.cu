@@ -52,8 +52,11 @@ namespace mudock {
     const fp_type pv[2] = {p1v, p0v};
     const fp_type pw[2] = {p1w, p0w};
     fp_type value{0};
+#pragma unroll
     for (int i = 0; i <= 1; i++)
+#pragma unroll
       for (int t = 0; t <= 1; t++)
+#pragma unroll
         for (int n = 0; n <= 1; n++) {
           const fp_type tmp = tex3D<fp_type>(tex, u0 + n, v0 + t, w0 + i);
           value += pu[n] * pv[t] * pw[i] * tmp;
@@ -106,7 +109,8 @@ namespace mudock {
   }
 
   // TODO check the syncwarp
-  //TODO template parameter based on number of atoms
+  //TODO OPT: template parameter based on number of atoms, rotamers, chromosomes and population
+  // Interesting the usage of the bucketizer
   __global__ void evaluate_fitness(const int num_generations,
                                    const int tournament_length,
                                    const fp_type mutation_prob,
@@ -202,7 +206,7 @@ namespace mudock {
     for (int generation = 0; generation < num_generations; ++generation) {
       for (int chromosome_index = 0; chromosome_index < chromosome_number; ++chromosome_index) {
         // Copy original coordinates
-        // TODO shared memory?
+        // TODO OPT: shared memory for coordinate ?
         for (int atom_index = threadIdx.x; atom_index < num_atoms; atom_index += blockDim.x) {
           l_scratch_ligand_x[atom_index] = l_original_ligand_x[atom_index];
           l_scratch_ligand_y[atom_index] = l_original_ligand_y[atom_index];
@@ -249,14 +253,15 @@ namespace mudock {
             coord_tex[1] = (l_scratch_ligand_y[atom_index] - map_min_const[1]) * inv_spacing_const;
             coord_tex[2] = (l_scratch_ligand_z[atom_index] - map_min_const[2]) * inv_spacing_const;
             //  TODO check approximations with in hardware interpolation
-            // elect_total_trilinear += tex3D<fp_type>(electro_texture, coord_tex[0], coord_tex[1], coord_tex[2]) *
-            //                          l_ligand_charge[atom_index];
-            // dmap_total_trilinear += tex3D<fp_type>(desolv_texture, coord_tex[0], coord_tex[1], coord_tex[2]);
+            // elect_total_trilinear +=
+            //     tex3D<fp_type>(electro_texture, coord_tex[0], coord_tex[1], coord_tex[2]) *
+            //     l_ligand_charge[atom_index];
+            // dmap_total_trilinear += tex3D<fp_type>(desolv_texture, coord_tex[0], coord_tex[1], coord_tex[2]) *
+            //                         fabsf(l_ligand_charge[atom_index]);
             // emap_total_trilinear += tex3D<fp_type>(atom_textures[l_atom_tex_indexes[atom_index]],
             //                                        coord_tex[0],
             //                                        coord_tex[1],
-            //                                        coord_tex[2]) *
-            //                         fabsf(l_ligand_charge[atom_index]);
+            //                                        coord_tex[2]);
 
             elect_total_trilinear +=
                 trilinear_interpolation_cuda(coord_tex, electro_texture) * l_ligand_charge[atom_index];
