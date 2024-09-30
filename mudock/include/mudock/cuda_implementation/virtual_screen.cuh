@@ -40,7 +40,6 @@ namespace mudock {
     cuda_wrapper<std::vector, chromosome> best_chromosomes;
 
     // Grid Maps
-    const index3D index_maps;
     const point3D center_maps;
     cudaTextureObject_t electro_tex, desolv_tex;
     cuda_wrapper<std::vector, cudaTextureObject_t> atom_texs;

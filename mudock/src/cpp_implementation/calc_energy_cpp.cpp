@@ -35,7 +35,10 @@ namespace mudock {
       const auto& atom_charge = ligand_charge[index];
       const auto& atom_map    = grid_maps.get_atom_map(ligand_autodock_type[index]);
 
+
+
       if (atom_map.outside_grid(coord)) {
+        // printf("Atom %d is outside\n", index);
         const fp_type dist = distance2(coord, grid_maps.get_center());
 
         const fp_type epenalty = dist * ENERGYPENALTY;
