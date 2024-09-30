@@ -12,7 +12,7 @@ constexpr void constexpr_for(F&& f) {
 
 constexpr auto is_debug() {
   // TODO this should work only with CMAKE
-#ifndef NDEBUG
+#ifdef DEBUG_MODE
   return true;
 #else
   return false;
