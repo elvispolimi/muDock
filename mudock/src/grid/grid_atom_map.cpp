@@ -1,5 +1,3 @@
-#include "mudock/chem/autodock_types.hpp"
-
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -14,7 +12,6 @@
 #include <vector>
 
 namespace mudock {
-
   struct vdw_hb_energy_table {
     vdw_hb_energy_table(const fp_type cA, const fp_type cB, const fp_type dxA, const fp_type dxB) {
       e_vdW_Hb[0] = EINTCLAMP;
@@ -32,7 +29,7 @@ namespace mudock {
       /* Angstrom is divided by A_DIV in look-up table. */
       /* Typical value of r_smooth is 0.5 Angstroms  */
       /* so i_smooth = 0.5 * 100. / 2 = 25 */
-      const int i_smooth = std::floor(r_smooth * A_DIV / fp_type{2});
+      const int i_smooth = std::floor(r_smooth * A_DIV / inv_spacing);
       std::vector<fp_type> energy_smooth;
       energy_smooth.resize(NEINT, EINTCLAMP);
       if (i_smooth > 0) {
@@ -49,7 +46,7 @@ namespace mudock {
     fp_type operator[](const int index) const { return e_vdW_Hb[index]; }
 
   private:
-    static constexpr fp_type r_smooth{0.5}; //Angstrom
+    static constexpr fp_type r_smooth{0.5};                      //Angstrom
 
     std::vector<fp_type> e_vdW_Hb = std::vector<fp_type>(NEINT); // vdW & Hb energies
   };
@@ -94,10 +91,8 @@ namespace mudock {
 
     scratchpad(const std::set<autodock_ff> receptor_types,
                const autodock_ff& ligand_type,
-               const index3D& npts,
-               const point3D& min,
-               const point3D& max)
-        : atom_map(ligand_type, npts, min, max), grid_type_desc(get_description(atom_map.get_atom_type())) {
+               const dynamic_molecule& receptor)
+        : atom_map(ligand_type, receptor), grid_type_desc(get_description(atom_map.get_atom_type())) {
       // Initialize data structure
       for (auto& receptor_t: receptor_types) {
         const auto& receptor_type_desc = get_description(receptor_t);
@@ -188,29 +183,14 @@ namespace mudock {
                                                        autodock_ff::Br,
                                                        autodock_ff::P,
                                                        autodock_ff::I};
-    //  Get maximum and minimum of the bounding box around the receptor
-    const fp_type receptor_max_x = std::ranges::max(receptor.get_x());
-    const fp_type receptor_max_y = std::ranges::max(receptor.get_y());
-    const fp_type receptor_max_z = std::ranges::max(receptor.get_z());
-    const fp_type receptor_min_x = std::ranges::min(receptor.get_x());
-    const fp_type receptor_min_y = std::ranges::min(receptor.get_y());
-    const fp_type receptor_min_z = std::ranges::min(receptor.get_z());
-
-    const point3D grid_minimum{std::floor((receptor_min_x - cutoff_distance) * fp_type{2}) / fp_type{2},
-                               std::floor((receptor_min_y - cutoff_distance) * fp_type{2}) / fp_type{2},
-                               std::floor((receptor_min_z - cutoff_distance) * fp_type{2}) / fp_type{2}};
-    const point3D grid_maximum{std::ceil((receptor_max_x + cutoff_distance) * fp_type{2}) / fp_type{2},
-                               std::ceil((receptor_max_y + cutoff_distance) * fp_type{2}) / fp_type{2},
-                               std::ceil((receptor_max_z + cutoff_distance) * fp_type{2}) / fp_type{2}};
-    //  add 2 point in each axis to allow trilinear interpolation
-    const index3D npts{static_cast<int>((grid_maximum.x - grid_minimum.x) / grid_spacing) + 1,
-                       static_cast<int>((grid_maximum.y - grid_minimum.y) / grid_spacing) + 1,
-                       static_cast<int>((grid_maximum.z - grid_minimum.z) / grid_spacing) + 1};
 
     for (auto ligand_type: ligand_types) {
       // grid_atom_maps.push_back({ligand_type, npts});
-      scratchpads.emplace_back(receptor_types, ligand_type, npts, grid_minimum, grid_maximum);
+      scratchpads.emplace_back(receptor_types, ligand_type, receptor);
     }
+    // Get grid infos from the first element
+    const auto& grid_minimum = scratchpads[0].atom_map.minimum;
+    const auto& npts         = scratchpads[0].atom_map.index;
 
     /* exponential function for receptor and ligand desolvation */
     /* note: the solvation term ranges beyond the non-bond cutoff 
@@ -220,7 +200,7 @@ namespace mudock {
     for (int indx_r = 1; indx_r < NDIEL; ++indx_r) {
       const fp_type r = indx_r / A_DIV;
       sol_fn[indx_r] =
-          autodock_parameters::coeff_desolv * std::exp(-(r * r) / (fp_type{2} * (sigma * sigma)));
+          autodock_parameters::coeff_desolv * std::exp(-(r * r) / (inv_spacing * (sigma * sigma)));
     }
 
     // TODO what are these???
@@ -566,7 +546,7 @@ namespace mudock {
                   cos_theta     = std::min(cos_theta, fp_type{1});
                   cos_theta     = std::max(cos_theta, fp_type{-1});
                   fp_type theta = std::acos(cos_theta);
-                  Hramp         = fp_type{0.5} - fp_type{0.5} * std::cos(theta * fp_type{120} / fp_type{90});
+                  Hramp         = fp_type{0.5} - fp_type{0.5} * std::cos(theta* fp_type{120} / fp_type{90});
                 } /* ia test for closestH */
                 /* END NEW2 calculate dot product of bond vector with bond vector of best hbond */
               }
@@ -662,8 +642,8 @@ namespace mudock {
               if (scratch.atom_map.is_hbonder) {
                 fp_type rsph = vdw_hb_value / fp_type{100};
                 rsph         = std::clamp(rsph, fp_type{0}, fp_type{1});
-                if ((grid_type_desc.hbond == 3 || grid_type_desc.hbond == 5) /*AS or A2*/
-                    && (receptor_hbond == 1 || receptor_hbond == 2)) {       /*DS or D1*/
+                if ((grid_type_desc.hbond == 3 || grid_type_desc.hbond == 5)  /*AS or A2*/
+                    && (receptor_hbond == 1 || receptor_hbond == 2)) {        /*DS or D1*/
                   scratch.energy += vdw_hb_value * Hramp * (racc + (fp_type{1} - racc) * rsph);
                 } else if ((grid_type_desc.hbond == 4)                        /*A1*/
                            && (receptor_hbond == 1 || receptor_hbond == 2)) { /*DS,D1*/

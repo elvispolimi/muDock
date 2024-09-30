@@ -8,25 +8,10 @@
 
 namespace mudock {
   grid_map generate_electrostatic_grid_map(dynamic_molecule& receptor) {
-    //  Get maximum and minimum of the bounding box around the receptor
-    const fp_type receptor_max_x = std::ranges::max(receptor.get_x());
-    const fp_type receptor_max_y = std::ranges::max(receptor.get_y());
-    const fp_type receptor_max_z = std::ranges::max(receptor.get_z());
-    const fp_type receptor_min_x = std::ranges::min(receptor.get_x());
-    const fp_type receptor_min_y = std::ranges::min(receptor.get_y());
-    const fp_type receptor_min_z = std::ranges::min(receptor.get_z());
-
-    const point3D grid_minimum{std::floor((receptor_min_x - cutoff_distance) * fp_type{2}) / fp_type{2},
-                               std::floor((receptor_min_y - cutoff_distance) * fp_type{2}) / fp_type{2},
-                               std::floor((receptor_min_z - cutoff_distance) * fp_type{2}) / fp_type{2}};
-    const point3D grid_maximum{std::ceil((receptor_max_x + cutoff_distance) * fp_type{2}) / fp_type{2},
-                               std::ceil((receptor_max_y + cutoff_distance) * fp_type{2}) / fp_type{2},
-                               std::ceil((receptor_max_z + cutoff_distance) * fp_type{2}) / fp_type{2}};
-    const index3D npts{static_cast<int>((grid_maximum.x - grid_minimum.x) / grid_spacing) + 1,
-                       static_cast<int>((grid_maximum.y - grid_minimum.y) / grid_spacing) + 1,
-                       static_cast<int>((grid_maximum.z - grid_minimum.z) / grid_spacing) + 1};
-
-    grid_map electrostatic_map{npts, grid_minimum, grid_maximum};
+    grid_map electrostatic_map{receptor};
+    // Get grid infos from the first element
+    const auto& grid_minimum = electrostatic_map.minimum;
+    const auto& npts         = electrostatic_map.index;
 
     std::array<fp_type, NDIEL> epsilon_fn;
     std::array<fp_type, NDIEL> r_epsilon_fn;

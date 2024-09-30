@@ -14,6 +14,35 @@
 #include <vector>
 
 namespace mudock {
+  static constexpr fp_type spacing{0.5}; // Angstrom
+  static constexpr fp_type inv_spacing{1 / spacing};
+
+  // Utility for grid map creation
+
+  inline point3D get_grid_minimum(const dynamic_molecule& receptor) {
+    const fp_type receptor_min_x = std::ranges::min(receptor.get_x());
+    const fp_type receptor_min_y = std::ranges::min(receptor.get_y());
+    const fp_type receptor_min_z = std::ranges::min(receptor.get_z());
+    return {std::floor((receptor_min_x - cutoff_distance - spacing) * inv_spacing) / inv_spacing,
+            std::floor((receptor_min_y - cutoff_distance - spacing) * inv_spacing) / inv_spacing,
+            std::floor((receptor_min_z - cutoff_distance - spacing) * inv_spacing) / inv_spacing};
+  }
+
+  inline point3D get_grid_maximum(const dynamic_molecule& receptor) {
+    const fp_type receptor_max_x = std::ranges::max(receptor.get_x());
+    const fp_type receptor_max_y = std::ranges::max(receptor.get_y());
+    const fp_type receptor_max_z = std::ranges::max(receptor.get_z());
+    return {std::ceil((receptor_max_x + cutoff_distance + spacing) * inv_spacing) / inv_spacing,
+            std::ceil((receptor_max_y + cutoff_distance + spacing) * inv_spacing) / inv_spacing,
+            std::ceil((receptor_max_z + cutoff_distance + spacing) * inv_spacing) / inv_spacing};
+  }
+
+  inline index3D get_grid_points_dim(const point3D& grid_minimum, const point3D& grid_maximum) {
+    return {static_cast<int>((grid_maximum.x - grid_minimum.x) / grid_spacing),
+            static_cast<int>((grid_maximum.y - grid_minimum.y) / grid_spacing),
+            static_cast<int>((grid_maximum.z - grid_minimum.z) / grid_spacing)};
+  }
+
   // TODO move it away from here
   inline fp_type calc_ddd_Mehler_Solmajer(fp_type distance) {
     /*____________________________________________________________________________
@@ -35,7 +64,7 @@ namespace mudock {
   }
 
   template<class T, class index_type>
-  requires is_index<index_type>
+    requires is_index<index_type>
   class grid {
     std::vector<T> grid_values;
 
@@ -67,13 +96,17 @@ namespace mudock {
   class grid_map: public grid<fp_type, index3D> {
   public:
     const point3D minimum, maximum, center;
-    grid_map(const index3D& npts, const point3D& min, const point3D& max)
-        : grid(npts),
-          minimum(min),
-          maximum(max),
+    const point3D minimum_coord, maximum_coord;
+
+    grid_map(const dynamic_molecule& receptor)
+        : grid(get_grid_points_dim(get_grid_minimum(receptor), get_grid_maximum(receptor))),
+          minimum(get_grid_minimum(receptor)),
+          maximum(get_grid_maximum(receptor)),
           center{(maximum.x - minimum.x) / 2 + minimum.x,
                  (maximum.y - minimum.y) / 2 + minimum.y,
-                 (maximum.z - minimum.z) / 2 + minimum.z} {}
+                 (maximum.z - minimum.z) / 2 + minimum.z},
+          minimum_coord({minimum.x + grid_spacing, minimum.y + grid_spacing, minimum.z + grid_spacing}),
+          maximum_coord({maximum.x - grid_spacing, maximum.y - grid_spacing, maximum.z - grid_spacing}) {}
     ~grid_map()                           = default;
     grid_map(grid_map&& other)            = default;
     grid_map(const grid_map& other)       = default;
@@ -81,9 +114,10 @@ namespace mudock {
     grid_map& operator=(const grid_map&)  = delete;
 
     [[nodiscard]] inline int outside_grid(const point3D& p) const {
-      // TODO fix me to enbale interpolation
-      return p.x < (minimum.x+grid_spacing) || p.x > (maximum.x-grid_spacing) || p.y < (minimum.y+grid_spacing) || p.y > (maximum.y-grid_spacing) || p.z < (minimum.z+grid_spacing) ||
-             p.z > (maximum.z-grid_spacing);
+      // TODO fix me to enable interpolation
+      // Could be optimized
+      return p.x < minimum_coord.x || p.x > maximum_coord.x || p.y < minimum_coord.y ||
+             p.y > maximum_coord.y || p.z < minimum_coord.z || p.z > maximum_coord.z;
     }
 
     [[nodiscard]] inline point3D get_index_from_coordinates(const point3D coord) const {
@@ -107,8 +141,8 @@ namespace mudock {
     autodock_ff atom_type;
 
   public:
-    grid_atom_map(const autodock_ff& type, const index3D& npts, const point3D& min, const point3D& max)
-        : grid_map(npts, min, max), atom_type(type) {}
+    grid_atom_map(const autodock_ff& type, const dynamic_molecule& receptor)
+        : grid_map(receptor), atom_type(type) {}
     ~grid_atom_map()                               = default;
     grid_atom_map(grid_atom_map&& other)           = default;
     grid_atom_map(const grid_atom_map& other)      = default;
