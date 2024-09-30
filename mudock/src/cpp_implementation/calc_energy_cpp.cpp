@@ -129,18 +129,18 @@ namespace mudock {
             /* smooth with min function; 
               r_smooth is Angstrom range of "smoothing" */
             // TODO rework considering this precomputing with other values
-            if (r_smooth > 0) {
-              const fp_type rlow  = distance - r_smooth / 2;
-              const fp_type rhigh = distance + r_smooth / 2;
-              fp_type energy_smooth{100000};
-              // ((((int)((r)*A_DIV)) > NEINT_1) ? NEINT_1 : ((int)((r)*A_DIV))
-              for (int j = std::max(fp_type{0}, std::min(rlow * A_DIV, fp_type{NEINT - 1}));
-                   j <= std::min(fp_type{NEINT - 1}, std::min(rhigh * A_DIV, fp_type{NEINT - 1}));
-                   ++j)
-                energy_smooth = std::min(energy_smooth, e_vdW_Hb);
+            // if (r_smooth > 0) {
+            //   const fp_type rlow  = distance - r_smooth / 2;
+            //   const fp_type rhigh = distance + r_smooth / 2;
+            //   fp_type energy_smooth{100000};
+            //   // ((((int)((r)*A_DIV)) > NEINT_1) ? NEINT_1 : ((int)((r)*A_DIV))
+            //   for (int j = std::max(fp_type{0}, std::min(rlow * A_DIV, fp_type{NEINT - 1}));
+            //        j <= std::min(fp_type{NEINT - 1}, std::min(rhigh * A_DIV, fp_type{NEINT - 1}));
+            //        ++j)
+            //     energy_smooth = std::min(energy_smooth, e_vdW_Hb);
 
-              e_vdW_Hb = energy_smooth;
-            } /* endif smoothing */
+            //   e_vdW_Hb = energy_smooth;
+            // } /* endif smoothing */
 
             // TODO check energy smoothing intnbtable.cc:215
             // with NOSQRT to False it seems to be the same as calmping to EINTCLAMP
