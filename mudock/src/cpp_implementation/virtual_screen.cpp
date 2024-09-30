@@ -62,7 +62,8 @@ namespace mudock {
 
   void virtual_screen_cpp::operator()(static_molecule &ligand) {
     // Reset the random number generator to improve consistency
-    generator = std::mt19937{static_cast<size_t>(ligand.num_atoms())};
+    generator = std::mt19937{
+        static_cast<size_t>(std::chrono::high_resolution_clock::now().time_since_epoch().count())};
 
     // Place the molecule to the center of the target protein
     const auto x = ligand.get_x(), y = ligand.get_y(), z = ligand.get_z();
@@ -121,7 +122,6 @@ namespace mudock {
               ligand_fragments);
 
         // compute the energy of the system
-        // printf("%ld %ld ", generation, element_index);
         const auto energy = calc_energy(altered_x,
                                         altered_y,
                                         altered_z,

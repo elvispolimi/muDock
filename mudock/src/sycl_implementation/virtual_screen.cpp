@@ -50,10 +50,9 @@ namespace mudock {
         ligand_scores(queue),
         chromosomes(queue),
         best_chromosomes(queue),
-        index_maps(electro_map.get()->index),
         center(electro_map.get()->center),
-        minimum(electro_map.get()->minimum),
-        maximum(electro_map.get()->maximum),
+        minimum_coord(electro_map.get()->minimum_coord),
+        maximum_coord(electro_map.get()->maximum_coord),
         electro_tex(queue),
         desolv_tex(queue),
         atom_texs(queue),
@@ -318,8 +317,8 @@ namespace mudock {
           const auto atom_stride_l       = batch_atoms;
           const auto rotamers_stride_l   = batch_rotamers;
           const auto nonbond_stride_l    = max_non_bonds;
-          const auto minimum_l           = minimum;
-          const auto maximum_l           = maximum;
+          const auto minimum_l           = minimum_coord;
+          const auto maximum_l           = maximum_coord;
           const auto center_l            = center;
           const auto index_l             = index;
           const auto inv_spacing_l       = inv_spacing;

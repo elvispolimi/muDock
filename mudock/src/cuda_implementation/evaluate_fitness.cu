@@ -16,12 +16,12 @@ namespace mudock {
   __device__ __constant__ fp_type map_center_const[3];
   __device__ __constant__ fp_type inv_spacing_const;
 
-  void setup_constant_memory(const point3D& minimum,
-                             const point3D& maximum,
+  void setup_constant_memory(const point3D& minimum_coord,
+                             const point3D& maximum_coord,
                              const point3D& center,
                              const fp_type inv_grid_spacing) {
-    const fp_type l_map_min[3]{minimum.x, minimum.y, minimum.z};
-    const fp_type l_map_max[3]{maximum.x, maximum.y, maximum.z};
+    const fp_type l_map_min[3]{minimum_coord.x, minimum_coord.y, minimum_coord.z};
+    const fp_type l_map_max[3]{maximum_coord.x, maximum_coord.y, maximum_coord.z};
     const fp_type l_map_center[3]{center.x, center.y, center.z};
 
     MUDOCK_CHECK(
@@ -67,9 +67,10 @@ namespace mudock {
   template<typename T>
   __device__ const T random_gen_cuda(curandState& state, const T min, const T max) {
     fp_type value;
-    if constexpr (is_debug())
+    if constexpr (is_debug()){
       // TODO value here for debug
       value = fp_type{0.4};
+    }
     else {
       value = curand_uniform(&state);
     }
@@ -234,6 +235,7 @@ namespace mudock {
           fp_type coord_tex[3]{l_scratch_ligand_x[atom_index],
                                l_scratch_ligand_y[atom_index],
                                l_scratch_ligand_z[atom_index]};
+
           if (coord_tex[0] < map_min_const[0] || coord_tex[0] > map_max_const[0] ||
               coord_tex[1] < map_min_const[1] || coord_tex[1] > map_max_const[1] ||
               coord_tex[2] < map_min_const[2] || coord_tex[2] > map_max_const[2]) {
@@ -247,7 +249,6 @@ namespace mudock {
             emap_total_trilinear += epenalty;
           } else {
             // Is inside
-
             // Center atom coordinates on the grid center
             coord_tex[0] = (l_scratch_ligand_x[atom_index] - map_min_const[0]) * inv_spacing_const,
             coord_tex[1] = (l_scratch_ligand_y[atom_index] - map_min_const[1]) * inv_spacing_const;
