@@ -8,7 +8,7 @@
 
 namespace mudock {
   // TODO create a single conf file for all implementations
-  static constexpr std::size_t max_non_bonds{1024 * 3};
+  static constexpr std::size_t max_non_bonds{1024 * 10};
   // Grid spacing fixed to 0.5 Angstrom
   static constexpr fp_type inv_spacing{2};
 
