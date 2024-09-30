@@ -8,6 +8,7 @@ enable_language(CXX)
 # ########################################################################
 # CPU
 option(MUDOCK_ENABLE_NATIVE "Enable Optimize for specific target CPU architecture" OFF)
+
 # Check if specific target architectures should be used
 # TODO check this
 if(MUDOCK_ENABLE_NATIVE)
@@ -21,12 +22,14 @@ endif()
 # CUDA
 option(MUDOCK_ENABLE_CUDA "Enable the CUDA kernel implementation" OFF)
 set(MUDOCK_GPU_ARCHITECTURES "none" CACHE STRING "Optimize for specific target GPU architecture (none to disable, otherwise cuda:sm_$$ or hip:$$)")
+
 if(MUDOCK_ENABLE_CUDA)
     enable_language(CUDA)
 endif()
 
 # SYCL
 option(MUDOCK_ENABLE_SYCL "Enable the SYCL kernel implementation" OFF)
+
 if(MUDOCK_ENABLE_SYCL)
     # handle AdaptiveCPP
     # check if we need to enable the openmp backend for SYCL
@@ -61,6 +64,8 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_BUILD_TYPE "Release" CACHE STRING "The type of build" FORCE)
     message(STATUS "Setting build type to '${CMAKE_BUILD_TYPE}' as none was specified")
     set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "RelWithDebInfo")
+elseif(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    add_compile_definitions(DEBUG_MODE)
 endif()
 
 # export also compile commands to have a better integration with the ide
@@ -125,12 +130,14 @@ message(STATUS "Install prefix......................: ${CMAKE_INSTALL_PREFIX} (C
 message(STATUS "Enable native.......................: ${MUDOCK_ENABLE_NATIVE} (MUDOCK_ENABLE_NATIVE)")
 
 message(STATUS "Enable CUDA.........................: ${MUDOCK_ENABLE_CUDA} (MUDOCK_ENABLE_CUDA)")
+
 if(MUDOCK_ENABLE_CUDA)
     # TODO use instead the MUDOCK_GPU_ARCHITECTURES
     message(STATUS "Target CUDA architecture............: ${CMAKE_CUDA_ARCHITECTURES} (CMAKE_CUDA_ARCHITECTURES)")
 endif()
 
 message(STATUS "Enable SYCL.........................: ${MUDOCK_ENABLE_SYCL} (MUDOCK_ENABLE_SYCL)")
+
 if(MUDOCK_ENABLE_SYCL)
     message(STATUS "Target SYCL architecture............: ${MUDOCK_GPU_ARCHITECTURES} (MUDOCK_GPU_ARCHITECTURES)")
 endif()
