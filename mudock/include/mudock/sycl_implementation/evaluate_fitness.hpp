@@ -210,8 +210,6 @@ namespace mudock {
                    num_atoms,
                    it);
 
-        sycl::group_barrier(sub_group, sycl::memory_scope::sub_group);
-
         // Calculate energy
         fp_type elect_total_trilinear = 0;
         fp_type emap_total_trilinear  = 0;
@@ -250,8 +248,6 @@ namespace mudock {
         // TODO checks these values
         fp_type total_trilinear = elect_total_trilinear + dmap_total_trilinear + emap_total_trilinear;
 
-        sycl::group_barrier(sub_group, sycl::memory_scope::sub_group);
-
         fp_type total_eintcal{0};
         if (num_rotamers > 0)
           total_eintcal += calc_intra_energy(l_scratch_ligand_x,
@@ -270,8 +266,6 @@ namespace mudock {
                                              l_ligand_nonbond_a2,
                                              it);
 
-        sycl::group_barrier(sub_group, sycl::memory_scope::sub_group);
-
         total_trilinear = sycl::reduce_over_group(sub_group, total_trilinear, std::plus<fp_type>());
         total_eintcal   = sycl::reduce_over_group(sub_group, total_eintcal, std::plus<fp_type>());
 
@@ -279,8 +273,6 @@ namespace mudock {
           const fp_type tors_free_energy        = num_rotamers * autodock_parameters::coeff_tors;
           s_chromosome_scores[chromosome_index] = total_trilinear + total_eintcal + tors_free_energy;
         }
-
-        sycl::group_barrier(sub_group, sycl::memory_scope::sub_group);
       }
 
       // Generate the new population
@@ -349,6 +341,5 @@ namespace mudock {
              (*(l_chromosomes + min_index)).data(),
              sizeof(fp_type) * (6 + num_rotamers));
     }
-    sycl::group_barrier(sub_group, sycl::memory_scope::sub_group);
   };
 } // namespace mudock
