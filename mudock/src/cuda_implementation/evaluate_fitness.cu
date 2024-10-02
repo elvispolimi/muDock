@@ -225,8 +225,6 @@ namespace mudock {
                    atom_stride,
                    num_atoms);
 
-        __syncwarp();
-
         // Calculate energy
         fp_type elect_total_trilinear = 0;
         fp_type emap_total_trilinear  = 0;
@@ -274,8 +272,6 @@ namespace mudock {
         }
         fp_type total_trilinear = elect_total_trilinear + dmap_total_trilinear + emap_total_trilinear;
 
-        __syncwarp();
-
         fp_type total_eintcal{0};
         if (num_rotamers > 0)
           total_eintcal += calc_intra_energy(l_scratch_ligand_x,
@@ -293,8 +289,6 @@ namespace mudock {
                                              l_ligand_nonbond_a1,
                                              l_ligand_nonbond_a2);
 
-        __syncwarp();
-
         // Perform a tree reduction using __shfl_down_sync
         // TODO check performance
         for (int offset = 16; offset > 0; offset /= 2) {
@@ -306,8 +300,6 @@ namespace mudock {
           const fp_type tors_free_energy        = num_rotamers * autodock_parameters::coeff_tors;
           s_chromosome_scores[chromosome_index] = total_trilinear + total_eintcal + tors_free_energy;
         }
-
-        __syncwarp();
       }
 
       // Generate the new population
@@ -380,6 +372,5 @@ namespace mudock {
              (*(l_chromosomes + min_index)).data(),
              sizeof(fp_type) * (6 + num_rotamers));
     }
-    __syncwarp();
   }
 } // namespace mudock
