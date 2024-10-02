@@ -3,7 +3,6 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
-#include <gsl/pointers>
 #include <mudock/grid/mdindex.hpp>
 #include <mudock/molecule/bond.hpp>
 #include <mudock/molecule/containers.hpp>
