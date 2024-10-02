@@ -31,7 +31,7 @@ namespace mudock {
       }
       configuration = configuration.substr(1);
 
-      // make sure that the device is the CPU
+      // make sure that the device is the GPU
       const auto colon_index = configuration.find(':');
       const auto device_name = configuration.substr(0, colon_index);
       if (device_name != gpu_token) [[unlikely]] {

@@ -73,10 +73,10 @@ namespace mudock {
     init_texture_memory(*desolv_map.get(), desolv_tex);
 
     std::size_t index{0};
-    atom_texs.alloc(num_cuda_map_textures());
+    atom_texs.alloc(num_device_map_textures());
     for (auto &atom_tex: atom_texs.host) {
       const grid_map &grid_atom =
-          grid_atom_maps.get()->get_atom_map(autodock_type_from_map(static_cast<cuda_map_textures>(index)));
+          grid_atom_maps.get()->get_atom_map(autodock_type_from_map(static_cast<device_map_textures>(index)));
       init_texture_memory(grid_atom, atom_tex);
       ++index;
     }
