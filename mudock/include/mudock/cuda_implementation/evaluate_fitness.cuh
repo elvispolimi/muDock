@@ -8,7 +8,6 @@
 #include <mudock/type_alias.hpp>
 
 namespace mudock {
-  extern __device__ __constant__ fp_type map_min[3];
   void setup_constant_memory(const point3D& minimum,
                              const point3D& maximum,
                              const point3D& center,
