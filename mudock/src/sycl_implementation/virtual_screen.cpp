@@ -63,13 +63,13 @@ namespace mudock {
 
     init_texture_memory(*desolv_map.get(), desolv_tex);
 
-    atom_texs.wrappers_pointer.alloc(num_cuda_map_textures());
-    atom_texs.wrappers.reserve(num_cuda_map_textures());
-    for (int index{0}; index < num_cuda_map_textures(); ++index) {
+    atom_texs.wrappers_pointer.alloc(num_device_map_textures());
+    atom_texs.wrappers.reserve(num_device_map_textures());
+    for (int index{0}; index < num_device_map_textures(); ++index) {
       atom_texs.wrappers.emplace_back(queue);
       sycl_object<fp_type> &atom_tex = atom_texs.wrappers.back();
       const grid_map &grid_atom =
-          grid_atom_maps.get()->get_atom_map(autodock_type_from_map(static_cast<cuda_map_textures>(index)));
+          grid_atom_maps.get()->get_atom_map(autodock_type_from_map(static_cast<device_map_textures>(index)));
       init_texture_memory(grid_atom, atom_tex);
       atom_texs.wrappers_pointer.host[index] = atom_tex.dev_pointer();
     }
