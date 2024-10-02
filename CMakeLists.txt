@@ -1,13 +1,71 @@
 cmake_minimum_required(VERSION 3.25 FATAL_ERROR)
-project(muDock VERSION 1.0)
 cmake_policy(SET CMP0167 NEW)
-enable_language(CXX)
+
+# Utilities
+# define the function to remove the version from the end of shared object
+function(remove_version_from_filename input_filename version output_filename)
+    # Extract the directory path and filename without extension
+    get_filename_component(directory_path ${input_filename} DIRECTORY)
+    get_filename_component(filename_without_extension ${input_filename} NAME_WE)
+
+    # Reconstruct the modified filename with the directory path
+    set(${output_filename} "${directory_path}/${filename_without_extension}.so" PARENT_SCOPE)
+endfunction()
 
 # ########################################################################
 # ### Define the compile options
 # ########################################################################
+# Accelerator
+set(MUDOCK_GPU_ARCHITECTURES "none" CACHE STRING "Optimize for specific target GPU architecture (none to disable, otherwise cuda:sm_$$ or hip:$$)")
+
+if(NOT MUDOCK_GPU_ARCHITECTURES EQUAL "")
+    # Find the position of the colon
+    string(FIND ${MUDOCK_GPU_ARCHITECTURES} ":" COLON_POS)
+
+    # Separate the two parts
+    if(COLON_POS GREATER_EQUAL 0)
+        # Get the part before the colon
+        string(SUBSTRING ${MUDOCK_GPU_ARCHITECTURES} 0 ${COLON_POS} GPU_PLATFORM)
+
+        # Get the part after the colon
+        string(SUBSTRING ${MUDOCK_GPU_ARCHITECTURES} ${COLON_POS} 1000 GPU_TEMP)
+        string(SUBSTRING ${GPU_TEMP} 1 1000 GPU_ARCHITECTURE) # Skip the colon
+    else()
+        message(FATAL_ERROR "${MUDOCK_GPU_ARCHITECTURES} cannot be parsed.")
+    endif()
+endif()
+
+# HIP
+option(MUDOCK_ENABLE_HIP "Enable the HIP kernel implementation" OFF)
+
+if(MUDOCK_ENABLE_HIP)
+    if(NOT MUDOCK_ENABLE_CUDA AND NOT MUDOCK_ENABLE_SYCL)
+        # enable_language(HIP)
+        find_program(HIP_COMPILER hipcc)
+        set(CMAKE_CXX_COMPILER "${HIP_COMPILER}")
+
+        if(GPU_PLATFORM STREQUAL "cuda")
+            set(HIP_PLATFORM "nvidia")
+            add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-arch=${GPU_ARCHITECTURE}>)
+        else()
+            set(HIP_PLATFORM "${GPU_PLATFORM}")
+
+            # TODO target arch
+        endif()
+
+        set(HIP_ARCHITECTURES "${GPU_ARCHITECTURE}")
+        find_package(HIP REQUIRED)
+        find_package(hiprand REQUIRED)
+    else()
+        message(FATAL_ERROR "Enable only one parallel framework at a time.")
+    endif()
+endif()
+
 # CPU
+# TODO check this
+project(muDock VERSION 1.0)
 option(MUDOCK_ENABLE_NATIVE "Enable Optimize for specific target CPU architecture" OFF)
+enable_language(CXX)
 
 # Check if specific target architectures should be used
 # TODO check this
@@ -21,38 +79,57 @@ endif()
 
 # CUDA
 option(MUDOCK_ENABLE_CUDA "Enable the CUDA kernel implementation" OFF)
-set(MUDOCK_GPU_ARCHITECTURES "none" CACHE STRING "Optimize for specific target GPU architecture (none to disable, otherwise cuda:sm_$$ or hip:$$)")
 
 if(MUDOCK_ENABLE_CUDA)
-    enable_language(CUDA)
+    if(NOT MUDOCK_ENABLE_HIP AND NOT MUDOCK_ENABLE_SYCL)
+        enable_language(CUDA)
+
+        # Find the position of the _
+        string(FIND ${GPU_ARCHITECTURE} "_" UNDER_POS)
+
+        # Separate the two parts
+        if(UNDER_POS GREATER_EQUAL 0)
+            # Get the part after the _
+            string(SUBSTRING ${GPU_ARCHITECTURE} ${UNDER_POS} 1000 CMAKE_CUDA_TEMP)
+            string(SUBSTRING ${CMAKE_CUDA_TEMP} 1 1000 CMAKE_CUDA_ARCHITECTURES) # Skip the colon
+        else()
+            message(FATAL_ERROR "${MUDOCK_GPU_ARCHITECTURES} cannot get CUDA GPUs.")
+        endif()
+    else()
+        message(FATAL_ERROR "Enable only one parallel framework at a time.")
+    endif()
 endif()
 
 # SYCL
 option(MUDOCK_ENABLE_SYCL "Enable the SYCL kernel implementation" OFF)
 
 if(MUDOCK_ENABLE_SYCL)
-    # handle AdaptiveCPP
-    # check if we need to enable the openmp backend for SYCL
-    if(NOT MUDOCK_CPU_ARCHITECTURES STREQUAL "none")
-        if(NOT MUDOCK_CPU_ARCHITECTURES STREQUAL "generic")
-            list(APPEND sycl_targets "omp")
-        else()
-            list(APPEND sycl_targets "${MUDOCK_CPU_ARCHITECTURES}")
+    if(NOT MUDOCK_ENABLE_HIP AND NOT MUDOCK_ENABLE_CUDA)
+        # handle AdaptiveCPP
+        # check if we need to enable the openmp backend for SYCL
+        if(NOT MUDOCK_CPU_ARCHITECTURES STREQUAL "none")
+            if(NOT MUDOCK_CPU_ARCHITECTURES STREQUAL "generic")
+                list(APPEND sycl_targets "omp")
+            else()
+                list(APPEND sycl_targets "${MUDOCK_CPU_ARCHITECTURES}")
+            endif()
         endif()
-    endif()
 
-    if(NOT MUDOCK_GPU_ARCHITECTURES STREQUAL "none")
-        list(APPEND sycl_targets "${MUDOCK_GPU_ARCHITECTURES}")
-    endif()
+        if(NOT MUDOCK_GPU_ARCHITECTURES STREQUAL "none")
+            list(APPEND sycl_targets "${MUDOCK_GPU_ARCHITECTURES}")
+        endif()
 
-    # check if we need to enable the AMD or NVIDIA backend for SYCL
+        # check if we need to enable the AMD or NVIDIA backend for SYCL
 
-    # prepare the option for the AdaptiveCPP package finder
-    list(JOIN sycl_targets ";" SYCL_TARGETS)
-    set(ACPP_TARGETS "${SYCL_TARGETS}" CACHE STRING "AdaptiveCPP targets")
-    find_package(AdaptiveCpp REQUIRED)
+        # prepare the option for the AdaptiveCPP package finder
+        list(JOIN sycl_targets ";" SYCL_TARGETS)
+        set(ACPP_TARGETS "${SYCL_TARGETS}" CACHE STRING "AdaptiveCPP targets")
+        find_package(AdaptiveCpp REQUIRED)
 
     # TODO OneAPI
+    else()
+        message(FATAL_ERROR "Enable only one parallel framework at a time.")
+    endif()
 endif()
 
 # ########################################################################
@@ -76,12 +153,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # ########################################################################
 
 # Third-party libraries that must be manually installed
-if(MUDOCK_ENABLE_SYCL)
-    find_package(Boost CONFIG REQUIRED COMPONENTS program_options graph fiber)
-else()
-    find_package(Boost CONFIG REQUIRED COMPONENTS program_options graph fiber)
-endif()
-
+find_package(Boost CONFIG REQUIRED COMPONENTS program_options graph fiber)
 find_package(rdkit REQUIRED)
 
 # Third-party libraries that we download and compile
@@ -95,7 +167,10 @@ include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/prerequisite.cmake")
 # all the child ones, but not the parents
 
 # add more warnings (these flags are compatible with gcc and clang)
-list(APPEND global_c_cxx_flags -Wall -Wextra -Wpedantic -Wshadow -Wdouble-promotion)
+# TODO check here
+if(NOT MUDOCK_ENABLE_HIP)
+    list(APPEND global_c_cxx_flags -Wall -Wextra -Wpedantic -Wshadow -Wdouble-promotion)
+endif()
 
 # if we are using ninja, force to have colored output
 if("${CMAKE_GENERATOR}" STREQUAL "Ninja")
@@ -124,6 +199,7 @@ message(STATUS "")
 message(STATUS "//===---------------------------===//")
 message(STATUS "//       CONFIGURATION RECAP       //")
 message(STATUS "//===---------------------------===//")
+message(STATUS "CXX compiler........................: ${CMAKE_CXX_COMPILER} (CMAKE_CXX_COMPILER)")
 message(STATUS "Build type..........................: ${CMAKE_BUILD_TYPE} (CMAKE_BUILD_TYPE)")
 message(STATUS "Install prefix......................: ${CMAKE_INSTALL_PREFIX} (CMAKE_INSTALL_PREFIX)")
 
@@ -134,6 +210,13 @@ message(STATUS "Enable CUDA.........................: ${MUDOCK_ENABLE_CUDA} (MUD
 if(MUDOCK_ENABLE_CUDA)
     # TODO use instead the MUDOCK_GPU_ARCHITECTURES
     message(STATUS "Target CUDA architecture............: ${CMAKE_CUDA_ARCHITECTURES} (CMAKE_CUDA_ARCHITECTURES)")
+endif()
+
+message(STATUS "Enable HIP..........................: ${MUDOCK_ENABLE_HIP} (MUDOCK_ENABLE_HIP)")
+
+if(MUDOCK_ENABLE_HIP)
+    message(STATUS "Target HIP platform.................: ${HIP_PLATFORM} (HIP_PLATFORM)")
+    message(STATUS "Target HIP targets..................: ${HIP_ARCHITECTURES} (HIP_ARCHITECTURES)")
 endif()
 
 message(STATUS "Enable SYCL.........................: ${MUDOCK_ENABLE_SYCL} (MUDOCK_ENABLE_SYCL)")

@@ -122,6 +122,32 @@ if(MUDOCK_ENABLE_CUDA)
   )
 endif()
 
+# declare the HIP sources
+if(MUDOCK_ENABLE_HIP)
+  list(APPEND header_files
+    "${header_path}/${header_prefix}/hip_implementation/hip_batch_sizer.hpp"
+    "${header_path}/${header_prefix}/hip_implementation/hip_check_error_macro.hpp"
+    "${header_path}/${header_prefix}/hip_implementation/hip_manager.hpp"
+    "${header_path}/${header_prefix}/hip_implementation/hip_random.hpp"
+    "${header_path}/${header_prefix}/hip_implementation/hip_object.hpp"
+    "${header_path}/${header_prefix}/hip_implementation/hip_worker.hpp"
+    "${header_path}/${header_prefix}/hip_implementation/hip_wrapper.hpp"
+    "${header_path}/${header_prefix}/hip_implementation/calc_energy.hpp"
+    "${header_path}/${header_prefix}/hip_implementation/evaluate_fitness.hpp"
+    "${header_path}/${header_prefix}/hip_implementation/geometric_transformations.hpp"
+    "${header_path}/${header_prefix}/hip_implementation/mutate.hpp"
+    "${header_path}/${header_prefix}/hip_implementation/virtual_screen.hpp"
+  )
+  list(APPEND source_files
+    "${source_path}/hip_implementation/hip_batch_sizer.cpp"
+    "${source_path}/hip_implementation/hip_manager.cpp"
+    "${source_path}/hip_implementation/hip_worker.cpp"
+    "${source_path}/hip_implementation/hip_random.cpp"
+    "${source_path}/hip_implementation/evaluate_fitness.cpp"
+    "${source_path}/hip_implementation/virtual_screen.cpp"
+  )
+endif()
+
 # declare the SYCL sources
 if(MUDOCK_ENABLE_SYCL)
   list(APPEND header_files
@@ -155,6 +181,10 @@ add_library(libmudock STATIC ${source_files} ${header_files})
 add_library(mudock::libmudock ALIAS libmudock)
 set_target_properties(libmudock PROPERTIES PUBLIC_HEADER "${headers}")
 target_include_directories(libmudock PUBLIC "${header_path}")
+
+# Include Boost and RDKit directories for the target
+target_include_directories(libmudock PRIVATE ${Boost_INCLUDE_DIRS})
+target_include_directories(libmudock PRIVATE ${RDKit_INCLUDE_DIRS})
 set_target_properties(libmudock PROPERTIES POSITION_INDEPENDENT_CODE ON)
 set_target_properties(libmudock PROPERTIES PREFIX "" OUTPUT_NAME "libmudock")
 set_target_properties(libmudock
@@ -176,8 +206,16 @@ if(MUDOCK_ENABLE_CUDA)
     CUDA_STANDARD_REQUIRED ON
     CUDA_EXTENSIONS OFF
     CUDA_SEPARABLE_COMPILATION ON)
-  SET(CMAKE_CUDA_FLAGS_RELEASE "-O3 -use_fast_math --expt-relaxed-constexpr")
-  SET(CMAKE_CUDA_FLAGS_DEBUG "-G -g -Xptxas -v --expt-relaxed-constexpr")
+  set(CMAKE_CUDA_FLAGS_RELEASE "-O3 -use_fast_math --expt-relaxed-constexpr")
+  set(CMAKE_CUDA_FLAGS_DEBUG "-G -g -Xptxas -v --expt-relaxed-constexpr")
+endif()
+
+# check if we need to activate the compilation flag that signals HIP
+if(MUDOCK_ENABLE_HIP)
+  target_compile_definitions(libmudock PUBLIC MUDOCK_USE_HIP)
+  target_link_libraries(libmudock PUBLIC hiprand)
+  target_compile_options(libmudock PUBLIC $<$<AND:$<CONFIG:DEBUG>,$<COMPILE_LANGUAGE:CXX>>:-G -g -Xptxas -v --expt-relaxed-constexpr>)
+  target_compile_options(libmudock PUBLIC $<$<AND:$<CONFIG:RELEASE>,$<COMPILE_LANGUAGE:CXX>>:-O3 -use_fast_math --expt-relaxed-constexpr>)
 endif()
 
 # check if we need to activate the compilation flag that signals SYCL
