@@ -44,7 +44,9 @@ namespace mudock {
     const auto [begin_it, end_it] = boost::edges(g);
     for (auto it = begin_it; it != end_it; ++it) {
       if (bonds[g[*it].bond_index].can_rotate) {
-        result.emplace_back(boost::source(*it, g), boost::target(*it, g));
+        // TODO change, nvcc could not make template deduction
+        result.push_back({boost::source(*it, g), boost::target(*it, g)});
+        // result.emplace_back({boost::source(*it, g), boost::target(*it, g)});
       }
     }
     return std::make_pair(result, result.size());
