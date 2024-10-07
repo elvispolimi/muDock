@@ -123,7 +123,6 @@ namespace mudock {
                         const point3D maximum,
                         const point3D center,
                         const index3D index,
-                        const fp_type inv_spacing,
                         const fp_type* const* atom_textures,
                         const int* atom_tex_indexes,
                         const fp_type* __restrict__ electro_texture,
