@@ -34,8 +34,11 @@ namespace mudock {
     const fp_type pv[2] = {p1v, p0v};
     const fp_type pw[2] = {p1w, p0w};
     fp_type value{0};
+#pragma unroll
     for (int i = 0; i <= 1; i++)
+#pragma unroll
       for (int t = 0; t <= 1; t++)
+#pragma unroll
         for (int n = 0; n <= 1; n++) {
           const fp_type tmp = tex[FLATTENED_3D(u0 + n, v0 + t, w0 + i, index)];
           value += pu[n] * pv[t] * pw[i] * tmp;
