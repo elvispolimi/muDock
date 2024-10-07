@@ -22,7 +22,8 @@ namespace mudock {
       host.resize(num_elements);
       sycl_object<T>::alloc(num_elements);
     };
-    inline void alloc(const std::size_t num_elements, const T value) {
+    // Set const byte value, value is interpreted as an unsigned char
+    inline void alloc(const std::size_t num_elements, const int value) {
       host.resize(num_elements, value);
       sycl_object<T>::alloc(host.size());
       sycl_object<T>::set_to_value(value);

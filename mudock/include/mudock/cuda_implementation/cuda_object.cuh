@@ -35,7 +35,8 @@ namespace mudock {
       }
       size = num_elements;
     }
-    inline void set_to_value(const T value) { MUDOCK_CHECK(cudaMemset(dev_ptr, value, sizeof(T) * size)); }
+    // CUDA memset set const byte value https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__MEMORY.html#group__CUDART__MEMORY_1gf7338650f7683c51ee26aadc6973c63a
+    inline void set_to_value(const int value) { MUDOCK_CHECK(cudaMemset(dev_ptr, value, sizeof(T) * size)); }
 
     inline void copy_host2device(const T* const host) {
       MUDOCK_CHECK(cudaMemcpy(dev_ptr, host, sizeof(T) * size, cudaMemcpyHostToDevice));

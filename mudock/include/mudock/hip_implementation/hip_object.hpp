@@ -35,7 +35,8 @@ namespace mudock {
       }
       size = num_elements;
     }
-    inline void set_to_value(const T value) { MUDOCK_CHECK(hipMemset(dev_ptr, value, sizeof(T) * size)); }
+    // HIP set the const byte value https://rocm.docs.amd.com/projects/hipfort/en/docs-5.2.3/doxygen/html/interfacehipfort_1_1hipmemset.html
+    inline void set_to_value(const int value) { MUDOCK_CHECK(hipMemset(dev_ptr, value, sizeof(T) * size)); }
 
     inline void copy_host2device(const T* const host) {
       MUDOCK_CHECK(hipMemcpy(dev_ptr, host, sizeof(T) * size, hipMemcpyHostToDevice));
