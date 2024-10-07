@@ -14,12 +14,10 @@ namespace mudock {
   __device__ __constant__ fp_type map_min_const[3];
   __device__ __constant__ fp_type map_max_const[3];
   __device__ __constant__ fp_type map_center_const[3];
-  __device__ __constant__ fp_type inv_spacing_const;
 
   void setup_constant_memory(const point3D& minimum_coord,
                              const point3D& maximum_coord,
-                             const point3D& center,
-                             const fp_type inv_grid_spacing) {
+                             const point3D& center) {
     const fp_type l_map_min[3]{minimum_coord.x, minimum_coord.y, minimum_coord.z};
     const fp_type l_map_max[3]{maximum_coord.x, maximum_coord.y, maximum_coord.z};
     const fp_type l_map_center[3]{center.x, center.y, center.z};
@@ -30,8 +28,6 @@ namespace mudock {
         cudaMemcpyToSymbol(map_max_const, &l_map_max, 3 * sizeof(fp_type), 0, cudaMemcpyHostToDevice));
     MUDOCK_CHECK(
         cudaMemcpyToSymbol(map_center_const, &l_map_center, 3 * sizeof(fp_type), 0, cudaMemcpyHostToDevice));
-    MUDOCK_CHECK(
-        cudaMemcpyToSymbol(inv_spacing_const, &inv_grid_spacing, sizeof(fp_type), 0, cudaMemcpyHostToDevice));
   }
 
   __device__ fp_type trilinear_interpolation_cuda(const fp_type coord[], const cudaTextureObject_t& tex) {
@@ -248,9 +244,9 @@ namespace mudock {
           } else {
             // Is inside
             // Center atom coordinates on the grid center
-            coord_tex[0] = (l_scratch_ligand_x[atom_index] - map_min_const[0]) * inv_spacing_const,
-            coord_tex[1] = (l_scratch_ligand_y[atom_index] - map_min_const[1]) * inv_spacing_const;
-            coord_tex[2] = (l_scratch_ligand_z[atom_index] - map_min_const[2]) * inv_spacing_const;
+            coord_tex[0] = (l_scratch_ligand_x[atom_index] - map_min_const[0]) * inv_spacing,
+            coord_tex[1] = (l_scratch_ligand_y[atom_index] - map_min_const[1]) * inv_spacing;
+            coord_tex[2] = (l_scratch_ligand_z[atom_index] - map_min_const[2]) * inv_spacing;
             //  TODO check approximations with in hardware interpolation
             // elect_total_trilinear +=
             //     tex3D<fp_type>(electro_texture, coord_tex[0], coord_tex[1], coord_tex[2]) *

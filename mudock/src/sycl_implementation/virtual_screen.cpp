@@ -9,8 +9,6 @@
 namespace mudock {
   // TODO create a single conf file for all implementations
   static constexpr std::size_t max_non_bonds{1024 * 10};
-  // Grid spacing fixed to 0.5 Angstrom
-  static constexpr fp_type inv_spacing{2};
 
   void init_texture_memory(const grid_map &map, sycl_object<fp_type> &tex_obj) {
     tex_obj.alloc(map.index.size_x() * map.index.size_y() * map.index.size_z());
@@ -53,6 +51,7 @@ namespace mudock {
         center(electro_map.get()->center),
         minimum_coord(electro_map.get()->minimum_coord),
         maximum_coord(electro_map.get()->maximum_coord),
+        index_map(electro_map.get()->index),
         electro_tex(queue),
         desolv_tex(queue),
         atom_texs(queue),
@@ -320,8 +319,7 @@ namespace mudock {
           const auto minimum_l           = minimum_coord;
           const auto maximum_l           = maximum_coord;
           const auto center_l            = center;
-          const auto index_l             = index;
-          const auto inv_spacing_l       = inv_spacing;
+          const auto index_l             = index_map;
 
           h.parallel_for(sycl::nd_range<1>{batch_ligands * subgroup_size, subgroup_size},
                          [=](sycl::nd_item<1> it) {
@@ -360,7 +358,6 @@ namespace mudock {
                                             maximum_l,
                                             center_l,
                                             index_l,
-                                            inv_spacing_l,
                                             wrappers_pointer_k,
                                             map_texture_index_k,
                                             electro_tex_k,
