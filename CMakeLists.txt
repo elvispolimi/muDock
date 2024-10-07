@@ -17,6 +17,7 @@ endfunction()
 # ########################################################################
 # Accelerator
 set(MUDOCK_GPU_ARCHITECTURES "none" CACHE STRING "Optimize for specific target GPU architecture (none to disable, otherwise cuda:sm_$$ or hip:$$)")
+set(MUDOCK_CPU_ARCHITECTURES "default" CACHE STRING "Optimize for specific target GPU architecture (default, or native to enable optimizations)")
 
 if(NOT MUDOCK_GPU_ARCHITECTURES EQUAL "")
     # Find the position of the colon
@@ -107,7 +108,7 @@ if(MUDOCK_ENABLE_SYCL)
     if(NOT MUDOCK_ENABLE_HIP AND NOT MUDOCK_ENABLE_CUDA)
         # handle AdaptiveCPP
         # check if we need to enable the openmp backend for SYCL
-        if(NOT MUDOCK_CPU_ARCHITECTURES STREQUAL "none")
+        if(NOT MUDOCK_CPU_ARCHITECTURES STREQUAL "default")
             if(NOT MUDOCK_CPU_ARCHITECTURES STREQUAL "generic")
                 list(APPEND sycl_targets "omp")
             else()
@@ -117,14 +118,16 @@ if(MUDOCK_ENABLE_SYCL)
 
         if(NOT MUDOCK_GPU_ARCHITECTURES STREQUAL "none")
             list(APPEND sycl_targets "${MUDOCK_GPU_ARCHITECTURES}")
+        elseif()
+            list(APPEND sycl_targets "omp")
         endif()
 
         # check if we need to enable the AMD or NVIDIA backend for SYCL
-
+        
         # prepare the option for the AdaptiveCPP package finder
-        list(JOIN sycl_targets ";" SYCL_TARGETS)
+        set(SYCL_TARGETS ${sycl_targets})
         set(ACPP_TARGETS "${SYCL_TARGETS}" CACHE STRING "AdaptiveCPP targets")
-        find_package(AdaptiveCpp REQUIRED)
+        find_package(AdaptiveCpp CONFIG REQUIRED)
 
     # TODO OneAPI
     else()
@@ -202,6 +205,7 @@ message(STATUS "//===---------------------------===//")
 message(STATUS "CXX compiler........................: ${CMAKE_CXX_COMPILER} (CMAKE_CXX_COMPILER)")
 message(STATUS "Build type..........................: ${CMAKE_BUILD_TYPE} (CMAKE_BUILD_TYPE)")
 message(STATUS "Install prefix......................: ${CMAKE_INSTALL_PREFIX} (CMAKE_INSTALL_PREFIX)")
+message(STATUS "CPU Architecture....................: ${MUDOCK_CPU_ARCHITECTURES} (MUDOCK_CPU_ARCHITECTURES)")
 
 message(STATUS "Enable native.......................: ${MUDOCK_ENABLE_NATIVE} (MUDOCK_ENABLE_NATIVE)")
 
