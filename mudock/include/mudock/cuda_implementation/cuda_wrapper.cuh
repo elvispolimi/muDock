@@ -23,7 +23,8 @@ namespace mudock {
       host.resize(num_elements);
       cuda_object<T>::alloc(num_elements);
     };
-    inline void alloc(const std::size_t num_elements, const T value) {
+    // CUDA set const byte value
+    inline void alloc(const std::size_t num_elements, const int value) {
       host.resize(num_elements, value);
       cuda_object<T>::alloc(host.size());
       cuda_object<T>::set_to_value(value);
