@@ -357,8 +357,8 @@ namespace mudock {
     }
     // Intra warp reduction
     for (int offset = warpSize / 2; offset > 0; offset /= 2) {
-      fp_type other_min_score = __shfl_down_sync(0xFFFFFFFF, min_score, offset);
-      int other_min_index     = __shfl_down_sync(0xFFFFFFFF, min_index, offset);
+      const fp_type other_min_score = __shfl_down_sync(0xFFFFFFFF, min_score, offset);
+      const int other_min_index     = __shfl_down_sync(0xFFFFFFFF, min_index, offset);
       if (other_min_score < min_score) {
         min_score = other_min_score;
         min_index = other_min_index;
