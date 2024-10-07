@@ -63,11 +63,10 @@ namespace mudock {
   template<typename T>
   __device__ const T random_gen_cuda(curandState& state, const T min, const T max) {
     fp_type value;
-    if constexpr (is_debug()){
+    if constexpr (is_debug()) {
       // TODO value here for debug
       value = fp_type{0.4};
-    }
-    else {
+    } else {
       value = curand_uniform(&state);
     }
     return static_cast<T>((value * static_cast<fp_type>(max - min)) + min);
@@ -146,10 +145,10 @@ namespace mudock {
                                    curandState* __restrict__ state,
                                    fp_type* __restrict__ ligand_scores,
                                    chromosome* __restrict__ best_chromosomes) {
-    const int ligand_id = blockIdx.x;
-    const int local_thread_id = threadIdx.x;
+    const int ligand_id        = blockIdx.x;
+    const int local_thread_id  = threadIdx.x;
     const int thread_per_block = blockDim.x;
-    const int global_thread_id  = local_thread_id + thread_per_block * ligand_id;
+    const int global_thread_id = local_thread_id + thread_per_block * ligand_id;
 
     const int num_atoms    = ligand_num_atoms[ligand_id];
     const int num_nonbonds = ligand_num_nonbonds[ligand_id];
@@ -289,7 +288,7 @@ namespace mudock {
 
         // Perform a tree reduction using __shfl_down_sync
         // TODO check performance
-        for (int offset = 16; offset > 0; offset /= 2) {
+        for (int offset = warpSize / 2; offset > 0; offset /= 2) {
           total_trilinear += __shfl_down_sync(0xffffffff, total_trilinear, offset);
           total_eintcal += __shfl_down_sync(0xffffffff, total_eintcal, offset);
         }
