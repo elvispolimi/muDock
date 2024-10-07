@@ -9,9 +9,7 @@
 #include <mudock/type_alias.hpp>
 
 namespace mudock {
-  void setup_constant_memory(const point3D& minimum,
-                             const point3D& maximum,
-                             const point3D& center);
+  void setup_constant_memory(const point3D& minimum, const point3D& maximum, const point3D& center);
 
   __global__ void evaluate_fitness(const int num_generations,
                                    const int tournament_length,
@@ -44,11 +42,11 @@ namespace mudock {
                                    const int* __restrict__ frag_start_atom_index,
                                    const int* __restrict__ frag_stop_atom_index,
                                    chromosome* __restrict__ chromosomes,
-                                   const hipTextureObject_t* atom_textures,
-                                   const int* atom_tex_indexes,
+                                   const hipTextureObject_t* __restrict__ atom_textures,
+                                   const int* __restrict__ atom_tex_indexes,
                                    const hipTextureObject_t electro_texture,
                                    const hipTextureObject_t desolv_texture,
-                                   hiprandState* state,
-                                   fp_type* ligand_scores,
-                                   chromosome* best_chromosomes);
+                                   hiprandState* __restrict__ state,
+                                   fp_type* __restrict__ ligand_scores,
+                                   chromosome* __restrict__ best_chromosomes);
 } // namespace mudock
