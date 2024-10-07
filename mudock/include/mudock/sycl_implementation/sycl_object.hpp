@@ -36,7 +36,10 @@ namespace mudock {
       }
       size = num_elements;
     }
-    inline void set_to_value(const T value) { queue.memset(dev_ptr, value, sizeof(T) * size).wait(); }
+    // Set const byte value, value is interpreted as an unsigned char
+    // https://registry.khronos.org/SYCL/specs/sycl-2020/html/sycl-2020.html
+    // 4.9.4.3. SYCL functions for explicit memory operations
+    inline void set_to_value(const int value) { queue.memset(dev_ptr, value, sizeof(T) * size).wait(); }
 
     inline void copy_host2device(const T* const host) {
       queue.memcpy(dev_ptr, host, sizeof(T) * size).wait();

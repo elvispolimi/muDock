@@ -22,7 +22,8 @@ namespace mudock {
       host.resize(num_elements);
       hip_object<T>::alloc(num_elements);
     };
-    inline void alloc(const std::size_t num_elements, const T value) {
+    // Set ONLY const byte value
+    inline void alloc(const std::size_t num_elements, const int value) {
       host.resize(num_elements, value);
       hip_object<T>::alloc(host.size());
       hip_object<T>::set_to_value(value);
