@@ -86,8 +86,7 @@ namespace mudock {
     // Grid spacing fixed to 0.5 Angstrom
     setup_constant_memory(electro_map.get()->minimum_coord,
                           electro_map.get()->maximum_coord,
-                          electro_map.get()->center,
-                          fp_type{2});
+                          electro_map.get()->center);
 
     // Get wavefront size
     MUDOCK_CHECK(hipDeviceGetAttribute(&wavefront_size, hipDeviceAttributeWarpSize, device_id));
