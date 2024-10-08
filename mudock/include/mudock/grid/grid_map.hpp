@@ -8,33 +8,31 @@
 #include <mudock/chem.hpp>
 #include <mudock/grid/mdindex.hpp>
 #include <mudock/grid/point3D.hpp>
+#include <mudock/chem/grid_const.hpp>
 #include <mudock/log.hpp>
 #include <mudock/molecule.hpp>
 #include <stdexcept>
 #include <vector>
 
 namespace mudock {
-  static constexpr fp_type spacing{0.5}; // Angstrom
-  static constexpr fp_type inv_spacing{1 / spacing};
-
   // Utility for grid map creation
 
   inline point3D get_grid_minimum(const dynamic_molecule& receptor) {
     const fp_type receptor_min_x = std::ranges::min(receptor.get_x());
     const fp_type receptor_min_y = std::ranges::min(receptor.get_y());
     const fp_type receptor_min_z = std::ranges::min(receptor.get_z());
-    return {std::floor((receptor_min_x - cutoff_distance - spacing) * inv_spacing) / inv_spacing,
-            std::floor((receptor_min_y - cutoff_distance - spacing) * inv_spacing) / inv_spacing,
-            std::floor((receptor_min_z - cutoff_distance - spacing) * inv_spacing) / inv_spacing};
+    return {std::floor((receptor_min_x - cutoff_distance - grid_spacing) * inv_spacing) / inv_spacing,
+            std::floor((receptor_min_y - cutoff_distance - grid_spacing) * inv_spacing) / inv_spacing,
+            std::floor((receptor_min_z - cutoff_distance - grid_spacing) * inv_spacing) / inv_spacing};
   }
 
   inline point3D get_grid_maximum(const dynamic_molecule& receptor) {
     const fp_type receptor_max_x = std::ranges::max(receptor.get_x());
     const fp_type receptor_max_y = std::ranges::max(receptor.get_y());
     const fp_type receptor_max_z = std::ranges::max(receptor.get_z());
-    return {std::ceil((receptor_max_x + cutoff_distance + spacing) * inv_spacing) / inv_spacing,
-            std::ceil((receptor_max_y + cutoff_distance + spacing) * inv_spacing) / inv_spacing,
-            std::ceil((receptor_max_z + cutoff_distance + spacing) * inv_spacing) / inv_spacing};
+    return {std::ceil((receptor_max_x + cutoff_distance + grid_spacing) * inv_spacing) / inv_spacing,
+            std::ceil((receptor_max_y + cutoff_distance + grid_spacing) * inv_spacing) / inv_spacing,
+            std::ceil((receptor_max_z + cutoff_distance + grid_spacing) * inv_spacing) / inv_spacing};
   }
 
   inline index3D get_grid_points_dim(const point3D& grid_minimum, const point3D& grid_maximum) {

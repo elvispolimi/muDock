@@ -6,6 +6,7 @@
 namespace mudock {
   static constexpr fp_type cutoff_distance    = 8.0;
   static constexpr fp_type grid_spacing       = 0.5; //Angstrom
+  static constexpr fp_type inv_spacing{1 / grid_spacing}; // Angstrom
   static constexpr fp_type covalence_distance = 1.9; //Angstrom
 
   static constexpr fp_type unknown_distance_1 = 3.61; //Angstrom
