@@ -28,7 +28,10 @@ set_target_properties("${CMAKE_PROJECT_NAME}"
   CXX_STANDARD_REQUIRED ON
   CXX_EXTENSIONS OFF
 )
-
+find_package(Threads REQUIRED)
+# Include Boost and RDKit directories for the target
+target_include_directories("${CMAKE_PROJECT_NAME}" PRIVATE ${Boost_INCLUDE_DIRS})
+target_include_directories("${CMAKE_PROJECT_NAME}" PRIVATE ${RDKit_INCLUDE_DIRS})
 # add the dependencies
 if(MUDOCK_ENABLE_SYCL)
   target_link_libraries("${CMAKE_PROJECT_NAME}" libmudock boost_program_options boost_context pthread boost_fiber m stdc++)

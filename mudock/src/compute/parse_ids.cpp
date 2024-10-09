@@ -1,6 +1,7 @@
 #include <cctype>
 #include <mudock/compute/parse_ids.hpp>
 #include <stdexcept>
+#include <string>
 
 namespace mudock {
   std::vector<int> parse_ids(std::string_view description) {
