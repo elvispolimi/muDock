@@ -2,7 +2,6 @@
 
 #include <cassert>
 #include <cuda_runtime.h>
-#include <mudock/cuda_implementation/cuda_check_error_macro.cuh>
 #include <mudock/cuda_implementation/cuda_object.cuh>
 
 namespace mudock {

@@ -1,36 +1,40 @@
 #include <cstdio>
-#include <curand_kernel.h>
 #include <mudock/cuda_implementation/calc_energy.cuh>
 #include <mudock/cuda_implementation/cuda_check_error_macro.cuh>
 #include <mudock/cuda_implementation/evaluate_fitness.cuh>
 #include <mudock/cuda_implementation/mutate.cuh>
 #include <mudock/grid.hpp>
 #include <mudock/utils.hpp>
+#include <cuda.h>
 
+#define FLATTENED_3D(x, y, z, index) (index.n_xy * z + y * index.n_x + x)
 namespace mudock {
   static constexpr fp_type coordinate_step{0.2};
   static constexpr fp_type angle_step{4};
 
-  __device__ __constant__ fp_type map_min_const[3];
-  __device__ __constant__ fp_type map_max_const[3];
-  __device__ __constant__ fp_type map_center_const[3];
+  // TODO check if constant memory is supported
+  // __device__ __constant__ fp_type map_min_const[3];
+  // __device__ __constant__ fp_type map_max_const[3];
+  // __device__ __constant__ fp_type map_center_const[3];
 
-  void setup_constant_memory(const point3D& minimum_coord,
-                             const point3D& maximum_coord,
-                             const point3D& center) {
-    const fp_type l_map_min[3]{minimum_coord.x, minimum_coord.y, minimum_coord.z};
-    const fp_type l_map_max[3]{maximum_coord.x, maximum_coord.y, maximum_coord.z};
-    const fp_type l_map_center[3]{center.x, center.y, center.z};
+  // void setup_constant_memory(const point3D& minimum_coord,
+  //                            const point3D& maximum_coord,
+  //                            const point3D& center) {
+  //   const fp_type l_map_min[3]{minimum_coord.x, minimum_coord.y, minimum_coord.z};
+  //   const fp_type l_map_max[3]{maximum_coord.x, maximum_coord.y, maximum_coord.z};
+  //   const fp_type l_map_center[3]{center.x, center.y, center.z};
 
-    MUDOCK_CHECK(
-        cudaMemcpyToSymbol(map_min_const, &l_map_min, 3 * sizeof(fp_type), 0, cudaMemcpyHostToDevice));
-    MUDOCK_CHECK(
-        cudaMemcpyToSymbol(map_max_const, &l_map_max, 3 * sizeof(fp_type), 0, cudaMemcpyHostToDevice));
-    MUDOCK_CHECK(
-        cudaMemcpyToSymbol(map_center_const, &l_map_center, 3 * sizeof(fp_type), 0, cudaMemcpyHostToDevice));
-  }
+  //   MUDOCK_CHECK(
+  //       cudaMemcpyToSymbol(map_min_const, &l_map_min, 3 * sizeof(fp_type), 0, cudaMemcpyHostToDevice));
+  //   MUDOCK_CHECK(
+  //       cudaMemcpyToSymbol(map_max_const, &l_map_max, 3 * sizeof(fp_type), 0, cudaMemcpyHostToDevice));
+  //   MUDOCK_CHECK(
+  //       cudaMemcpyToSymbol(map_center_const, &l_map_center, 3 * sizeof(fp_type), 0, cudaMemcpyHostToDevice));
+  // }
 
-  __device__ fp_type trilinear_interpolation_cuda(const fp_type coord[], const cudaTextureObject_t& tex) {
+  __device__ fp_type trilinear_interpolation_cuda(const fp_type coord[],
+                                                  const fp_type* tex,
+                                                  const index3D& index) {
     // Interpolation CUDA
     const int u0      = coord[0];
     const fp_type p0u = coord[0] - static_cast<fp_type>(u0);
@@ -54,42 +58,42 @@ namespace mudock {
       for (int t = 0; t <= 1; t++)
 #pragma unroll
         for (int n = 0; n <= 1; n++) {
-          const fp_type tmp = tex3D<fp_type>(tex, u0 + n, v0 + t, w0 + i);
+          const fp_type tmp = tex[FLATTENED_3D(u0 + n, v0 + t, w0 + i, index)];
           value += pu[n] * pv[t] * pw[i] * tmp;
         }
     return value;
   }
 
   template<typename T>
-  __device__ const T random_gen_cuda(curandState& state, const T min, const T max) {
+  __device__ const T random_gen_cuda(XORWOWState& state, const T min, const T max) {
     fp_type value;
     if constexpr (is_debug()) {
       // TODO value here for debug
       value = fp_type{0.4};
     } else {
-      value = curand_uniform(&state);
+      value = state.next();
     }
     return static_cast<T>((value * static_cast<fp_type>(max - min)) + min);
   }
 
-  __device__ int get_selection_distribution(curandState& state, const int* population_number) {
+  __device__ int get_selection_distribution(XORWOWState& state, const int* population_number) {
     return random_gen_cuda<int>(state, 0, *population_number - 1);
   };
 
-  __device__ fp_type get_init_change_distribution(curandState& state) {
+  __device__ fp_type get_init_change_distribution(XORWOWState& state) {
     return random_gen_cuda<fp_type>(state, -45, 45);
   }
-  __device__ fp_type get_mutation_change_distribution(curandState& state) {
+  __device__ fp_type get_mutation_change_distribution(XORWOWState& state) {
     return random_gen_cuda<fp_type>(state, -10, 10);
   };
-  __device__ fp_type get_mutation_coin_distribution(curandState& state) {
+  __device__ fp_type get_mutation_coin_distribution(XORWOWState& state) {
     return random_gen_cuda<fp_type>(state, 0, 1);
   };
-  __device__ int get_crossover_distribution(curandState& state, const int* num_rotamers) {
+  __device__ int get_crossover_distribution(XORWOWState& state, const int* num_rotamers) {
     return random_gen_cuda<int>(state, 0, 6 + *num_rotamers);
   };
 
-  __device__ int tournament_selection_cuda(curandState& state,
+  __device__ int tournament_selection_cuda(XORWOWState& state,
                                            const int tournament_length,
                                            const int chromosome_number,
                                            const fp_type* __restrict__ scores) {
@@ -104,7 +108,7 @@ namespace mudock {
     return best_individual;
   }
 
-  // TODO check the syncwarp
+  // TODO check the syncthreads
   //TODO OPT: template parameter based on number of atoms, rotamers, chromosomes and population
   // Interesting the usage of the bucketizer
   __global__ void evaluate_fitness(const int num_generations,
@@ -138,11 +142,15 @@ namespace mudock {
                                    const int* __restrict__ frag_start_atom_index,
                                    const int* __restrict__ frag_stop_atom_index,
                                    chromosome* __restrict__ chromosomes,
-                                   const cudaTextureObject_t* __restrict__ atom_textures,
+                                   const point3D minimum,
+                                   const point3D maximum,
+                                   const point3D center,
+                                   const index3D index,
+                                   const fp_type* const __restrict__* const __restrict__ atom_textures,
                                    const int* __restrict__ atom_tex_indexes,
-                                   const cudaTextureObject_t electro_texture,
-                                   const cudaTextureObject_t desolv_texture,
-                                   curandState* __restrict__ state,
+                                   const fp_type* __restrict__ electro_texture,
+                                   const fp_type* __restrict__ desolv_texture,
+                                   XORWOWState* __restrict__ state,
                                    fp_type* __restrict__ ligand_scores,
                                    chromosome* __restrict__ best_chromosomes) {
     const int ligand_id        = blockIdx.x;
@@ -177,17 +185,20 @@ namespace mudock {
     const auto* l_atom_tex_indexes      = atom_tex_indexes + ligand_id * atom_stride;
     const int* l_ligand_nonbond_a1      = ligand_nonbond_a1 + ligand_id * nonbond_stride;
     const int* l_ligand_nonbond_a2      = ligand_nonbond_a2 + ligand_id * nonbond_stride;
-    curandState& l_state                = (state[global_thread_id]);
+    XORWOWState& l_state                = (state[global_thread_id]);
 
     // Shared memory
     extern __shared__ fp_type shared_data[];
-    fp_type* s_chromosome_scores = shared_data;
+    fp_type* s_reduction_first   = shared_data;
+    fp_type* s_reduction_second  = shared_data + blockDim.x;
+    fp_type* s_chromosome_scores = shared_data + 2 * blockDim.x;
 
     // Generate initial population
     for (int chromosome_index = local_thread_id; chromosome_index < max(chromosome_number, thread_per_block);
          chromosome_index += thread_per_block) {
       // Set initial score value
-      s_chromosome_scores[chromosome_index] = std::numeric_limits<fp_type>::infinity();
+      // Infinity value
+      s_chromosome_scores[chromosome_index] = 0x7ff0000000000000;
 
       chromosome& chromo = *(l_chromosomes + chromosome_index);
 #pragma unroll
@@ -199,7 +210,7 @@ namespace mudock {
         chromo[i] = get_init_change_distribution(l_state) * angle_step;
       }
     }
-    __syncwarp();
+    __syncthreads();
     // TODO maybe template parameter?
     for (int generation = 0; generation < num_generations; ++generation) {
       for (int chromosome_index = 0; chromosome_index < chromosome_number; ++chromosome_index) {
@@ -231,13 +242,12 @@ namespace mudock {
                                l_scratch_ligand_y[atom_index],
                                l_scratch_ligand_z[atom_index]};
 
-          if (coord_tex[0] < map_min_const[0] || coord_tex[0] > map_max_const[0] ||
-              coord_tex[1] < map_min_const[1] || coord_tex[1] > map_max_const[1] ||
-              coord_tex[2] < map_min_const[2] || coord_tex[2] > map_max_const[2]) {
+          if (coord_tex[0] < minimum.x || coord_tex[0] > maximum.x || coord_tex[1] < minimum.y ||
+              coord_tex[1] > maximum.y || coord_tex[2] < minimum.z || coord_tex[2] > maximum.z) {
             // Is outside
-            const fp_type distance_two = powf(fabs(coord_tex[0] - map_center_const[0]), fp_type{2}) +
-                                         powf(fabs(coord_tex[1] - map_center_const[1]), fp_type{2}) +
-                                         powf(fabs(coord_tex[2] - map_center_const[2]), fp_type{2});
+            const fp_type distance_two = powf(fabs(coord_tex[0] - center.x), fp_type{2}) +
+                                         powf(fabs(coord_tex[1] - center.y), fp_type{2}) +
+                                         powf(fabs(coord_tex[2] - center.z), fp_type{2});
 
             const fp_type epenalty = distance_two * ENERGYPENALTY;
             elect_total_trilinear += epenalty;
@@ -245,9 +255,9 @@ namespace mudock {
           } else {
             // Is inside
             // Center atom coordinates on the grid center
-            coord_tex[0] = (l_scratch_ligand_x[atom_index] - map_min_const[0]) * inv_spacing,
-            coord_tex[1] = (l_scratch_ligand_y[atom_index] - map_min_const[1]) * inv_spacing;
-            coord_tex[2] = (l_scratch_ligand_z[atom_index] - map_min_const[2]) * inv_spacing;
+            coord_tex[0] = (l_scratch_ligand_x[atom_index] - minimum.x) * inv_spacing,
+            coord_tex[1] = (l_scratch_ligand_y[atom_index] - minimum.y) * inv_spacing;
+            coord_tex[2] = (l_scratch_ligand_z[atom_index] - minimum.z) * inv_spacing;
             //  TODO check approximations with in hardware interpolation
             // elect_total_trilinear +=
             //     tex3D<fp_type>(electro_texture, coord_tex[0], coord_tex[1], coord_tex[2]) *
@@ -260,11 +270,11 @@ namespace mudock {
             //                                        coord_tex[2]);
 
             elect_total_trilinear +=
-                trilinear_interpolation_cuda(coord_tex, electro_texture) * l_ligand_charge[atom_index];
-            dmap_total_trilinear +=
-                trilinear_interpolation_cuda(coord_tex, desolv_texture) * fabsf(l_ligand_charge[atom_index]);
+                trilinear_interpolation_cuda(coord_tex, electro_texture, index) * l_ligand_charge[atom_index];
+            dmap_total_trilinear += trilinear_interpolation_cuda(coord_tex, desolv_texture, index) *
+                                    fabsf(l_ligand_charge[atom_index]);
             emap_total_trilinear +=
-                trilinear_interpolation_cuda(coord_tex, atom_textures[l_atom_tex_indexes[atom_index]]);
+                trilinear_interpolation_cuda(coord_tex, atom_textures[l_atom_tex_indexes[atom_index]], index);
           }
         }
         fp_type total_trilinear = elect_total_trilinear + dmap_total_trilinear + emap_total_trilinear;
@@ -286,25 +296,46 @@ namespace mudock {
                                              l_ligand_nonbond_a1,
                                              l_ligand_nonbond_a2);
 
-        // Perform a tree reduction using __shfl_down_sync
-        // TODO check performance
-        for (int offset = warpSize / 2; offset > 0; offset /= 2) {
-          total_trilinear += __shfl_down_sync(0xffffffff, total_trilinear, offset);
-          total_eintcal += __shfl_down_sync(0xffffffff, total_eintcal, offset);
+        // Reduction
+        s_reduction_first[local_thread_id]  = total_trilinear;
+        s_reduction_second[local_thread_id] = total_eintcal;
+        for (int offset = thread_per_block / 2; offset > 0; offset /= 2) {
+          if (local_thread_id < offset) {
+            s_reduction_first[local_thread_id] += s_reduction_first[local_thread_id + offset];
+            s_reduction_second[local_thread_id] += s_reduction_second[local_thread_id + offset];
+          }
+          __syncthreads(); // Synchronize threads after each reduction step
         }
 
         if (local_thread_id == 0) {
+          total_trilinear                       = s_reduction_first[local_thread_id];
+          total_eintcal                         = s_reduction_second[local_thread_id];
           const fp_type tors_free_energy        = num_rotamers * autodock_parameters::coeff_tors;
           s_chromosome_scores[chromosome_index] = total_trilinear + total_eintcal + tors_free_energy;
         }
       }
 
       // Generate the new population
+      const int num_iterations = tournament_length;
       for (int chromosome_index = local_thread_id; chromosome_index < chromosome_number;
            chromosome_index += thread_per_block) {
         chromosome& next_chromosome = *(l_next_chromosomes + chromosome_index);
 
         // select the parent
+        // int best_individual_1 = get_selection_distribution(l_state, &chromosome_number);
+        // for (int i = 0; i < num_iterations; ++i) {
+        //   auto contended = get_selection_distribution(l_state, &chromosome_number);
+        //   if (s_chromosome_scores[contended] < s_chromosome_scores[best_individual_1]) {
+        //     best_individual_1 = contended;
+        //   }
+        // }
+        // int best_individual_2 = get_selection_distribution(l_state, &chromosome_number);
+        // for (int i = 0; i < num_iterations; ++i) {
+        //   auto contended = get_selection_distribution(l_state, &chromosome_number);
+        //   if (s_chromosome_scores[contended] < s_chromosome_scores[best_individual_2]) {
+        //     best_individual_2 = contended;
+        //   }
+        // }
         const int best_individual_1 =
             tournament_selection_cuda(l_state, tournament_length, chromosome_number, s_chromosome_scores);
         const int best_individual_2 =
@@ -338,13 +369,12 @@ namespace mudock {
       chromosome* const tmp_chromosomes = l_chromosomes;
       l_chromosomes                     = l_next_chromosomes;
       l_next_chromosomes                = tmp_chromosomes;
-      __syncwarp();
+      __syncthreads();
     }
 
     // Output
 
     // Compute the maximum value within the warp
-    // Assuming each warp has 32 threads
     int min_index     = local_thread_id;
     fp_type min_score = s_chromosome_scores[min_index];
     for (int chromosome_index = local_thread_id + thread_per_block; chromosome_index < chromosome_number;
@@ -354,16 +384,24 @@ namespace mudock {
         min_score = s_chromosome_scores[chromosome_index];
       }
     }
-    // Intra warp reduction
-    for (int offset = warpSize / 2; offset > 0; offset /= 2) {
-      const fp_type other_min_score = __shfl_down_sync(0xFFFFFFFF, min_score, offset);
-      const int other_min_index     = __shfl_down_sync(0xFFFFFFFF, min_index, offset);
-      if (other_min_score < min_score) {
-        min_score = other_min_score;
-        min_index = other_min_index;
+
+    // Reduction
+    s_reduction_first[local_thread_id]  = min_score;
+    s_reduction_second[local_thread_id] = min_index;
+    for (int offset = thread_per_block / 2; offset > 0; offset /= 2) {
+      if (local_thread_id < offset) {
+        const fp_type other_min_score = s_reduction_first[local_thread_id + offset];
+        const int other_min_index     = s_reduction_second[local_thread_id + offset];
+        if (other_min_score < s_reduction_first[local_thread_id]) {
+          s_reduction_first[local_thread_id]  = other_min_score;
+          s_reduction_second[local_thread_id] = other_min_index;
+        }
       }
+      __syncthreads(); // Synchronize threads after each reduction step
     }
     if (local_thread_id == 0) {
+      min_score                = s_reduction_first[local_thread_id];
+      min_index                = s_reduction_second[local_thread_id];
       ligand_scores[ligand_id] = min_score;
       memcpy((*(best_chromosomes + ligand_id)).data(),
              (*(l_chromosomes + min_index)).data(),
