@@ -1,7 +1,5 @@
 #include <cstdlib>
-#include <cuda_runtime.h>
 #include <iostream>
-#include <mudock/cuda_implementation/cuda_check_error_macro.cuh>
 #include <mudock/cuda_implementation/cuda_worker.hpp>
 #include <mudock/log.hpp>
 #include <stdexcept>
@@ -19,10 +17,7 @@ namespace mudock {
       : input_stack(input_molecules),
         output_stack(output_molecules),
         rob(rb),
-        virtual_screen(knobs, grid_atom_maps, electro_map, desolv_map) {
-    MUDOCK_CHECK(cudaSetDevice(static_cast<int>(gpu_id)));
-    info("Worker CUDA on duty! Set affinity to GPU ", gpu_id);
-  }
+        virtual_screen(knobs, gpu_id, grid_atom_maps, electro_map, desolv_map) {}
 
   void cuda_worker::process(batch& b) {
     try {
