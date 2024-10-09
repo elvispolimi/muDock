@@ -1,16 +1,16 @@
 #pragma once
 
 #include <cstddef>
-#include <curand_kernel.h>
 #include <mudock/cuda_implementation/mutate.cuh>
+#include <mudock/cuda_implementation/cuda_random.cuh>
 #include <mudock/grid.hpp>
 #include <mudock/molecule/containers.hpp>
 #include <mudock/type_alias.hpp>
 
 namespace mudock {
-  void setup_constant_memory(const point3D& minimum,
-                             const point3D& maximum,
-                             const point3D& center);
+  // void setup_constant_memory(const point3D& minimum,
+  //                            const point3D& maximum,
+  //                            const point3D& center);
 
   __global__ void evaluate_fitness(const int num_generations,
                                    const int tournament_length,
@@ -43,11 +43,15 @@ namespace mudock {
                                    const int* __restrict__ frag_start_atom_index,
                                    const int* __restrict__ frag_stop_atom_index,
                                    chromosome* __restrict__ chromosomes,
-                                   const cudaTextureObject_t* atom_textures,
-                                   const int* atom_tex_indexes,
-                                   const cudaTextureObject_t electro_texture,
-                                   const cudaTextureObject_t desolv_texture,
-                                   curandState* state,
+                                   const point3D minimum,
+                                   const point3D maximum,
+                                   const point3D center,
+                                   const index3D index,
+                                   const fp_type * const  __restrict__ * const __restrict__ atom_textures,
+                                   const int* __restrict__ atom_tex_indexes,
+                                   const fp_type* __restrict__ electro_texture,
+                                   const fp_type* __restrict__ desolv_texture,
+                                   XORWOWState* state,
                                    fp_type* ligand_scores,
                                    chromosome* best_chromosomes);
 } // namespace mudock

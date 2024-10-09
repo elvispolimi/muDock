@@ -12,6 +12,12 @@
 #include <vector>
 
 namespace mudock {
+  struct wrappers_container {
+    std::vector<cuda_object<fp_type>> wrappers;
+    cuda_wrapper<std::vector, fp_type*> wrappers_pointer;
+
+    wrappers_container(){};
+  };
 
   class virtual_screen_cuda {
     // the configuration of the GA algorithm
@@ -40,15 +46,17 @@ namespace mudock {
     cuda_wrapper<std::vector, chromosome> best_chromosomes;
 
     // Grid Maps
-    const point3D center_maps;
-    cudaTextureObject_t electro_tex, desolv_tex;
-    cuda_wrapper<std::vector, cudaTextureObject_t> atom_texs;
+    const point3D center, minimum_coord, maximum_coord;
+    const index3D index_map;
+    cuda_object<fp_type> electro_tex, desolv_tex;
+    wrappers_container atom_texs;
 
     // Random generation
     cuda_random_object curand_states;
 
   public:
     virtual_screen_cuda(const knobs k,
+                        const std::size_t gpu_id,
                         std::shared_ptr<const grid_atom_mapper>& grid_atom_maps,
                         std::shared_ptr<const grid_map>& electro_map,
                         std::shared_ptr<const grid_map>& desolv_map);
