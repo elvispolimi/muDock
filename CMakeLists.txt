@@ -41,7 +41,7 @@ endif()
 option(MUDOCK_ENABLE_HIP "Enable the HIP kernel implementation" OFF)
 
 if(MUDOCK_ENABLE_HIP)
-    if(NOT MUDOCK_ENABLE_POLY AND NOT MUDOCK_ENABLE_SYCL AND NOT MUDOCK_ENABLE_CUDA)
+    if(NOT MUDOCK_ENABLE_POLY AND NOT MUDOCK_ENABLE_SYCL AND NOT MUDOCK_ENABLE_CUDA AND NOT MUDOCK_ENABLE_OMP)
         # enable_language(HIP)
         find_program(HIP_COMPILER hipcc)
         set(CMAKE_CXX_COMPILER "${HIP_COMPILER}")
@@ -49,10 +49,13 @@ if(MUDOCK_ENABLE_HIP)
         if(GPU_PLATFORM STREQUAL "cuda")
             set(HIP_PLATFORM "nvidia")
             add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-arch=${GPU_ARCHITECTURE}>)
-        else()
+        elseif(GPU_PLATFORM STREQUAL "amd")
             set(HIP_PLATFORM "${GPU_PLATFORM}")
 
             # TODO target arch
+        else()
+            # TODO add other HIP devices support
+            message(ERROR "Wrong target for HIP implementation")
         endif()
 
         set(HIP_ARCHITECTURES "${GPU_ARCHITECTURE}")
@@ -103,7 +106,7 @@ endif()
 option(MUDOCK_ENABLE_CUDA "Enable the CUDA kernel implementation" OFF)
 
 if(MUDOCK_ENABLE_CUDA)
-    if(NOT MUDOCK_ENABLE_HIP AND NOT MUDOCK_ENABLE_SYCL AND NOT MUDOCK_ENABLE_POLY)
+    if(NOT MUDOCK_ENABLE_HIP AND NOT MUDOCK_ENABLE_SYCL AND NOT MUDOCK_ENABLE_POLY AND NOT MUDOCK_ENABLE_OMP)
         enable_language(CUDA)
 
         # Find the position of the _
@@ -127,7 +130,7 @@ endif()
 option(MUDOCK_ENABLE_SYCL "Enable the SYCL kernel implementation" OFF)
 
 if(MUDOCK_ENABLE_SYCL)
-    if(NOT MUDOCK_ENABLE_HIP AND NOT MUDOCK_ENABLE_POLY AND NOT MUDOCK_ENABLE_CUDA)
+    if(NOT MUDOCK_ENABLE_HIP AND NOT MUDOCK_ENABLE_POLY AND NOT MUDOCK_ENABLE_CUDA AND NOT MUDOCK_ENABLE_OMP)
         # handle AdaptiveCPP
         # check if we need to enable the openmp backend for SYCL
         if(MUDOCK_CPU_ARCHITECTURES STREQUAL "native") # TODO what to do with native?
@@ -152,6 +155,24 @@ if(MUDOCK_ENABLE_SYCL)
         find_package(AdaptiveCpp CONFIG REQUIRED)
 
     # TODO OneAPI
+    else()
+        message(FATAL_ERROR "Enable only one parallel framework at a time.")
+    endif()
+endif()
+
+# OpenMP
+option(MUDOCK_ENABLE_OMP "Enable the OpenMP kernel implementation" OFF)
+
+if(MUDOCK_ENABLE_OMP)
+    if(NOT MUDOCK_ENABLE_HIP AND NOT MUDOCK_ENABLE_CUDA AND NOT MUDOCK_ENABLE_SYCL)
+        find_package(OpenMP REQUIRED)
+        if(GPU_PLATFORM STREQUAL "cuda" OR GPU_PLATFORM STREQUAL "amd")
+            set(OMP_TARGET "${MUDOCK_GPU_ARCHITECTURES}")
+        else()
+            # Set to use the CPU
+            set(OMP_TARGET "cpu")
+        endif()
+
     else()
         message(FATAL_ERROR "Enable only one parallel framework at a time.")
     endif()
@@ -253,7 +274,13 @@ endif()
 message(STATUS "Enable SYCL.........................: ${MUDOCK_ENABLE_SYCL} (MUDOCK_ENABLE_SYCL)")
 
 if(MUDOCK_ENABLE_SYCL)
-    message(STATUS "Target SYCL architecture............: ${MUDOCK_GPU_ARCHITECTURES} (MUDOCK_GPU_ARCHITECTURES)")
+    message(STATUS "Target SYCL architecture............: ${ACPP_TARGETS} (ACPP_TARGETS)")
+endif()
+
+message(STATUS "Enable OpenMP.......................: ${MUDOCK_ENABLE_OMP} (MUDOCK_ENABLE_OMP)")
+
+if(MUDOCK_ENABLE_OMP)
+    message(STATUS "Target OpenMP architecture..........: ${OMP_TARGET} (OMP_TARGET)")
 endif()
 
 message(STATUS "//===---------------------------===//")

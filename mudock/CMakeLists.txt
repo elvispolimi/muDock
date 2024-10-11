@@ -193,6 +193,30 @@ if(MUDOCK_ENABLE_SYCL)
   )
 endif()
 
+# declare the OpenMP sources
+if(MUDOCK_ENABLE_OMP)
+  list(APPEND header_files
+    "${header_path}/${header_prefix}/omp_implementation/omp_manager.hpp"
+    # "${header_path}/${header_prefix}/sycl_implementation/calc_energy.hpp"
+    # "${header_path}/${header_prefix}/sycl_implementation/mutate.hpp"
+    # "${header_path}/${header_prefix}/sycl_implementation/geometric_transformations.hpp"
+    # "${header_path}/${header_prefix}/sycl_implementation/sycl_random.hpp"
+    # "${header_path}/${header_prefix}/sycl_implementation/sycl_object.hpp"
+    # "${header_path}/${header_prefix}/sycl_implementation/sycl_wrapper.hpp"
+    "${header_path}/${header_prefix}/omp_implementation/omp_worker.hpp"
+    "${header_path}/${header_prefix}/omp_implementation/omp_batch_sizer.hpp"
+    "${header_path}/${header_prefix}/omp_implementation/virtual_screen.hpp"
+    # "${header_path}/${header_prefix}/sycl_implementation/evaluate_fitness.hpp"
+  )
+  list(APPEND source_files
+    "${source_path}/omp_implementation/omp_manager.cpp"
+    # "${source_path}/sycl_implementation/sycl_random.cpp"
+    "${source_path}/omp_implementation/omp_worker.cpp"
+    "${source_path}/omp_implementation/omp_batch_sizer.cpp"
+    "${source_path}/omp_implementation/virtual_screen.cpp"
+  )
+endif()
+
 # ########################################################################
 # ### Declare the compile step
 # ########################################################################
@@ -246,6 +270,43 @@ if(MUDOCK_ENABLE_CUDA)
     CUDA_SEPARABLE_COMPILATION ON)
   set(CMAKE_CUDA_FLAGS_RELEASE "-O3 -use_fast_math --expt-relaxed-constexpr")
   set(CMAKE_CUDA_FLAGS_DEBUG "-G -g -Xptxas -v --expt-relaxed-constexpr")
+endif()
+
+# check if we need to activate the compilation flag that signals OpenMP
+if(MUDOCK_ENABLE_OMP)
+  target_compile_definitions(libmudock PUBLIC MUDOCK_USE_OMP)
+  target_link_libraries(libmudock PUBLIC OpenMP::OpenMP_CXX)
+
+  # Enable offloading to AMD GPUs using Clang
+  if(NOT OMP_TARGET EQUAL "cpu")
+    if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
+      if(GPU_PLATFORM STREQUAL "cuda")
+        target_compile_options(libmudock PRIVATE "-fopenmp")
+        target_compile_options(libmudock PRIVATE "-fopenmp-targets=nvptx64")
+        target_compile_options(libmudock PRIVATE "-Xopenmp-target=nvptx64")
+        target_compile_options(libmudock PRIVATE "-march=${GPU_ARCHITECTURE}")
+      elseif(GPU_PLATFORM STREQUAL "amd")
+        target_compile_options(libmudock PRIVATE "-fopenmp")
+        target_compile_options(libmudock PRIVATE "-fopenmp-targets=amdgcn-amd-amdhsa")
+        target_compile_options(libmudock PRIVATE "-Xopenmp-target=amdgcn-amd-amdhsa")
+        target_compile_options(libmudock PRIVATE "-march=${GPU_ARCHITECTURE}")
+      endif()
+    elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
+      # TODO test with GCC, check also if GCC supports this
+      message(ERROR "muDock does not support GCC and OpenMP offloading")
+      # if(GPU_PLATFORM STREQUAL "cuda")
+      #   target_compile_options(libmudock PRIVATE "-fopenmp")
+      #   target_compile_options(libmudock PRIVATE "-foffload=nvptx-none")
+      #   target_compile_options(libmudock PRIVATE "-foffload-options=nvptx-none=-march=${GPU_ARCHITECTURE}")
+      # elseif(GPU_PLATFORM STREQUAL "amd")
+      #   target_compile_options(libmudock PRIVATE "-fopenmp")
+      #   target_compile_options(libmudock PRIVATE "-foffload=amdgcn-amdhsa")
+      #   target_compile_options(libmudock PRIVATE "-foffload-options=amdgcn-amdhsa=-march=${GPU_ARCHITECTURE}")
+      # endif()
+    else()
+      message(ERROR "Not support OpenMP compiler")
+    endif()
+  endif()
 endif()
 
 # check if we need to activate the compilation flag that signals SYCL
