@@ -1,7 +1,7 @@
 #pragma once
 
 #include <mudock/knobs.hpp>
-#ifdef MUDOCK_USE_CUDA
+#ifdef MUDOCK_USE_POLY || MUDOCK_USE_POLY
   #include <mudock/cuda_implementation/cuda_batch_sizer.cuh>
   #include <mudock/cuda_implementation/cuda_check_error_macro.cuh>
   #include <mudock/cuda_implementation/cuda_manager.hpp>

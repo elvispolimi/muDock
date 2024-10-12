@@ -92,8 +92,7 @@ list(APPEND source_files
   "${source_path}/log.cpp"
 )
 
-# declare the CUDA sources
-if(MUDOCK_ENABLE_CUDA)
+if(MUDOCK_ENABLE_POLY)
   list(APPEND header_files
     "${header_path}/${header_prefix}/cuda_implementation/cuda_batch_sizer.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/cuda_check_error_macro.cuh"
@@ -102,19 +101,14 @@ if(MUDOCK_ENABLE_CUDA)
     "${header_path}/${header_prefix}/cuda_implementation/cuda_object.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/cuda_worker.hpp"
     "${header_path}/${header_prefix}/cuda_implementation/cuda_wrapper.cuh"
-    "${header_path}/${header_prefix}/cuda_implementation/evaluate_fitness.cuh"
-    "${header_path}/${header_prefix}/cuda_implementation/geometric_transformations.cuh"
+    # TODO fix this after merge with latest version
     "${header_path}/${header_prefix}/cuda_implementation/map_textures.cuh"
-    "${header_path}/${header_prefix}/cuda_implementation/mutate.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/virtual_screen.cuh"
   )
   list(APPEND source_files
-    "${source_path}/cuda_implementation/cuda_batch_sizer.cu"
     "${source_path}/cuda_implementation/cuda_manager.cpp"
     "${source_path}/cuda_implementation/cuda_worker.cpp"
-    "${source_path}/cuda_implementation/cuda_object.cu"
     "${source_path}/cuda_implementation/virtual_screen.cpp"
-    "${source_path}/cuda_implementation/virtual_screen.cu"
   )
 endif()
 
@@ -192,17 +186,11 @@ target_link_libraries(libmudock PUBLIC Microsoft.GSL::GSL)
 target_compile_options(libmudock PUBLIC $<$<AND:$<CONFIG:RELEASE>,$<COMPILE_LANGUAGE:CXX>>:${release_flags}>)
 add_rdkit_dep(libmudock)
 
-# check if we need to activate the compilation flag that signals CUDA
-if(MUDOCK_ENABLE_CUDA)
-  target_compile_definitions(libmudock PUBLIC MUDOCK_USE_CUDA)
-  set_target_properties(libmudock
-    PROPERTIES
-    CUDA_STANDARD 20
-    CUDA_STANDARD_REQUIRED ON
-    CUDA_EXTENSIONS OFF
-    CUDA_SEPARABLE_COMPILATION ON)
-  set(CMAKE_CUDA_FLAGS_RELEASE "-O3 -use_fast_math --expt-relaxed-constexpr -allow-unsupported-compiler")
-  set(CMAKE_CUDA_FLAGS_DEBUG "-G -g -Xptxas -v --expt-relaxed-constexpr -allow-unsupported-compiler")
+# check if we need to activate the compilation flag that signals Polygeist transpilation
+if(MUDOCK_ENABLE_POLY)
+  target_compile_definitions(libmudock PUBLIC MUDOCK_USE_POLY)
+  target_link_directories(libmudock PUBLIC ${MUDOCK_POLY_LIB_PATH})
+  target_link_libraries(libmudock PRIVATE mudock_poly omp)
 endif()
 
 # check if we need to activate the compilation flag that signals HIP

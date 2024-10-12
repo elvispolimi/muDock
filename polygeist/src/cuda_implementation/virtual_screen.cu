@@ -12,19 +12,17 @@
 #include <mudock/type_alias.hpp>
 #include <mudock/utils.hpp>
 
-#define FLATTENED_3D(x, y, z, index_n_x,index_n_xy) (index_n_xy * z + y * index_n_x + x)
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
+#define FLATTENED_3D(x, y, z, index_n_x, index_n_xy) (index_n_xy * z + y * index_n_x + x)
+#define MAX(a, b)                                    ((a) > (b) ? (a) : (b))
+#define MIN(a, b)                                    ((a) < (b) ? (a) : (b))
 // Keep it to 32 to enable warp optimizations
 #define BLOCK_SIZE 32
 
+// TODO implement better way to define population
+// NOTE: the population size can be at most 100
+#define POPULATION_NUMBER 100
+#define SHARED_MEM        (BLOCK_SIZE * 2 + 100)
 namespace mudock {
-  void set_device(const std::size_t gpu_id){
-    // TODO polygeist missing translation
-    // MUDOCK_CHECK(cudaSetDevice(static_cast<int>(gpu_id)));
-    info("Worker CUDA on duty! Set affinity to GPU ", gpu_id);
-  }
-
   // calc_energy.cu
   __device__ fp_type calc_ddd_Mehler_Solmajer_cuda(fp_type distance) {
     const fp_type lambda{0.003627};
@@ -120,7 +118,8 @@ namespace mudock {
           const fp_type rA = powf(distance, static_cast<fp_type>(xA));
           const fp_type rB = powf(distance, static_cast<fp_type>(xB));
 
-          e_vdW_Hb = MIN(EINTCLAMP, (cA / rA - cB / rB));
+          // TODO EINTCLAMP problem polygeist with constexpr?
+          e_vdW_Hb = MIN(100000, (cA / rA - cB / rB));
         }
       }
       emap_total_eintcal += e_vdW_Hb;
@@ -304,7 +303,7 @@ namespace mudock {
 
   template<typename T>
   __device__ const T random_gen_cuda(XORWOWState& state, const T min, const T max) {
-    fp_type value;
+    fp_type value{0};
     if constexpr (is_debug()) {
       // TODO value here for debug
       value = fp_type{0.4};
@@ -380,9 +379,15 @@ namespace mudock {
                                    const int* __restrict__ frag_start_atom_index,
                                    const int* __restrict__ frag_stop_atom_index,
                                    chromosome* __restrict__ chromosomes,
-                                   const point3D minimum,
-                                   const point3D maximum,
-                                   const point3D center,
+                                   const fp_type minimum_x,
+                                   const fp_type minimum_y,
+                                   const fp_type minimum_z,
+                                   const fp_type maximum_x,
+                                   const fp_type maximum_y,
+                                   const fp_type maximum_z,
+                                   const fp_type center_x,
+                                   const fp_type center_y,
+                                   const fp_type center_z,
                                    const int index_n_x,
                                    const int index_n_xy,
                                    const fp_type* const __restrict__* const __restrict__ atom_textures,
@@ -417,7 +422,8 @@ namespace mudock {
     const fp_type* l_ligand_epsii      = ligand_epsii + ligand_id * atom_stride;
     chromosome* l_chromosomes          = chromosomes + ligand_id * chromosome_stride;
     // Point to the next population buffer
-    chromosome* l_next_chromosomes      = chromosomes + ligand_id * chromosome_stride + chromosome_number;
+    chromosome* l_next_chromosomes = chromosomes + ligand_id * chromosome_stride + chromosome_number;
+    // Output chromosome with the best one
     const auto* l_fragments             = ligand_fragments + ligand_id * atom_stride * rotamers_stride;
     const auto* l_frag_start_atom_index = frag_start_atom_index + ligand_id * rotamers_stride;
     const auto* l_frag_stop_atom_index  = frag_stop_atom_index + ligand_id * rotamers_stride;
@@ -427,18 +433,18 @@ namespace mudock {
     XORWOWState& l_state                = (state[global_thread_id]);
 
     // Shared memory
-    extern __shared__ fp_type shared_data[];
+    __shared__ fp_type shared_data[SHARED_MEM];
     fp_type* s_reduction_first   = shared_data;
     fp_type* s_reduction_second  = shared_data + blockDim.x;
     fp_type* s_chromosome_scores = shared_data + 2 * blockDim.x;
+    // Initialize shared mem
+    for (int chromosome_index = local_thread_id; chromosome_index < MAX(chromosome_number, thread_per_block);
+         chromosome_index += thread_per_block)
+      s_chromosome_scores[chromosome_index] = 0x7ff0000000000000; // Set initial score value, infinity value
 
     // Generate initial population
-    for (int chromosome_index = local_thread_id; chromosome_index < MAX(chromosome_number, thread_per_block);
+    for (int chromosome_index = local_thread_id; chromosome_index < chromosome_number;
          chromosome_index += thread_per_block) {
-      // Set initial score value
-      // Infinity value
-      s_chromosome_scores[chromosome_index] = 0x7ff0000000000000;
-
       chromosome& chromo = *(l_chromosomes + chromosome_index);
 #pragma unroll
       for (int i{0}; i < 3; ++i) { // initialize the rigid translation
@@ -481,12 +487,12 @@ namespace mudock {
                                l_scratch_ligand_y[atom_index],
                                l_scratch_ligand_z[atom_index]};
 
-          if (coord_tex[0] < minimum.x || coord_tex[0] > maximum.x || coord_tex[1] < minimum.y ||
-              coord_tex[1] > maximum.y || coord_tex[2] < minimum.z || coord_tex[2] > maximum.z) {
+          if (coord_tex[0] < minimum_x || coord_tex[0] > maximum_x || coord_tex[1] < minimum_y ||
+              coord_tex[1] > maximum_y || coord_tex[2] < minimum_z || coord_tex[2] > maximum_z) {
             // Is outside
-            const fp_type distance_two = powf(fabs(coord_tex[0] - center.x), fp_type{2}) +
-                                         powf(fabs(coord_tex[1] - center.y), fp_type{2}) +
-                                         powf(fabs(coord_tex[2] - center.z), fp_type{2});
+            const fp_type distance_two = powf(fabs(coord_tex[0] - center_x), fp_type{2}) +
+                                         powf(fabs(coord_tex[1] - center_y), fp_type{2}) +
+                                         powf(fabs(coord_tex[2] - center_z), fp_type{2});
 
             const fp_type epenalty = distance_two * ENERGYPENALTY;
             elect_total_trilinear += epenalty;
@@ -494,25 +500,21 @@ namespace mudock {
           } else {
             // Is inside
             // Center atom coordinates on the grid center
-            coord_tex[0] = (l_scratch_ligand_x[atom_index] - minimum.x) * inv_spacing,
-            coord_tex[1] = (l_scratch_ligand_y[atom_index] - minimum.y) * inv_spacing;
-            coord_tex[2] = (l_scratch_ligand_z[atom_index] - minimum.z) * inv_spacing;
-            //  TODO check approximations with in hardware interpolation
-            // elect_total_trilinear +=
-            //     tex3D<fp_type>(electro_texture, coord_tex[0], coord_tex[1], coord_tex[2]) *
-            //     l_ligand_charge[atom_index];
-            // dmap_total_trilinear += tex3D<fp_type>(desolv_texture, coord_tex[0], coord_tex[1], coord_tex[2]) *
-            //                         fabsf(l_ligand_charge[atom_index]);
-            // emap_total_trilinear += tex3D<fp_type>(atom_textures[l_atom_tex_indexes[atom_index]],
-            //                                        coord_tex[0],
-            //                                        coord_tex[1],
-            //                                        coord_tex[2]);
+            coord_tex[0] = (l_scratch_ligand_x[atom_index] - minimum_x) * inv_spacing,
+            coord_tex[1] = (l_scratch_ligand_y[atom_index] - minimum_y) * inv_spacing;
+            coord_tex[2] = (l_scratch_ligand_z[atom_index] - minimum_z) * inv_spacing;
+
             elect_total_trilinear +=
-                trilinear_interpolation_cuda(coord_tex, electro_texture, index_n_x, index_n_xy) * l_ligand_charge[atom_index];
-            dmap_total_trilinear += trilinear_interpolation_cuda(coord_tex, desolv_texture, index_n_x, index_n_xy) *
-                                    fabsf(l_ligand_charge[atom_index]);
+                trilinear_interpolation_cuda(coord_tex, electro_texture, index_n_x, index_n_xy) *
+                l_ligand_charge[atom_index];
+            dmap_total_trilinear +=
+                trilinear_interpolation_cuda(coord_tex, desolv_texture, index_n_x, index_n_xy) *
+                fabsf(l_ligand_charge[atom_index]);
             emap_total_trilinear +=
-                trilinear_interpolation_cuda(coord_tex, atom_textures[l_atom_tex_indexes[atom_index]], index_n_x, index_n_xy);
+                trilinear_interpolation_cuda(coord_tex,
+                                             atom_textures[l_atom_tex_indexes[atom_index]],
+                                             index_n_x,
+                                             index_n_xy);
           }
         }
         fp_type total_trilinear = elect_total_trilinear + dmap_total_trilinear + emap_total_trilinear;
@@ -558,22 +560,6 @@ namespace mudock {
            chromosome_index += thread_per_block) {
         chromosome& next_chromosome = *(l_next_chromosomes + chromosome_index);
 
-        // select the parent
-        // const int num_iterations = tournament_length;
-        // int best_individual_1 = get_selection_distribution(l_state, &chromosome_number);
-        // for (int i = 0; i < num_iterations; ++i) {
-        //   auto contended = get_selection_distribution(l_state, &chromosome_number);
-        //   if (s_chromosome_scores[contended] < s_chromosome_scores[best_individual_1]) {
-        //     best_individual_1 = contended;
-        //   }
-        // }
-        // int best_individual_2 = get_selection_distribution(l_state, &chromosome_number);
-        // for (int i = 0; i < num_iterations; ++i) {
-        //   auto contended = get_selection_distribution(l_state, &chromosome_number);
-        //   if (s_chromosome_scores[contended] < s_chromosome_scores[best_individual_2]) {
-        //     best_individual_2 = contended;
-        //   }
-        // }
         const int best_individual_1 =
             tournament_selection_cuda(l_state, tournament_length, chromosome_number, s_chromosome_scores);
         const int best_individual_2 =
@@ -637,18 +623,19 @@ namespace mudock {
       }
       __syncthreads(); // Synchronize threads after each reduction step
     }
+    min_index = s_reduction_second[0];
     if (local_thread_id == 0) {
-      min_score                = s_reduction_first[local_thread_id];
-      min_index                = s_reduction_second[local_thread_id];
-      ligand_scores[ligand_id] = min_score;
-      memcpy((*(best_chromosomes + ligand_id)).data(),
-             (*(l_chromosomes + min_index)).data(),
-             sizeof(fp_type) * (6 + num_rotamers));
+      ligand_scores[ligand_id] = s_reduction_first[0];
+      // memcpy(out_chromosome.data(), &(in_best_chromosome[0]), sizeof(fp_type) * (6 + num_rotamers));
     }
+    chromosome& in_best_chromosome = l_chromosomes[min_index];
+    chromosome& out_chromosome     = best_chromosomes[ligand_id];
+    for (int gene_index = local_thread_id; gene_index < (6 + num_rotamers); gene_index += thread_per_block)
+      // printf("%f\n", in_best_chromosome[gene_index]);
+      out_chromosome[gene_index] = in_best_chromosome[gene_index];
   }
 
   void call_kernel(const int batch_ligands,
-                   const int shared_mem,
                    const int num_generations,
                    const int tournament_length,
                    const fp_type mutation_prob,
@@ -680,10 +667,17 @@ namespace mudock {
                    const int* __restrict__ frag_start_atom_index,
                    const int* __restrict__ frag_stop_atom_index,
                    chromosome* __restrict__ chromosomes,
-                   const point3D minimum,
-                   const point3D maximum,
-                   const point3D center,
-                   const index3D index,
+                   const fp_type minimum_x,
+                   const fp_type minimum_y,
+                   const fp_type minimum_z,
+                   const fp_type maximum_x,
+                   const fp_type maximum_y,
+                   const fp_type maximum_z,
+                   const fp_type center_x,
+                   const fp_type center_y,
+                   const fp_type center_z,
+                   const int index_n_x,
+                   const int index_n_xy,
                    const fp_type* const __restrict__* const __restrict__ atom_textures,
                    const int* __restrict__ atom_tex_indexes,
                    const fp_type* __restrict__ electro_texture,
@@ -691,49 +685,55 @@ namespace mudock {
                    XORWOWState* __restrict__ state,
                    fp_type* __restrict__ ligand_scores,
                    chromosome* __restrict__ best_chromosomes) {
-    evaluate_fitness<<<batch_ligands, BLOCK_SIZE, shared_mem>>>(num_generations,
-                                                                tournament_length,
-                                                                mutation_prob,
-                                                                chromosome_number,
-                                                                chromosome_stride,
-                                                                atom_stride,
-                                                                rotamers_stride,
-                                                                nonbond_stride,
-                                                                original_ligand_x,
-                                                                original_ligand_y,
-                                                                original_ligand_z,
-                                                                scratch_ligand_x,
-                                                                scratch_ligand_y,
-                                                                scratch_ligand_z,
-                                                                ligand_vol,
-                                                                ligand_solpar,
-                                                                ligand_charge,
-                                                                ligand_num_hbond,
-                                                                ligand_Rij_hb,
-                                                                ligand_Rii,
-                                                                ligand_epsij_hb,
-                                                                ligand_epsii,
-                                                                ligand_num_nonbonds,
-                                                                ligand_nonbond_a1,
-                                                                ligand_nonbond_a2,
-                                                                ligand_num_atoms,
-                                                                ligand_num_rotamers,
-                                                                ligand_fragments,
-                                                                frag_start_atom_index,
-                                                                frag_stop_atom_index,
-                                                                chromosomes,
-                                                                minimum,
-                                                                maximum,
-                                                                center,
-                                                                index.size_x(),
-                                                                index.size_xy(),
-                                                                atom_textures,
-                                                                atom_tex_indexes,
-                                                                electro_texture,
-                                                                desolv_texture,
-                                                                state,
-                                                                ligand_scores,
-                                                                best_chromosomes);
+    evaluate_fitness<<<batch_ligands, BLOCK_SIZE>>>(num_generations,
+                                                    tournament_length,
+                                                    mutation_prob,
+                                                    chromosome_number,
+                                                    chromosome_stride,
+                                                    atom_stride,
+                                                    rotamers_stride,
+                                                    nonbond_stride,
+                                                    original_ligand_x,
+                                                    original_ligand_y,
+                                                    original_ligand_z,
+                                                    scratch_ligand_x,
+                                                    scratch_ligand_y,
+                                                    scratch_ligand_z,
+                                                    ligand_vol,
+                                                    ligand_solpar,
+                                                    ligand_charge,
+                                                    ligand_num_hbond,
+                                                    ligand_Rij_hb,
+                                                    ligand_Rii,
+                                                    ligand_epsij_hb,
+                                                    ligand_epsii,
+                                                    ligand_num_nonbonds,
+                                                    ligand_nonbond_a1,
+                                                    ligand_nonbond_a2,
+                                                    ligand_num_atoms,
+                                                    ligand_num_rotamers,
+                                                    ligand_fragments,
+                                                    frag_start_atom_index,
+                                                    frag_stop_atom_index,
+                                                    chromosomes,
+                                                    minimum_x,
+                                                    minimum_y,
+                                                    minimum_z,
+                                                    maximum_x,
+                                                    maximum_y,
+                                                    maximum_z,
+                                                    center_x,
+                                                    center_y,
+                                                    center_z,
+                                                    index_n_x,
+                                                    index_n_xy,
+                                                    atom_textures,
+                                                    atom_tex_indexes,
+                                                    electro_texture,
+                                                    desolv_texture,
+                                                    state,
+                                                    ligand_scores,
+                                                    best_chromosomes);
     MUDOCK_CHECK_KERNELCALL();
     MUDOCK_CHECK(cudaDeviceSynchronize());
   }
