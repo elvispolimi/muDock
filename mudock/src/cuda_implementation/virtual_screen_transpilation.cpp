@@ -24,7 +24,6 @@ namespace mudock {
   void set_device(const std::size_t gpu_id);
 
   void call_kernel(const int batch_ligands,
-                   const int shared_mem,
                    const int num_generations,
                    const int tournament_length,
                    const fp_type mutation_prob,
@@ -56,10 +55,17 @@ namespace mudock {
                    const int* __restrict__ frag_start_atom_index,
                    const int* __restrict__ frag_stop_atom_index,
                    chromosome* __restrict__ chromosomes,
-                   const point3D minimum,
-                   const point3D maximum,
-                   const point3D center,
-                   const index3D index,
+                   const fp_type minimum_x,
+                   const fp_type minimum_y,
+                   const fp_type minimum_z,
+                   const fp_type maximum_x,
+                   const fp_type maximum_y,
+                   const fp_type maximum_z,
+                   const fp_type center_x,
+                   const fp_type center_y,
+                   const fp_type center_z,
+                   const int index_n_x,
+                   const int index_n_xy,
                    const fp_type* const __restrict__* const __restrict__ atom_textures,
                    const int* __restrict__ atom_tex_indexes,
                    const fp_type* electro_texture,
@@ -69,10 +75,10 @@ namespace mudock {
                    chromosome* __restrict__ best_chromosomes);
 
   virtual_screen_cuda::virtual_screen_cuda(const knobs k,
-                                           const std::size_t gpu_id,
-                                           std::shared_ptr<const grid_atom_mapper>& grid_atom_maps,
-                                           std::shared_ptr<const grid_map>& electro_map,
-                                           std::shared_ptr<const grid_map>& desolv_map)
+                                                     const std::size_t gpu_id,
+                                                     std::shared_ptr<const grid_atom_mapper>& grid_atom_maps,
+                                                     std::shared_ptr<const grid_map>& electro_map,
+                                                     std::shared_ptr<const grid_map>& desolv_map)
       : configuration(k),
         center(electro_map.get()->center),
         minimum_coord(electro_map.get()->minimum_coord),
@@ -293,18 +299,11 @@ namespace mudock {
 
     // Simulate the population evolution for the given amount of time
     const auto num_generations = configuration.num_generations;
-    // TODO checks if everything fit into shared memory
     // The shared memory contains:
+    // - double scratch memory for intra block reductions
     // - each chromosome's score at last population evaluation
-    // Max due to the reduction at the end to find the highest scores per each chromosome
-    const std::size_t min_energy_reduction_s_mem =
-        std::max(configuration.population_number, static_cast<std::size_t>(BLOCK_SIZE)) * sizeof(fp_type);
-    // Plus BLOCK_SIZE to get enable intra block reductions
-    // NOTE: times 2 to have two scratch reduction areas
-    const std::size_t scratch_reduction_s_mem = static_cast<std::size_t>(BLOCK_SIZE) * sizeof(fp_type) * 2;
-    const std::size_t shared_mem              = min_energy_reduction_s_mem + scratch_reduction_s_mem;
+
     call_kernel(batch_ligands,
-                shared_mem,
                 num_generations,
                 configuration.tournament_length,
                 configuration.mutation_prob,
@@ -336,10 +335,17 @@ namespace mudock {
                 frag_start_atom_indices.dev_pointer(),
                 frag_stop_atom_indices.dev_pointer(),
                 chromosomes.dev_pointer(),
-                minimum_coord,
-                maximum_coord,
-                center,
-                index,
+                minimum_coord.x,
+                minimum_coord.y,
+                minimum_coord.z,
+                maximum_coord.x,
+                maximum_coord.y,
+                maximum_coord.z,
+                center.x,
+                center.y,
+                center.z,
+                index_map.size_x(),
+                index_map.size_xy(),
                 atom_texs.wrappers_pointer.dev_pointer(),
                 map_texture_index.dev_pointer(),
                 electro_tex.dev_pointer(),

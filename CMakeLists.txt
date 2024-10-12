@@ -17,9 +17,10 @@ endfunction()
 # ########################################################################
 # Accelerator
 set(MUDOCK_GPU_ARCHITECTURES "none" CACHE STRING "Optimize for specific target GPU architecture (none to disable, otherwise cuda:sm_$$ or hip:$$)")
-set(MUDOCK_CPU_ARCHITECTURES "default" CACHE STRING "Optimize for specific target GPU architecture (default, or native to enable optimizations)")
+set(MUDOCK_CPU_ARCHITECTURES "native" CACHE STRING "Optimize for specific target GPU architecture (default is native, none to disable optimizations, or specify the CPU architecture)")
 
-if(NOT MUDOCK_GPU_ARCHITECTURES EQUAL "")
+
+if(NOT MUDOCK_GPU_ARCHITECTURES STREQUAL "none")
     # Find the position of the colon
     string(FIND ${MUDOCK_GPU_ARCHITECTURES} ":" COLON_POS)
 
@@ -38,9 +39,13 @@ endif()
 
 # HIP
 option(MUDOCK_ENABLE_HIP "Enable the HIP kernel implementation" OFF)
+set(MUDOCK_POLY_LIB_PATH "" CACHE STRING "muDock Polygeist library folder")
 
 if(MUDOCK_ENABLE_HIP)
-    if(NOT MUDOCK_ENABLE_CUDA AND NOT MUDOCK_ENABLE_SYCL)
+    if(MUDOCK_POLY_LIB_PATH STREQUAL "")
+        message(FATAL_ERROR "muDock Polygeist folder lib not defined, define it with MUDOCK_POLY_LIB_PATH")
+    endif()
+    if(NOT MUDOCK_ENABLE_POLY AND NOT MUDOCK_ENABLE_SYCL)
         # enable_language(HIP)
         find_program(HIP_COMPILER hipcc)
         set(CMAKE_CXX_COMPILER "${HIP_COMPILER}")
@@ -62,15 +67,31 @@ if(MUDOCK_ENABLE_HIP)
     endif()
 endif()
 
+# Polygeist
+option(MUDOCK_ENABLE_POLY "Enable the CUDA kernel transpilation using Polygeist" OFF)
+set(POLY_TARGET "cpu" CACHE STRING "Polygeist transpilation target")
+
+if(MUDOCK_ENABLE_POLY)
+    if(NOT MUDOCK_ENABLE_HIP AND NOT MUDOCK_ENABLE_SYCL)
+        # TODO set the compiler to be the clang from polygeist
+        if(NOT MUDOCK_GPU_ARCHITECTURES STREQUAL "none")
+            # TODO try on AMD GPUs
+            # TODO change POLY_TARGET
+            message(FATAL_ERROR "muDock does not support Polygeist transpilation to GPUs")
+        endif()
+    else()
+        message(FATAL_ERROR "Enable only one parallel framework at a time.")
+    endif()
+endif()
+
 # CPU
 # TODO check this
 project(muDock VERSION 1.0)
-option(MUDOCK_ENABLE_NATIVE "Enable Optimize for specific target CPU architecture" OFF)
 enable_language(CXX)
 
 # Check if specific target architectures should be used
 # TODO check this
-if(MUDOCK_ENABLE_NATIVE)
+if(MUDOCK_CPU_ARCHITECTURES STREQUAL "native")
     if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "IntelLLVM")
         list(APPEND release_flags "-march=native")
     else()
@@ -78,42 +99,19 @@ if(MUDOCK_ENABLE_NATIVE)
     endif()
 endif()
 
-# CUDA
-option(MUDOCK_ENABLE_CUDA "Enable the CUDA kernel implementation" OFF)
-
-if(MUDOCK_ENABLE_CUDA)
-    if(NOT MUDOCK_ENABLE_HIP AND NOT MUDOCK_ENABLE_SYCL)
-        enable_language(CUDA)
-
-        # Find the position of the _
-        string(FIND ${GPU_ARCHITECTURE} "_" UNDER_POS)
-
-        # Separate the two parts
-        if(UNDER_POS GREATER_EQUAL 0)
-            # Get the part after the _
-            string(SUBSTRING ${GPU_ARCHITECTURE} ${UNDER_POS} 1000 CMAKE_CUDA_TEMP)
-            string(SUBSTRING ${CMAKE_CUDA_TEMP} 1 1000 CMAKE_CUDA_ARCHITECTURES) # Skip the colon
-        else()
-            message(FATAL_ERROR "${MUDOCK_GPU_ARCHITECTURES} cannot get CUDA GPUs.")
-        endif()
-    else()
-        message(FATAL_ERROR "Enable only one parallel framework at a time.")
-    endif()
-endif()
-
 # SYCL
 option(MUDOCK_ENABLE_SYCL "Enable the SYCL kernel implementation" OFF)
 
 if(MUDOCK_ENABLE_SYCL)
-    if(NOT MUDOCK_ENABLE_HIP AND NOT MUDOCK_ENABLE_CUDA)
+    if(NOT MUDOCK_ENABLE_HIP AND NOT MUDOCK_ENABLE_POLY)
         # handle AdaptiveCPP
         # check if we need to enable the openmp backend for SYCL
-        if(NOT MUDOCK_CPU_ARCHITECTURES STREQUAL "default")
-            if(NOT MUDOCK_CPU_ARCHITECTURES STREQUAL "generic")
+        if(MUDOCK_CPU_ARCHITECTURES STREQUAL "native") # TODO what to do with native?
+            if(MUDOCK_CPU_ARCHITECTURES STREQUAL "none")
                 list(APPEND sycl_targets "omp")
-            else()
-                list(APPEND sycl_targets "${MUDOCK_CPU_ARCHITECTURES}")
             endif()
+        else()
+            list(APPEND sycl_targets "${MUDOCK_CPU_ARCHITECTURES}")
         endif()
 
         if(NOT MUDOCK_GPU_ARCHITECTURES STREQUAL "none")
@@ -207,13 +205,11 @@ message(STATUS "Build type..........................: ${CMAKE_BUILD_TYPE} (CMAKE
 message(STATUS "Install prefix......................: ${CMAKE_INSTALL_PREFIX} (CMAKE_INSTALL_PREFIX)")
 message(STATUS "CPU Architecture....................: ${MUDOCK_CPU_ARCHITECTURES} (MUDOCK_CPU_ARCHITECTURES)")
 
-message(STATUS "Enable native.......................: ${MUDOCK_ENABLE_NATIVE} (MUDOCK_ENABLE_NATIVE)")
+message(STATUS "Enable CUDA transpilation...........: ${MUDOCK_ENABLE_POLY} (MUDOCK_ENABLE_POLY)")
 
-message(STATUS "Enable CUDA.........................: ${MUDOCK_ENABLE_CUDA} (MUDOCK_ENABLE_CUDA)")
-
-if(MUDOCK_ENABLE_CUDA)
+if(MUDOCK_ENABLE_POLY)
     # TODO use instead the MUDOCK_GPU_ARCHITECTURES
-    message(STATUS "Target CUDA architecture............: ${CMAKE_CUDA_ARCHITECTURES} (CMAKE_CUDA_ARCHITECTURES)")
+    message(STATUS "Target Transpilation architecture...: ${POLY_TARGET} (POLY_TARGET)")
 endif()
 
 message(STATUS "Enable HIP..........................: ${MUDOCK_ENABLE_HIP} (MUDOCK_ENABLE_HIP)")
