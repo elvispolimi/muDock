@@ -108,7 +108,7 @@ if(MUDOCK_ENABLE_POLY)
   list(APPEND source_files
     "${source_path}/cuda_implementation/cuda_manager.cpp"
     "${source_path}/cuda_implementation/cuda_worker.cpp"
-    "${source_path}/cuda_implementation/virtual_screen.cpp"
+    "${source_path}/cuda_implementation/virtual_screen_transpilation.cpp"
   )
 endif()
 
