@@ -33,8 +33,14 @@ set_target_properties("${CMAKE_PROJECT_NAME}"
 if(MUDOCK_ENABLE_SYCL)
   target_link_libraries("${CMAKE_PROJECT_NAME}" libmudock boost_program_options boost_context pthread boost_fiber m stdc++)
 else()
-  # target_link_libraries("${CMAKE_PROJECT_NAME}" libmudock Boost::program_options)
   target_link_libraries("${CMAKE_PROJECT_NAME}" libmudock boost_program_options boost_context pthread m stdc++)
+endif()
+
+if(MUDOCK_ENABLE_OMP)
+  target_compile_options("${CMAKE_PROJECT_NAME}" PRIVATE "-fopenmp")
+  target_compile_options("${CMAKE_PROJECT_NAME}" PRIVATE "-fopenmp-targets=nvptx64")
+  target_link_options("${CMAKE_PROJECT_NAME}" PRIVATE "-fopenmp")
+  target_link_options("${CMAKE_PROJECT_NAME}" PRIVATE "-fopenmp-targets=nvptx64")
 endif()
 
 # ########################################################################

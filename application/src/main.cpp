@@ -10,6 +10,7 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+
 // utility function that reads the whole content of a stream
 template<class stream_type>
 inline auto read_from_stream(stream_type&& in) {
