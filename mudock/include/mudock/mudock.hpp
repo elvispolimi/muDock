@@ -7,6 +7,7 @@
 #include <mudock/cuda_implementation.hpp>
 #include <mudock/hip_implementation.hpp>
 #include <mudock/sycl_implementation.hpp>
+#include <mudock/omp_implementation.hpp>
 #include <mudock/format.hpp>
 #include <mudock/grid.hpp>
 #include <mudock/log.hpp>

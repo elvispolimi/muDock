@@ -1,3 +1,5 @@
+#include "mudock/molecule/properties.hpp"
+
 #include <alloca.h>
 #include <cstddef>
 #include <cstring>
@@ -10,6 +12,7 @@
 #include <mudock/grid.hpp>
 #include <mudock/omp_implementation/virtual_screen.hpp>
 #include <mudock/utils.hpp>
+#include <omp.h>
 #include <span>
 
 namespace mudock {
@@ -26,5 +29,10 @@ namespace mudock {
            desolv_map.get()->index == grid_atom_maps.get()->get_index());
   }
 
-  void virtual_screen_omp::operator()(batch &incoming_batch) {}
+  void virtual_screen_omp::operator()(batch &incoming_batch) {
+#pragma omp target teams distribute parallel for
+    for (auto &ligand: std::span(incoming_batch.molecules.data(), incoming_batch.num_ligands)) {
+      printf("%d %s\n", omp_get_thread_num(), ligand->properties.get(property_type::NAME).c_str());
+    }
+  }
 } // namespace mudock
