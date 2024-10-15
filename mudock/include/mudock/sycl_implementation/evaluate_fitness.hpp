@@ -126,7 +126,7 @@ namespace mudock {
                         const point3D maximum,
                         const point3D center,
                         const index3D index,
-                        const fp_type * const  __restrict__ * const __restrict__ atom_textures,
+                        const fp_type* const __restrict__* const __restrict__ atom_textures,
                         const int* __restrict__ atom_tex_indexes,
                         const fp_type* __restrict__ electro_texture,
                         const fp_type* __restrict__ desolv_texture,
@@ -171,13 +171,17 @@ namespace mudock {
     const int* l_ligand_nonbond_a2      = ligand_nonbond_a2 + ligand_id * nonbond_stride;
     XORWOWState& l_state                = (state[workitem_id]);
 
-    // Generate initial population
+    // Initialize score
+    // TODO check with different workitem sizes
     for (int chromosome_index = workitem_id_in_group;
          chromosome_index < sycl::max(chromosome_number, workgroup_size);
-         chromosome_index += workgroup_size) {
-      // Set initial score value
-      s_chromosome_scores[chromosome_index] = std::numeric_limits<fp_type>::infinity();
+         chromosome_index += workgroup_size)
+      s_chromosome_scores[chromosome_index] =
+          std::numeric_limits<fp_type>::infinity(); // Set initial score value
 
+    // Generate initial population
+    for (int chromosome_index = workitem_id_in_group; chromosome_index < chromosome_number;
+         chromosome_index += workgroup_size) {
       chromosome& chromo = *(l_chromosomes + chromosome_index);
 #pragma unroll
       for (int i{0}; i < 3; ++i) { // initialize the rigid translation

@@ -6,6 +6,12 @@
 #include <mudock/hip_implementation/mutate.hpp>
 #include <mudock/utils.hpp>
 
+#if defined(__HIP_PLATFORM_NVCC__)
+  #define BITLANE_MASK 0xFFFFFFFF
+#elif defined(__HIP_PLATFORM_AMD__)
+  #define BITLANE_MASK 0xFFFFFFFFFFFFFFFF
+#endif
+
 namespace mudock {
   static constexpr fp_type coordinate_step{0.2};
   static constexpr fp_type angle_step{4};
@@ -104,6 +110,7 @@ namespace mudock {
   // TODO check the syncwarp
   //TODO OPT: template parameter based on number of atoms, rotamers, chromosomes and population
   // Interesting the usage of the bucketizer
+  // TODO check 0xFFFFFFFF on AMD GPUs
   __global__ void evaluate_fitness(const int num_generations,
                                    const int tournament_length,
                                    const fp_type mutation_prob,
@@ -142,8 +149,10 @@ namespace mudock {
                                    hiprandState* __restrict__ state,
                                    fp_type* __restrict__ ligand_scores,
                                    chromosome* __restrict__ best_chromosomes) {
-    const int ligand_id = blockIdx.x;
-    const int threadId  = threadIdx.x + blockDim.x * blockIdx.x;
+    const int ligand_id        = blockIdx.x;
+    const int local_thread_id  = threadIdx.x;
+    const int thread_per_block = blockDim.x;
+    const int global_thread_id = local_thread_id + thread_per_block * ligand_id;
 
     const int num_atoms    = ligand_num_atoms[ligand_id];
     const int num_nonbonds = ligand_num_nonbonds[ligand_id];
@@ -172,19 +181,20 @@ namespace mudock {
     const auto* l_atom_tex_indexes      = atom_tex_indexes + ligand_id * atom_stride;
     const int* l_ligand_nonbond_a1      = ligand_nonbond_a1 + ligand_id * nonbond_stride;
     const int* l_ligand_nonbond_a2      = ligand_nonbond_a2 + ligand_id * nonbond_stride;
-    hiprandState& l_state                = (state[threadId]);
+    hiprandState& l_state               = (state[global_thread_id]);
 
     // Shared memory
     extern __shared__ fp_type shared_data[];
     fp_type* s_chromosome_scores = shared_data;
-    // printf("I'm %d %d atoms %d\n", threadId, ligand_id, num_atoms);
+    // Initialize shared scores
+    for (int chromosome_index = local_thread_id; chromosome_index < max(chromosome_number, thread_per_block);
+         chromosome_index += thread_per_block)
+      s_chromosome_scores[chromosome_index] =
+          std::numeric_limits<fp_type>::infinity(); // Set initial score value
 
     // Generate initial population
-    for (int chromosome_index = threadIdx.x; chromosome_index < max(chromosome_number, blockDim.x);
-         chromosome_index += blockDim.x) {
-      // Set initial score value
-      s_chromosome_scores[chromosome_index] = std::numeric_limits<fp_type>::infinity();
-
+    for (int chromosome_index = local_thread_id; chromosome_index < chromosome_number;
+         chromosome_index += thread_per_block) {
       chromosome& chromo = *(l_chromosomes + chromosome_index);
 #pragma unroll
       for (int i{0}; i < 3; ++i) { // initialize the rigid translation
@@ -201,7 +211,7 @@ namespace mudock {
       for (int chromosome_index = 0; chromosome_index < chromosome_number; ++chromosome_index) {
         // Copy original coordinates
         // TODO OPT: shared memory for coordinate ?
-        for (int atom_index = threadIdx.x; atom_index < num_atoms; atom_index += blockDim.x) {
+        for (int atom_index = local_thread_id; atom_index < num_atoms; atom_index += thread_per_block) {
           l_scratch_ligand_x[atom_index] = l_original_ligand_x[atom_index];
           l_scratch_ligand_y[atom_index] = l_original_ligand_y[atom_index];
           l_scratch_ligand_z[atom_index] = l_original_ligand_z[atom_index];
@@ -222,7 +232,7 @@ namespace mudock {
         fp_type elect_total_trilinear = 0;
         fp_type emap_total_trilinear  = 0;
         fp_type dmap_total_trilinear  = 0;
-        for (int atom_index = threadIdx.x; atom_index < num_atoms; atom_index += blockDim.x) {
+        for (int atom_index = local_thread_id; atom_index < num_atoms; atom_index += thread_per_block) {
           fp_type coord_tex[3]{l_scratch_ligand_x[atom_index],
                                l_scratch_ligand_y[atom_index],
                                l_scratch_ligand_z[atom_index]};
@@ -285,19 +295,19 @@ namespace mudock {
         // Perform a tree reduction using __shfl_down_sync
         // TODO check performance
         for (int offset = warpSize / 2; offset > 0; offset /= 2) {
-          total_trilinear += __shfl_down_sync(0xffffffff, total_trilinear, offset);
-          total_eintcal += __shfl_down_sync(0xffffffff, total_eintcal, offset);
+          total_trilinear += __shfl_down_sync(BITLANE_MASK, total_trilinear, offset);
+          total_eintcal += __shfl_down_sync(BITLANE_MASK, total_eintcal, offset);
         }
 
-        if (threadIdx.x == 0) {
+        if (local_thread_id == 0) {
           const fp_type tors_free_energy        = num_rotamers * autodock_parameters::coeff_tors;
           s_chromosome_scores[chromosome_index] = total_trilinear + total_eintcal + tors_free_energy;
         }
       }
 
       // Generate the new population
-      for (int chromosome_index = threadIdx.x; chromosome_index < chromosome_number;
-           chromosome_index += blockDim.x) {
+      for (int chromosome_index = local_thread_id; chromosome_index < chromosome_number;
+           chromosome_index += thread_per_block) {
         chromosome& next_chromosome = *(l_next_chromosomes + chromosome_index);
 
         // select the parent
@@ -341,10 +351,10 @@ namespace mudock {
 
     // Compute the maximum value within the warp
     // Assuming each warp has 32 threads
-    int min_index     = threadIdx.x;
+    int min_index     = local_thread_id;
     fp_type min_score = s_chromosome_scores[min_index];
-    for (int chromosome_index = threadIdx.x + blockDim.x; chromosome_index < chromosome_number;
-         chromosome_index += blockDim.x) {
+    for (int chromosome_index = local_thread_id + thread_per_block; chromosome_index < chromosome_number;
+         chromosome_index += thread_per_block) {
       if (min_score > s_chromosome_scores[chromosome_index]) {
         min_index = chromosome_index;
         min_score = s_chromosome_scores[chromosome_index];
@@ -352,14 +362,14 @@ namespace mudock {
     }
     // Intra warp reduction
     for (int offset = warpSize / 2; offset > 0; offset /= 2) {
-      fp_type other_min_score = __shfl_down_sync(0xFFFFFFFF, min_score, offset);
-      int other_min_index     = __shfl_down_sync(0xFFFFFFFF, min_index, offset);
+      fp_type other_min_score = __shfl_down_sync(BITLANE_MASK, min_score, offset);
+      int other_min_index     = __shfl_down_sync(BITLANE_MASK, min_index, offset);
       if (other_min_score < min_score) {
         min_score = other_min_score;
         min_index = other_min_index;
       }
     }
-    if (threadIdx.x == 0) {
+    if (local_thread_id == 0) {
       ligand_scores[ligand_id] = min_score;
       memcpy((*(best_chromosomes + ligand_id)).data(),
              (*(l_chromosomes + min_index)).data(),
