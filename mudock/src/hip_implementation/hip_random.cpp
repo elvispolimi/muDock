@@ -1,5 +1,5 @@
-#include <mudock/hip_implementation/hip_random.hpp>
 #include <hiprand/hiprand_kernel.h>
+#include <mudock/hip_implementation/hip_random.hpp>
 
 namespace mudock {
   __global__ void init_hiprand(hiprandState *state, const long seed, const int num_elements) {

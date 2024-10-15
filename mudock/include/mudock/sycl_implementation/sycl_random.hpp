@@ -41,7 +41,7 @@ namespace mudock {
       return static_cast<fp_type>(t + index) / static_cast<fp_type>(std::numeric_limits<unsigned int>::max());
     }
   };
-  
+
   struct sycl_random_object: private sycl_wrapper<std::vector, XORWOWState> {
     sycl_random_object(sycl::queue &_queue): sycl_wrapper<std::vector, XORWOWState>(_queue){};
     sycl_random_object(const sycl_random_object &)            = delete;
