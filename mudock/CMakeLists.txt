@@ -111,6 +111,7 @@ if(MUDOCK_ENABLE_CUDA)
   )
   list(APPEND source_files
     "${source_path}/cuda_implementation/calc_energy.cu"
+    "${source_path}/cuda_implementation/cuda_object.cu"
     "${source_path}/cuda_implementation/cuda_batch_sizer.cu"
     "${source_path}/cuda_implementation/cuda_manager.cpp"
     "${source_path}/cuda_implementation/cuda_worker.cpp"
