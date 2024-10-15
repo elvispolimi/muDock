@@ -197,20 +197,20 @@ endif()
 if(MUDOCK_ENABLE_OMP)
   list(APPEND header_files
     "${header_path}/${header_prefix}/omp_implementation/omp_manager.hpp"
-    # "${header_path}/${header_prefix}/sycl_implementation/calc_energy.hpp"
-    # "${header_path}/${header_prefix}/sycl_implementation/mutate.hpp"
-    # "${header_path}/${header_prefix}/sycl_implementation/geometric_transformations.hpp"
-    # "${header_path}/${header_prefix}/sycl_implementation/sycl_random.hpp"
-    # "${header_path}/${header_prefix}/sycl_implementation/sycl_object.hpp"
-    # "${header_path}/${header_prefix}/sycl_implementation/sycl_wrapper.hpp"
+    "${header_path}/${header_prefix}/omp_implementation/calc_energy.hpp"
+    "${header_path}/${header_prefix}/omp_implementation/mutate.hpp"
+    "${header_path}/${header_prefix}/omp_implementation/geometric_transformations.hpp"
+    # "${header_path}/${header_prefix}/omp_implementation/omp_random.hpp"
+    "${header_path}/${header_prefix}/omp_implementation/omp_object.hpp"
+    "${header_path}/${header_prefix}/omp_implementation/omp_wrapper.hpp"
     "${header_path}/${header_prefix}/omp_implementation/omp_worker.hpp"
     "${header_path}/${header_prefix}/omp_implementation/omp_batch_sizer.hpp"
     "${header_path}/${header_prefix}/omp_implementation/virtual_screen.hpp"
-    # "${header_path}/${header_prefix}/sycl_implementation/evaluate_fitness.hpp"
+    "${header_path}/${header_prefix}/omp_implementation/evaluate_fitness.hpp"
   )
   list(APPEND source_files
     "${source_path}/omp_implementation/omp_manager.cpp"
-    # "${source_path}/sycl_implementation/sycl_random.cpp"
+    # "${source_path}/sycl_implementation/omp_random.cpp"
     "${source_path}/omp_implementation/omp_worker.cpp"
     "${source_path}/omp_implementation/omp_batch_sizer.cpp"
     "${source_path}/omp_implementation/virtual_screen.cpp"
@@ -281,16 +281,15 @@ if(MUDOCK_ENABLE_OMP)
   if(NOT OMP_TARGET EQUAL "cpu")
     if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
       if(GPU_PLATFORM STREQUAL "cuda")
-        target_compile_options(libmudock PRIVATE "-fopenmp")
+        # target_compile_options(libmudock PRIVATE "-fopenmp")
         target_compile_options(libmudock PRIVATE "-fopenmp-targets=nvptx64")
-        target_compile_options(libmudock PRIVATE "-Xopenmp-target=nvptx64")
-        target_compile_options(libmudock PRIVATE "-march=${GPU_ARCHITECTURE}")
+        # target_compile_options(libmudock PRIVATE "-Xopenmp-target=nvptx64")
       elseif(GPU_PLATFORM STREQUAL "amd")
-        target_compile_options(libmudock PRIVATE "-fopenmp")
+        # target_compile_options(libmudock PRIVATE "-fopenmp")
         target_compile_options(libmudock PRIVATE "-fopenmp-targets=amdgcn-amd-amdhsa")
-        target_compile_options(libmudock PRIVATE "-Xopenmp-target=amdgcn-amd-amdhsa")
-        target_compile_options(libmudock PRIVATE "-march=${GPU_ARCHITECTURE}")
+        # target_compile_options(libmudock PRIVATE "-Xopenmp-target=amdgcn-amd-amdhsa")
       endif()
+      target_compile_options(libmudock PRIVATE "--offload-arch=${GPU_ARCHITECTURE}")
     elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
       # TODO test with GCC, check also if GCC supports this
       message(ERROR "muDock does not support GCC and OpenMP offloading")

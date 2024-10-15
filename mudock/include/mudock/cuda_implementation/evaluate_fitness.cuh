@@ -2,15 +2,13 @@
 
 #include <cstddef>
 #include <curand_kernel.h>
-#include <mudock/cuda_implementation/mutate.cuh>
+#include <mudock/cpp_implementation/chromosome.hpp>
 #include <mudock/grid.hpp>
 #include <mudock/molecule/containers.hpp>
 #include <mudock/type_alias.hpp>
 
 namespace mudock {
-  void setup_constant_memory(const point3D& minimum,
-                             const point3D& maximum,
-                             const point3D& center);
+  void setup_constant_memory(const point3D& minimum, const point3D& maximum, const point3D& center);
 
   __global__ void evaluate_fitness(const int num_generations,
                                    const int tournament_length,
