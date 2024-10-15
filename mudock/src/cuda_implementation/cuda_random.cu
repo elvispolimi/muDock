@@ -1,4 +1,6 @@
 #include <mudock/cuda_implementation/cuda_random.cuh>
+#include <chrono>
+#include <mudock/cuda_implementation/cuda_check_error_macro.cuh>
 
 namespace mudock {
   __global__ void init_curand(curandState *state, const long seed, const int num_elements) {

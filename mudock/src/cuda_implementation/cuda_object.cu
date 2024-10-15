@@ -66,6 +66,7 @@ namespace mudock {
   template class cuda_object<XORWOWState>;
 #else
   template class cuda_object<curandState>;
+  template class cuda_object<cudaTextureObject_t>;
 #endif
   template class cuda_object<chromosome>;
 } // namespace mudock
