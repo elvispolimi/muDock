@@ -30,9 +30,9 @@ namespace mudock {
   }
 
   void virtual_screen_omp::operator()(batch &incoming_batch) {
-#pragma omp target teams distribute parallel for
+#pragma omp target
     for (auto &ligand: std::span(incoming_batch.molecules.data(), incoming_batch.num_ligands)) {
-      printf("%d %s\n", omp_get_thread_num(), ligand->properties.get(property_type::NAME).c_str());
+      // TODO
     }
   }
 } // namespace mudock
