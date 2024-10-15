@@ -2,21 +2,21 @@
 #include <cuda_runtime.h>
 #include <iostream>
 // #include <mudock/omp_implementation/cuda_check_error_macro.cuh>
-#include <mudock/omp_implementation/omp_worker.hpp>
 #include <mudock/log.hpp>
+#include <mudock/omp_implementation/omp_worker.hpp>
+#include <omp.h>
 #include <stdexcept>
 #include <string>
-#include <omp.h>
 
 namespace mudock {
   omp_worker::omp_worker(const knobs knobs,
-                           std::shared_ptr<const grid_atom_mapper>& grid_atom_maps,
-                           std::shared_ptr<const grid_map>& electro_map,
-                           std::shared_ptr<const grid_map>& desolv_map,
-                           std::shared_ptr<safe_stack<static_molecule>>& input_molecules,
-                           std::shared_ptr<safe_stack<static_molecule>>& output_molecules,
-                           std::shared_ptr<reorder_buffer> rb,
-                           const std::size_t device_id)
+                         std::shared_ptr<const grid_atom_mapper>& grid_atom_maps,
+                         std::shared_ptr<const grid_map>& electro_map,
+                         std::shared_ptr<const grid_map>& desolv_map,
+                         std::shared_ptr<safe_stack<static_molecule>>& input_molecules,
+                         std::shared_ptr<safe_stack<static_molecule>>& output_molecules,
+                         std::shared_ptr<reorder_buffer> rb,
+                         const std::size_t device_id)
       : input_stack(input_molecules),
         output_stack(output_molecules),
         rob(rb),

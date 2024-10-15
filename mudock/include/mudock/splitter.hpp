@@ -8,7 +8,7 @@
 namespace mudock {
 
   template<class format_type>
-  requires can_split<format_type>
+    requires can_split<format_type>
   class splitter {
     std::string input_text;
     format_type format_splitter;
@@ -30,7 +30,7 @@ namespace mudock {
   //===------------------------------------------------------------------------------------------------------
 
   template<class format_type>
-  requires can_split<format_type>
+    requires can_split<format_type>
   [[nodiscard]] std::vector<std::string> splitter<format_type>::operator()(std::string new_text) {
     std::vector<std::string> result;
 

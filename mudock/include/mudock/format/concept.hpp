@@ -14,14 +14,12 @@ namespace mudock {
 
   template<class T, class molecule_type>
   concept can_parse = requires(T t) {
-    {t.parse(molecule_type(), std::string_view())};
-  }
-  &&is_molecule<molecule_type>;
+    { t.parse(molecule_type(), std::string_view()) };
+  } && is_molecule<molecule_type>;
 
   template<class T, class molecule_type>
   concept can_print = requires(T t) {
-    {t.print(molecule_type(), std::cout)};
-  }
-  &&is_molecule<molecule_type>;
+    { t.print(molecule_type(), std::cout) };
+  } && is_molecule<molecule_type>;
 
 } // namespace mudock

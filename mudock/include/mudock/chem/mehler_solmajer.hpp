@@ -1,8 +1,8 @@
 #pragma once
 
+#include <limits>
 #include <math.h>
 #include <mudock/type_alias.hpp>
-#include <limits>
 
 namespace mudock {
   fp_type calc_ddd_Mehler_Solmajer(fp_type distance) {

@@ -2,8 +2,8 @@
 
 #include <array>
 #include <mudock/cpp_implementation/chromosome.hpp>
-#include <mudock/sycl_implementation/geometric_transformations.hpp>
 #include <mudock/molecule.hpp>
+#include <mudock/sycl_implementation/geometric_transformations.hpp>
 #include <mudock/type_alias.hpp>
 #include <random>
 #include <span>
