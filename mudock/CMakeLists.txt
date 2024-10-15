@@ -92,8 +92,10 @@ list(APPEND source_files
   "${source_path}/log.cpp"
 )
 
-if(MUDOCK_ENABLE_POLY)
+# declare the CUDA sources
+if(MUDOCK_ENABLE_CUDA)
   list(APPEND header_files
+    "${header_path}/${header_prefix}/cuda_implementation/calc_energy.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/cuda_batch_sizer.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/cuda_check_error_macro.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/cuda_manager.hpp"
@@ -101,14 +103,42 @@ if(MUDOCK_ENABLE_POLY)
     "${header_path}/${header_prefix}/cuda_implementation/cuda_object.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/cuda_worker.hpp"
     "${header_path}/${header_prefix}/cuda_implementation/cuda_wrapper.cuh"
-    # TODO fix this after merge with latest version
+    "${header_path}/${header_prefix}/cuda_implementation/evaluate_fitness.cuh"
+    "${header_path}/${header_prefix}/cuda_implementation/geometric_transformations.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/map_textures.cuh"
+    "${header_path}/${header_prefix}/cuda_implementation/mutate.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/virtual_screen.cuh"
+  )
+  list(APPEND source_files
+    "${source_path}/cuda_implementation/calc_energy.cu"
+    "${source_path}/cuda_implementation/cuda_batch_sizer.cu"
+    "${source_path}/cuda_implementation/cuda_manager.cpp"
+    "${source_path}/cuda_implementation/cuda_worker.cpp"
+    "${source_path}/cuda_implementation/cuda_random.cu"
+    "${source_path}/cuda_implementation/evaluate_fitness.cu"
+    "${source_path}/cuda_implementation/geometric_transformations.cu"
+    "${source_path}/cuda_implementation/mutate.cu"
+    "${source_path}/cuda_implementation/virtual_screen.cu"
+  )
+endif()
+
+if(MUDOCK_ENABLE_POLY)
+  set(poly_header_path "${CMAKE_CURRENT_SOURCE_DIR}/../polygeist/include")
+  set(poly_source_path "${CMAKE_CURRENT_SOURCE_DIR}/../polygeist/src")
+  list(APPEND header_files
+    "${header_path}/${header_prefix}/cuda_implementation/cuda_batch_sizer.cuh"
+    "${header_path}/${header_prefix}/cuda_implementation/cuda_check_error_macro.cuh"
+    "${header_path}/${header_prefix}/cuda_implementation/cuda_manager.hpp"
+    "${header_path}/${header_prefix}/cuda_implementation/cuda_object.cuh"
+    "${header_path}/${header_prefix}/cuda_implementation/cuda_worker.hpp"
+    "${header_path}/${header_prefix}/cuda_implementation/cuda_wrapper.cuh"
+    "${header_path}/${header_prefix}/cuda_implementation/map_textures.cuh"
+    "${poly_header_path}/polygeist/cuda_random.cuh"
+    "${poly_header_path}/polygeist/virtual_screen.cuh"
   )
   list(APPEND source_files
     "${source_path}/cuda_implementation/cuda_manager.cpp"
     "${source_path}/cuda_implementation/cuda_worker.cpp"
-    "${source_path}/cuda_implementation/virtual_screen_transpilation.cpp"
   )
 endif()
 
@@ -171,6 +201,9 @@ add_library(libmudock STATIC ${source_files} ${header_files})
 add_library(mudock::libmudock ALIAS libmudock)
 set_target_properties(libmudock PROPERTIES PUBLIC_HEADER "${headers}")
 target_include_directories(libmudock PUBLIC "${header_path}")
+if(MUDOCK_ENABLE_POLY)
+  target_include_directories(libmudock PUBLIC "${poly_header_path}")
+endif()
 # Include Boost and RDKit directories for the target
 target_include_directories(libmudock PRIVATE ${Boost_INCLUDE_DIRS})
 target_include_directories(libmudock PRIVATE ${RDKit_INCLUDE_DIRS})
@@ -199,6 +232,19 @@ if(MUDOCK_ENABLE_HIP)
   target_link_libraries(libmudock PUBLIC hiprand)
   target_compile_options(libmudock PUBLIC $<$<AND:$<CONFIG:DEBUG>,$<COMPILE_LANGUAGE:CXX>>:-G -g -Xptxas -v --expt-relaxed-constexpr>)
   target_compile_options(libmudock PUBLIC $<$<AND:$<CONFIG:RELEASE>,$<COMPILE_LANGUAGE:CXX>>:-O3 -use_fast_math --expt-relaxed-constexpr>)
+endif()
+
+# check if we need to activate the compilation flag that signals CUDA
+if(MUDOCK_ENABLE_CUDA)
+  target_compile_definitions(libmudock PUBLIC MUDOCK_USE_CUDA)
+  set_target_properties(libmudock
+    PROPERTIES
+    CUDA_STANDARD 20
+    CUDA_STANDARD_REQUIRED ON
+    CUDA_EXTENSIONS OFF
+    CUDA_SEPARABLE_COMPILATION ON)
+  set(CMAKE_CUDA_FLAGS_RELEASE "-O3 -use_fast_math --expt-relaxed-constexpr")
+  set(CMAKE_CUDA_FLAGS_DEBUG "-G -g -Xptxas -v --expt-relaxed-constexpr")
 endif()
 
 # check if we need to activate the compilation flag that signals SYCL

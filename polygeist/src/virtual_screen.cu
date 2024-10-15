@@ -6,7 +6,7 @@
 #include <mudock/chem/grid_const.hpp>
 #include <mudock/cpp_implementation/chromosome.hpp>
 #include <mudock/cuda_implementation/cuda_check_error_macro.cuh>
-#include <mudock/cuda_implementation/cuda_random.cuh>
+#include <polygeist/cuda_random.cuh>
 #include <mudock/grid/mdindex.hpp>
 #include <mudock/grid/point3D.hpp>
 #include <mudock/type_alias.hpp>

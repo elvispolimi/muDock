@@ -1,4 +1,6 @@
 #include "command_line_args.hpp"
+#include "mudock/grid/grid_map.hpp"
+#include "mudock/grid/point3D.hpp"
 
 #include <cassert>
 #include <fstream>
@@ -48,14 +50,15 @@ int main(int argc, char* argv[]) {
   auto grid_atom_maps    = std::make_shared<const mudock::grid_atom_mapper>(generate_atom_grid_maps(protein));
   auto electrostatic_map = std::make_shared<const mudock::grid_map>(generate_electrostatic_grid_map(protein));
   auto desolvation_map   = std::make_shared<const mudock::grid_map>(generate_desolvation_grid_map(protein));
-  // auto tp  = mudock::point3D{};
-  // auto itp = mudock::index3D{1, 1, 1};
-  // auto sv  = std::vector<mudock::grid_atom_map>{};
-  // for (int i = 0; i < mudock::num_device_map_textures(); ++i)
-  //   sv.emplace_back(mudock::autodock_type_from_map(static_cast<mudock::device_map_textures>(i)), protein);
-  // auto grid_atom_maps    = std::make_shared<const mudock::grid_atom_mapper>(sv);
-  // auto electrostatic_map = std::make_shared<const mudock::grid_map>(protein);
-  // auto desolvation_map   = std::make_shared<const mudock::grid_map>(protein);
+  //   auto tp  = mudock::point3D{};
+  //   auto itp = mudock::index3D{1, 1, 1};
+  //   auto sv  = std::vector<mudock::grid_atom_map>{};
+  // #include <mudock/cuda_implementation/map_textures.cuh>
+  //   for (int i = 0; i < mudock::num_cuda_map_textures(); ++i)
+  //     sv.emplace_back(mudock::autodock_type_from_map(static_cast<mudock::cuda_map_textures>(i)), itp, tp, tp);
+  //   auto grid_atom_maps    = std::make_shared<const mudock::grid_atom_mapper>(sv);
+  //   auto electrostatic_map = std::make_shared<const mudock::grid_map>(itp, tp, tp);
+  //   auto desolvation_map   = std::make_shared<const mudock::grid_map>(itp, tp, tp);
 
   // read  all the ligands description from the standard input and split them
   mudock::info("Reading ligands from the stdin ...");

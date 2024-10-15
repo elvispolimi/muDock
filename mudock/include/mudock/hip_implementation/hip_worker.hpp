@@ -23,7 +23,7 @@ namespace mudock {
     void process(batch& b);
 
   public:
-    // the constructor intialize the kernel and set the CPU affinity to the correct device
+    // the constructor intialize the kernel and set the device affinity to the correct device
     hip_worker(const knobs knobs,
                 std::shared_ptr<const grid_atom_mapper>& grid_atom_maps,
                 std::shared_ptr<const grid_map>& electro_map,

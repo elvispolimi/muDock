@@ -2,7 +2,7 @@
 
 #include <mudock/batch.hpp>
 #include <mudock/cpp_implementation/chromosome.hpp>
-#include <mudock/cuda_implementation/cuda_random.cuh>
+#include <polygeist/cuda_random.cuh>
 #include <mudock/cuda_implementation/cuda_wrapper.cuh>
 #include <mudock/cuda_implementation/map_textures.cuh>
 #include <mudock/grid.hpp>
@@ -12,6 +12,12 @@
 #include <vector>
 
 namespace mudock {
+  struct wrappers_container {
+    std::vector<cuda_object<fp_type>> wrappers;
+    cuda_wrapper<std::vector, fp_type*> wrappers_pointer;
+
+    wrappers_container(){};
+  };
 
   class virtual_screen_cuda {
     // the configuration of the GA algorithm
@@ -40,9 +46,10 @@ namespace mudock {
     cuda_wrapper<std::vector, chromosome> best_chromosomes;
 
     // Grid Maps
-    const point3D center_maps;
-    cudaTextureObject_t electro_tex, desolv_tex;
-    cuda_wrapper<std::vector, cudaTextureObject_t> atom_texs;
+    const point3D center, minimum_coord, maximum_coord;
+    const index3D index_map;
+    cuda_object<fp_type> electro_tex, desolv_tex;
+    wrappers_container atom_texs;
 
     // Random generation
     cuda_random_object curand_states;

@@ -13,9 +13,12 @@ namespace mudock {
     cuda_object()                   = default;
     cuda_object(const cuda_object&) = delete;
     cuda_object(cuda_object&& other);
-    // TODO seems not supported by Polygeist
+// TODO seems not supported by Polygeist
+#ifdef MUDOCK_ENABLE_POLY
     ~cuda_object() = default;
-    // ~cuda_object() noexcept(false);
+#else
+    ~cuda_object() noexcept(false);
+#endif
     cuda_object& operator=(const cuda_object&) = delete;
     cuda_object& operator=(cuda_object&&)      = default;
 

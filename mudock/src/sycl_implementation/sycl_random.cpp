@@ -1,5 +1,4 @@
 #include <mudock/sycl_implementation/sycl_random.hpp>
-#include <random>
 
 namespace mudock {
 

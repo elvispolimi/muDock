@@ -1,7 +1,6 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
-#include <mudock/chem/autodock_parameters.hpp>
-#include <mudock/chem/grid_const.hpp>
+#include <mudock/chem.hpp>
 #include <mudock/cuda_implementation/calc_energy.cuh>
 
 namespace mudock {
@@ -46,7 +45,7 @@ namespace mudock {
       const fp_type distance_two = powf(fabs(ligand_x[a1] - ligand_x[a2]), fp_type{2}) +
                                    powf(fabs(ligand_y[a1] - ligand_y[a2]), fp_type{2}) +
                                    powf(fabs(ligand_z[a1] - ligand_z[a2]), fp_type{2});
-      const fp_type distance_two_clamp = max(distance_two, RMIN_ELEC * RMIN_ELEC);
+      const fp_type distance_two_clamp = std::clamp(distance_two, RMIN_ELEC * RMIN_ELEC, distance_two);
       const fp_type distance           = sqrtf(distance_two_clamp);
 
       //  Calculate  Electrostatic  Energy

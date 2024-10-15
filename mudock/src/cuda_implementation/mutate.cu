@@ -31,4 +31,5 @@ namespace mudock {
                            num_atoms);
     }
   }
+
 } // namespace mudock
