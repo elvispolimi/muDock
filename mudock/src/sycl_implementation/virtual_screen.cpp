@@ -128,6 +128,7 @@ namespace mudock {
     std::size_t index{0};
     // TODO pragma OMP improve performance
     // Keep the fragments for the output
+    // TODO check if it makes sense to save it or it is better to compute it again
     std::vector<fragments<static_containers>> batch_fragments;
     batch_fragments.reserve(batch_ligands);
     // Support data structures
