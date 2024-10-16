@@ -26,7 +26,7 @@ namespace mudock {
     // Fragments
     hip_wrapper<std::vector, int> ligand_fragments;
     hip_wrapper<std::vector, int> frag_start_atom_indices, frag_stop_atom_indices;
-    // Non-onds
+    // Non-bonds
     hip_wrapper<std::vector, int> num_nonbonds, nonbond_a1, nonbond_a2;
 
     // HIP data precomputation
