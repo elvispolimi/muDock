@@ -5,8 +5,6 @@
   #include <mudock/hip_implementation/hip_batch_sizer.hpp>
   #include <mudock/hip_implementation/hip_check_error_macro.hpp>
   #include <mudock/hip_implementation/hip_manager.hpp>
-  // #include <mudock/hip_implementation/hip_object.hpp>
-  // #include <mudock/hip_implementation/hip_wrapper.hpp>
   #include <mudock/hip_implementation/virtual_screen.hpp>
 #else
   #include <mudock/log.hpp>
