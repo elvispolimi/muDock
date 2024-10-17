@@ -22,6 +22,7 @@ namespace mudock {
   }
 
   // TODO check math functions if they are from CUDA
+  // TODO template parameters here for nonbond list sizes
   __device__ fp_type calc_intra_energy(const fp_type* ligand_x,
                                        const fp_type* ligand_y,
                                        const fp_type* ligand_z,

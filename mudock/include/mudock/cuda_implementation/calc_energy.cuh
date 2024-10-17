@@ -4,7 +4,7 @@
 #include <mudock/type_alias.hpp>
 
 namespace mudock {
-  fp_type calc_intra_energy(const fp_type* ligand_x,
+  __device__ fp_type calc_intra_energy(const fp_type* ligand_x,
                             const fp_type* ligand_y,
                             const fp_type* ligand_z,
                             const fp_type* ligand_vol,
