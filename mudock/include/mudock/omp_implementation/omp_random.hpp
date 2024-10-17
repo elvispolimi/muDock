@@ -41,4 +41,19 @@ namespace mudock {
       return static_cast<fp_type>(t + index) / static_cast<fp_type>(std::numeric_limits<unsigned int>::max());
     }
   };
+
+  struct omp_random_object: private omp_wrapper<std::vector, XORWOWState> {
+    omp_random_object(): omp_wrapper<std::vector, XORWOWState>(){};
+    omp_random_object(const omp_random_object &)            = delete;
+    omp_random_object(omp_random_object &&)                 = default;
+    omp_random_object &operator=(const omp_random_object &) = delete;
+    omp_random_object &operator=(omp_random_object &&)      = delete;
+
+    void alloc(const std::size_t num_elements);
+
+    [[nodiscard]] inline auto dev_pointer() const {
+      return omp_wrapper<std::vector, XORWOWState>::dev_pointer();
+    }
+  };
+
 } // namespace mudock

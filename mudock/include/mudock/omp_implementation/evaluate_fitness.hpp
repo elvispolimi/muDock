@@ -23,6 +23,7 @@ namespace mudock {
                         fp_type* __restrict__ scratch_ligand_x,
                         fp_type* __restrict__ scratch_ligand_y,
                         fp_type* __restrict__ scratch_ligand_z,
+                        fp_type* __restrict__ scratch_chromosome,
                         const fp_type* __restrict__ ligand_vol,
                         const fp_type* __restrict__ ligand_solpar,
                         const fp_type* __restrict__ ligand_charge,
@@ -40,12 +41,18 @@ namespace mudock {
                         const int* __restrict__ frag_start_atom_index,
                         const int* __restrict__ frag_stop_atom_index,
                         chromosome* __restrict__ chromosomes,
-                        // TODO input data maps
-                        // const cudaTextureObject_t* atom_textures,
-                        // const int* atom_tex_indexes,
-                        // const cudaTextureObject_t electro_texture,
-                        // const cudaTextureObject_t desolv_texture,
-                        // TODO random state
+                        const point3D minimum,
+                        const point3D maximum,
+                        const point3D center,
+                        const index3D index,
+                        const fp_type* const __restrict__* const __restrict__ atom_textures,
+                        const int* __restrict__ atom_tex_indexes,
+                        const fp_type* __restrict__ electro_texture,
+                        const fp_type* __restrict__ desolv_texture,
+                        const int* atom_tex_indexes,
+                        const cudaTextureObject_t electro_texture,
+                        const cudaTextureObject_t desolv_texture,
+                        XORWOWState* __restrict__ state,
                         fp_type* ligand_scores,
                         chromosome* best_chromosomes);
 } // namespace mudock
