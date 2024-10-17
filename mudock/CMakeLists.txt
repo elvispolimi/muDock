@@ -117,8 +117,6 @@ if(MUDOCK_ENABLE_CUDA)
     "${source_path}/cuda_implementation/cuda_worker.cpp"
     "${source_path}/cuda_implementation/cuda_random.cu"
     "${source_path}/cuda_implementation/evaluate_fitness.cu"
-    "${source_path}/cuda_implementation/geometric_transformations.cu"
-    "${source_path}/cuda_implementation/mutate.cu"
     "${source_path}/cuda_implementation/virtual_screen.cu"
   )
 endif()
