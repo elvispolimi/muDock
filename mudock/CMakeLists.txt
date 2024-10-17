@@ -266,6 +266,7 @@ if(MUDOCK_ENABLE_CUDA)
     CUDA_STANDARD_REQUIRED ON
     CUDA_EXTENSIONS OFF
     CUDA_SEPARABLE_COMPILATION ON)
+  set(CMAKE_CUDA_FLAGS "--expt-relaxed-constexpr")
   set(CMAKE_CUDA_FLAGS_RELEASE "-O3 -use_fast_math --expt-relaxed-constexpr")
   set(CMAKE_CUDA_FLAGS_DEBUG "-G -g -Xptxas -v --expt-relaxed-constexpr")
 endif()
