@@ -15,11 +15,12 @@ namespace mudock {
     const bool init = num_elements > hip_object<hiprandState>::num_elements();
     hip_object<hiprandState>::alloc(num_elements);
     if (init) {
-      init_hiprand<<<4, 128>>>(hip_object<hiprandState>::dev_pointer(),
-                               std::chrono::high_resolution_clock::now().time_since_epoch().count(),
-                               hip_object<hiprandState>::num_elements());
+      init_hiprand<<<4, 128, 0, hip_object<hiprandState>::get_stream()>>>(
+          hip_object<hiprandState>::dev_pointer(),
+          std::chrono::high_resolution_clock::now().time_since_epoch().count(),
+          hip_object<hiprandState>::num_elements());
       MUDOCK_CHECK_KERNELCALL();
-      MUDOCK_CHECK(hipDeviceSynchronize());
+      MUDOCK_CHECK(hipStreamSynchronize(hip_object<hiprandState>::get_stream()));
     }
   };
 } // namespace mudock

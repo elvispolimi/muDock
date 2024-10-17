@@ -64,12 +64,41 @@ namespace mudock {
                                          std::shared_ptr<const grid_map> &electro_map,
                                          std::shared_ptr<const grid_map> &desolv_map,
                                          const int device_id)
-      : configuration(k), center_maps(electro_map.get()->center) {
+      : configuration(k),
+        center_maps(electro_map.get()->center),
+        original_ligand_x(stream),
+        original_ligand_y(stream),
+        original_ligand_z(stream),
+        scratch_ligand_x(stream),
+        scratch_ligand_y(stream),
+        scratch_ligand_z(stream),
+        ligand_vol(stream),
+        ligand_solpar(stream),
+        ligand_charge(stream),
+        ligand_Rij_hb(stream),
+        ligand_Rii(stream),
+        ligand_epsij_hb(stream),
+        ligand_epsii(stream),
+        ligand_num_hbond(stream),
+        ligand_num_atoms(stream),
+        ligand_num_rotamers(stream),
+        ligand_fragments(stream),
+        frag_start_atom_indices(stream),
+        frag_stop_atom_indices(stream),
+        num_nonbonds(stream),
+        nonbond_a1(stream),
+        nonbond_a2(stream),
+        map_texture_index(stream),
+        ligand_scores(stream),
+        chromosomes(stream),
+        best_chromosomes(stream),
+        atom_texs(stream),
+        curand_states(stream) {
     // TODO move this part into the hip_worker -> once per GPU
     // Allocate grid maps
     assert(electro_map.get()->index == desolv_map.get()->index &&
            desolv_map.get()->index == grid_atom_maps.get()->get_index());
-    MUDOCK_CHECK(hipCreateStream(&stream));
+    MUDOCK_CHECK(hipStreamCreate(&stream));
 
     init_texture_memory(*electro_map.get(), electro_tex);
 
@@ -287,6 +316,7 @@ namespace mudock {
     const std::size_t min_energy_reduction_s_mem =
         std::max(configuration.population_number, static_cast<std::size_t>(wavefront_size)) * sizeof(fp_type);
     const std::size_t shared_mem = min_energy_reduction_s_mem;
+    MUDOCK_CHECK(hipStreamSynchronize(stream));
     evaluate_fitness<<<batch_ligands, wavefront_size, shared_mem, stream>>>(
         num_generations,
         configuration.tournament_length,

@@ -108,8 +108,8 @@ namespace mudock {
   }
 
   // TODO check the syncwarp
-  //TODO OPT: template parameter based on number of atoms, rotamers, chromosomes and population
-  // Interesting the usage of the bucketizer
+  // TODO OPT: template parameter based on number of atoms, rotamers, chromosomes and population
+  // TODO missing bucketizer -> see CUDA version
   // TODO check 0xFFFFFFFF on AMD GPUs
   __global__ void evaluate_fitness(const int num_generations,
                                    const int tournament_length,
