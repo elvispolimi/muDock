@@ -11,12 +11,12 @@ namespace mudock {
                               const fp_type* offset_y,
                               const fp_type* offset_z,
                               const int num_atoms) {
-    // TODO
-    // for (int i = threadIdx.x; i < num_atoms; i += blockDim.x) {
-    //   x[i] += *offset_x;
-    //   y[i] += *offset_y;
-    //   z[i] += *offset_z;
-    // }
+#pragma omp parallel for
+    for (int i = 0; i < num_atoms; ++i) {
+      x[i] += *offset_x;
+      y[i] += *offset_y;
+      z[i] += *offset_z;
+    }
   }
 
   void rotate_molecule_omp(fp_type* __restrict__ x,
@@ -44,13 +44,13 @@ namespace mudock {
     const auto m22 = cx * cy;
 
     // apply the rotation matrix
-    // TODO
-    // for (int i = threadIdx.x; i < num_atoms; i += blockDim.x) {
-    //   const auto prev_x = x[i], prev_y = y[i], prev_z = z[i];
-    //   x[i] = prev_x * m00 + prev_y * m01 + prev_z * m02;
-    //   y[i] = prev_x * m10 + prev_y * m11 + prev_z * m12;
-    //   z[i] = prev_x * m20 + prev_y * m21 + prev_z * m22;
-    // }
+#pragma omp parallel for
+    for (int i = 0; i < num_atoms; ++i) {
+      const auto prev_x = x[i], prev_y = y[i], prev_z = z[i];
+      x[i] = prev_x * m00 + prev_y * m01 + prev_z * m02;
+      y[i] = prev_x * m10 + prev_y * m11 + prev_z * m12;
+      z[i] = prev_x * m20 + prev_y * m21 + prev_z * m22;
+    }
   }
 
   void rotate_fragment_omp(fp_type* __restrict__ x,
@@ -103,15 +103,15 @@ namespace mudock {
         ((origz * (u2 + v2) - w * (origx * u + origy * v)) * one_minus_c + (origx * v - origy * u) * ls) / l2;
 
     // apply the rotation matrix
-    // TODO
-    // for (int i = threadIdx.x; i < num_atoms; i += blockDim.x) {
-    //   if (bitmask[i] == 1) {
-    //     const auto prev_x = x[i], prev_y = y[i], prev_z = z[i];
-    //     x[i] = prev_x * m00 + prev_y * m01 + prev_z * m02 + m03;
-    //     y[i] = prev_x * m10 + prev_y * m11 + prev_z * m12 + m13;
-    //     z[i] = prev_x * m20 + prev_y * m21 + prev_z * m22 + m23;
-    //   }
-    // }
+#pragma omp parallel for
+    for (int i = 0; i < num_atoms; ++i) {
+      if (bitmask[i] == 1) {
+        const auto prev_x = x[i], prev_y = y[i], prev_z = z[i];
+        x[i] = prev_x * m00 + prev_y * m01 + prev_z * m02 + m03;
+        y[i] = prev_x * m10 + prev_y * m11 + prev_z * m12 + m13;
+        z[i] = prev_x * m20 + prev_y * m21 + prev_z * m22 + m23;
+      }
+    }
   }
 
 } // namespace mudock

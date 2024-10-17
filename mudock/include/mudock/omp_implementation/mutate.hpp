@@ -8,6 +8,7 @@
 #include <random>
 #include <span>
 
+#pragma omp declare target
 namespace mudock {
   void apply_omp(fp_type* __restrict__ x,
                  fp_type* __restrict__ y,
@@ -19,5 +20,6 @@ namespace mudock {
                  const int num_rotamers,
                  const int stride_atoms,
                  const int num_atoms);
+#pragma omp end declare target
 
 } // namespace mudock

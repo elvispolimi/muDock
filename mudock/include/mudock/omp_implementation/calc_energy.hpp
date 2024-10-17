@@ -4,6 +4,7 @@
 #include <mudock/type_alias.hpp>
 
 namespace mudock {
+#pragma omp declare target
   fp_type calc_intra_energy(const fp_type* ligand_x,
                             const fp_type* ligand_y,
                             const fp_type* ligand_z,
@@ -18,4 +19,5 @@ namespace mudock {
                             const int ligand_num_nonbonds,
                             const int* __restrict__ ligand_nonbond_a1,
                             const int* __restrict__ ligand_nonbond_a2);
-}
+#pragma omp end declare target
+} // namespace mudock

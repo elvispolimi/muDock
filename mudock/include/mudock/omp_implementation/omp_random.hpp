@@ -2,6 +2,8 @@
 
 #include <mudock/omp_implementation/omp_wrapper.hpp>
 #include <mudock/type_alias.hpp>
+#include <array>
+#include <vector>
 
 namespace mudock {
   // XORWOW state

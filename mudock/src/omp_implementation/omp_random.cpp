@@ -1,8 +1,9 @@
 #include <mudock/omp_implementation/omp_random.hpp>
+#include <random>
 
 namespace mudock {
 
-  void sycl_random_object::alloc(const std::size_t num_elements) {
+  void omp_random_object::alloc(const std::size_t num_elements) {
     const bool init = num_elements > omp_wrapper<std::vector, XORWOWState>::num_elements();
     omp_wrapper<std::vector, XORWOWState>::alloc(num_elements);
     auto generator = std::mt19937{
