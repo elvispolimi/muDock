@@ -58,6 +58,8 @@ namespace mudock {
       // add the workers that we found parsing the configuration
       for (const auto id: gpu_ids) {
         // we spawn two workers for each GPU to implement the double buffer
+        // TODO create e locking mechanism for the device
+        // As to make the bucketizer more effective
         pool.add_worker<mudock::cuda_worker>(knobs,
                                              grid_atom_maps,
                                              electro_map,
