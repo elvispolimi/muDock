@@ -15,6 +15,11 @@
 namespace mudock {
   static constexpr std::size_t max_non_bonds{1024 * 10};
 
+  void init_texture_memory(const grid_map &map, omp_object<fp_type> &tex_obj) {
+    tex_obj.alloc(map.index.size_x() * map.index.size_y() * map.index.size_z());
+    tex_obj.copy_host2device(map.data());
+  }
+
   virtual_screen_omp::virtual_screen_omp(const knobs k,
                                          std::shared_ptr<const grid_atom_mapper> &grid_atom_maps,
                                          std::shared_ptr<const grid_map> &electro_map,
@@ -28,7 +33,21 @@ namespace mudock {
     // Allocate grid maps
     assert(electro_map.get()->index == desolv_map.get()->index &&
            desolv_map.get()->index == grid_atom_maps.get()->get_index());
-    //  TODO
+    init_texture_memory(*electro_map.get(), electro_tex);
+
+    init_texture_memory(*desolv_map.get(), desolv_tex);
+
+    atom_texs.wrappers_pointer.alloc(num_device_map_textures());
+    atom_texs.wrappers.reserve(num_device_map_textures());
+    for (int index{0}; index < num_device_map_textures(); ++index) {
+      atom_texs.wrappers.emplace_back();
+      omp_object<fp_type> &atom_tex = atom_texs.wrappers.back();
+      const grid_map &grid_atom =
+          grid_atom_maps.get()->get_atom_map(autodock_type_from_map(static_cast<device_map_textures>(index)));
+      init_texture_memory(grid_atom, atom_tex);
+      atom_texs.wrappers_pointer.host[index] = atom_tex.dev_pointer();
+    }
+    atom_texs.wrappers_pointer.copy_host2device();
   }
 
   void virtual_screen_omp::operator()(batch &incoming_batch) {
@@ -44,16 +63,14 @@ namespace mudock {
     const std::size_t batch_nonbonds              = batch_ligands * max_non_bonds;
     // Use double buffering on the GPU for actual and next population at each iteration
     const std::size_t population_stride = configuration.population_number * 2;
+    const std::size_t total_chromosomes = configuration.population_number * batch_ligands;
 
-    // Allocate memory
+    // Allocate memory for input data
     ligand_num_atoms.alloc(batch_ligands);
     ligand_num_rotamers.alloc(batch_ligands);
     original_ligand_x.alloc(tot_atoms_in_batch);
     original_ligand_y.alloc(tot_atoms_in_batch);
     original_ligand_z.alloc(tot_atoms_in_batch);
-    scratch_ligand_x.alloc(tot_atoms_in_batch);
-    scratch_ligand_y.alloc(tot_atoms_in_batch);
-    scratch_ligand_z.alloc(tot_atoms_in_batch);
     ligand_vol.alloc(tot_atoms_in_batch);
     ligand_solpar.alloc(tot_atoms_in_batch);
     ligand_charge.alloc(tot_atoms_in_batch);
@@ -74,6 +91,13 @@ namespace mudock {
     chromosomes.alloc(population_stride * batch_ligands);
     ligand_scores.alloc(batch_ligands);
     best_chromosomes.alloc(batch_ligands);
+    // Scratchpad
+    scratch_ligand_x.alloc(tot_atoms_in_batch);
+    scratch_ligand_y.alloc(tot_atoms_in_batch);
+    scratch_ligand_z.alloc(tot_atoms_in_batch);
+    scratch_chromosome.alloc(total_chromosomes);
+    // Support data precomputation
+    map_texture_index.alloc(tot_atoms_in_batch);
 
     // Copy data
     std::size_t index{0};
@@ -181,12 +205,12 @@ namespace mudock {
                   ligand.get()->get_num_hbond().data(),
                   num_atoms * sizeof(int));
 
-      // std::size_t atom_index{0};
-      // for (auto &autodock_t: ligand.get()->get_autodock_type()) {
-      //   const auto map_index = static_cast<int>(map_from_autodock_type(autodock_t));
-      //   map_texture_index.host_pointer()[stride_atoms + atom_index] = map_index;
-      //   ++atom_index;
-      // }
+      std::size_t atom_index{0};
+      for (auto &autodock_t: ligand.get()->get_autodock_type()) {
+        const auto map_index = static_cast<int>(map_from_autodock_type(autodock_t));
+        map_texture_index.host_pointer()[stride_atoms + atom_index] = map_index;
+        ++atom_index;
+      }
 
       ++index;
     }
@@ -211,6 +235,11 @@ namespace mudock {
     ligand_fragments.copy_host2device();
     frag_start_atom_indices.copy_host2device();
     frag_stop_atom_indices.copy_host2device();
+    map_texture_index.copy_host2device();
+
+    // Setup OpenMP random data
+    // A state for each chromosome
+    omp_states.alloc(configuration.population_number * batch_ligands);
 
     // Get device pointers
     const auto *d_num_atoms               = ligand_num_atoms.dev_pointer();
@@ -218,9 +247,10 @@ namespace mudock {
     const auto *d_original_ligand_x       = original_ligand_x.dev_pointer();
     const auto *d_original_ligand_y       = original_ligand_y.dev_pointer();
     const auto *d_original_ligand_z       = original_ligand_z.dev_pointer();
-    auto *d_scratch_ligand_x        = scratch_ligand_x.dev_pointer();
-    auto *d_scratch_ligand_y        = scratch_ligand_y.dev_pointer();
-    auto *d_scratch_ligand_z        = scratch_ligand_z.dev_pointer();
+    auto *d_scratch_ligand_x              = scratch_ligand_x.dev_pointer();
+    auto *d_scratch_ligand_y              = scratch_ligand_y.dev_pointer();
+    auto *d_scratch_ligand_z              = scratch_ligand_z.dev_pointer();
+    auto *d_scratch_chromosome            = scratch_chromosome.dev_pointer();
     const auto *d_ligand_vol              = ligand_vol.dev_pointer();
     const auto *d_ligand_solpar           = ligand_solpar.dev_pointer();
     const auto *d_ligand_charge           = ligand_charge.dev_pointer();
@@ -235,9 +265,14 @@ namespace mudock {
     const auto *d_ligand_fragments        = ligand_fragments.dev_pointer();
     const auto *d_frag_start_atom_indices = frag_start_atom_indices.dev_pointer();
     const auto *d_frag_stop_atom_indices  = frag_stop_atom_indices.dev_pointer();
-    auto *d_chromosomes             = chromosomes.dev_pointer();
-    auto *d_ligand_scores           = ligand_scores.dev_pointer();
-    auto *d_best_chromosomes        = best_chromosomes.dev_pointer();
+    auto *d_chromosomes                   = chromosomes.dev_pointer();
+    const auto *d_atom_textures           = atom_texs.wrappers_pointer.dev_pointer();
+    const auto *d_atom_tex_indexes        = map_texture_index.dev_pointer();
+    const auto *d_electro_texture         = electro_tex.dev_pointer();
+    const auto *d_desolv_texture          = desolv_tex.dev_pointer();
+    const auto *d_omp_states              = omp_states.dev_pointer();
+    auto *d_ligand_scores                 = ligand_scores.dev_pointer();
+    auto *d_best_chromosomes              = best_chromosomes.dev_pointer();
 
     // Execute the kernel
     evaluate_fitness(batch_ligands,
@@ -255,6 +290,7 @@ namespace mudock {
                      d_scratch_ligand_x,
                      d_scratch_ligand_y,
                      d_scratch_ligand_z,
+                     d_scratch_chromosome,
                      d_ligand_vol,
                      d_ligand_solpar,
                      d_ligand_charge,
@@ -272,11 +308,15 @@ namespace mudock {
                      d_frag_start_atom_indices,
                      d_frag_stop_atom_indices,
                      d_chromosomes,
-                     //  const int *__restrict atom_textures,
-                     //  const int *__restrict atom_tex_indexes,
-                     //  const int electro_texture,
-                     //  const int desolv_texture,
-                     //  int *__restrict state,
+                     minimum_coord,
+                     maximum_coord,
+                     center,
+                     index_map,
+                     d_atom_textures,
+                     d_atom_tex_indexes,
+                     d_electro_texture,
+                     d_desolv_texture,
+                     d_omp_states,
                      d_ligand_scores,
                      d_best_chromosomes);
 
