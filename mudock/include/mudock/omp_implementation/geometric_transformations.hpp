@@ -7,7 +7,7 @@
 #include <span>
 
 namespace mudock {
-
+#pragma omp declare target
   void translate_molecule_omp(fp_type* __restrict__ x,
                               fp_type* __restrict__ y,
                               fp_type* __restrict__ z,
@@ -15,7 +15,9 @@ namespace mudock {
                               const fp_type* offset_y,
                               const fp_type* offset_z,
                               const int num_atoms);
+#pragma omp end declare target
 
+#pragma omp declare target
   void rotate_molecule_omp(fp_type* __restrict__ x,
                            fp_type* __restrict__ y,
                            fp_type* __restrict__ z,
@@ -23,7 +25,9 @@ namespace mudock {
                            const fp_type* angle_y,
                            const fp_type* angle_z,
                            const int num_atoms);
+#pragma omp end declare target
 
+#pragma omp declare target
   void rotate_fragment_omp(fp_type* __restrict__ x,
                            fp_type* __restrict__ y,
                            fp_type* __restrict__ z,
@@ -32,5 +36,6 @@ namespace mudock {
                            const int stop_index,
                            const fp_type* angle,
                            const int num_atoms);
+#pragma omp end declare target
 
 } // namespace mudock

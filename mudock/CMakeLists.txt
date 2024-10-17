@@ -211,6 +211,9 @@ if(MUDOCK_ENABLE_OMP)
     "${source_path}/omp_implementation/omp_random.cpp"
     "${source_path}/omp_implementation/omp_batch_sizer.cpp"
     "${source_path}/omp_implementation/virtual_screen.cpp"
+    "${source_path}/omp_implementation/calc_energy.cpp"
+    "${source_path}/omp_implementation/mutate.cpp"
+    "${source_path}/omp_implementation/geometric_transformations.cpp"
   )
 endif()
 

@@ -270,7 +270,7 @@ namespace mudock {
     const auto *d_atom_tex_indexes        = map_texture_index.dev_pointer();
     const auto *d_electro_texture         = electro_tex.dev_pointer();
     const auto *d_desolv_texture          = desolv_tex.dev_pointer();
-    const auto *d_omp_states              = omp_states.dev_pointer();
+    auto *d_omp_states                    = omp_states.dev_pointer();
     auto *d_ligand_scores                 = ligand_scores.dev_pointer();
     auto *d_best_chromosomes              = best_chromosomes.dev_pointer();
 
@@ -320,5 +320,26 @@ namespace mudock {
                      d_ligand_scores,
                      d_best_chromosomes);
 
+    // Copy back chromosomes and scores
+    best_chromosomes.copy_device2host();
+    ligand_scores.copy_device2host();
+
+    // update the ligand position with the best one that we found
+    index = 0;
+    for (auto &ligand: std::span(incoming_batch.molecules.data(), incoming_batch.num_ligands)) {
+      auto graph = make_graph(ligand.get()->get_bonds());
+      // TODO check this assignment
+      const fragments<static_containers> l_fragments{graph,
+                                                     ligand.get()->get_bonds(),
+                                                     ligand.get()->num_atoms()};
+      // Reset the random number generator to improve consistency
+      apply(ligand.get()->get_x(),
+            ligand.get()->get_y(),
+            ligand.get()->get_z(),
+            *(best_chromosomes.host_pointer() + index),
+            l_fragments);
+      ligand->properties.assign(property_type::SCORE, std::to_string(ligand_scores.host_pointer()[index]));
+      ++index;
+    }
   } // namespace mudock
 } // namespace mudock

@@ -4,7 +4,6 @@
 #include <mudock/omp_implementation/calc_energy.hpp>
 #include <mudock/omp_implementation/evaluate_fitness.hpp>
 #include <mudock/omp_implementation/mutate.hpp>
-#include <mudock/omp_implementation/omp_random.hpp>
 #include <mudock/utils.hpp>
 #include <omp.h>
 
@@ -15,7 +14,7 @@ typedef struct {
   int index;
 } min_index_pair;
 
-#pragma omp declare reduction(min_index:MinIndexPair : omp_out =                     \
+#pragma omp declare reduction(min_index:min_index_pair : omp_out =                     \
                                   (omp_in.value < omp_out.value) ? omp_in : omp_out) \
     initializer(omp_priv = {INFINITY, -1})
 
@@ -198,16 +197,16 @@ namespace mudock {
           }
 
           // Modify coordinates
-          // apply_cuda(l_scratch_ligand_x,
-          //            l_scratch_ligand_y,
-          //            l_scratch_ligand_z,
-          //            *(l_chromosomes + chromosome_index),
-          //            l_fragments,
-          //            l_frag_start_atom_index,
-          //            l_frag_stop_atom_index,
-          //            num_rotamers,
-          //            atom_stride,
-          //            num_atoms);
+          apply_omp(l_scratch_ligand_x,
+                     l_scratch_ligand_y,
+                     l_scratch_ligand_z,
+                     *(l_chromosomes + chromosome_index),
+                     l_fragments,
+                     l_frag_start_atom_index,
+                     l_frag_stop_atom_index,
+                     num_rotamers,
+                     atom_stride,
+                     num_atoms);
 
           // Calculate energy
           fp_type elect_total_trilinear = 0;
@@ -260,21 +259,21 @@ namespace mudock {
           fp_type total_trilinear = elect_total_trilinear + dmap_total_trilinear + emap_total_trilinear;
 
           fp_type total_eintcal{0};
-          // if (num_rotamers > 0)
-          // total_eintcal += calc_intra_energy(l_scratch_ligand_x,
-          //                                    l_scratch_ligand_y,
-          //                                    l_scratch_ligand_z,
-          //                                    l_ligand_vol,
-          //                                    l_ligand_solpar,
-          //                                    l_ligand_charge,
-          //                                    l_ligand_num_hbond,
-          //                                    l_ligand_Rij_hb,
-          //                                    l_ligand_Rii,
-          //                                    l_ligand_epsij_hb,
-          //                                    l_ligand_epsii,
-          //                                    num_nonbonds,
-          //                                    l_ligand_nonbond_a1,
-          //                                    l_ligand_nonbond_a2);
+          if (num_rotamers > 0)
+            total_eintcal += calc_intra_energy(l_scratch_ligand_x,
+                                               l_scratch_ligand_y,
+                                               l_scratch_ligand_z,
+                                               l_ligand_vol,
+                                               l_ligand_solpar,
+                                               l_ligand_charge,
+                                               l_ligand_num_hbond,
+                                               l_ligand_Rij_hb,
+                                               l_ligand_Rii,
+                                               l_ligand_epsij_hb,
+                                               l_ligand_epsii,
+                                               num_nonbonds,
+                                               l_ligand_nonbond_a1,
+                                               l_ligand_nonbond_a2);
 
           const fp_type tors_free_energy         = num_rotamers * autodock_parameters::coeff_tors;
           l_scratch_chromosome[chromosome_index] = total_trilinear + total_eintcal + tors_free_energy;
@@ -287,13 +286,13 @@ namespace mudock {
 
           // select the parent
           const int best_individual_1 = tournament_selection_omp(state[chromosome_index],
-                                                                  tournament_length,
-                                                                  chromosome_number,
-                                                                  l_scratch_chromosome);
+                                                                 tournament_length,
+                                                                 chromosome_number,
+                                                                 l_scratch_chromosome);
           const int best_individual_2 = tournament_selection_omp(state[chromosome_index],
-                                                                  tournament_length,
-                                                                  chromosome_number,
-                                                                  l_scratch_chromosome);
+                                                                 tournament_length,
+                                                                 chromosome_number,
+                                                                 l_scratch_chromosome);
 
           // generate the offspring
           const int split_index = get_crossover_distribution(state[chromosome_index], &num_rotamers);

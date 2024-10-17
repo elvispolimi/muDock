@@ -4,6 +4,7 @@
 #include <mudock/cpp_implementation/chromosome.hpp>
 #include <mudock/grid.hpp>
 #include <mudock/molecule/containers.hpp>
+#include <mudock/omp_implementation/omp_random.hpp>
 #include <mudock/type_alias.hpp>
 
 namespace mudock {
@@ -49,9 +50,6 @@ namespace mudock {
                         const int* __restrict__ atom_tex_indexes,
                         const fp_type* __restrict__ electro_texture,
                         const fp_type* __restrict__ desolv_texture,
-                        const int* atom_tex_indexes,
-                        const cudaTextureObject_t electro_texture,
-                        const cudaTextureObject_t desolv_texture,
                         XORWOWState* __restrict__ state,
                         fp_type* ligand_scores,
                         chromosome* best_chromosomes);
