@@ -1,6 +1,6 @@
-#include <mudock/cuda_implementation/cuda_random.cuh>
 #include <chrono>
 #include <mudock/cuda_implementation/cuda_check_error_macro.cuh>
+#include <mudock/cuda_implementation/cuda_random.cuh>
 
 namespace mudock {
   __global__ void init_curand(curandState *state, const long seed, const int num_elements) {
@@ -15,11 +15,12 @@ namespace mudock {
     const bool init = num_elements > cuda_object<curandState>::num_elements();
     cuda_object<curandState>::alloc(num_elements);
     if (init) {
-      init_curand<<<4, 128>>>(cuda_object<curandState>::dev_pointer(),
-                              std::chrono::high_resolution_clock::now().time_since_epoch().count(),
-                              cuda_object<curandState>::num_elements());
+      init_curand<<<4, 128, 0, cuda_object<curandState>::get_stream()>>>(
+          cuda_object<curandState>::dev_pointer(),
+          std::chrono::high_resolution_clock::now().time_since_epoch().count(),
+          cuda_object<curandState>::num_elements());
       MUDOCK_CHECK_KERNELCALL();
-      MUDOCK_CHECK(cudaDeviceSynchronize());
+      MUDOCK_CHECK(cudaStreamSynchronize(cuda_object<curandState>::get_stream()));
     }
   };
 } // namespace mudock

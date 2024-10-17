@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <cuda_runtime.h>
 
 namespace mudock {
 
@@ -8,9 +9,10 @@ namespace mudock {
   class cuda_object {
     T* dev_ptr       = nullptr;
     std::size_t size = 0;
+    const cudaStream_t& stream;
 
   public:
-    cuda_object()                   = default;
+    cuda_object(const cudaStream_t& _stream): stream(_stream){};
     cuda_object(const cuda_object&) = delete;
     cuda_object(cuda_object&& other);
 // TODO seems not supported by Polygeist
@@ -31,5 +33,6 @@ namespace mudock {
 
     [[nodiscard]] T* dev_pointer() const;
     [[nodiscard]] std::size_t num_elements() const;
+    [[nodiscard]] const cudaStream_t& get_stream() const;
   };
 } // namespace mudock

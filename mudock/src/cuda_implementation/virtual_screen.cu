@@ -63,7 +63,36 @@ namespace mudock {
                                            std::shared_ptr<const grid_atom_mapper> &grid_atom_maps,
                                            std::shared_ptr<const grid_map> &electro_map,
                                            std::shared_ptr<const grid_map> &desolv_map)
-      : configuration(k), center_maps(electro_map.get()->center) {
+      : configuration(k),
+        center_maps(electro_map.get()->center),
+        original_ligand_x(stream),
+        original_ligand_y(stream),
+        original_ligand_z(stream),
+        scratch_ligand_x(stream),
+        scratch_ligand_y(stream),
+        scratch_ligand_z(stream),
+        ligand_vol(stream),
+        ligand_solpar(stream),
+        ligand_charge(stream),
+        ligand_Rij_hb(stream),
+        ligand_Rii(stream),
+        ligand_epsij_hb(stream),
+        ligand_epsii(stream),
+        ligand_num_hbond(stream),
+        ligand_num_atoms(stream),
+        ligand_num_rotamers(stream),
+        ligand_fragments(stream),
+        frag_start_atom_indices(stream),
+        frag_stop_atom_indices(stream),
+        num_nonbonds(stream),
+        nonbond_a1(stream),
+        nonbond_a2(stream),
+        map_texture_index(stream),
+        ligand_scores(stream),
+        chromosomes(stream),
+        best_chromosomes(stream),
+        atom_texs(stream),
+        curand_states(stream) {
     MUDOCK_CHECK(cudaSetDevice(static_cast<int>(gpu_id)));
     MUDOCK_CHECK(cudaStreamCreate(&stream););
     info("Worker CUDA on duty! Set affinity to GPU ", gpu_id);
@@ -285,6 +314,7 @@ namespace mudock {
         std::max(configuration.population_number, static_cast<std::size_t>(BLOCK_SIZE)) * sizeof(fp_type);
     const std::size_t shared_mem = min_energy_reduction_s_mem;
 
+    MUDOCK_CHECK(cudaStreamSynchronize(stream));
     constexpr_for<0, reorder_buffer::atoms_clusters.size(), 1>([&](const auto atoms_index) {
       constexpr_for<0, reorder_buffer::rotamer_clusters.size(), 1>([&](const auto rotamers_index) {
         if (batch_atoms == reorder_buffer::atoms_clusters[atoms_index] &&
