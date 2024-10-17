@@ -110,7 +110,6 @@ if(MUDOCK_ENABLE_CUDA)
     "${header_path}/${header_prefix}/cuda_implementation/virtual_screen.cuh"
   )
   list(APPEND source_files
-    "${source_path}/cuda_implementation/calc_energy.cu"
     "${source_path}/cuda_implementation/cuda_object.cu"
     "${source_path}/cuda_implementation/cuda_batch_sizer.cu"
     "${source_path}/cuda_implementation/cuda_manager.cpp"
@@ -253,6 +252,7 @@ endif()
 if(MUDOCK_ENABLE_HIP)
   target_compile_definitions(libmudock PUBLIC MUDOCK_USE_HIP)
   target_link_libraries(libmudock PUBLIC hiprand)
+  target_compile_options(libmudock PUBLIC $<$<AND:$<CONFIG:RELWITHDEBINFO>,$<COMPILE_LANGUAGE:CXX>>:--expt-relaxed-constexpr>)
   target_compile_options(libmudock PUBLIC $<$<AND:$<CONFIG:DEBUG>,$<COMPILE_LANGUAGE:CXX>>:-G -g -Xptxas -v --expt-relaxed-constexpr>)
   target_compile_options(libmudock PUBLIC $<$<AND:$<CONFIG:RELEASE>,$<COMPILE_LANGUAGE:CXX>>:-O3 -use_fast_math --expt-relaxed-constexpr>)
 endif()
@@ -264,8 +264,7 @@ if(MUDOCK_ENABLE_CUDA)
     PROPERTIES
     CUDA_STANDARD 20
     CUDA_STANDARD_REQUIRED ON
-    CUDA_EXTENSIONS OFF
-    CUDA_SEPARABLE_COMPILATION ON)
+    CUDA_EXTENSIONS OFF)
   set(CMAKE_CUDA_FLAGS "--expt-relaxed-constexpr")
   set(CMAKE_CUDA_FLAGS_RELEASE "-O3 -use_fast_math --expt-relaxed-constexpr")
   set(CMAKE_CUDA_FLAGS_DEBUG "-G -g -Xptxas -v --expt-relaxed-constexpr")
