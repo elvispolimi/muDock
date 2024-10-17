@@ -47,6 +47,8 @@ namespace mudock {
     // Random generation
     cuda_random_object curand_states;
 
+    cudaStream_t stream;
+
   public:
     virtual_screen_cuda(const knobs k,
                         const std::size_t gpu_id,
