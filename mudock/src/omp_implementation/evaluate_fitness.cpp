@@ -3,7 +3,9 @@
 #include <mudock/omp_implementation/calc_energy.hpp>
 #include <mudock/omp_implementation/evaluate_fitness.hpp>
 #include <mudock/omp_implementation/mutate.hpp>
+#include <mudock/omp_implementation/omp_random.hpp>
 #include <mudock/utils.hpp>
+#include <omp.h>
 
 #define FLATTENED_3D(x, y, z, index) (index.size_xy() * z + y * index.size_x() + x)
 
@@ -90,7 +92,8 @@ namespace mudock {
   // TODO check the syncwarp
   //TODO OPT: template parameter based on number of atoms, rotamers, chromosomes and population
   // Interesting the usage of the bucketizer
-  void evaluate_fitness(const int num_generations,
+  void evaluate_fitness(const int batch_ligands,
+                        const int num_generations,
                         const int tournament_length,
                         const fp_type mutation_prob,
                         const int chromosome_number,
@@ -123,12 +126,56 @@ namespace mudock {
                         chromosome* __restrict__ chromosomes,
                         // TODO
                         // const cudaTextureObject_t* __restrict__ atom_textures,
-                        const int* __restrict__ atom_tex_indexes,
+                        // const int* __restrict__ atom_tex_indexes,
                         // const cudaTextureObject_t electro_texture,
                         // const cudaTextureObject_t desolv_texture,
-                        // curandState* __restrict__ state,
                         fp_type* __restrict__ ligand_scores,
                         chromosome* __restrict__ best_chromosomes) {
-    // TODO
+#pragma omp target teams num_teams(batch_ligands)
+    for (auto ligand_id = 0; ligand_id < static_cast<int>(batch_ligands); ++ligand_id) {
+      const int num_atoms    = ligand_num_atoms[ligand_id];
+      const int num_nonbonds = ligand_num_nonbonds[ligand_id];
+      const int num_rotamers = ligand_num_rotamers[ligand_id];
+      int team_id            = omp_get_team_num();
+      int num_teams          = omp_get_num_teams();
+      int thread_id          = omp_get_thread_num();
+      int num_threads        = omp_get_num_threads();
+
+      const fp_type* l_original_ligand_x = original_ligand_x + ligand_id * atom_stride;
+      const fp_type* l_original_ligand_y = original_ligand_y + ligand_id * atom_stride;
+      const fp_type* l_original_ligand_z = original_ligand_z + ligand_id * atom_stride;
+      fp_type* l_scratch_ligand_x        = scratch_ligand_x + ligand_id * atom_stride;
+      fp_type* l_scratch_ligand_y        = scratch_ligand_y + ligand_id * atom_stride;
+      fp_type* l_scratch_ligand_z        = scratch_ligand_z + ligand_id * atom_stride;
+      const fp_type* l_ligand_vol        = ligand_vol + ligand_id * atom_stride;
+      const fp_type* l_ligand_solpar     = ligand_solpar + ligand_id * atom_stride;
+      const fp_type* l_ligand_charge     = ligand_charge + ligand_id * atom_stride;
+      const int* l_ligand_num_hbond      = ligand_num_hbond + ligand_id * atom_stride;
+      const fp_type* l_ligand_Rij_hb     = ligand_Rij_hb + ligand_id * atom_stride;
+      const fp_type* l_ligand_Rii        = ligand_Rii + ligand_id * atom_stride;
+      const fp_type* l_ligand_epsij_hb   = ligand_epsij_hb + ligand_id * atom_stride;
+      const fp_type* l_ligand_epsii      = ligand_epsii + ligand_id * atom_stride;
+      chromosome* l_chromosomes          = chromosomes + ligand_id * chromosome_stride;
+      // Point to the next population buffer
+      chromosome* l_next_chromosomes      = chromosomes + ligand_id * chromosome_stride + chromosome_number;
+      const auto* l_fragments             = ligand_fragments + ligand_id * atom_stride * rotamers_stride;
+      const auto* l_frag_start_atom_index = frag_start_atom_index + ligand_id * rotamers_stride;
+      const auto* l_frag_stop_atom_index  = frag_stop_atom_index + ligand_id * rotamers_stride;
+      // const auto* l_atom_tex_indexes      = atom_  tex_indexes + ligand_id * atom_stride;
+      const int* l_ligand_nonbond_a1      = ligand_nonbond_a1 + ligand_id * nonbond_stride;
+      const int* l_ligand_nonbond_a2      = ligand_nonbond_a2 + ligand_id * nonbond_stride;
+      // XORWOWState l_state{};
+
+#pragma omp parallel for
+      for (int atom_index = 0; atom_index < num_atoms; ++atom_index) {
+        // printf("%d | %d %d | %f %f %f\n",
+        //        omp_get_thread_num(),
+        //        ligand_id,
+        //        atom_index,
+        //        d_original_ligand_x[atom_index],
+        //        d_original_ligand_y[atom_index],
+        //        d_original_ligand_z[atom_index]);
+      }
+    }
   }
 } // namespace mudock

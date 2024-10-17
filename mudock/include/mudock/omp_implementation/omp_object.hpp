@@ -22,7 +22,7 @@ namespace mudock {
     }
     ~omp_object() noexcept(false) {
       if (dev_ptr != nullptr)
-        MUDOCK_CHECK(cudaFree(dev_ptr));
+        omp_target_free(dev_ptr, omp_get_default_device());
     }
     omp_object& operator=(const omp_object&) = delete;
     omp_object& operator=(omp_object&&)      = default;

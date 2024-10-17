@@ -206,7 +206,7 @@ if(MUDOCK_ENABLE_OMP)
   )
   list(APPEND source_files
     "${source_path}/omp_implementation/omp_manager.cpp"
-    # "${source_path}/sycl_implementation/omp_random.cpp"
+    "${source_path}/omp_implementation/evaluate_fitness.cpp"
     "${source_path}/omp_implementation/omp_worker.cpp"
     "${source_path}/omp_implementation/omp_batch_sizer.cpp"
     "${source_path}/omp_implementation/virtual_screen.cpp"
