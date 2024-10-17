@@ -196,7 +196,7 @@ if(MUDOCK_ENABLE_OMP)
     "${header_path}/${header_prefix}/omp_implementation/calc_energy.hpp"
     "${header_path}/${header_prefix}/omp_implementation/mutate.hpp"
     "${header_path}/${header_prefix}/omp_implementation/geometric_transformations.hpp"
-    # "${header_path}/${header_prefix}/omp_implementation/omp_random.hpp"
+    "${header_path}/${header_prefix}/omp_implementation/omp_random.hpp"
     "${header_path}/${header_prefix}/omp_implementation/omp_object.hpp"
     "${header_path}/${header_prefix}/omp_implementation/omp_wrapper.hpp"
     "${header_path}/${header_prefix}/omp_implementation/omp_worker.hpp"
@@ -208,6 +208,7 @@ if(MUDOCK_ENABLE_OMP)
     "${source_path}/omp_implementation/omp_manager.cpp"
     "${source_path}/omp_implementation/evaluate_fitness.cpp"
     "${source_path}/omp_implementation/omp_worker.cpp"
+    "${source_path}/omp_implementation/omp_random.cpp"
     "${source_path}/omp_implementation/omp_batch_sizer.cpp"
     "${source_path}/omp_implementation/virtual_screen.cpp"
   )
