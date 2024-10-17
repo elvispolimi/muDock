@@ -62,8 +62,8 @@ namespace mudock {
       const auto num_devices = omp_get_num_devices();
       // Offload to the GPU if available
       for (const auto id: device_ids) {
-        // if (id >= num_devices)
-        //   throw std::runtime_error("Wrong OpenMP devices IDs");
+        if (id >= num_devices)
+          throw std::runtime_error("Wrong OpenMP devices IDs");
         pool.add_worker<mudock::omp_worker>(knobs,
                                             grid_atom_maps,
                                             electro_map,

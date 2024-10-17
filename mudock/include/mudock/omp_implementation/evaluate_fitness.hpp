@@ -8,7 +8,8 @@
 
 namespace mudock {
 
-  void evaluate_fitness(const int num_generations,
+  void evaluate_fitness(const int batch_ligands,
+                        const int num_generations,
                         const int tournament_length,
                         const fp_type mutation_prob,
                         const int chromosome_number,
@@ -19,9 +20,9 @@ namespace mudock {
                         const fp_type* __restrict__ original_ligand_x,
                         const fp_type* __restrict__ original_ligand_y,
                         const fp_type* __restrict__ original_ligand_z,
-                        fp_type* __restrict__ sratch_ligand_x,
-                        fp_type* __restrict__ sratch_ligand_y,
-                        fp_type* __restrict__ sratch_ligand_z,
+                        fp_type* __restrict__ scratch_ligand_x,
+                        fp_type* __restrict__ scratch_ligand_y,
+                        fp_type* __restrict__ scratch_ligand_z,
                         const fp_type* __restrict__ ligand_vol,
                         const fp_type* __restrict__ ligand_solpar,
                         const fp_type* __restrict__ ligand_charge,
@@ -41,11 +42,10 @@ namespace mudock {
                         chromosome* __restrict__ chromosomes,
                         // TODO input data maps
                         // const cudaTextureObject_t* atom_textures,
-                        const int* atom_tex_indexes,
+                        // const int* atom_tex_indexes,
                         // const cudaTextureObject_t electro_texture,
                         // const cudaTextureObject_t desolv_texture,
                         // TODO random state
-                        // curandState* state,
                         fp_type* ligand_scores,
                         chromosome* best_chromosomes);
 } // namespace mudock
