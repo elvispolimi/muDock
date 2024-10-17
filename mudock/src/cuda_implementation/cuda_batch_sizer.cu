@@ -19,7 +19,6 @@ namespace mudock {
                                                    reorder_buffer::rotamer_clusters[rotamers_index]>();
       });
     });
-    printf("%d %d %d\n", num_atoms, num_rotamers, bucket_size);
     // TODO check if it can be made a compile error
     if (bucket_size == 0)
       throw std::runtime_error(
