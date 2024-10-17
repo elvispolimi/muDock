@@ -10,7 +10,7 @@ namespace mudock {
   template<template<class...> class container_type, typename T, class... args>
   class cuda_wrapper: cuda_object<T> {
   public:
-    cuda_wrapper()                                = default;
+    cuda_wrapper(const cudaStream_t &_stream): cuda_object<T>::cuda_object(_stream){};
     cuda_wrapper(const cuda_wrapper &)            = delete;
     cuda_wrapper(cuda_wrapper &&)                 = default;
     cuda_wrapper &operator=(const cuda_wrapper &) = delete;
