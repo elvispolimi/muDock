@@ -9,7 +9,7 @@ namespace mudock {
   template<template<class...> class container_type, typename T, class... args>
   class hip_wrapper: hip_object<T> {
   public:
-    hip_wrapper()                               = default;
+    hip_wrapper(const hipStream_t &_stream): hip_object<T>::hip_object(_stream){};
     hip_wrapper(const hip_wrapper &)            = delete;
     hip_wrapper(hip_wrapper &&)                 = default;
     hip_wrapper &operator=(const hip_wrapper &) = delete;
