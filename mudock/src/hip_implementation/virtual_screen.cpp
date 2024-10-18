@@ -16,7 +16,7 @@
 namespace mudock {
   static constexpr std::size_t max_non_bonds{1024 * 10};
 
-  void init_texture_memory(const grid_map &map, hipTextureObject_t &tex_obj) {
+  void init_texture_memory(const grid_map &map, hipTextureObject_t &tex_obj, const hipStream_t &stream) {
     // Create 3D HIP array for the texture
     hipArray *d_array;
     hipChannelFormatDesc channel_desc = hipCreateChannelDesc<fp_type>();
@@ -37,7 +37,7 @@ namespace mudock {
     copyParams.dstPos   = make_hipPos(0, 0, 0);
     copyParams.extent   = extent;
     copyParams.kind     = hipMemcpyHostToDevice;
-    MUDOCK_CHECK(hipMemcpy3D(&copyParams));
+    MUDOCK_CHECK(hipMemcpy3DAsync(&copyParams, stream));
 
     // Create texture object
     hipResourceDesc res_desc;
@@ -100,16 +100,16 @@ namespace mudock {
            desolv_map.get()->index == grid_atom_maps.get()->get_index());
     MUDOCK_CHECK(hipStreamCreate(&stream));
 
-    init_texture_memory(*electro_map.get(), electro_tex);
+    init_texture_memory(*electro_map.get(), electro_tex, stream);
 
-    init_texture_memory(*desolv_map.get(), desolv_tex);
+    init_texture_memory(*desolv_map.get(), desolv_tex, stream);
 
     std::size_t index{0};
     atom_texs.alloc(num_device_map_textures());
     for (auto &atom_tex: atom_texs.host) {
       const grid_map &grid_atom =
           grid_atom_maps.get()->get_atom_map(autodock_type_from_map(static_cast<device_map_textures>(index)));
-      init_texture_memory(grid_atom, atom_tex);
+      init_texture_memory(grid_atom, atom_tex, stream);
       ++index;
     }
     atom_texs.copy_host2device();
@@ -117,7 +117,8 @@ namespace mudock {
     // Grid spacing fixed to 0.5 Angstrom
     setup_constant_memory(electro_map.get()->minimum_coord,
                           electro_map.get()->maximum_coord,
-                          electro_map.get()->center);
+                          electro_map.get()->center,
+                          stream);
 
     // Get wavefront size
     MUDOCK_CHECK(hipDeviceGetAttribute(&wavefront_size, hipDeviceAttributeWarpSize, device_id));
@@ -316,7 +317,7 @@ namespace mudock {
     const std::size_t min_energy_reduction_s_mem =
         std::max(configuration.population_number, static_cast<std::size_t>(wavefront_size)) * sizeof(fp_type);
     const std::size_t shared_mem = min_energy_reduction_s_mem;
-    MUDOCK_CHECK(hipStreamSynchronize(stream));
+    // MUDOCK_CHECK(hipStreamSynchronize(stream));
     evaluate_fitness<<<batch_ligands, wavefront_size, shared_mem, stream>>>(
         num_generations,
         configuration.tournament_length,

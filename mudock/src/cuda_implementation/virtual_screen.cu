@@ -9,6 +9,7 @@
 #include <mudock/cpp_implementation/weed_bonds.hpp>
 #include <mudock/cuda_implementation/evaluate_fitness.cuh>
 #include <mudock/cuda_implementation/virtual_screen.cuh>
+#include <mudock/format/mol2.hpp>
 #include <mudock/grid.hpp>
 #include <mudock/utils.hpp>
 #include <span>
@@ -16,7 +17,8 @@
 namespace mudock {
   static constexpr std::size_t max_non_bonds{1024 * 10};
 
-  void init_texture_memory(const grid_map &map, cudaTextureObject_t &tex_obj) {
+  // TODO pack together maps using float4 data structures
+  void init_texture_memory(const grid_map &map, cudaTextureObject_t &tex_obj, const cudaStream_t &stream) {
     // Create 3D CUDA array for the texture
     cudaArray *d_array;
     cudaChannelFormatDesc channel_desc = cudaCreateChannelDesc<fp_type>();
@@ -36,7 +38,7 @@ namespace mudock {
     copyParams.dstPos   = make_cudaPos(0, 0, 0);
     copyParams.extent   = extent;
     copyParams.kind     = cudaMemcpyHostToDevice;
-    MUDOCK_CHECK(cudaMemcpy3D(&copyParams));
+    MUDOCK_CHECK(cudaMemcpy3DAsync(&copyParams, stream));
 
     // Create texture object
     cudaResourceDesc res_desc;
@@ -100,16 +102,16 @@ namespace mudock {
     // Allocate grid maps
     assert(electro_map.get()->index == desolv_map.get()->index &&
            desolv_map.get()->index == grid_atom_maps.get()->get_index());
-    init_texture_memory(*electro_map.get(), electro_tex);
+    init_texture_memory(*electro_map.get(), electro_tex, stream);
 
-    init_texture_memory(*desolv_map.get(), desolv_tex);
+    init_texture_memory(*desolv_map.get(), desolv_tex, stream);
 
     std::size_t index{0};
     atom_texs.alloc(num_device_map_textures());
     for (auto &atom_tex: atom_texs.host) {
       const grid_map &grid_atom =
           grid_atom_maps.get()->get_atom_map(autodock_type_from_map(static_cast<device_map_textures>(index)));
-      init_texture_memory(grid_atom, atom_tex);
+      init_texture_memory(grid_atom, atom_tex, stream);
       ++index;
     }
     atom_texs.copy_host2device();
@@ -117,7 +119,8 @@ namespace mudock {
     // Grid spacing fixed to 0.5 Angstrom
     setup_constant_memory(electro_map.get()->minimum_coord,
                           electro_map.get()->maximum_coord,
-                          electro_map.get()->center);
+                          electro_map.get()->center,
+                          stream);
   }
 
   void virtual_screen_cuda::operator()(batch &incoming_batch) {
@@ -314,7 +317,8 @@ namespace mudock {
         std::max(configuration.population_number, static_cast<std::size_t>(BLOCK_SIZE)) * sizeof(fp_type);
     const std::size_t shared_mem = min_energy_reduction_s_mem;
 
-    MUDOCK_CHECK(cudaStreamSynchronize(stream));
+    // TODO it should not be necessary, operations on the same stream are executed in order
+    // MUDOCK_CHECK(cudaStreamSynchronize(stream));
     constexpr_for<0, reorder_buffer::atoms_clusters.size(), 1>([&](const auto atoms_index) {
       constexpr_for<0, reorder_buffer::rotamer_clusters.size(), 1>([&](const auto rotamers_index) {
         if (batch_atoms == reorder_buffer::atoms_clusters[atoms_index] &&
