@@ -7,11 +7,9 @@ CXXFLAGS = -fopenmp -std=c++20
 CXXINCLUDE = -I$(MUDOCK)/include -I${POLY_HEADER}
 
 # Source files for the library
-SRC_GPU = src/cuda_batch_sizer.cu \
-           src/virtual_screen.cu
+SRC_GPU = src/cuda_batch_sizer.cu src/cuda_object.cu src/virtual_screen.cu
 
-SRC_CPU = src/set_device.cpp \
-					src/virtual_screen_transpilation.cpp
+SRC_CPU = src/set_device.cpp src/cuda_object_cpp.cpp  src/virtual_screen_transpilation.cpp
 
 # Target library name
 TARGET = libmudock_poly.a
@@ -25,20 +23,12 @@ OBJ = $(OBJ_GPU) $(OBJ_CPU)
 all: $(TARGET)
 
 # Rule to create the static library
-$(TARGET): $(OBJ) src/cuda_object.cu.o src/cuda_object.cpp.o
+$(TARGET): $(OBJ)
 	llvm-ar rcs $@ $^
-
-# Compile source files into object files
-src/cuda_object.cu.o: $(MUDOCK)/src/cuda_implementation/cuda_object.cu
-	$(CGEIST) $(CGEISTFLAGS) $(CGEISTINCLUDE) -c $<  -o src/cuda_object.cu.o
 
 # Compile source files into object files
 %.o: %.cu
 	$(CGEIST) $(CGEISTFLAGS) $(CGEISTINCLUDE) -c $< -o $@
-
-# Compile C++ source files into object files
-src/cuda_object.cpp.o: src/cuda_object.cpp
-	$(CXX) $(CXXFLAGS) $(CXXINCLUDE) -c $< -o $@
 
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) $(CXXINCLUDE) -c $< -o $@
