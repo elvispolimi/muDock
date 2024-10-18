@@ -301,6 +301,25 @@ namespace mudock {
     return value;
   }
 
+    // Generate the next random number
+  __device__ fp_type gen_random(XORWOWState& st) {
+    /* Algorithm "xorwow" from p. 5 of Marsaglia, "Xorshift RNGs" */
+    unsigned int t = st.state[4];
+
+    const unsigned int s = st.state[0]; /* Perform a contrived 32-bit rotate. */
+    st.state[4]             = st.state[3];
+    st.state[3]             = st.state[2];
+    st.state[2]             = st.state[1];
+    st.state[1]             = s;
+
+    t ^= t >> 2;
+    t ^= t << 1;
+    t ^= s ^ (s << 4);
+    st.state[0] = t;
+    st.index += 362437;
+    return static_cast<fp_type>(t + st.index) / static_cast<fp_type>(std::numeric_limits<unsigned int>::max());
+  }
+
   template<typename T>
   __device__ const T random_gen_cuda(XORWOWState& state, const T min, const T max) {
     fp_type value{0};
@@ -308,7 +327,7 @@ namespace mudock {
       // TODO value here for debug
       value = fp_type{0.4};
     } else {
-      value = state.next();
+      value = gen_random(state);
     }
     return static_cast<T>((value * static_cast<fp_type>(max - min)) + min);
   }

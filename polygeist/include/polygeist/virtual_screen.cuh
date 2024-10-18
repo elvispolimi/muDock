@@ -3,7 +3,7 @@
 #include <mudock/batch.hpp>
 #include <mudock/cpp_implementation/chromosome.hpp>
 #include <polygeist/cuda_random.cuh>
-#include <mudock/cuda_implementation/cuda_wrapper.cuh>
+#include <polygeist/cuda_wrapper.cuh>
 #include <mudock/cuda_implementation/map_textures.cuh>
 #include <mudock/grid.hpp>
 #include <mudock/knobs.hpp>
