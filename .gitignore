@@ -2,3 +2,5 @@ build*/
 .vscode/
 *.cache/
 .gdb_history
+.o
+.a
