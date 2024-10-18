@@ -8,26 +8,21 @@
 
 namespace mudock {
 
-  template<int MAX_ATOMS>
-  __device__ void translate_molecule_cuda(fp_type* __restrict__ x,
+  __device__ inline void translate_molecule_cuda(fp_type* __restrict__ x,
                                           fp_type* __restrict__ y,
                                           fp_type* __restrict__ z,
                                           const fp_type* offset_x,
                                           const fp_type* offset_y,
                                           const fp_type* offset_z,
                                           const int num_atoms) {
-#pragma unroll
-    for (int i = threadIdx.x; i < MAX_ATOMS; i += blockDim.x) {
-      if (i < num_atoms) {
-        x[i] += *offset_x;
-        y[i] += *offset_y;
-        z[i] += *offset_z;
-      }
+    for (int i = threadIdx.x; i < num_atoms; i += blockDim.x) {
+      x[i] += *offset_x;
+      y[i] += *offset_y;
+      z[i] += *offset_z;
     }
   }
 
-  template<int MAX_ATOMS>
-  __device__ void rotate_molecule_cuda(fp_type* __restrict__ x,
+  __device__ inline void rotate_molecule_cuda(fp_type* __restrict__ x,
                                        fp_type* __restrict__ y,
                                        fp_type* __restrict__ z,
                                        const fp_type* angle_x,
@@ -51,20 +46,16 @@ namespace mudock {
     const auto m21 = sx * cy;
     const auto m22 = cx * cy;
 
-// apply the rotation matrix
-#pragma unroll
-    for (int i = threadIdx.x; i < MAX_ATOMS; i += blockDim.x) {
-      if (i < num_atoms) {
-        const auto prev_x = x[i], prev_y = y[i], prev_z = z[i];
-        x[i] = prev_x * m00 + prev_y * m01 + prev_z * m02;
-        y[i] = prev_x * m10 + prev_y * m11 + prev_z * m12;
-        z[i] = prev_x * m20 + prev_y * m21 + prev_z * m22;
-      }
+    // apply the rotation matrix
+    for (int i = threadIdx.x; i < num_atoms; i += blockDim.x) {
+      const auto prev_x = x[i], prev_y = y[i], prev_z = z[i];
+      x[i] = prev_x * m00 + prev_y * m01 + prev_z * m02;
+      y[i] = prev_x * m10 + prev_y * m11 + prev_z * m12;
+      z[i] = prev_x * m20 + prev_y * m21 + prev_z * m22;
     }
   }
 
-  template<int MAX_ATOMS>
-  __device__ void rotate_fragment_cuda(fp_type* __restrict__ x,
+  __device__ inline void rotate_fragment_cuda(fp_type* __restrict__ x,
                                        fp_type* __restrict__ y,
                                        fp_type* __restrict__ z,
                                        const int* bitmask,
@@ -113,10 +104,9 @@ namespace mudock {
     const auto m23 =
         ((origz * (u2 + v2) - w * (origx * u + origy * v)) * one_minus_c + (origx * v - origy * u) * ls) / l2;
 
-// apply the rotation matrix
-#pragma unroll
-    for (int i = threadIdx.x; i < MAX_ATOMS; i += blockDim.x) {
-      if (i < num_atoms && bitmask[i] == 1) {
+    // apply the rotation matrix
+    for (int i = threadIdx.x; i < num_atoms; i += blockDim.x) {
+      if (bitmask[i] == 1) {
         const auto prev_x = x[i], prev_y = y[i], prev_z = z[i];
         x[i] = prev_x * m00 + prev_y * m01 + prev_z * m02 + m03;
         y[i] = prev_x * m10 + prev_y * m11 + prev_z * m12 + m13;
@@ -124,5 +114,4 @@ namespace mudock {
       }
     }
   }
-
 } // namespace mudock

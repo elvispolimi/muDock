@@ -9,7 +9,6 @@
 #include <mudock/cpp_implementation/weed_bonds.hpp>
 #include <mudock/cuda_implementation/evaluate_fitness.cuh>
 #include <mudock/cuda_implementation/virtual_screen.cuh>
-#include <mudock/format/mol2.hpp>
 #include <mudock/grid.hpp>
 #include <mudock/utils.hpp>
 #include <span>
@@ -317,54 +316,44 @@ namespace mudock {
         std::max(configuration.population_number, static_cast<std::size_t>(BLOCK_SIZE)) * sizeof(fp_type);
     const std::size_t shared_mem = min_energy_reduction_s_mem;
 
-    // TODO it should not be necessary, operations on the same stream are executed in order
-    // MUDOCK_CHECK(cudaStreamSynchronize(stream));
-    constexpr_for<0, reorder_buffer::atoms_clusters.size(), 1>([&](const auto atoms_index) {
-      constexpr_for<0, reorder_buffer::rotamer_clusters.size(), 1>([&](const auto rotamers_index) {
-        if (batch_atoms == reorder_buffer::atoms_clusters[atoms_index] &&
-            batch_rotamers == reorder_buffer::rotamer_clusters[rotamers_index])
-          evaluate_fitness<reorder_buffer::atoms_clusters[atoms_index],
-                           reorder_buffer::rotamer_clusters[rotamers_index]>
-              <<<batch_ligands, BLOCK_SIZE, shared_mem, stream>>>(num_generations,
-                                                                  configuration.tournament_length,
-                                                                  configuration.mutation_prob,
-                                                                  configuration.population_number,
-                                                                  population_stride,
-                                                                  batch_atoms,
-                                                                  batch_rotamers,
-                                                                  max_non_bonds,
-                                                                  original_ligand_x.dev_pointer(),
-                                                                  original_ligand_y.dev_pointer(),
-                                                                  original_ligand_z.dev_pointer(),
-                                                                  scratch_ligand_x.dev_pointer(),
-                                                                  scratch_ligand_y.dev_pointer(),
-                                                                  scratch_ligand_z.dev_pointer(),
-                                                                  ligand_vol.dev_pointer(),
-                                                                  ligand_solpar.dev_pointer(),
-                                                                  ligand_charge.dev_pointer(),
-                                                                  ligand_num_hbond.dev_pointer(),
-                                                                  ligand_Rij_hb.dev_pointer(),
-                                                                  ligand_Rii.dev_pointer(),
-                                                                  ligand_epsij_hb.dev_pointer(),
-                                                                  ligand_epsii.dev_pointer(),
-                                                                  num_nonbonds.dev_pointer(),
-                                                                  nonbond_a1.dev_pointer(),
-                                                                  nonbond_a2.dev_pointer(),
-                                                                  ligand_num_atoms.dev_pointer(),
-                                                                  ligand_num_rotamers.dev_pointer(),
-                                                                  ligand_fragments.dev_pointer(),
-                                                                  frag_start_atom_indices.dev_pointer(),
-                                                                  frag_stop_atom_indices.dev_pointer(),
-                                                                  chromosomes.dev_pointer(),
-                                                                  atom_texs.dev_pointer(),
-                                                                  map_texture_index.dev_pointer(),
-                                                                  electro_tex,
-                                                                  desolv_tex,
-                                                                  curand_states.dev_pointer(),
-                                                                  ligand_scores.dev_pointer(),
-                                                                  best_chromosomes.dev_pointer());
-      });
-    });
+    evaluate_fitness<<<batch_ligands, BLOCK_SIZE, shared_mem, stream>>>(num_generations,
+                                                                        configuration.tournament_length,
+                                                                        configuration.mutation_prob,
+                                                                        configuration.population_number,
+                                                                        population_stride,
+                                                                        batch_atoms,
+                                                                        batch_rotamers,
+                                                                        max_non_bonds,
+                                                                        original_ligand_x.dev_pointer(),
+                                                                        original_ligand_y.dev_pointer(),
+                                                                        original_ligand_z.dev_pointer(),
+                                                                        scratch_ligand_x.dev_pointer(),
+                                                                        scratch_ligand_y.dev_pointer(),
+                                                                        scratch_ligand_z.dev_pointer(),
+                                                                        ligand_vol.dev_pointer(),
+                                                                        ligand_solpar.dev_pointer(),
+                                                                        ligand_charge.dev_pointer(),
+                                                                        ligand_num_hbond.dev_pointer(),
+                                                                        ligand_Rij_hb.dev_pointer(),
+                                                                        ligand_Rii.dev_pointer(),
+                                                                        ligand_epsij_hb.dev_pointer(),
+                                                                        ligand_epsii.dev_pointer(),
+                                                                        num_nonbonds.dev_pointer(),
+                                                                        nonbond_a1.dev_pointer(),
+                                                                        nonbond_a2.dev_pointer(),
+                                                                        ligand_num_atoms.dev_pointer(),
+                                                                        ligand_num_rotamers.dev_pointer(),
+                                                                        ligand_fragments.dev_pointer(),
+                                                                        frag_start_atom_indices.dev_pointer(),
+                                                                        frag_stop_atom_indices.dev_pointer(),
+                                                                        chromosomes.dev_pointer(),
+                                                                        atom_texs.dev_pointer(),
+                                                                        map_texture_index.dev_pointer(),
+                                                                        electro_tex,
+                                                                        desolv_tex,
+                                                                        curand_states.dev_pointer(),
+                                                                        ligand_scores.dev_pointer(),
+                                                                        best_chromosomes.dev_pointer());
 
     MUDOCK_CHECK_KERNELCALL();
     MUDOCK_CHECK(cudaStreamSynchronize(stream));
