@@ -1,4 +1,5 @@
 #include "command_line_args.hpp"
+#include "mudock/format/mol2.hpp"
 
 #include <cassert>
 #include <fstream>
@@ -7,6 +8,7 @@
 #include <memory>
 // #include <mudock/cuda_implementation/map_textures.cuh>
 #include <mudock/mudock.hpp>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -21,6 +23,18 @@ inline auto read_from_stream(stream_type&& in) {
 
 int main(int argc, char* argv[]) {
   const auto args = parse_command_line_arguments(argc, argv);
+
+  // Preparing output file if requiested
+  std::optional<std::ofstream> output_file;
+  if (!args.result_path.empty()) {
+    // Open a file for writing
+    output_file.emplace(std::ofstream{args.result_path});
+
+    // Check if the file was opened successfully
+    if (!output_file.value().is_open()) {
+      throw std::runtime_error("Error opening output file!");
+    }
+  }
 
   // read and parse the target protein
   mudock::info("Reading and parsing protein ", args.protein_path, " ...");
@@ -155,6 +169,9 @@ int main(int argc, char* argv[]) {
   for (auto ligand = output_queue->dequeue(); ligand; ligand = output_queue->dequeue()) {
     std::cout << ligand->properties.get(mudock::property_type::NAME) << " "
               << ligand->properties.get(mudock::property_type::SCORE) << std::endl;
+    if (output_file.has_value()) {
+      mudock::mol2::print(*ligand.get(), output_file.value());
+    }
   }
 
   // if we reach this statement we completed successfully the run

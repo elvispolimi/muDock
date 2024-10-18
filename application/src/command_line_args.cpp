@@ -16,6 +16,9 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
   arguments_description.add_options()("use",
                                       po::value(&args.device_conf)->default_value(args.device_conf),
                                       "Map each implementation to the device");
+  arguments_description.add_options()("output",
+                                      po::value(&args.result_path)->default_value(args.result_path),
+                                      "Path to the docked molecules file (default no output)");
 
   // define the knobs command line arguments
   po::options_description knobs_description("Virtual Screening Knobs");
@@ -49,7 +52,7 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
     std::cout << "print on the standard output the score of each of them" << std::endl;
     std::cout << std::endl;
     std::cout << "USAGE: " << argv[0] << " --protein " << args.protein_path << " --use " << args.device_conf
-              << " [KNOBS] < \"/path/to/ligands.mol2\"" << std::endl;
+              << " --output " << args.result_path << " [KNOBS] < \"/path/to/ligands.mol2\"" << std::endl;
     std::cout << std::endl;
     std::cout << arguments_description << std::endl;
     std::cout << std::endl;
