@@ -1,3 +1,6 @@
+#include "mudock/chem/bond_types.hpp"
+#include "mudock/chem/elements.hpp"
+
 #include <mudock/format/mol2.hpp>
 #include <string>
 #include <string_view>
@@ -11,5 +14,6 @@ namespace mudock {
                ? text.find(molecule_token, index_first_token + molecule_token.size())
                : std::string_view::npos;
   }
+
 
 } // namespace mudock
