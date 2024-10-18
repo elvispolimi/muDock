@@ -26,17 +26,30 @@ namespace mudock {
 
   void inline setup_constant_memory(const point3D& minimum_coord,
                                     const point3D& maximum_coord,
-                                    const point3D& center) {
+                                    const point3D& center,
+                                    const cudaStream_t& stream) {
     const fp_type l_map_min[3]{minimum_coord.x, minimum_coord.y, minimum_coord.z};
     const fp_type l_map_max[3]{maximum_coord.x, maximum_coord.y, maximum_coord.z};
     const fp_type l_map_center[3]{center.x, center.y, center.z};
 
-    MUDOCK_CHECK(
-        cudaMemcpyToSymbol(map_min_const, &l_map_min, 3 * sizeof(fp_type), 0, cudaMemcpyHostToDevice));
-    MUDOCK_CHECK(
-        cudaMemcpyToSymbol(map_max_const, &l_map_max, 3 * sizeof(fp_type), 0, cudaMemcpyHostToDevice));
-    MUDOCK_CHECK(
-        cudaMemcpyToSymbol(map_center_const, &l_map_center, 3 * sizeof(fp_type), 0, cudaMemcpyHostToDevice));
+    MUDOCK_CHECK(cudaMemcpyToSymbolAsync(map_min_const,
+                                         &l_map_min,
+                                         3 * sizeof(fp_type),
+                                         0,
+                                         cudaMemcpyHostToDevice,
+                                         stream));
+    MUDOCK_CHECK(cudaMemcpyToSymbolAsync(map_max_const,
+                                         &l_map_max,
+                                         3 * sizeof(fp_type),
+                                         0,
+                                         cudaMemcpyHostToDevice,
+                                         stream));
+    MUDOCK_CHECK(cudaMemcpyToSymbolAsync(map_center_const,
+                                         &l_map_center,
+                                         3 * sizeof(fp_type),
+                                         0,
+                                         cudaMemcpyHostToDevice,
+                                         stream));
   }
 
   __device__ inline fp_type trilinear_interpolation_cuda(const fp_type coord[],
@@ -74,8 +87,8 @@ namespace mudock {
   __device__ inline const T random_gen_cuda(curandState& state, const T min, const T max) {
     fp_type value;
     // if constexpr (is_debug()) {
-      // TODO value here for debug
-      value = fp_type{0.4};
+    // TODO value here for debug
+    value = fp_type{0.4};
     // } else {
     //   value = curand_uniform(&state);
     // }
