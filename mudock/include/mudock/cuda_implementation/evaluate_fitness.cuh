@@ -86,12 +86,12 @@ namespace mudock {
   template<typename T>
   __device__ inline const T random_gen_cuda(curandState& state, const T min, const T max) {
     fp_type value;
-    // if constexpr (is_debug()) {
-    // TODO value here for debug
-    value = fp_type{0.4};
-    // } else {
-    //   value = curand_uniform(&state);
-    // }
+    if constexpr (is_debug()) {
+      // TODO value here for debug
+      value = fp_type{0.4};
+    } else {
+      value = curand_uniform(&state);
+    }
     return static_cast<T>((value * static_cast<fp_type>(max - min)) + min);
   }
 
@@ -130,45 +130,45 @@ namespace mudock {
   // TODO check the syncwarp
   //TODO OPT: template parameter based on number of atoms, rotamers, chromosomes and population
   // Interesting the usage of the bucketizer
-  template<int MAX_ATOMS, int MAX_ROTAMERS>
-  __global__ void evaluate_fitness(const int num_generations,
-                                   const int tournament_length,
-                                   const fp_type mutation_prob,
-                                   const int chromosome_number,
-                                   const int chromosome_stride,
-                                   const int atom_stride,
-                                   const int rotamers_stride,
-                                   const int nonbond_stride,
-                                   const fp_type* __restrict__ original_ligand_x,
-                                   const fp_type* __restrict__ original_ligand_y,
-                                   const fp_type* __restrict__ original_ligand_z,
-                                   fp_type* __restrict__ scratch_ligand_x,
-                                   fp_type* __restrict__ scratch_ligand_y,
-                                   fp_type* __restrict__ scratch_ligand_z,
-                                   const fp_type* __restrict__ ligand_vol,
-                                   const fp_type* __restrict__ ligand_solpar,
-                                   const fp_type* __restrict__ ligand_charge,
-                                   const int* __restrict__ ligand_num_hbond,
-                                   const fp_type* __restrict__ ligand_Rij_hb,
-                                   const fp_type* __restrict__ ligand_Rii,
-                                   const fp_type* __restrict__ ligand_epsij_hb,
-                                   const fp_type* __restrict__ ligand_epsii,
-                                   const int* __restrict__ ligand_num_nonbonds,
-                                   const int* __restrict__ ligand_nonbond_a1,
-                                   const int* __restrict__ ligand_nonbond_a2,
-                                   const int* __restrict__ ligand_num_atoms,
-                                   const int* __restrict__ ligand_num_rotamers,
-                                   const int* __restrict__ ligand_fragments,
-                                   const int* __restrict__ frag_start_atom_index,
-                                   const int* __restrict__ frag_stop_atom_index,
-                                   chromosome* __restrict__ chromosomes,
-                                   const cudaTextureObject_t* __restrict__ atom_textures,
-                                   const int* __restrict__ atom_tex_indexes,
-                                   const cudaTextureObject_t electro_texture,
-                                   const cudaTextureObject_t desolv_texture,
-                                   curandState* __restrict__ state,
-                                   fp_type* __restrict__ ligand_scores,
-                                   chromosome* __restrict__ best_chromosomes) {
+  // NOTE: the static prevents complains by the compiler, be aware that each translation unit will recompile it
+  static __global__ void evaluate_fitness(const int num_generations,
+                                          const int tournament_length,
+                                          const fp_type mutation_prob,
+                                          const int chromosome_number,
+                                          const int chromosome_stride,
+                                          const int atom_stride,
+                                          const int rotamers_stride,
+                                          const int nonbond_stride,
+                                          const fp_type* __restrict__ original_ligand_x,
+                                          const fp_type* __restrict__ original_ligand_y,
+                                          const fp_type* __restrict__ original_ligand_z,
+                                          fp_type* __restrict__ scratch_ligand_x,
+                                          fp_type* __restrict__ scratch_ligand_y,
+                                          fp_type* __restrict__ scratch_ligand_z,
+                                          const fp_type* __restrict__ ligand_vol,
+                                          const fp_type* __restrict__ ligand_solpar,
+                                          const fp_type* __restrict__ ligand_charge,
+                                          const int* __restrict__ ligand_num_hbond,
+                                          const fp_type* __restrict__ ligand_Rij_hb,
+                                          const fp_type* __restrict__ ligand_Rii,
+                                          const fp_type* __restrict__ ligand_epsij_hb,
+                                          const fp_type* __restrict__ ligand_epsii,
+                                          const int* __restrict__ ligand_num_nonbonds,
+                                          const int* __restrict__ ligand_nonbond_a1,
+                                          const int* __restrict__ ligand_nonbond_a2,
+                                          const int* __restrict__ ligand_num_atoms,
+                                          const int* __restrict__ ligand_num_rotamers,
+                                          const int* __restrict__ ligand_fragments,
+                                          const int* __restrict__ frag_start_atom_index,
+                                          const int* __restrict__ frag_stop_atom_index,
+                                          chromosome* __restrict__ chromosomes,
+                                          const cudaTextureObject_t* __restrict__ atom_textures,
+                                          const int* __restrict__ atom_tex_indexes,
+                                          const cudaTextureObject_t electro_texture,
+                                          const cudaTextureObject_t desolv_texture,
+                                          curandState* __restrict__ state,
+                                          fp_type* __restrict__ ligand_scores,
+                                          chromosome* __restrict__ best_chromosomes) {
     const int ligand_id        = blockIdx.x;
     const int local_thread_id  = threadIdx.x;
     const int thread_per_block = blockDim.x;
@@ -229,76 +229,68 @@ namespace mudock {
     // TODO maybe template parameter?
     for (int generation = 0; generation < num_generations; ++generation) {
       for (int chromosome_index = 0; chromosome_index < chromosome_number; ++chromosome_index) {
-// Copy original coordinates
-// TODO OPT: shared memory for coordinate ?
-#pragma unroll
-        for (int atom_index = local_thread_id; atom_index < MAX_ATOMS; atom_index += thread_per_block) {
-          // for (int atom_index = local_thread_id; atom_index < num_atoms; atom_index += thread_per_block) {
-          if (atom_index < num_atoms) {
-            l_scratch_ligand_x[atom_index] = l_original_ligand_x[atom_index];
-            l_scratch_ligand_y[atom_index] = l_original_ligand_y[atom_index];
-            l_scratch_ligand_z[atom_index] = l_original_ligand_z[atom_index];
-          }
+        // Copy original coordinates
+        // TODO OPT: shared memory for coordinate ?
+        for (int atom_index = local_thread_id; atom_index < num_atoms; atom_index += thread_per_block) {
+          l_scratch_ligand_x[atom_index] = l_original_ligand_x[atom_index];
+          l_scratch_ligand_y[atom_index] = l_original_ligand_y[atom_index];
+          l_scratch_ligand_z[atom_index] = l_original_ligand_z[atom_index];
         }
         // Modify coordinates
-        apply_cuda<MAX_ATOMS, MAX_ROTAMERS>(l_scratch_ligand_x,
-                                            l_scratch_ligand_y,
-                                            l_scratch_ligand_z,
-                                            *(l_chromosomes + chromosome_index),
-                                            l_fragments,
-                                            l_frag_start_atom_index,
-                                            l_frag_stop_atom_index,
-                                            num_rotamers,
-                                            atom_stride,
-                                            num_atoms);
+        apply_cuda(l_scratch_ligand_x,
+                   l_scratch_ligand_y,
+                   l_scratch_ligand_z,
+                   *(l_chromosomes + chromosome_index),
+                   l_fragments,
+                   l_frag_start_atom_index,
+                   l_frag_stop_atom_index,
+                   num_rotamers,
+                   atom_stride,
+                   num_atoms);
 
         // Calculate energy
         fp_type elect_total_trilinear = 0;
         fp_type emap_total_trilinear  = 0;
         fp_type dmap_total_trilinear  = 0;
-#pragma unroll
-        for (int atom_index = local_thread_id; atom_index < MAX_ATOMS; atom_index += thread_per_block) {
-          // for (int atom_index = local_thread_id; atom_index < num_atoms; atom_index += thread_per_block) {
-          if (atom_index < num_atoms) {
-            fp_type coord_tex[3]{l_scratch_ligand_x[atom_index],
-                                 l_scratch_ligand_y[atom_index],
-                                 l_scratch_ligand_z[atom_index]};
+        for (int atom_index = local_thread_id; atom_index < num_atoms; atom_index += thread_per_block) {
+          fp_type coord_tex[3]{l_scratch_ligand_x[atom_index],
+                               l_scratch_ligand_y[atom_index],
+                               l_scratch_ligand_z[atom_index]};
 
-            if (coord_tex[0] < map_min_const[0] || coord_tex[0] > map_max_const[0] ||
-                coord_tex[1] < map_min_const[1] || coord_tex[1] > map_max_const[1] ||
-                coord_tex[2] < map_min_const[2] || coord_tex[2] > map_max_const[2]) {
-              // Is outside
-              const fp_type distance_two = powf(fabs(coord_tex[0] - map_center_const[0]), fp_type{2}) +
-                                           powf(fabs(coord_tex[1] - map_center_const[1]), fp_type{2}) +
-                                           powf(fabs(coord_tex[2] - map_center_const[2]), fp_type{2});
+          if (coord_tex[0] < map_min_const[0] || coord_tex[0] > map_max_const[0] ||
+              coord_tex[1] < map_min_const[1] || coord_tex[1] > map_max_const[1] ||
+              coord_tex[2] < map_min_const[2] || coord_tex[2] > map_max_const[2]) {
+            // Is outside
+            const fp_type distance_two = powf(fabs(coord_tex[0] - map_center_const[0]), fp_type{2}) +
+                                         powf(fabs(coord_tex[1] - map_center_const[1]), fp_type{2}) +
+                                         powf(fabs(coord_tex[2] - map_center_const[2]), fp_type{2});
 
-              const fp_type epenalty = distance_two * ENERGYPENALTY;
-              elect_total_trilinear += epenalty;
-              emap_total_trilinear += epenalty;
-            } else {
-              // Is inside
-              // Center atom coordinates on the grid center
-              coord_tex[0] = (l_scratch_ligand_x[atom_index] - map_min_const[0]) * inv_spacing,
-              coord_tex[1] = (l_scratch_ligand_y[atom_index] - map_min_const[1]) * inv_spacing;
-              coord_tex[2] = (l_scratch_ligand_z[atom_index] - map_min_const[2]) * inv_spacing;
-              //  TODO check approximations with in hardware interpolation
-              // elect_total_trilinear +=
-              //     tex3D<fp_type>(electro_texture, coord_tex[0], coord_tex[1], coord_tex[2]) *
-              //     l_ligand_charge[atom_index];
-              // dmap_total_trilinear += tex3D<fp_type>(desolv_texture, coord_tex[0], coord_tex[1], coord_tex[2]) *
-              //                         fabsf(l_ligand_charge[atom_index]);
-              // emap_total_trilinear += tex3D<fp_type>(atom_textures[l_atom_tex_indexes[atom_index]],
-              //                                        coord_tex[0],
-              //                                        coord_tex[1],
-              //                                        coord_tex[2]);
+            const fp_type epenalty = distance_two * ENERGYPENALTY;
+            elect_total_trilinear += epenalty;
+            emap_total_trilinear += epenalty;
+          } else {
+            // Is inside
+            // Center atom coordinates on the grid center
+            coord_tex[0] = (l_scratch_ligand_x[atom_index] - map_min_const[0]) * inv_spacing,
+            coord_tex[1] = (l_scratch_ligand_y[atom_index] - map_min_const[1]) * inv_spacing;
+            coord_tex[2] = (l_scratch_ligand_z[atom_index] - map_min_const[2]) * inv_spacing;
+            //  TODO check approximations with in hardware interpolation
+            // elect_total_trilinear +=
+            //     tex3D<fp_type>(electro_texture, coord_tex[0], coord_tex[1], coord_tex[2]) *
+            //     l_ligand_charge[atom_index];
+            // dmap_total_trilinear += tex3D<fp_type>(desolv_texture, coord_tex[0], coord_tex[1], coord_tex[2]) *
+            //                         fabsf(l_ligand_charge[atom_index]);
+            // emap_total_trilinear += tex3D<fp_type>(atom_textures[l_atom_tex_indexes[atom_index]],
+            //                                        coord_tex[0],
+            //                                        coord_tex[1],
+            //                                        coord_tex[2]);
 
-              elect_total_trilinear +=
-                  trilinear_interpolation_cuda(coord_tex, electro_texture) * l_ligand_charge[atom_index];
-              dmap_total_trilinear += trilinear_interpolation_cuda(coord_tex, desolv_texture) *
-                                      fabsf(l_ligand_charge[atom_index]);
-              emap_total_trilinear +=
-                  trilinear_interpolation_cuda(coord_tex, atom_textures[l_atom_tex_indexes[atom_index]]);
-            }
+            elect_total_trilinear +=
+                trilinear_interpolation_cuda(coord_tex, electro_texture) * l_ligand_charge[atom_index];
+            dmap_total_trilinear +=
+                trilinear_interpolation_cuda(coord_tex, desolv_texture) * fabsf(l_ligand_charge[atom_index]);
+            emap_total_trilinear +=
+                trilinear_interpolation_cuda(coord_tex, atom_textures[l_atom_tex_indexes[atom_index]]);
           }
         }
         fp_type total_trilinear = elect_total_trilinear + dmap_total_trilinear + emap_total_trilinear;
@@ -320,10 +312,9 @@ namespace mudock {
                                              l_ligand_nonbond_a1,
                                              l_ligand_nonbond_a2);
 
-// Perform a tree reduction using __shfl_down_sync
-// TODO check performance
-#pragma unroll
-        for (int offset = BLOCK_SIZE / 2; offset > 0; offset /= 2) {
+        // Perform a tree reduction using __shfl_down_sync
+        // TODO check performance
+        for (int offset = warpSize / 2; offset > 0; offset /= 2) {
           total_trilinear += __shfl_down_sync(0xffffffff, total_trilinear, offset);
           total_eintcal += __shfl_down_sync(0xffffffff, total_eintcal, offset);
         }
@@ -389,9 +380,8 @@ namespace mudock {
         min_score = s_chromosome_scores[chromosome_index];
       }
     }
-// Intra warp reduction
-#pragma unroll
-    for (int offset = BLOCK_SIZE / 2; offset > 0; offset /= 2) {
+    // Intra warp reduction
+    for (int offset = warpSize / 2; offset > 0; offset /= 2) {
       const fp_type other_min_score = __shfl_down_sync(0xFFFFFFFF, min_score, offset);
       const int other_min_index     = __shfl_down_sync(0xFFFFFFFF, min_index, offset);
       if (other_min_score < min_score) {
