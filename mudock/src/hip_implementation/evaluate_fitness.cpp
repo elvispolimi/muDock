@@ -22,15 +22,30 @@ namespace mudock {
 
   void setup_constant_memory(const point3D& minimum_coord,
                              const point3D& maximum_coord,
-                             const point3D& center) {
+                             const point3D& center,
+                             const hipStream_t& stream) {
     const fp_type l_map_min[3]{minimum_coord.x, minimum_coord.y, minimum_coord.z};
     const fp_type l_map_max[3]{maximum_coord.x, maximum_coord.y, maximum_coord.z};
     const fp_type l_map_center[3]{center.x, center.y, center.z};
 
-    MUDOCK_CHECK(hipMemcpyToSymbol(map_min_const, &l_map_min, 3 * sizeof(fp_type), 0, hipMemcpyHostToDevice));
-    MUDOCK_CHECK(hipMemcpyToSymbol(map_max_const, &l_map_max, 3 * sizeof(fp_type), 0, hipMemcpyHostToDevice));
-    MUDOCK_CHECK(
-        hipMemcpyToSymbol(map_center_const, &l_map_center, 3 * sizeof(fp_type), 0, hipMemcpyHostToDevice));
+    MUDOCK_CHECK(hipMemcpyToSymbolAsync(map_min_const,
+                                        &l_map_min,
+                                        3 * sizeof(fp_type),
+                                        0,
+                                        hipMemcpyHostToDevice,
+                                        stream));
+    MUDOCK_CHECK(hipMemcpyToSymbolAsync(map_max_const,
+                                        &l_map_max,
+                                        3 * sizeof(fp_type),
+                                        0,
+                                        hipMemcpyHostToDevice,
+                                        stream));
+    MUDOCK_CHECK(hipMemcpyToSymbolAsync(map_center_const,
+                                        &l_map_center,
+                                        3 * sizeof(fp_type),
+                                        0,
+                                        hipMemcpyHostToDevice,
+                                        stream));
   }
 
   __device__ fp_type trilinear_interpolation_hip(const fp_type coord[], const hipTextureObject_t& tex) {
@@ -66,12 +81,12 @@ namespace mudock {
   template<typename T>
   __device__ const T random_gen_hip(hiprandState& state, const T min, const T max) {
     fp_type value;
-    if constexpr (is_debug()) {
+    // if constexpr (is_debug()) {
       // TODO value here for debug
       value = fp_type{0.4};
-    } else {
-      value = hiprand_uniform(&state);
-    }
+    // } else {
+    //   value = hiprand_uniform(&state);
+    // }
     return static_cast<T>((value * static_cast<fp_type>(max - min)) + min);
   }
 
