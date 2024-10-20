@@ -7,6 +7,12 @@
 #include <mudock/omp_implementation/omp_random.hpp>
 #include <mudock/type_alias.hpp>
 
+#if defined(OMP_OFFLOAD_GPU)
+  #define MAX_THREADS 128
+#else
+  #define MAX_THREADS omp_get_max_threads()
+#endif
+
 namespace mudock {
 
   void evaluate_fitness(const int batch_ligands,

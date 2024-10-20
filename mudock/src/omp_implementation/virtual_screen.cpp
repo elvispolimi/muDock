@@ -239,7 +239,8 @@ namespace mudock {
 
     // Setup OpenMP random data
     // A state for each chromosome
-    omp_states.alloc(configuration.population_number * batch_ligands);
+    const int max_threads_per_team = MAX_THREADS;
+    omp_states.alloc(max_threads_per_team * batch_ligands);
 
     // Get device pointers
     const auto *d_num_atoms               = ligand_num_atoms.dev_pointer();

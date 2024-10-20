@@ -7,14 +7,14 @@
 #include <mudock/utils.hpp>
 #include <omp.h>
 
-#define FLATTENED_3D(x, y, z, index) (index.size_xy() * z + y * index.size_x() + x)
+#define FLATTENED_3D(x, y, z, index_x, index_xy) (index_xy * z + y * index_x + x)
 
 typedef struct {
   mudock::fp_type value;
   int index;
 } min_index_pair;
 
-#pragma omp declare reduction(min_index:min_index_pair : omp_out =                     \
+#pragma omp declare reduction(min_index:min_index_pair : omp_out =                   \
                                   (omp_in.value < omp_out.value) ? omp_in : omp_out) \
     initializer(omp_priv = {INFINITY, -1})
 
@@ -22,7 +22,10 @@ namespace mudock {
   static constexpr fp_type coordinate_step{0.2};
   static constexpr fp_type angle_step{4};
 
-  fp_type trilinear_interpolation_omp(const fp_type coord[], const fp_type* tex, const index3D& index) {
+  fp_type trilinear_interpolation_omp(const fp_type coord[],
+                                      const fp_type* tex,
+                                      const int& index_x,
+                                      const int& index_xy) {
     // Interpolation OpenMP
     const int u0      = coord[0];
     const fp_type p0u = coord[0] - static_cast<fp_type>(u0);
@@ -46,10 +49,30 @@ namespace mudock {
       for (int t = 0; t <= 1; t++)
 #pragma unroll
         for (int n = 0; n <= 1; n++) {
-          const fp_type tmp = tex[FLATTENED_3D(u0 + n, v0 + t, w0 + i, index)];
+          const fp_type tmp = tex[FLATTENED_3D(u0 + n, v0 + t, w0 + i, index_x, index_xy)];
           value += pu[n] * pv[t] * pw[i] * tmp;
         }
     return value;
+  }
+
+  // Generate the next random number
+  fp_type gen_random_omp(XORWOWState& st) {
+    /* Algorithm "xorwow" from p. 5 of Marsaglia, "Xorshift RNGs" */
+    unsigned int t = st.state[4];
+
+    const unsigned int s = st.state[0]; /* Perform a contrived 32-bit rotate. */
+    st.state[4]          = st.state[3];
+    st.state[3]          = st.state[2];
+    st.state[2]          = st.state[1];
+    st.state[1]          = s;
+
+    t ^= t >> 2;
+    t ^= t << 1;
+    t ^= s ^ (s << 4);
+    st.state[0] = t;
+    st.index += 362437;
+    return static_cast<fp_type>(t + st.index) /
+           static_cast<fp_type>(std::numeric_limits<unsigned int>::max());
   }
 
   template<typename T>
@@ -59,8 +82,9 @@ namespace mudock {
       // TODO value here for debug
       value = fp_type{0.4};
     } else {
-      value = state.next();
+      value = gen_random_omp(state);
     }
+    // printf("%f %p %d\n", value, (void*) &state, omp_get_thread_num());
     return static_cast<T>((value * static_cast<fp_type>(max - min)) + min);
   }
 
@@ -139,7 +163,19 @@ namespace mudock {
                         XORWOWState* __restrict__ state,
                         fp_type* __restrict__ ligand_scores,
                         chromosome* __restrict__ best_chromosomes) {
-#pragma omp target teams distribute
+    const fp_type minimum_x = minimum.x;
+    const fp_type minimum_y = minimum.y;
+    const fp_type minimum_z = minimum.z;
+    const fp_type maximum_x = maximum.x;
+    const fp_type maximum_y = maximum.y;
+    const fp_type maximum_z = maximum.z;
+    const fp_type center_x  = center.x;
+    const fp_type center_y  = center.y;
+    const fp_type center_z  = center.z;
+    const int index_x       = index.size_x();
+    const int index_xy      = index.size_xy();
+    // TODO check the max_threads on the CPU offloading
+#pragma omp target teams distribute thread_limit(MAX_THREADS)
     for (auto ligand_id = 0; ligand_id < static_cast<int>(batch_ligands); ++ligand_id) {
       const int num_atoms    = ligand_num_atoms[ligand_id];
       const int num_nonbonds = ligand_num_nonbonds[ligand_id];
@@ -168,7 +204,7 @@ namespace mudock {
       const auto* l_atom_tex_indexes      = atom_tex_indexes + ligand_id * atom_stride;
       const int* l_ligand_nonbond_a1      = ligand_nonbond_a1 + ligand_id * nonbond_stride;
       const int* l_ligand_nonbond_a2      = ligand_nonbond_a2 + ligand_id * nonbond_stride;
-      // XORWOWState l_state{};
+      XORWOWState* l_state                = state + ligand_id * omp_get_max_threads();
 
       // Initialize scratchpads and generate initial population
       fp_type* l_scratch_chromosome = scratch_chromosome + ligand_id * chromosome_number;
@@ -179,11 +215,11 @@ namespace mudock {
         chromosome& chromo = *(l_chromosomes + chromosome_index);
 #pragma unroll
         for (int i{0}; i < 3; ++i) { // initialize the rigid translation
-          chromo[i] = get_init_change_distribution(state[chromosome_index]) * coordinate_step;
+          chromo[i] = get_init_change_distribution(l_state[omp_get_thread_num()]) * coordinate_step;
         }
 #pragma unroll
         for (int i{3}; i < 6 + num_rotamers; ++i) { // initialize the rotations
-          chromo[i] = get_init_change_distribution(state[chromosome_index]) * angle_step;
+          chromo[i] = get_init_change_distribution(l_state[omp_get_thread_num()]) * angle_step;
         }
       }
 
@@ -198,15 +234,15 @@ namespace mudock {
 
           // Modify coordinates
           apply_omp(l_scratch_ligand_x,
-                     l_scratch_ligand_y,
-                     l_scratch_ligand_z,
-                     *(l_chromosomes + chromosome_index),
-                     l_fragments,
-                     l_frag_start_atom_index,
-                     l_frag_stop_atom_index,
-                     num_rotamers,
-                     atom_stride,
-                     num_atoms);
+                    l_scratch_ligand_y,
+                    l_scratch_ligand_z,
+                    *(l_chromosomes + chromosome_index),
+                    l_fragments,
+                    l_frag_start_atom_index,
+                    l_frag_stop_atom_index,
+                    num_rotamers,
+                    atom_stride,
+                    num_atoms);
 
           // Calculate energy
           fp_type elect_total_trilinear = 0;
@@ -218,12 +254,12 @@ namespace mudock {
                                  l_scratch_ligand_y[atom_index],
                                  l_scratch_ligand_z[atom_index]};
 
-            if (coord_tex[0] < minimum.x || coord_tex[0] > maximum.x || coord_tex[1] < minimum.y ||
-                coord_tex[1] > maximum.y || coord_tex[2] < minimum.z || coord_tex[2] > maximum.z) {
+            if (coord_tex[0] < minimum_x || coord_tex[0] > maximum_x || coord_tex[1] < minimum_y ||
+                coord_tex[1] > maximum_y || coord_tex[2] < minimum_z || coord_tex[2] > maximum_z) {
               // Is outside
-              const fp_type distance_two = pow(fabs(coord_tex[0] - center.x), fp_type{2}) +
-                                           pow(fabs(coord_tex[1] - center.y), fp_type{2}) +
-                                           pow(fabs(coord_tex[2] - center.z), fp_type{2});
+              const fp_type distance_two = pow(fabs(coord_tex[0] - center_x), fp_type{2}) +
+                                           pow(fabs(coord_tex[1] - center_y), fp_type{2}) +
+                                           pow(fabs(coord_tex[2] - center_z), fp_type{2});
 
               const fp_type epenalty = distance_two * ENERGYPENALTY;
               elect_total_trilinear += epenalty;
@@ -231,9 +267,9 @@ namespace mudock {
             } else {
               // Is inside
               // Center atom coordinates on the grid center
-              coord_tex[0] = (l_scratch_ligand_x[atom_index] - minimum.x) * inv_spacing,
-              coord_tex[1] = (l_scratch_ligand_y[atom_index] - minimum.y) * inv_spacing;
-              coord_tex[2] = (l_scratch_ligand_z[atom_index] - minimum.z) * inv_spacing;
+              coord_tex[0] = (l_scratch_ligand_x[atom_index] - minimum_x) * inv_spacing,
+              coord_tex[1] = (l_scratch_ligand_y[atom_index] - minimum_y) * inv_spacing;
+              coord_tex[2] = (l_scratch_ligand_z[atom_index] - minimum_z) * inv_spacing;
               //  TODO check approximations with in hardware interpolation
               // elect_total_trilinear +=
               //     tex3D<fp_type>(electro_texture, coord_tex[0], coord_tex[1], coord_tex[2]) *
@@ -245,14 +281,17 @@ namespace mudock {
               //                                        coord_tex[1],
               //                                        coord_tex[2]);
 
-              elect_total_trilinear += trilinear_interpolation_omp(coord_tex, electro_texture, index) *
-                                       l_ligand_charge[atom_index];
-              dmap_total_trilinear += trilinear_interpolation_omp(coord_tex, desolv_texture, index) *
-                                      fabsf(l_ligand_charge[atom_index]);
+              elect_total_trilinear +=
+                  trilinear_interpolation_omp(coord_tex, electro_texture, index_x, index_xy) *
+                  l_ligand_charge[atom_index];
+              dmap_total_trilinear +=
+                  trilinear_interpolation_omp(coord_tex, desolv_texture, index_x, index_xy) *
+                  fabsf(l_ligand_charge[atom_index]);
               emap_total_trilinear +=
                   trilinear_interpolation_omp(coord_tex,
                                               atom_textures[l_atom_tex_indexes[atom_index]],
-                                              index);
+                                              index_x,
+                                              index_xy);
             }
           }
 
@@ -285,17 +324,17 @@ namespace mudock {
           chromosome& next_chromosome = *(l_next_chromosomes + chromosome_index);
 
           // select the parent
-          const int best_individual_1 = tournament_selection_omp(state[chromosome_index],
+          const int best_individual_1 = tournament_selection_omp(l_state[omp_get_thread_num()],
                                                                  tournament_length,
                                                                  chromosome_number,
                                                                  l_scratch_chromosome);
-          const int best_individual_2 = tournament_selection_omp(state[chromosome_index],
+          const int best_individual_2 = tournament_selection_omp(l_state[omp_get_thread_num()],
                                                                  tournament_length,
                                                                  chromosome_number,
                                                                  l_scratch_chromosome);
 
           // generate the offspring
-          const int split_index = get_crossover_distribution(state[chromosome_index], &num_rotamers);
+          const int split_index = get_crossover_distribution(l_state[omp_get_thread_num()], &num_rotamers);
           memcpy(next_chromosome.data(),
                  &(l_chromosomes[best_individual_1][0]),
                  split_index * sizeof(fp_type));
@@ -308,14 +347,16 @@ namespace mudock {
 // mutate the offspring
 #pragma unroll
           for (int i{0}; i < 3; ++i) {
-            if (get_mutation_coin_distribution(state[chromosome_index]) < mutation_prob)
+            if (get_mutation_coin_distribution(l_state[omp_get_thread_num()]) < mutation_prob)
               next_chromosome[i] +=
-                  get_mutation_change_distribution(state[chromosome_index]) * coordinate_step;
+                  get_mutation_change_distribution(l_state[omp_get_thread_num()]) * coordinate_step;
           }
 #pragma unroll
           for (int i{3}; i < 6 + num_rotamers; ++i) {
-            if (get_mutation_coin_distribution(state[chromosome_index]) < mutation_prob) {
-              next_chromosome[i] += get_mutation_change_distribution(state[chromosome_index]) * angle_step;
+            // printf("%d %d %d %d\n",generation,chromosome_index, omp_get_thread_num(),omp_get_team_num());
+            if (get_mutation_coin_distribution(l_state[omp_get_thread_num()]) < mutation_prob) {
+              next_chromosome[i] +=
+                  get_mutation_change_distribution(l_state[omp_get_thread_num()]) * angle_step;
             }
           }
         }
