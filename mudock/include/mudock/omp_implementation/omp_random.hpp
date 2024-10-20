@@ -1,8 +1,8 @@
 #pragma once
 
+#include <array>
 #include <mudock/omp_implementation/omp_wrapper.hpp>
 #include <mudock/type_alias.hpp>
-#include <array>
 #include <vector>
 
 namespace mudock {
@@ -23,25 +23,6 @@ namespace mudock {
         state[i] = 1812433253U * (state[i - 1] ^ (state[i - 1] >> 30)) + i;
       }
     }
-
-    // Generate the next random number
-    fp_type next() {
-      /* Algorithm "xorwow" from p. 5 of Marsaglia, "Xorshift RNGs" */
-      unsigned int t = state[4];
-
-      const unsigned int s = state[0]; /* Perform a contrived 32-bit rotate. */
-      state[4]             = state[3];
-      state[3]             = state[2];
-      state[2]             = state[1];
-      state[1]             = s;
-
-      t ^= t >> 2;
-      t ^= t << 1;
-      t ^= s ^ (s << 4);
-      state[0] = t;
-      index += 362437;
-      return static_cast<fp_type>(t + index) / static_cast<fp_type>(std::numeric_limits<unsigned int>::max());
-    }
   };
 
   struct omp_random_object: private omp_wrapper<std::vector, XORWOWState> {
@@ -52,6 +33,8 @@ namespace mudock {
     omp_random_object &operator=(omp_random_object &&)      = delete;
 
     void alloc(const std::size_t num_elements);
+
+    inline void copy_host2device() { omp_wrapper<std::vector, XORWOWState>::copy_host2device(); }
 
     [[nodiscard]] inline auto dev_pointer() const {
       return omp_wrapper<std::vector, XORWOWState>::dev_pointer();

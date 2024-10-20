@@ -211,9 +211,6 @@ if(MUDOCK_ENABLE_OMP)
     "${source_path}/omp_implementation/omp_random.cpp"
     "${source_path}/omp_implementation/omp_batch_sizer.cpp"
     "${source_path}/omp_implementation/virtual_screen.cpp"
-    "${source_path}/omp_implementation/calc_energy.cpp"
-    "${source_path}/omp_implementation/mutate.cpp"
-    "${source_path}/omp_implementation/geometric_transformations.cpp"
   )
 endif()
 
@@ -280,6 +277,7 @@ if(MUDOCK_ENABLE_OMP)
 
   # Enable offloading to AMD GPUs using Clang
   if(NOT OMP_TARGET EQUAL "cpu")
+    target_compile_definitions(libmudock PUBLIC OMP_OFFLOAD_GPU)
     if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
       if(GPU_PLATFORM STREQUAL "cuda")
         target_compile_options(libmudock PRIVATE "-fopenmp")
