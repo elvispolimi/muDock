@@ -29,6 +29,27 @@ namespace mudock {
                                        const fp_type* angle_y,
                                        const fp_type* angle_z,
                                        const int num_atoms) {
+                                            // compute the molecule center of mass
+    fp_type c_x{0}, c_y{0}, c_z{0};
+    for (int i = threadIdx.x; i < num_atoms; i += blockDim.x) {
+      c_x += x[i];
+      c_y += y[i];
+      c_z += z[i];
+    }
+    c_x /= num_atoms;
+    c_y /= num_atoms;
+    c_z /= num_atoms;
+
+    // Intra warp reduction
+    for (int offset = warpSize / 2; offset > 0; offset /= 2) {
+      c_x += __shfl_down_sync(0xffffffff, c_x, offset);
+      c_y += __shfl_down_sync(0xffffffff, c_y, offset);
+      c_z += __shfl_down_sync(0xffffffff, c_z, offset);
+    }
+    c_x = __shfl_sync(0xffffffff, c_x, 0);
+    c_y = __shfl_sync(0xffffffff, c_y, 0);
+    c_z = __shfl_sync(0xffffffff, c_z, 0);
+
     // compute the angles sine and cosine
     const auto rad_x = deg_to_rad(*angle_x), rad_y = deg_to_rad(*angle_y), rad_z = deg_to_rad(*angle_z);
     const auto cx = std::cos(rad_x), sx = std::sin(rad_x);
