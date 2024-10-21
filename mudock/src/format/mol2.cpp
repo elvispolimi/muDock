@@ -15,5 +15,4 @@ namespace mudock {
                : std::string_view::npos;
   }
 
-
 } // namespace mudock

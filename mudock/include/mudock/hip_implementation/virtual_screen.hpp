@@ -51,7 +51,7 @@ namespace mudock {
     int wavefront_size;
 
     hipStream_t stream;
-    
+
   public:
     virtual_screen_hip(const knobs k,
                        std::shared_ptr<const grid_atom_mapper>& grid_atom_maps,

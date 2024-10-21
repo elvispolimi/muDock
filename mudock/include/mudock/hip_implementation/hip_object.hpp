@@ -32,7 +32,7 @@ namespace mudock {
       if (size < num_elements) {
         if (dev_ptr != nullptr)
           MUDOCK_CHECK(hipFreeAsync(dev_ptr, stream));
-        MUDOCK_CHECK(hipMallocAsync((void**)&dev_ptr, sizeof(T) * num_elements, stream));
+        MUDOCK_CHECK(hipMallocAsync((void**) &dev_ptr, sizeof(T) * num_elements, stream));
       }
       size = num_elements;
     }
