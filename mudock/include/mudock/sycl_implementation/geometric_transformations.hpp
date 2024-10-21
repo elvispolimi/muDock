@@ -32,6 +32,19 @@ namespace mudock {
                             const fp_type* angle_z,
                             const int num_atoms,
                             sycl::nd_item<1> it) { // compute the angles sine and cosine
+    // compute the molecule center of mass
+    const auto& sub_group = it.get_sub_group();
+
+    fp_type c_x{0}, c_y{0}, c_z{0};
+    for (int i = it.get_local_id(0); i < num_atoms; i += it.get_local_range(0)) {
+      c_x += x[i];
+      c_y += y[i];
+      c_z += z[i];
+    }
+    c_x = sycl::reduce_over_group(sub_group, c_x, sycl::plus<fp_type>()) / num_atoms;
+    c_y = sycl::reduce_over_group(sub_group, c_x, sycl::plus<fp_type>()) / num_atoms;
+    c_z = sycl::reduce_over_group(sub_group, c_x, sycl::plus<fp_type>()) / num_atoms;
+
     const auto rad_x = deg_to_rad(*angle_x), rad_y = deg_to_rad(*angle_y), rad_z = deg_to_rad(*angle_z);
     const auto cx = sycl::cos(rad_x), sx = sycl::sin(rad_x);
     const auto cy = sycl::cos(rad_y), sy = sycl::sin(rad_y);
@@ -50,10 +63,10 @@ namespace mudock {
 
     // apply the rotation matrix
     for (int i = it.get_local_id(0); i < num_atoms; i += it.get_local_range(0)) {
-      const auto prev_x = x[i], prev_y = y[i], prev_z = z[i];
-      x[i] = prev_x * m00 + prev_y * m01 + prev_z * m02;
-      y[i] = prev_x * m10 + prev_y * m11 + prev_z * m12;
-      z[i] = prev_x * m20 + prev_y * m21 + prev_z * m22;
+      const auto translated_x = x[i] - c_x, translated_y = y[i] - c_y, translated_z = z[i] - c_z;
+      x[i] = translated_x * m00 + translated_y * m01 + translated_z * m02 + c_x;
+      y[i] = translated_x * m10 + translated_y * m11 + translated_z * m12 + c_y;
+      z[i] = translated_x * m20 + translated_y * m21 + translated_z * m22 + c_z;
     }
   };
 
