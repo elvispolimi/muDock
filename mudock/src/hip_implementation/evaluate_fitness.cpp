@@ -5,12 +5,7 @@
 #include <mudock/hip_implementation/hip_check_error_macro.hpp>
 #include <mudock/hip_implementation/mutate.hpp>
 #include <mudock/utils.hpp>
-
-#if defined(__HIP_PLATFORM_NVCC__)
-  #define BITLANE_MASK 0xFFFFFFFF
-#elif defined(__HIP_PLATFORM_AMD__)
-  #define BITLANE_MASK 0xFFFFFFFFFFFFFFFF
-#endif
+#include <mudock/hip_implementation/hip_utils.hpp>
 
 namespace mudock {
   static constexpr fp_type coordinate_step{0.2};
