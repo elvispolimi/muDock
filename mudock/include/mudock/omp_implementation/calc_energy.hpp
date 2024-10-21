@@ -23,22 +23,22 @@ namespace mudock {
   }
 
   fp_type inline calc_intra_energy(const fp_type* ligand_x,
-                            const fp_type* ligand_y,
-                            const fp_type* ligand_z,
-                            const fp_type* ligand_vol,
-                            const fp_type* ligand_solpar,
-                            const fp_type* ligand_charge,
-                            const int* ligand_num_hbond,
-                            const fp_type* ligand_Rij_hb,
-                            const fp_type* ligand_Rii,
-                            const fp_type* ligand_epsij_hb,
-                            const fp_type* ligand_epsii,
-                            const int ligand_num_nonbonds,
-                            const int* __restrict__ ligand_nonbond_a1,
-                            const int* __restrict__ ligand_nonbond_a2) {
+                                   const fp_type* ligand_y,
+                                   const fp_type* ligand_z,
+                                   const fp_type* ligand_vol,
+                                   const fp_type* ligand_solpar,
+                                   const fp_type* ligand_charge,
+                                   const int* ligand_num_hbond,
+                                   const fp_type* ligand_Rij_hb,
+                                   const fp_type* ligand_Rii,
+                                   const fp_type* ligand_epsij_hb,
+                                   const fp_type* ligand_epsii,
+                                   const int ligand_num_nonbonds,
+                                   const int* __restrict__ ligand_nonbond_a1,
+                                   const int* __restrict__ ligand_nonbond_a2) {
     fp_type elect_total_eintcal{0}, emap_total_eintcal{0}, dmap_total_eintcal{0};
 // TODO OPT: precompute value from branch rework_cpp
-#pragma omp parallel for
+#pragma omp parallel for reduction(+ : elect_total_eintcal, emap_total_eintcal, dmap_total_eintcal)
     for (int nonbond_list = 0; nonbond_list < ligand_num_nonbonds; ++nonbond_list) {
       const int& a1 = ligand_nonbond_a1[nonbond_list];
       const int& a2 = ligand_nonbond_a2[nonbond_list];

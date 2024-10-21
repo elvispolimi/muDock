@@ -8,12 +8,12 @@
 
 namespace mudock {
   void inline translate_molecule_omp(fp_type* __restrict__ x,
-                              fp_type* __restrict__ y,
-                              fp_type* __restrict__ z,
-                              const fp_type* offset_x,
-                              const fp_type* offset_y,
-                              const fp_type* offset_z,
-                              const int num_atoms) {
+                                     fp_type* __restrict__ y,
+                                     fp_type* __restrict__ z,
+                                     const fp_type* offset_x,
+                                     const fp_type* offset_y,
+                                     const fp_type* offset_z,
+                                     const int num_atoms) {
 #pragma omp parallel for
     for (int i = 0; i < num_atoms; ++i) {
       x[i] += *offset_x;
@@ -23,12 +23,24 @@ namespace mudock {
   }
 
   void inline rotate_molecule_omp(fp_type* __restrict__ x,
-                           fp_type* __restrict__ y,
-                           fp_type* __restrict__ z,
-                           const fp_type* angle_x,
-                           const fp_type* angle_y,
-                           const fp_type* angle_z,
-                           const int num_atoms) {
+                                  fp_type* __restrict__ y,
+                                  fp_type* __restrict__ z,
+                                  const fp_type* angle_x,
+                                  const fp_type* angle_y,
+                                  const fp_type* angle_z,
+                                  const int num_atoms) {
+    // compute the molecule center of mass
+    fp_type c_x{0}, c_y{0}, c_z{0};
+#pragma omp parallel for reduction(+ : c_x, c_y, c_z)
+    for (int atom_index = 0; atom_index < num_atoms; ++atom_index) {
+      c_x += x[atom_index];
+      c_y += y[atom_index];
+      c_z += z[atom_index];
+    }
+    c_x /= num_atoms;
+    c_y /= num_atoms;
+    c_z /= num_atoms;
+
     // compute the angles sine and cosine
     const auto rad_x = deg_to_rad(*angle_x), rad_y = deg_to_rad(*angle_y), rad_z = deg_to_rad(*angle_z);
     const auto cx = std::cos(rad_x), sx = std::sin(rad_x);
@@ -49,21 +61,21 @@ namespace mudock {
     // apply the rotation matrix
 #pragma omp parallel for
     for (int i = 0; i < num_atoms; ++i) {
-      const auto prev_x = x[i], prev_y = y[i], prev_z = z[i];
-      x[i] = prev_x * m00 + prev_y * m01 + prev_z * m02;
-      y[i] = prev_x * m10 + prev_y * m11 + prev_z * m12;
-      z[i] = prev_x * m20 + prev_y * m21 + prev_z * m22;
+      const auto translated_x = x[i] - c_x, translated_y = y[i] - c_y, translated_z = z[i] - c_z;
+      x[i] = translated_x * m00 + translated_y * m01 + translated_z * m02 + c_x;
+      y[i] = translated_x * m10 + translated_y * m11 + translated_z * m12 + c_y;
+      z[i] = translated_x * m20 + translated_y * m21 + translated_z * m22 + c_z;
     }
   }
 
   void inline rotate_fragment_omp(fp_type* __restrict__ x,
-                           fp_type* __restrict__ y,
-                           fp_type* __restrict__ z,
-                           const int* bitmask,
-                           const int start_index,
-                           const int stop_index,
-                           const fp_type* angle,
-                           const int num_atoms) {
+                                  fp_type* __restrict__ y,
+                                  fp_type* __restrict__ z,
+                                  const int* bitmask,
+                                  const int start_index,
+                                  const int stop_index,
+                                  const fp_type* angle,
+                                  const int num_atoms) {
     // compute the axis vector (and some properties)
     const auto origx = x[start_index], origy = y[start_index], origz = z[start_index];
     const auto destx = x[stop_index], desty = y[stop_index], destz = z[stop_index];
