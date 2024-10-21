@@ -4,19 +4,11 @@
 #include <mudock/omp_implementation/calc_energy.hpp>
 #include <mudock/omp_implementation/evaluate_fitness.hpp>
 #include <mudock/omp_implementation/mutate.hpp>
+#include <mudock/omp_implementation/omp_utils.hpp>
 #include <mudock/utils.hpp>
 #include <omp.h>
 
 #define FLATTENED_3D(x, y, z, index_x, index_xy) (index_xy * z + y * index_x + x)
-
-typedef struct {
-  mudock::fp_type value;
-  int index;
-} min_index_pair;
-
-#pragma omp declare reduction(min_index:min_index_pair : omp_out =                   \
-                                  (omp_in.value < omp_out.value) ? omp_in : omp_out) \
-    initializer(omp_priv = {INFINITY, -1})
 
 namespace mudock {
   static constexpr fp_type coordinate_step{0.2};
