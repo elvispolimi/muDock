@@ -119,9 +119,9 @@ namespace mudock {
     }
 
     [[nodiscard]] inline point3D get_index_from_coordinates(const point3D coord) const {
-      return {(coord.x - minimum.x) / grid_spacing,
-              (coord.y - minimum.y) / grid_spacing,
-              (coord.z - minimum.z) / grid_spacing};
+      return {(coord.x - minimum_coord.x) / grid_spacing,
+              (coord.y - minimum_coord.y) / grid_spacing,
+              (coord.z - minimum_coord.z) / grid_spacing};
     }
 
     [[nodiscard]] inline fp_type& at(const point3D& p) { return grid::at(p.x, p.y, p.z); }
