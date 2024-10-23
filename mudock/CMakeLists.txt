@@ -13,6 +13,7 @@ list(APPEND header_files
   "${header_path}/${header_prefix}/chem/autodock_types.hpp"
   "${header_path}/${header_prefix}/chem/autodock_parameters.hpp"
   "${header_path}/${header_prefix}/chem/bond_types.hpp"
+  "${header_path}/${header_prefix}/chem/ligand_maps.hpp"
   "${header_path}/${header_prefix}/chem/elements.hpp"
   "${header_path}/${header_prefix}/compute/device_names.hpp"
   "${header_path}/${header_prefix}/compute/parse_ids.hpp"
@@ -105,9 +106,9 @@ if(MUDOCK_ENABLE_CUDA)
     "${header_path}/${header_prefix}/cuda_implementation/cuda_wrapper.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/evaluate_fitness.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/geometric_transformations.cuh"
-    "${header_path}/${header_prefix}/cuda_implementation/map_textures.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/mutate.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/virtual_screen.cuh"
+    "${header_path}/${header_prefix}/cuda_implementation/device.cuh"
   )
   list(APPEND source_files
     "${source_path}/cuda_implementation/cuda_object.cu"
@@ -116,6 +117,8 @@ if(MUDOCK_ENABLE_CUDA)
     "${source_path}/cuda_implementation/cuda_worker.cpp"
     "${source_path}/cuda_implementation/cuda_random.cu"
     "${source_path}/cuda_implementation/virtual_screen.cu"
+    "${source_path}/cuda_implementation/device.cu"
+    "${source_path}/cuda_implementation/constant_memory.cu"
   )
 endif()
 
@@ -129,7 +132,6 @@ if(MUDOCK_ENABLE_POLY)
     "${header_path}/${header_prefix}/cuda_implementation/cuda_object.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/cuda_worker.hpp"
     "${header_path}/${header_prefix}/cuda_implementation/cuda_wrapper.cuh"
-    "${header_path}/${header_prefix}/cuda_implementation/map_textures.cuh"
     "${poly_header_path}/polygeist/cuda_random.cuh"
     "${poly_header_path}/polygeist/virtual_screen.cuh"
   )
@@ -196,20 +198,18 @@ if(MUDOCK_ENABLE_OMP)
     "${header_path}/${header_prefix}/omp_implementation/calc_energy.hpp"
     "${header_path}/${header_prefix}/omp_implementation/mutate.hpp"
     "${header_path}/${header_prefix}/omp_implementation/geometric_transformations.hpp"
-    "${header_path}/${header_prefix}/omp_implementation/omp_random.hpp"
+    # "${header_path}/${header_prefix}/omp_implementation/omp_random.hpp"
     "${header_path}/${header_prefix}/omp_implementation/omp_object.hpp"
     "${header_path}/${header_prefix}/omp_implementation/omp_wrapper.hpp"
     "${header_path}/${header_prefix}/omp_implementation/omp_worker.hpp"
-    "${header_path}/${header_prefix}/omp_implementation/omp_utils.hpp"
     "${header_path}/${header_prefix}/omp_implementation/omp_batch_sizer.hpp"
     "${header_path}/${header_prefix}/omp_implementation/virtual_screen.hpp"
     "${header_path}/${header_prefix}/omp_implementation/evaluate_fitness.hpp"
   )
   list(APPEND source_files
     "${source_path}/omp_implementation/omp_manager.cpp"
-    "${source_path}/omp_implementation/evaluate_fitness.cpp"
+    # "${source_path}/sycl_implementation/omp_random.cpp"
     "${source_path}/omp_implementation/omp_worker.cpp"
-    "${source_path}/omp_implementation/omp_random.cpp"
     "${source_path}/omp_implementation/omp_batch_sizer.cpp"
     "${source_path}/omp_implementation/virtual_screen.cpp"
   )
@@ -237,6 +237,7 @@ set_target_properties(libmudock
   CXX_STANDARD 20
   CXX_STANDARD_REQUIRED ON
   CXX_EXTENSIONS OFF
+  CUDA_SEPARABLE_COMPILATION ON
 )
 target_link_libraries(libmudock PUBLIC Microsoft.GSL::GSL)
 target_compile_options(libmudock PUBLIC $<$<AND:$<CONFIG:RELEASE>,$<COMPILE_LANGUAGE:CXX>>:${release_flags}>)
@@ -261,11 +262,21 @@ endif()
 # check if we need to activate the compilation flag that signals CUDA
 if(MUDOCK_ENABLE_CUDA)
   target_compile_definitions(libmudock PUBLIC MUDOCK_USE_CUDA)
-  set_target_properties(libmudock
-    PROPERTIES
-    CUDA_STANDARD 20
-    CUDA_STANDARD_REQUIRED ON
-    CUDA_EXTENSIONS OFF)
+  if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    set_target_properties(libmudock
+      PROPERTIES
+      CUDA_STANDARD 20
+      CUDA_STANDARD_REQUIRED ON
+      CUDA_EXTENSIONS OFF
+      INTERPROCEDURAL_OPTIMIZATION ON)
+  else()
+    set_target_properties(libmudock
+      PROPERTIES
+      CUDA_STANDARD 20
+      CUDA_STANDARD_REQUIRED ON
+      CUDA_EXTENSIONS OFF)
+  endif()
+  set(CMAKE_CUDA_ARCHITECTURES OFF)
   set(CMAKE_CUDA_FLAGS "--expt-relaxed-constexpr")
   set(CMAKE_CUDA_FLAGS_RELEASE "-O3 -use_fast_math --expt-relaxed-constexpr")
   set(CMAKE_CUDA_FLAGS_DEBUG "-G -g -Xptxas -v --expt-relaxed-constexpr")
@@ -278,14 +289,15 @@ if(MUDOCK_ENABLE_OMP)
 
   # Enable offloading to AMD GPUs using Clang
   if(NOT OMP_TARGET EQUAL "cpu")
-    target_compile_definitions(libmudock PUBLIC OMP_OFFLOAD_GPU)
     if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
       if(GPU_PLATFORM STREQUAL "cuda")
         target_compile_options(libmudock PRIVATE "-fopenmp")
         target_compile_options(libmudock PRIVATE "-fopenmp-targets=nvptx64")
+        # target_compile_options(libmudock PRIVATE "-Xopenmp-target=nvptx64")
       elseif(GPU_PLATFORM STREQUAL "amd")
         target_compile_options(libmudock PRIVATE "-fopenmp")
         target_compile_options(libmudock PRIVATE "-fopenmp-targets=amdgcn-amd-amdhsa")
+        # target_compile_options(libmudock PRIVATE "-Xopenmp-target=amdgcn-amd-amdhsa")
       endif()
       target_compile_options(libmudock PRIVATE "--offload-arch=${GPU_ARCHITECTURE}")
     elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
