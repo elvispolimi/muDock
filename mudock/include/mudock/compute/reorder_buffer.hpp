@@ -20,7 +20,7 @@ namespace mudock {
   public:
     // the description of how we generate the clusters
     static constexpr std::array<int, 6> atoms_clusters   = {{32, 64, 128, 160, 192, 256}};
-    static constexpr std::array<int, 7> rotamer_clusters = {{1, 2, 4, 8, 16, 32, 40}};
+    static constexpr std::array<int, 9> rotamer_clusters = {{1, 2, 4, 8, 16, 32, 40, 64, 86}};
 
   private:
     // the actual containers of ligand batches, with the related maximum sizes

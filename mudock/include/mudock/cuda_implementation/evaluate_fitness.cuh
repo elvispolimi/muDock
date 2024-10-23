@@ -5,7 +5,6 @@
 #include <mudock/cpp_implementation/chromosome.hpp>
 #include <mudock/cuda_implementation/calc_energy.cuh>
 #include <mudock/cuda_implementation/cuda_check_error_macro.cuh>
-#include <mudock/cuda_implementation/evaluate_fitness.cuh>
 #include <mudock/cuda_implementation/mutate.cuh>
 #include <mudock/grid.hpp>
 #include <mudock/molecule/containers.hpp>
@@ -20,37 +19,12 @@ namespace mudock {
   static constexpr fp_type angle_step{4};
 
   // TODO Could be done using float3?
-  __device__ __constant__ fp_type map_min_const[3];
-  __device__ __constant__ fp_type map_max_const[3];
-  __device__ __constant__ fp_type map_center_const[3];
-
-  void inline setup_constant_memory(const point3D& minimum_coord,
-                                    const point3D& maximum_coord,
-                                    const point3D& center,
-                                    const cudaStream_t& stream) {
-    const fp_type l_map_min[3]{minimum_coord.x, minimum_coord.y, minimum_coord.z};
-    const fp_type l_map_max[3]{maximum_coord.x, maximum_coord.y, maximum_coord.z};
-    const fp_type l_map_center[3]{center.x, center.y, center.z};
-
-    MUDOCK_CHECK(cudaMemcpyToSymbolAsync(map_min_const,
-                                         &l_map_min,
-                                         3 * sizeof(fp_type),
-                                         0,
-                                         cudaMemcpyHostToDevice,
-                                         stream));
-    MUDOCK_CHECK(cudaMemcpyToSymbolAsync(map_max_const,
-                                         &l_map_max,
-                                         3 * sizeof(fp_type),
-                                         0,
-                                         cudaMemcpyHostToDevice,
-                                         stream));
-    MUDOCK_CHECK(cudaMemcpyToSymbolAsync(map_center_const,
-                                         &l_map_center,
-                                         3 * sizeof(fp_type),
-                                         0,
-                                         cudaMemcpyHostToDevice,
-                                         stream));
-  }
+  extern __device__ __constant__ fp_type map_min_const[3];
+  extern __device__ __constant__ fp_type map_max_const[3];
+  extern __device__ __constant__ fp_type map_center_const[3];
+  void setup_constant_memory(const point3D& minimum_coord,
+                             const point3D& maximum_coord,
+                             const point3D& center);
 
   __device__ inline fp_type trilinear_interpolation_cuda(const fp_type coord[],
                                                          const cudaTextureObject_t& tex) {
@@ -312,8 +286,9 @@ namespace mudock {
                                              l_ligand_nonbond_a1,
                                              l_ligand_nonbond_a2);
 
-        // Perform a tree reduction using __shfl_down_sync
-        // TODO check performance
+// Perform a tree reduction using __shfl_down_sync
+// TODO check performance
+#pragma unroll
         for (int offset = warpSize / 2; offset > 0; offset /= 2) {
           total_trilinear += __shfl_down_sync(0xffffffff, total_trilinear, offset);
           total_eintcal += __shfl_down_sync(0xffffffff, total_eintcal, offset);
@@ -380,7 +355,8 @@ namespace mudock {
         min_score = s_chromosome_scores[chromosome_index];
       }
     }
-    // Intra warp reduction
+// Intra warp reduction
+#pragma unroll
     for (int offset = warpSize / 2; offset > 0; offset /= 2) {
       const fp_type other_min_score = __shfl_down_sync(0xFFFFFFFF, min_score, offset);
       const int other_min_index     = __shfl_down_sync(0xFFFFFFFF, min_index, offset);
@@ -395,20 +371,5 @@ namespace mudock {
              (*(l_chromosomes + min_index)).data(),
              sizeof(fp_type) * (6 + num_rotamers));
     }
-  }
-
-  template<int MAX_ATOMS, int MAX_ROTAMERS>
-  int get_evaluate_fitness_batch() {
-    int device_id = 0;
-    MUDOCK_CHECK(cudaGetDevice(&device_id));
-    cudaDeviceProp props;
-    MUDOCK_CHECK(cudaGetDeviceProperties(&props, device_id));
-    int num_block_per_SM = 0;
-    MUDOCK_CHECK(cudaOccupancyMaxActiveBlocksPerMultiprocessor(&num_block_per_SM,
-                                                               evaluate_fitness<MAX_ATOMS, MAX_ROTAMERS>,
-                                                               BLOCK_SIZE,
-                                                               0));
-    // TODO check the return value
-    return num_block_per_SM * props.multiProcessorCount;
   }
 } // namespace mudock

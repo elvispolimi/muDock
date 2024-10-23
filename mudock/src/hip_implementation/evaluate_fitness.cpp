@@ -3,7 +3,6 @@
 #include <mudock/hip_implementation/calc_energy.hpp>
 #include <mudock/hip_implementation/evaluate_fitness.hpp>
 #include <mudock/hip_implementation/hip_check_error_macro.hpp>
-#include <mudock/hip_implementation/hip_utils.hpp>
 #include <mudock/hip_implementation/mutate.hpp>
 #include <mudock/utils.hpp>
 
@@ -76,12 +75,12 @@ namespace mudock {
   template<typename T>
   __device__ const T random_gen_hip(hiprandState& state, const T min, const T max) {
     fp_type value;
-    // if constexpr (is_debug()) {
-    // TODO value here for debug
-    value = fp_type{0.4};
-    // } else {
-    //   value = hiprand_uniform(&state);
-    // }
+    if constexpr (is_debug()) {
+      // TODO value here for debug
+      value = fp_type{0.4};
+    } else {
+      value = hiprand_uniform(&state);
+    }
     return static_cast<T>((value * static_cast<fp_type>(max - min)) + min);
   }
 

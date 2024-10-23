@@ -18,14 +18,11 @@ namespace mudock {
     other.size    = 0;
   }
 
-// TODO destructor not supported by Polygeist
-#ifndef MUDOCK_ENABLE_POLY
   template<class T>
   cuda_object<T>::~cuda_object() noexcept(false) {
     if (dev_ptr != nullptr)
       MUDOCK_CHECK(cudaFreeAsync(dev_ptr, stream));
   }
-#endif
 
   template<class T>
   void cuda_object<T>::alloc(const size_t num_elements) {

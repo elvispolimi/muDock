@@ -5,6 +5,7 @@
 #include <stdexcept>
 
 // TODO check -Wterminate
+// TODO add check if DEBUG mode is enable
 #define MUDOCK_CHECK(call)                                                             \
   {                                                                                    \
     const cudaError_t err = call;                                                      \
