@@ -7,7 +7,6 @@
 #include <mudock/log.hpp>
 #include <mudock/molecule.hpp>
 #include <mudock/type_alias.hpp>
-#include <ostream>
 #include <unordered_map>
 #include <vector>
 
@@ -46,7 +45,7 @@ namespace mudock {
     fp_type operator[](const int index) const { return e_vdW_Hb[index]; }
 
   private:
-    static constexpr fp_type r_smooth{0.5};                      //Angstrom
+    static constexpr fp_type r_smooth{0.5}; //Angstrom
 
     std::vector<fp_type> e_vdW_Hb = std::vector<fp_type>(NEINT); // vdW & Hb energies
   };
@@ -169,20 +168,9 @@ namespace mudock {
     // receptor_types.erase(std::remove(receptor_types.begin(), receptor_types.end(), mudock::autodock_ff::H));
 
     // Define the autodock ligand types
-    constexpr std::array<autodock_ff, 14> ligand_types{autodock_ff::A,
-                                                       autodock_ff::C,
-                                                       autodock_ff::H,
-                                                       autodock_ff::HD,
-                                                       autodock_ff::N,
-                                                       autodock_ff::NA,
-                                                       autodock_ff::OA,
-                                                       autodock_ff::SA,
-                                                       autodock_ff::Cl,
-                                                       autodock_ff::F,
-                                                       autodock_ff::S,
-                                                       autodock_ff::Br,
-                                                       autodock_ff::P,
-                                                       autodock_ff::I};
+    std::array<autodock_ff, mudock::num_ligand_map_types()> ligand_types;
+    for (std::size_t i = 0; i < ligand_types.size(); ++i)
+      ligand_types[i] = mudock::autodock_type_from_map(static_cast<mudock::ligand_map_types>(i));
 
     for (auto ligand_type: ligand_types) {
       // grid_atom_maps.push_back({ligand_type, npts});
@@ -546,7 +534,7 @@ namespace mudock {
                   cos_theta     = std::min(cos_theta, fp_type{1});
                   cos_theta     = std::max(cos_theta, fp_type{-1});
                   fp_type theta = std::acos(cos_theta);
-                  Hramp         = fp_type{0.5} - fp_type{0.5} * std::cos(theta* fp_type{120} / fp_type{90});
+                  Hramp         = fp_type{0.5} - fp_type{0.5} * std::cos(theta * fp_type{120} / fp_type{90});
                 } /* ia test for closestH */
                 /* END NEW2 calculate dot product of bond vector with bond vector of best hbond */
               }
@@ -642,8 +630,8 @@ namespace mudock {
               if (scratch.atom_map.is_hbonder) {
                 fp_type rsph = vdw_hb_value / fp_type{100};
                 rsph         = std::clamp(rsph, fp_type{0}, fp_type{1});
-                if ((grid_type_desc.hbond == 3 || grid_type_desc.hbond == 5)  /*AS or A2*/
-                    && (receptor_hbond == 1 || receptor_hbond == 2)) {        /*DS or D1*/
+                if ((grid_type_desc.hbond == 3 || grid_type_desc.hbond == 5) /*AS or A2*/
+                    && (receptor_hbond == 1 || receptor_hbond == 2)) {       /*DS or D1*/
                   scratch.energy += vdw_hb_value * Hramp * (racc + (fp_type{1} - racc) * rsph);
                 } else if ((grid_type_desc.hbond == 4)                        /*A1*/
                            && (receptor_hbond == 1 || receptor_hbond == 2)) { /*DS,D1*/
