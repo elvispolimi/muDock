@@ -4,7 +4,8 @@
 #include <mudock/cpp_implementation/chromosome.hpp>
 #include <mudock/cuda_implementation/cuda_random.cuh>
 #include <mudock/cuda_implementation/cuda_wrapper.cuh>
-#include <mudock/cuda_implementation/map_textures.cuh>
+#include <mudock/cuda_implementation/device.cuh>
+#include <mudock/chem/ligand_maps.hpp>
 #include <mudock/grid.hpp>
 #include <mudock/knobs.hpp>
 #include <mudock/molecule.hpp>
@@ -16,6 +17,9 @@ namespace mudock {
   class virtual_screen_cuda {
     // the configuration of the GA algorithm
     knobs configuration;
+
+    std::shared_ptr<const device> dev;
+    cudaStream_t stream;
 
     // Data area
     // TODO some of these can be placed into shared memory
@@ -39,22 +43,11 @@ namespace mudock {
     cuda_wrapper<std::vector, chromosome> chromosomes;
     cuda_wrapper<std::vector, chromosome> best_chromosomes;
 
-    // Grid Maps
-    const point3D center_maps;
-    cudaTextureObject_t electro_tex, desolv_tex;
-    cuda_wrapper<std::vector, cudaTextureObject_t> atom_texs;
-
     // Random generation
     cuda_random_object curand_states;
 
-    cudaStream_t stream;
-
   public:
-    virtual_screen_cuda(const knobs k,
-                        const std::size_t gpu_id,
-                        std::shared_ptr<const grid_atom_mapper>& grid_atom_maps,
-                        std::shared_ptr<const grid_map>& electro_map,
-                        std::shared_ptr<const grid_map>& desolv_map);
+    virtual_screen_cuda(const knobs k, const std::shared_ptr<const device> dev);
 
     void operator()(batch& incoming_batch);
   };

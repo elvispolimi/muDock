@@ -2,7 +2,7 @@
 #include <mudock/cpp_implementation/geometric_transformations.hpp>
 #include <mudock/cpp_implementation/mutate.hpp>
 #include <mudock/cpp_implementation/weed_bonds.hpp>
-#include <mudock/cuda_implementation/map_textures.cuh>
+#include <mudock/chem/ligand_maps.hpp>
 #include <mudock/sycl_implementation/evaluate_fitness.hpp>
 #include <mudock/sycl_implementation/virtual_screen.hpp>
 
@@ -62,13 +62,13 @@ namespace mudock {
 
     init_texture_memory(*desolv_map.get(), desolv_tex);
 
-    atom_texs.wrappers_pointer.alloc(num_device_map_textures());
-    atom_texs.wrappers.reserve(num_device_map_textures());
-    for (int index{0}; index < num_device_map_textures(); ++index) {
+    atom_texs.wrappers_pointer.alloc(num_ligand_map_types());
+    atom_texs.wrappers.reserve(num_ligand_map_types());
+    for (int index{0}; index < num_ligand_map_types(); ++index) {
       atom_texs.wrappers.emplace_back(queue);
       sycl_object<fp_type> &atom_tex = atom_texs.wrappers.back();
       const grid_map &grid_atom =
-          grid_atom_maps.get()->get_atom_map(autodock_type_from_map(static_cast<device_map_textures>(index)));
+          grid_atom_maps.get()->get_atom_map(autodock_type_from_map(static_cast<ligand_map_types>(index)));
       init_texture_memory(grid_atom, atom_tex);
       atom_texs.wrappers_pointer.host[index] = atom_tex.dev_pointer();
     }

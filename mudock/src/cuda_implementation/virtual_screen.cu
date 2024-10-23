@@ -16,56 +16,10 @@
 namespace mudock {
   static constexpr std::size_t max_non_bonds{1024 * 10};
 
-  // TODO pack together maps using float4 data structures
-  void init_texture_memory(const grid_map &map, cudaTextureObject_t &tex_obj, const cudaStream_t &stream) {
-    // Create 3D CUDA array for the texture
-    cudaArray *d_array;
-    cudaChannelFormatDesc channel_desc = cudaCreateChannelDesc<fp_type>();
-
-    const index3D map_index = map.index;
-    cudaExtent extent       = make_cudaExtent(map_index.size_x(), map_index.size_y(), map_index.size_z());
-    MUDOCK_CHECK(cudaMalloc3DArray(&d_array, &channel_desc, extent));
-
-    // Copy data from host to the 3D CUDA array
-    cudaMemcpy3DParms copyParams = {0};
-    copyParams.srcPtr =
-        make_cudaPitchedPtr((void *) map.data(), extent.width * sizeof(fp_type), extent.width, extent.height);
-    copyParams.srcArray = nullptr;
-    copyParams.srcPos   = make_cudaPos(0, 0, 0);
-    copyParams.dstArray = d_array;
-    copyParams.dstPtr   = cudaPitchedPtr{};
-    copyParams.dstPos   = make_cudaPos(0, 0, 0);
-    copyParams.extent   = extent;
-    copyParams.kind     = cudaMemcpyHostToDevice;
-    MUDOCK_CHECK(cudaMemcpy3DAsync(&copyParams, stream));
-
-    // Create texture object
-    cudaResourceDesc res_desc;
-    memset(&res_desc, 0, sizeof(cudaResourceDesc));
-    res_desc.resType         = cudaResourceTypeArray;
-    res_desc.res.array.array = d_array;
-
-    cudaTextureDesc tex_desc;
-    memset(&tex_desc, 0, sizeof(cudaTextureDesc));
-    tex_desc.addressMode[0] = cudaAddressModeClamp;
-    tex_desc.addressMode[1] = cudaAddressModeClamp;
-    tex_desc.addressMode[2] = cudaAddressModeClamp;
-    // tex_desc.filterMode     = cudaFilterModeLinear; // Enable linear interpolation
-    tex_desc.filterMode       = cudaFilterModePoint;
-    tex_desc.readMode         = cudaReadModeElementType;
-    tex_desc.normalizedCoords = false; // We will use unnormalized coordinates
-
-    // Create the texture object
-    MUDOCK_CHECK(cudaCreateTextureObject(&tex_obj, &res_desc, &tex_desc, NULL));
-  }
-
-  virtual_screen_cuda::virtual_screen_cuda(const knobs k,
-                                           const std::size_t gpu_id,
-                                           std::shared_ptr<const grid_atom_mapper> &grid_atom_maps,
-                                           std::shared_ptr<const grid_map> &electro_map,
-                                           std::shared_ptr<const grid_map> &desolv_map)
+  virtual_screen_cuda::virtual_screen_cuda(const knobs k, const std::shared_ptr<const device> dev)
       : configuration(k),
-        center_maps(electro_map.get()->center),
+        dev(dev),
+        stream(dev.get()->get_stream()),
         original_ligand_x(stream),
         original_ligand_y(stream),
         original_ligand_z(stream),
@@ -92,35 +46,7 @@ namespace mudock {
         ligand_scores(stream),
         chromosomes(stream),
         best_chromosomes(stream),
-        atom_texs(stream),
-        curand_states(stream) {
-    MUDOCK_CHECK(cudaSetDevice(static_cast<int>(gpu_id)));
-    MUDOCK_CHECK(cudaStreamCreate(&stream););
-    info("Worker CUDA on duty! Set affinity to GPU ", gpu_id);
-    // TODO move this part into the cuda_worker -> once per GPU
-    // Allocate grid maps
-    assert(electro_map.get()->index == desolv_map.get()->index &&
-           desolv_map.get()->index == grid_atom_maps.get()->get_index());
-    init_texture_memory(*electro_map.get(), electro_tex, stream);
-
-    init_texture_memory(*desolv_map.get(), desolv_tex, stream);
-
-    std::size_t index{0};
-    atom_texs.alloc(num_device_map_textures());
-    for (auto &atom_tex: atom_texs.host) {
-      const grid_map &grid_atom =
-          grid_atom_maps.get()->get_atom_map(autodock_type_from_map(static_cast<device_map_textures>(index)));
-      init_texture_memory(grid_atom, atom_tex, stream);
-      ++index;
-    }
-    atom_texs.copy_host2device();
-
-    // Grid spacing fixed to 0.5 Angstrom
-    setup_constant_memory(electro_map.get()->minimum_coord,
-                          electro_map.get()->maximum_coord,
-                          electro_map.get()->center,
-                          stream);
-  }
+        curand_states(stream) {}
 
   void virtual_screen_cuda::operator()(batch &incoming_batch) {
     const std::size_t batch_atoms    = incoming_batch.batch_max_atoms;
@@ -187,9 +113,9 @@ namespace mudock {
       translate_molecule(x,
                          y,
                          z,
-                         center_maps.x - ligand_center_of_mass.x,
-                         center_maps.y - ligand_center_of_mass.y,
-                         center_maps.z - ligand_center_of_mass.z);
+                         dev.get()->center_maps.x - ligand_center_of_mass.x,
+                         dev.get()->center_maps.y - ligand_center_of_mass.y,
+                         dev.get()->center_maps.z - ligand_center_of_mass.z);
 
       std::memcpy((void *) (original_ligand_x.host_pointer() + stride_atoms),
                   x.data(),
@@ -347,10 +273,10 @@ namespace mudock {
                                                                         frag_start_atom_indices.dev_pointer(),
                                                                         frag_stop_atom_indices.dev_pointer(),
                                                                         chromosomes.dev_pointer(),
-                                                                        atom_texs.dev_pointer(),
+                                                                        dev.get()->atom_texs.dev_pointer(),
                                                                         map_texture_index.dev_pointer(),
-                                                                        electro_tex,
-                                                                        desolv_tex,
+                                                                        dev.get()->electro_tex,
+                                                                        dev.get()->desolv_tex,
                                                                         curand_states.dev_pointer(),
                                                                         ligand_scores.dev_pointer(),
                                                                         best_chromosomes.dev_pointer());

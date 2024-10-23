@@ -1,17 +1,13 @@
 #pragma once
 
-#include "mudock/type_alias.hpp"
-
 #include <cmath>
-#include <cstddef>
-#include <iostream>
 #include <mudock/chem.hpp>
 #include <mudock/chem/grid_const.hpp>
 #include <mudock/grid/mdindex.hpp>
 #include <mudock/grid/point3D.hpp>
 #include <mudock/log.hpp>
 #include <mudock/molecule.hpp>
-#include <stdexcept>
+#include <mudock/type_alias.hpp>
 #include <vector>
 
 namespace mudock {
