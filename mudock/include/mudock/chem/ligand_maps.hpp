@@ -4,7 +4,7 @@
 #include <stdexcept>
 
 namespace mudock {
-  enum class ligand_map_types : int { A = 0, C, H, HD, N, NA, OA, SA, Cl, F, S, Br, P, I , Si };
+  enum class ligand_map_types : int { A = 0, C, H, HD, N, NA, OA, SA, Cl, F, S, Br, P, I, Si };
 
   static constexpr int num_ligand_map_types() { return 15; }
 
@@ -24,7 +24,7 @@ namespace mudock {
       case autodock_ff::Br: return ligand_map_types::Br;
       case autodock_ff::P: return ligand_map_types::P;
       case autodock_ff::I: return ligand_map_types::I;
-      case autodock_ff::Si: return ligand_map_types::I;
+      case autodock_ff::Si: return ligand_map_types::Si;
       default:
         throw std::runtime_error("Missing map texture " + std::string{get_description(autodock_type).name});
     }
