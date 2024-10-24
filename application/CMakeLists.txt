@@ -46,6 +46,16 @@ if(MUDOCK_ENABLE_OMP)
   target_link_options("${CMAKE_PROJECT_NAME}" PRIVATE "-fopenmp-targets=nvptx64")
 endif()
 
+if(MUDOCK_ENABLE_LIKWID)
+  if(LIKWID_PATH STREQUAL "")
+    message(FATAL "Missing likwid installation path")
+  endif()
+  target_include_directories("${CMAKE_PROJECT_NAME}" PRIVATE "${LIKWID_PATH}/include")
+  target_link_directories("${CMAKE_PROJECT_NAME}" PUBLIC "${LIKWID_PATH}/lib")
+  target_link_libraries("${CMAKE_PROJECT_NAME}" likwid)
+  add_definitions(-DLIKWID_PERFMON)
+ENDIF()
+
 # ########################################################################
 # ### Declare the install step
 # ########################################################################

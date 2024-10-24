@@ -5,11 +5,12 @@
 #include <iostream>
 #include <limits>
 #include <memory>
-// #include <mudock/cuda_implementation/map_textures.cuh>
+#include <mudock/chem/ligand_maps.hpp>
 #include <mudock/mudock.hpp>
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include <mudock/likwid_utils.hpp>
 
 // utility function that reads the whole content of a stream
 template<class stream_type>
@@ -52,8 +53,8 @@ int main(int argc, char* argv[]) {
   // auto tp  = mudock::point3D{};
   // auto itp = mudock::index3D{1, 1, 1};
   // auto sv  = std::vector<mudock::grid_atom_map>{};
-  // for (int i = 0; i < mudock::num_device_map_textures(); ++i)
-  //   sv.emplace_back(mudock::autodock_type_from_map(static_cast<mudock::device_map_textures>(i)), protein);
+  // for (int i = 0; i < mudock::num_ligand_map_types(); ++i)
+  //   sv.emplace_back(mudock::autodock_type_from_map(static_cast<mudock::ligand_map_types>(i)), protein);
   // auto grid_atom_maps    = std::make_shared<const mudock::grid_atom_mapper>(sv);
   // auto electrostatic_map = std::make_shared<const mudock::grid_map>(protein);
   // auto desolvation_map   = std::make_shared<const mudock::grid_map>(protein);
@@ -104,6 +105,8 @@ int main(int argc, char* argv[]) {
 
   // compute all the ligands according to the input configuration
   mudock::info("Virtual screening the ligands ...");
+  LIKWID_MARKER_INIT;
+
   auto output_queue = std::make_shared<mudock::safe_stack<mudock::static_molecule>>();
   {
     auto threadpool = mudock::threadpool();
@@ -149,6 +152,8 @@ int main(int argc, char* argv[]) {
                        output_queue);
     mudock::info("All workers have been created!");
   } // when we exit from this block the computation is complete
+
+  LIKWID_MARKER_CLOSE;
 
   // after the computation it will be nice to print the score of all the molecules
   mudock::info("Printing the scores ...");

@@ -247,7 +247,7 @@ add_rdkit_dep(libmudock)
 # check if we need to activate the compilation flag that signals Polygeist transpilation
 if(MUDOCK_ENABLE_POLY)
   target_compile_definitions(libmudock PUBLIC MUDOCK_USE_POLY)
-  target_link_directories(libmudock PUBLIC ${MUDOCK_POLY_LIB_PATH})
+  target_link_direcctories(libmudock PUBLIC ${MUDOCK_POLY_LIB_PATH})
   target_link_libraries(libmudock PRIVATE mudock_poly omp)
 endif()
 
@@ -342,6 +342,17 @@ if(MUDOCK_ENABLE_SYCL)
   # NOTE: the compiler will be set by default to the AdaptiveCpp one
   # NOTE: AdaptiveCpp Single pass compiler optimizations are not required
   add_sycl_to_target(TARGET libmudock SOURCES)
+endif()
+
+# Profiling
+if(MUDOCK_ENABLE_LIKWID)
+  if(LIKWID_PATH STREQUAL "")
+    message(FATAL "Missing likwid installation path")
+  endif()
+  target_include_directories(libmudock PRIVATE "${LIKWID_PATH}/include")
+  target_link_directories(libmudock PUBLIC "${LIKWID_PATH}/lib")
+  target_link_libraries(libmudock PUBLIC likwid)
+  add_definitions(-DLIKWID_PERFMON)
 endif()
 
 # ########################################################################

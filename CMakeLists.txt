@@ -183,6 +183,12 @@ if(MUDOCK_ENABLE_OMP)
 endif()
 
 # ########################################################################
+# ### Profiling
+# ########################################################################
+option(MUDOCK_ENABLE_LIKWID "Enable profiling using likwid" OFF)
+set(LIKWID_PATH "" CACHE STRING "likwid installation folder")
+
+# ########################################################################
 # ### Tweak the default configuration
 # ########################################################################
 
@@ -252,6 +258,7 @@ message(STATUS "//===---------------------------===//")
 message(STATUS "CXX compiler........................: ${CMAKE_CXX_COMPILER} (CMAKE_CXX_COMPILER)")
 message(STATUS "Build type..........................: ${CMAKE_BUILD_TYPE} (CMAKE_BUILD_TYPE)")
 message(STATUS "Install prefix......................: ${CMAKE_INSTALL_PREFIX} (CMAKE_INSTALL_PREFIX)")
+message(STATUS "Likwid Profiling....................: ${MUDOCK_ENABLE_LIKWID} (MUDOCK_ENABLE_LIKWID)")
 message(STATUS "CPU Architecture....................: ${MUDOCK_CPU_ARCHITECTURES} (MUDOCK_CPU_ARCHITECTURES)")
 
 message(STATUS "Enable CUDA.........................: ${MUDOCK_ENABLE_CUDA} (MUDOCK_ENABLE_CUDA)")
