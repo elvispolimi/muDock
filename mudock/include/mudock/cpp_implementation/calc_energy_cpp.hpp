@@ -20,7 +20,7 @@ namespace mudock {
                       const std::span<autodock_ff> ligand_autodock_type,
                       const int num_atoms,
                       const int n_torsions,
-                      const std::span<non_bond_parameter> non_bond_list,
+                      const grid<uint_fast8_t, index2D>& nbmatrix,
                       const grid_atom_mapper& grid_maps,
                       const grid_map& electro_map,
                       const grid_map& desolv_map);
