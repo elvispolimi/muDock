@@ -4,6 +4,7 @@
 #include <mudock/log.hpp>
 #include <stdexcept>
 #include <string>
+#include <mudock/likwid_utils.hpp>
 
 namespace mudock {
   cpp_worker::cpp_worker(const knobs knobs,
@@ -24,6 +25,8 @@ namespace mudock {
   }
 
   void cpp_worker::main() {
+    LIKWID_MARKER_REGISTER("GA");
+  
     auto new_ligand = input_stack->dequeue();
     while (new_ligand) {
       virtual_screen(*new_ligand);

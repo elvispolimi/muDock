@@ -11,7 +11,7 @@
 #include <mudock/molecule.hpp>
 #include <mudock/utils.hpp>
 #include <vector>
-
+#include <mudock/likwid_utils.hpp>
 namespace mudock {
 
   virtual_screen_cpp::virtual_screen_cpp(std::shared_ptr<const grid_atom_mapper> &_grid_atom_maps,
@@ -101,6 +101,8 @@ namespace mudock {
     // weed_bonds(nbmatrix, non_bond_list, num_atoms, ligand_fragments);
     weed_bonds(nbmatrix, num_atoms, ligand_fragments);
 
+    LIKWID_MARKER_START("GA");
+
     // Simulate the population evolution for the given amount of time
     const auto num_generations = configuration.num_generations;
     for (std::size_t generation = 0; generation < num_generations; ++generation) {
@@ -172,6 +174,8 @@ namespace mudock {
       // swap the new population with the old one
       population.swap(next_population);
     }
+
+    LIKWID_MARKER_STOP("GA");
 
     // update the ligand position with the best one that we found
     const auto best_individual_it =
