@@ -97,8 +97,9 @@ namespace mudock {
     const int num_atoms = ligand.num_atoms();
     grid<uint_fast8_t, index2D> nbmatrix{{num_atoms, num_atoms}};
     nonbonds(nbmatrix, ligand.get_bonds(), num_atoms);
-    std::vector<non_bond_parameter> non_bond_list;
-    weed_bonds(nbmatrix, non_bond_list, num_atoms, ligand_fragments);
+    // std::vector<non_bond_parameter> non_bond_list;
+    // weed_bonds(nbmatrix, non_bond_list, num_atoms, ligand_fragments);
+    weed_bonds(nbmatrix, num_atoms, ligand_fragments);
 
     // Simulate the population evolution for the given amount of time
     const auto num_generations = configuration.num_generations;
@@ -136,7 +137,7 @@ namespace mudock {
                                         ligand.get_autodock_type(),
                                         ligand.num_atoms(),
                                         ligand_fragments.get_num_rotatable_bonds(),
-                                        non_bond_list,
+                                        nbmatrix,
                                         *grid_atom_maps,
                                         *electro_map,
                                         *desolv_map);

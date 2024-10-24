@@ -40,7 +40,7 @@ namespace mudock {
   |____________________________________________________________________________|
   */
   void weed_bonds(grid<uint_fast8_t, index2D>& nbmatrix,
-                  std::vector<non_bond_parameter>& non_bond_list,
+                  // std::vector<non_bond_parameter>& non_bond_list,
                   const int num_atoms,
                   const fragments<static_containers>& ligand_fragments);
 } // namespace mudock
