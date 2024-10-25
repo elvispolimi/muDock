@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <cstring>
 #include <mudock/chem/autodock_parameters.hpp>
@@ -11,9 +12,8 @@
 #include <mudock/utils.hpp>
 #include <random>
 #include <stdexcept>
-#include <chrono>
 
-#define FLATTENED_2D(x, y, index_x) (y * index_x + x)
+#define FLATTENED_2D(x, y, index_x) ((y) * index_x + (x))
 
 namespace mudock {
   static constexpr auto coordinate_step = fp_type{0.2};
@@ -101,8 +101,6 @@ namespace mudock {
     for (int index = 0; index < num_atoms; ++index) {
       fp_type coord[3]{ligand_x[index], ligand_y[index], ligand_z[index]};
       const auto& atom_charge = ligand_charge[index];
-      const fp_type* atom_map =
-          grid_maps[static_cast<int>(map_from_autodock_type(ligand_autodock_type[index]))];
 
       if (coord[0] < minimum[0] || coord[0] > maximum[0] || coord[1] < minimum[1] || coord[1] > maximum[1] ||
           coord[2] < minimum[2] || coord[2] > maximum[2]) {
@@ -114,6 +112,13 @@ namespace mudock {
         elect_total_trilinear += epenalty;
         emap_total_trilinear += epenalty;
       } else {
+        const fp_type* atom_map =
+            grid_maps[static_cast<int>(map_from_autodock_type(ligand_autodock_type[index]))];
+
+        coord[0] = (coord[0] - minimum[0]) * inv_spacing;
+        coord[1] = (coord[1] - minimum[1]) * inv_spacing;
+        coord[2] = (coord[2] - minimum[2]) * inv_spacing;
+
         // Trilinear Interpolationp
         elect_total_trilinear +=
             trilinear_interpolation(electro_map, coord, map_index_x, map_index_xy) * atom_charge;
