@@ -2,7 +2,7 @@
 
 #include <mudock/type_alias.hpp>
 
-#define FLATTENED_3D(x, y, z, index_x, index_xy) (index_xy * z + y * index_x + x)
+#define FLATTENED_3D(x, y, z, index_x, index_xy) (index_xy * (z) + (y) * index_x + (x))
 
 namespace mudock {
   inline fp_type trilinear_interpolation(const fp_type* __restrict__ map,

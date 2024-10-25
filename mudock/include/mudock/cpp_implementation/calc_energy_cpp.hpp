@@ -3,6 +3,7 @@
 #include <mudock/chem/autodock_types.hpp>
 #include <mudock/cpp_implementation/chromosome.hpp>
 #include <mudock/type_alias.hpp>
+#include <stdint.h>
 
 namespace mudock {
   // TODO template parameters on num_atoms?
