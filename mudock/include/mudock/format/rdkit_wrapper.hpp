@@ -4,20 +4,12 @@
 #include <GraphMol/RWMol.h>
 #include <GraphMol/SmilesParse/SmilesParse.h>
 #include <GraphMol/Substruct/SubstructMatch.h>
-#include <array>
 #include <cassert>
 #include <cmath>
-#include <concepts>
-#include <cstdint>
-#include <map>
 #include <memory>
 #include <mudock/chem.hpp>
 #include <mudock/molecule.hpp>
 #include <mudock/type_alias.hpp>
-#include <stdexcept>
-#include <string>
-#include <string_view>
-#include <unordered_map>
 
 namespace mudock {
 
@@ -72,8 +64,7 @@ namespace mudock {
       const auto atom_element = parse_element_symbol(atom->getSymbol());
       // Get which atoms are aromatic
       // TODO check the cast between bool and uinfast8_t
-      assert(atom_element.has_value());
-      dest.elements(mudock_atom_index)    = atom_element.value();
+      dest.elements(mudock_atom_index)    = atom_element;
       dest.is_aromatic(mudock_atom_index) = atom->getIsAromatic();
       dest.x(mudock_atom_index)           = static_cast<fp_type>(x);
       dest.y(mudock_atom_index)           = static_cast<fp_type>(y);

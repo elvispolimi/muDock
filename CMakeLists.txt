@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.25 FATAL_ERROR)
-cmake_policy(SET CMP0167 NEW)
+# cmake_policy(SET CMP0167 NEW)
 
 # Utilities
 # define the function to remove the version from the end of shared object

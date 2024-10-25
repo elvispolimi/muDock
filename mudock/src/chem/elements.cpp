@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <mudock/chem/elements.hpp>
+#include <stdexcept>
 
 //===------------------------------------------------------------------------------------------------------
 // WARNING: This file has been automatically generated from chem/periodic_table.json
@@ -7,12 +8,14 @@
 
 namespace mudock {
 
-  std::optional<element> parse_element_symbol(const std::string_view symbol) {
+  element parse_element_symbol(const std::string_view symbol) {
     const auto element_it = std::find_if(std::begin(ELEMENT_DICTIONARY),
                                          std::end(ELEMENT_DICTIONARY),
                                          [&symbol](const auto& e) { return e.symbol == symbol; });
-    return element_it != std::end(ELEMENT_DICTIONARY) ? std::optional{element_it->value}
-                                                      : std::optional<element>{};
+    if (element_it != std::end(ELEMENT_DICTIONARY))
+      return element_it->value;
+    else
+      throw std::runtime_error("Missing element");
   }
 
   const std::array<element_description, 119> ELEMENT_DICTIONARY = {{

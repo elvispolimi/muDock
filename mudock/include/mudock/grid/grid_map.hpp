@@ -63,7 +63,7 @@ namespace mudock {
     std::vector<T> grid_values;
 
   public:
-    grid(const index_type _index): grid_values(_index.get_dim()), index(_index){};
+    grid(const index_type _index): grid_values(_index.get_dim()), index(_index) {};
     ~grid()                       = default;
     grid(grid&& other)            = default;
     grid(const grid& other)       = default;
@@ -89,6 +89,7 @@ namespace mudock {
 
   class grid_map: public grid<fp_type, index3D> {
   public:
+    // TODO check if only minimum_coord and maximum_coord are still neede
     const point3D minimum, maximum, center;
     const point3D minimum_coord, maximum_coord;
 

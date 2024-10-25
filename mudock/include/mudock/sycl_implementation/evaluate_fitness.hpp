@@ -16,7 +16,7 @@ namespace mudock {
   static constexpr fp_type coordinate_step{0.2};
   static constexpr fp_type angle_step{4};
 
-  fp_type trilinear_interpolation_sycl(const fp_type coord[], const fp_type* tex, const index3D& index) {
+  fp_type trilinear_interpolation_sycl(const fp_type coord[], const fp_type* __restrict__ tex, const index3D& index) {
     // Interpolation CUDA
     const int u0      = coord[0];
     const fp_type p0u = coord[0] - static_cast<fp_type>(u0);

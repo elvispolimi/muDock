@@ -6,9 +6,6 @@
 #include <mudock/knobs.hpp>
 #include <mudock/molecule.hpp>
 #include <mudock/type_alias.hpp>
-#include <random>
-#include <span>
-#include <string>
 #include <vector>
 
 namespace mudock {
@@ -26,10 +23,6 @@ namespace mudock {
     // define the GA population
     std::vector<individual> population;
     std::vector<individual> next_population;
-
-    // this algorithm requires a random source to work
-    std::mt19937 generator;
-    std::uniform_real_distribution<fp_type> dist{fp_type{0.0}, fp_type{1.0}};
 
     // TODO
     // random_generator<int> rnd_gen;
