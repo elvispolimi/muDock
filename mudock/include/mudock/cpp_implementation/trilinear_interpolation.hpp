@@ -1,28 +1,38 @@
 #pragma once
 
-#include <mudock/grid.hpp>
 #include <mudock/type_alias.hpp>
 
+#define FLATTENED_3D(x, y, z, index_x, index_xy) (index_xy * z + y * index_x + x)
+
 namespace mudock {
-  inline fp_type trilinear_interpolation(const grid_map& map, const point3D& coord) {
-    const point3D coordinates_in_grid = map.get_index_from_coordinates(coord);
-    const point3D coordinates_floored = point3D{std::floor(coordinates_in_grid.x),
-                                                std::floor(coordinates_in_grid.y),
-                                                std::floor(coordinates_in_grid.z)};
+  inline fp_type trilinear_interpolation(const fp_type* __restrict__ map,
+                                         const fp_type* __restrict__ coord,
+                                         const int& map_index_x,
+                                         const int& map_index_xy) {
+    const int u0      = coord[0];
+    const fp_type p0u = coord[0] - static_cast<fp_type>(u0);
+    const fp_type p1u = fp_type{1} - p0u;
 
-    const fp_type delta_low_x = coordinates_in_grid.x - coordinates_floored.x;
-    const fp_type delta_low_y = coordinates_in_grid.y - coordinates_floored.y;
-    const fp_type delta_low_z = coordinates_in_grid.z - coordinates_floored.z;
+    const int v0      = coord[1];
+    const fp_type p0v = coord[1] - static_cast<fp_type>(v0);
+    const fp_type p1v = fp_type{1} - p0v;
 
-    std::array<fp_type, 2> px{fp_type{1} - delta_low_x, delta_low_x};
-    std::array<fp_type, 2> py{fp_type{1} - delta_low_y, delta_low_y};
-    std::array<fp_type, 2> pz{fp_type{1} - delta_low_z, delta_low_z};
+    const int w0      = coord[2];
+    const fp_type p0w = coord[2] - static_cast<fp_type>(w0);
+    const fp_type p1w = fp_type{1} - p0w;
+
+    const fp_type pu[2] = {p1u, p0u};
+    const fp_type pv[2] = {p1v, p0v};
+    const fp_type pw[2] = {p1w, p0w};
     fp_type value{0};
-    for (int i = 0; i <= 1; ++i)
-      for (int j = 0; j <= 1; ++j)
-        for (int t = 0; t <= 1; ++t) {
-          value += px[t] * py[j] * pz[i] *
-                   map.at(coordinates_floored.x + t, coordinates_floored.y + j, coordinates_floored.z + i);
+#pragma unroll
+    for (int i = 0; i <= 1; i++)
+#pragma unroll
+      for (int t = 0; t <= 1; t++)
+#pragma unroll
+        for (int n = 0; n <= 1; n++) {
+          const fp_type tmp = map[FLATTENED_3D(u0 + n, v0 + t, w0 + i, map_index_x, map_index_xy)];
+          value += pu[n] * pv[t] * pw[i] * tmp;
         }
     return value;
   }

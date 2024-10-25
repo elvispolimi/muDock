@@ -1,4 +1,3 @@
-#include <algorithm>
 #include <mudock/cpp_implementation/calc_energy_cpp.hpp>
 #include <mudock/cpp_implementation/center_of_mass.hpp>
 #include <mudock/cpp_implementation/chromosome.hpp>
@@ -8,16 +7,16 @@
 #include <mudock/cpp_implementation/virtual_screen.hpp>
 #include <mudock/cpp_implementation/weed_bonds.hpp>
 #include <mudock/grid.hpp>
+#include <mudock/likwid_utils.hpp>
 #include <mudock/molecule.hpp>
 #include <mudock/utils.hpp>
-#include <vector>
-#include <mudock/likwid_utils.hpp>
+
 namespace mudock {
 
-  virtual_screen_cpp::virtual_screen_cpp(std::shared_ptr<const grid_atom_mapper> &_grid_atom_maps,
-                                         std::shared_ptr<const grid_map> &_electro_map,
-                                         std::shared_ptr<const grid_map> &_desolv_map,
-                                         const knobs &knobs)
+  virtual_screen_cpp::virtual_screen_cpp(std::shared_ptr<const grid_atom_mapper>& _grid_atom_maps,
+                                         std::shared_ptr<const grid_map>& _electro_map,
+                                         std::shared_ptr<const grid_map>& _desolv_map,
+                                         const knobs& knobs)
       : grid_atom_maps(_grid_atom_maps),
         electro_map(_electro_map),
         desolv_map(_desolv_map),
@@ -25,52 +24,15 @@ namespace mudock {
         next_population(knobs.population_number),
         configuration(knobs) {}
 
-  template<typename T>
-  [[nodiscard]] const T virtual_screen_cpp::random_gen_cpp(const T &min, const T &max) {
-    fp_type value;
-    if constexpr (is_debug())
-      // TODO value here for debug
-      value = fp_type{0.4};
-    else {
-      value = dist(generator);
-    }
-    return static_cast<T>(value * (max - min) + min);
-  }
-
-  int virtual_screen_cpp::get_selection_distribution() {
-    return random_gen_cpp<int>(0, configuration.population_number - 1);
-  };
-
-  fp_type virtual_screen_cpp::get_init_change_distribution() { return random_gen_cpp<fp_type>(-45, 45); }
-  fp_type virtual_screen_cpp::get_mutation_change_distribution() { return random_gen_cpp<fp_type>(-10, 10); };
-  fp_type virtual_screen_cpp::get_mutation_coin_distribution() { return random_gen_cpp<fp_type>(0, 1); };
-  int virtual_screen_cpp::get_crossover_distribution(const int &num_rotamers) {
-    return random_gen_cpp<int>(0, 6 + num_rotamers);
-  };
-
-  const chromosome &virtual_screen_cpp::tournament_selection() {
-    const auto num_iterations = configuration.tournament_length;
-    auto best_individual      = get_selection_distribution();
-    for (std::size_t i = 0; i < num_iterations; ++i) {
-      auto contendent = get_selection_distribution();
-      if (population[contendent].score < population[best_individual].score) {
-        best_individual = contendent;
-      }
-    }
-    return population[best_individual].genes;
-  }
-
-  void virtual_screen_cpp::operator()(static_molecule &ligand) {
-    // Reset the random number generator to improve consistency
-    generator = std::mt19937{
-        static_cast<size_t>(std::chrono::high_resolution_clock::now().time_since_epoch().count())};
-
+  void virtual_screen_cpp::operator()(static_molecule& ligand) {
     // Place the molecule to the center of the target protein
+    const int num_atoms = ligand.num_atoms();
     const auto x = ligand.get_x(), y = ligand.get_y(), z = ligand.get_z();
     const auto ligand_center_of_mass = compute_center_of_mass(x, y, z);
-    translate_molecule(x,
-                       y,
-                       z,
+    translate_molecule(x.data(),
+                       y.data(),
+                       z.data(),
+                       num_atoms,
                        electro_map->center.x - ligand_center_of_mass.x,
                        electro_map->center.y - ligand_center_of_mass.y,
                        electro_map->center.z - ligand_center_of_mass.z);
@@ -79,22 +41,9 @@ namespace mudock {
     auto graph = make_graph(ligand.get_bonds());
     const fragments<static_containers> ligand_fragments{graph, ligand.get_bonds(), ligand.num_atoms()};
 
-    const auto coordinate_step = fp_type{0.2};
-    const auto angle_step      = fp_type{4};
-
-    // Randomly initialize the population
     const auto num_rotamers = ligand_fragments.get_num_rotatable_bonds();
-    for (auto &element: population) {
-      for (int i{0}; i < 3; ++i) { // initialize the rigid translation
-        element.genes[i] = get_init_change_distribution() * coordinate_step;
-      }
-      for (int i{3}; i < 6 + num_rotamers; ++i) { // initialize the rotations
-        element.genes[i] = get_init_change_distribution() * angle_step;
-      }
-    }
 
     // Get weed bonds and non bonds lists
-    const int num_atoms = ligand.num_atoms();
     grid<uint_fast8_t, index2D> nbmatrix{{num_atoms, num_atoms}};
     nonbonds(nbmatrix, ligand.get_bonds(), num_atoms);
     // std::vector<non_bond_parameter> non_bond_list;
@@ -103,77 +52,71 @@ namespace mudock {
 
     LIKWID_MARKER_START("GA");
 
-    // Simulate the population evolution for the given amount of time
-    const auto num_generations = configuration.num_generations;
-    for (std::size_t generation = 0; generation < num_generations; ++generation) {
-      // Evaluate the fitness of the population
-      for (std::size_t element_index = 0; element_index < population.size(); ++element_index) {
-        auto &element = population[element_index];
-        // copy the ligand original coordinates in temporary array
-        auto altered_x = static_containers::atoms_size<fp_type>{};
-        auto altered_y = static_containers::atoms_size<fp_type>{};
-        auto altered_z = static_containers::atoms_size<fp_type>{};
-        std::copy(std::cbegin(x), std::cend(x), std::begin(altered_x));
-        std::copy(std::cbegin(y), std::cend(y), std::begin(altered_y));
-        std::copy(std::cbegin(z), std::cend(z), std::begin(altered_z));
-        // TODO check it it makes sense -> print the MOL2
-        // apply the transformation encoded in the element genes to the original ligand
-        apply(std::span(std::begin(altered_x), x.size()),
-              std::span(std::begin(altered_y), y.size()),
-              std::span(std::begin(altered_z), z.size()),
-              element.genes,
-              ligand_fragments);
+    const fp_type minimum[3] = {electro_map.get()->minimum_coord.x,
+                                electro_map.get()->minimum_coord.y,
+                                electro_map.get()->minimum_coord.z};
+    const fp_type maximum[3] = {electro_map.get()->maximum_coord.x,
+                                electro_map.get()->maximum_coord.y,
+                                electro_map.get()->maximum_coord.z};
+    const fp_type center[3]  = {electro_map.get()->center.x,
+                                electro_map.get()->center.y,
+                                electro_map.get()->center.z};
 
-        // compute the energy of the system
-        const auto energy = calc_energy(altered_x,
-                                        altered_y,
-                                        altered_z,
-                                        ligand.get_vol(),
-                                        ligand.get_solpar(),
-                                        ligand.get_charge(),
-                                        ligand.get_num_hbond(),
-                                        ligand.get_Rij_hb(),
-                                        ligand.get_Rii(),
-                                        ligand.get_epsij_hb(),
-                                        ligand.get_epsii(),
-                                        ligand.get_autodock_type(),
-                                        ligand.num_atoms(),
-                                        ligand_fragments.get_num_rotatable_bonds(),
-                                        nbmatrix,
-                                        *grid_atom_maps,
-                                        *electro_map,
-                                        *desolv_map);
-        element.score     = energy; // dummy implementation to test the genetic
-      }
+    fp_type const* grid_maps[num_ligand_map_types()];
+    constexpr_for<0, num_ligand_map_types(), 1>([&](const int type) {
+      grid_maps[type] = grid_atom_maps.get()
+                            ->get_atom_map(autodock_type_from_map(static_cast<ligand_map_types>(type)))
+                            .data();
+    });
 
-      // Generate the new population
-      for (auto &next_individual: next_population) {
-        // select the parent
-        const auto &parent1 = tournament_selection();
-        const auto &parent2 = tournament_selection();
-
-        // generate the offspring
-        const auto split_index = get_crossover_distribution(num_rotamers);
-        std::copy(std::begin(parent1), std::begin(parent1) + split_index, std::begin(next_individual.genes));
-        std::copy(std::begin(parent2) + split_index,
-                  std::end(parent2),
-                  std::begin(next_individual.genes) + split_index);
-        next_individual.score = fp_type{0};
-
-        // mutate the offspring
-        for (int i{0}; i < 3; ++i) {
-          if (get_mutation_coin_distribution() < configuration.mutation_prob)
-            next_individual.genes[i] += get_mutation_change_distribution() * coordinate_step;
-        }
-        for (int i{3}; i < 6 + num_rotamers; ++i) {
-          if (get_mutation_coin_distribution() < configuration.mutation_prob)
-            next_individual.genes[i] += get_mutation_change_distribution() * angle_step;
-        }
-      }
-
-      // swap the new population with the old one
-      population.swap(next_population);
+    std::vector<int> frag_masks;
+    std::vector<int> frag_start_indexes;
+    std::vector<int> frag_stop_indexes;
+    frag_masks.resize(num_atoms * num_rotamers);
+    frag_start_indexes.resize(num_rotamers);
+    frag_stop_indexes.resize(num_rotamers);
+    for (int rot = 0; rot < num_rotamers; ++rot) {
+      std::memcpy((frag_masks.data() + num_atoms * rot),
+                  ligand_fragments.get_mask(rot).data(),
+                  num_atoms * sizeof(int));
+      const auto [start_index, stop_index] = ligand_fragments.get_rotatable_atoms(rot);
+      frag_start_indexes.data()[rot]       = start_index;
+      frag_stop_indexes.data()[rot]        = stop_index;
     }
+
+    // Simulate the population evolution for the given amount of time
+    evaluate_fitness(x.data(),
+                     y.data(),
+                     z.data(),
+                     ligand.get_vol().data(),
+                     ligand.get_solpar().data(),
+                     ligand.get_charge().data(),
+                     ligand.get_num_hbond().data(),
+                     ligand.get_Rij_hb().data(),
+                     ligand.get_Rii().data(),
+                     ligand.get_epsij_hb().data(),
+                     ligand.get_epsii().data(),
+                     ligand.get_autodock_type().data(),
+                     num_atoms,
+                     ligand_fragments.get_num_rotatable_bonds(),
+                     frag_masks.data(),
+                     frag_start_indexes.data(),
+                     frag_stop_indexes.data(),
+                     nbmatrix.data(),
+                     grid_maps,
+                     electro_map.get()->data(),
+                     desolv_map.get()->data(),
+                     configuration.num_generations,
+                     configuration.population_number,
+                     configuration.tournament_length,
+                     configuration.mutation_prob,
+                     minimum,
+                     maximum,
+                     center,
+                     electro_map.get()->index.size_x(),
+                     electro_map.get()->index.size_xy(),
+                     population.data(),
+                     next_population.data());
 
     LIKWID_MARKER_STOP("GA");
 
@@ -182,7 +125,15 @@ namespace mudock {
         std::min_element(std::begin(next_population),
                          std::end(next_population),
                          [](const auto a, const auto b) { return a.score < b.score; });
-    apply(x, y, z, best_individual_it->genes, ligand_fragments);
+    apply(x.data(),
+          y.data(),
+          z.data(),
+          best_individual_it->genes,
+          num_atoms,
+          num_rotamers,
+          frag_masks.data(),
+          frag_start_indexes.data(),
+          frag_stop_indexes.data());
     ligand.properties.assign(property_type::SCORE, std::to_string(best_individual_it->score));
   }
 

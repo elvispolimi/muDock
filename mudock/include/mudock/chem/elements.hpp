@@ -2,8 +2,6 @@
 
 #include <array>
 #include <cassert>
-#include <cstdint>
-#include <optional>
 #include <string_view>
 
 //===------------------------------------------------------------------------------------------------------
@@ -150,6 +148,6 @@ namespace mudock {
     assert(ELEMENT_DICTIONARY[static_cast<int>(e)].value == e);
     return ELEMENT_DICTIONARY[static_cast<int>(e)];
   }
-  std::optional<element> parse_element_symbol(const std::string_view symbol);
+  element parse_element_symbol(const std::string_view symbol);
 
 } // namespace mudock

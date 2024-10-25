@@ -1,7 +1,5 @@
 #pragma once
 
-#include <cstdint>
-
 namespace mudock {
 
   // this is the maximum number of atoms that we can expect from a static storage

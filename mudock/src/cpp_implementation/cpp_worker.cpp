@@ -1,9 +1,7 @@
 #include <cstdlib>
-#include <iostream>
 #include <mudock/cpp_implementation/cpp_worker.hpp>
 #include <mudock/log.hpp>
 #include <stdexcept>
-#include <string>
 #include <mudock/likwid_utils.hpp>
 
 namespace mudock {
@@ -31,6 +29,7 @@ namespace mudock {
     while (new_ligand) {
       virtual_screen(*new_ligand);
       try {
+        // TODO check, probably wrong due to the previous move
         output_stack->enqueue(std::move(new_ligand));
       } catch (const std::runtime_error& e) {
         error("Unable to vs molecule ",

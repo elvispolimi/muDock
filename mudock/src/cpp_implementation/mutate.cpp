@@ -3,21 +3,25 @@
 
 namespace mudock {
 
-  void apply(std::span<fp_type> x,
-             std::span<fp_type> y,
-             std::span<fp_type> z,
+  void apply(fp_type* __restrict__ x,
+             fp_type* __restrict__ y,
+             fp_type* __restrict__ z,
              const chromosome& c,
-             const fragments<static_containers>& fragments) {
+             const int num_atoms,
+             const int num_rotamers,
+             const int* __restrict__ frag_masks,
+             const int* __restrict__ frag_start_indexes,
+             const int* __restrict__ frag_stop_indexes) {
     // apply rigid transformations
-    translate_molecule(x, y, z, c[0], c[1], c[2]);
-    rotate_molecule(x, y, z, c[3], c[4], c[5]);
+    translate_molecule(x, y, z, num_atoms, c[0], c[1], c[2]);
+    rotate_molecule(x, y, z, num_atoms, c[3], c[4], c[5]);
 
     // change the molecule shape
-    const auto num_rotamers = fragments.get_num_rotatable_bonds();
     for (int i = 0; i < num_rotamers; ++i) {
-      const auto bitmask                   = fragments.get_mask(i);
-      const auto [start_index, stop_index] = fragments.get_rotatable_atoms(i);
-      rotate_fragment(x, y, z, bitmask, start_index, stop_index, c[int{6} + i]);
+      const auto* bitmask    = frag_masks + i * num_atoms;
+      const auto start_index = frag_start_indexes[i];
+      const auto stop_index  = frag_stop_indexes[i];
+      rotate_fragment(x, y, z, num_atoms, bitmask, start_index, stop_index, c[int{6} + i]);
     }
   }
 

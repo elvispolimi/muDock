@@ -1,27 +1,42 @@
 #pragma once
 
-#include <mudock/cpp_implementation/weed_bonds.hpp>
-#include <mudock/grid.hpp>
-#include <mudock/molecule.hpp>
-#include <vector>
+#include <mudock/chem/autodock_types.hpp>
+#include <mudock/cpp_implementation/chromosome.hpp>
+#include <mudock/type_alias.hpp>
 
 namespace mudock {
-  fp_type calc_energy(const std::span<fp_type> ligand_x,
-                      const std::span<fp_type> ligand_y,
-                      const std::span<fp_type> ligand_z,
-                      const std::span<fp_type> ligand_vol,
-                      const std::span<fp_type> ligand_solpar,
-                      const std::span<fp_type> ligand_charge,
-                      const std::span<int> ligand_num_hbond,
-                      const std::span<fp_type> ligand_Rij_hb,
-                      const std::span<fp_type> ligand_Rii,
-                      const std::span<fp_type> ligand_epsij_hb,
-                      const std::span<fp_type> ligand_epsii,
-                      const std::span<autodock_ff> ligand_autodock_type,
-                      const int num_atoms,
-                      const int n_torsions,
-                      const grid<uint_fast8_t, index2D>& nbmatrix,
-                      const grid_atom_mapper& grid_maps,
-                      const grid_map& electro_map,
-                      const grid_map& desolv_map);
+  // TODO template parameters on num_atoms?
+  // Buckets?
+  void evaluate_fitness(const fp_type* __restrict__ ligand_x,
+                           const fp_type* __restrict__ ligand_y,
+                           const fp_type* __restrict__ ligand_z,
+                           const fp_type* __restrict__ ligand_vol,
+                           const fp_type* __restrict__ ligand_solpar,
+                           const fp_type* __restrict__ ligand_charge,
+                           const int* __restrict__ ligand_num_hbond,
+                           const fp_type* __restrict__ ligand_Rij_hb,
+                           const fp_type* __restrict__ ligand_Rii,
+                           const fp_type* __restrict__ ligand_epsij_hb,
+                           const fp_type* __restrict__ ligand_epsii,
+                           const autodock_ff* __restrict__ ligand_autodock_type,
+                           const int num_atoms,
+                           const int num_rotamers,
+                           const int* __restrict__ frag_masks,
+                           const int* __restrict__ frag_start_indexes,
+                           const int* __restrict__ frag_stop_indexes,
+                           const uint_fast8_t* __restrict__ nbmatrix,
+                           const fp_type* const __restrict__* const __restrict__ grid_maps,
+                           const fp_type* __restrict__ electro_map,
+                           const fp_type* __restrict__ desolv_map,
+                           const int num_generations,
+                           const int population_size,
+                           const int tournament_length,
+                           const fp_type mutation_prob,
+                           const fp_type* __restrict__ minimum,
+                           const fp_type* __restrict__ maximum,
+                           const fp_type* __restrict__ center,
+                           const int map_index_x,
+                           const int map_index_xy,
+                           individual* __restrict__ population_buffer1,
+                           individual* __restrict__ population_buffer2);
 } // namespace mudock
