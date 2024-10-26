@@ -29,7 +29,7 @@ namespace mudock {
       // TODO value here for debug
       value = fp_type{0.4};
     else {
-      value = dist(generator);
+      value = fp_type{0.4};
     }
     return static_cast<T>(value * (max - min) + min);
   }
