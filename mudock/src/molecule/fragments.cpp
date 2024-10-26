@@ -1,10 +1,7 @@
-#include <algorithm>
 #include <boost/graph/breadth_first_search.hpp>
 #include <boost/graph/connected_components.hpp>
 #include <cassert>
-#include <cstdint>
 #include <gsl/pointers>
-#include <iterator>
 #include <mudock/grid.hpp>
 #include <mudock/molecule/constraints.hpp>
 #include <mudock/molecule/containers.hpp>
