@@ -1,7 +1,7 @@
 #include <algorithm>
-#include <chrono>
 #include <cmath>
 #include <cstring>
+#include <memory>
 #include <mudock/chem/autodock_parameters.hpp>
 #include <mudock/chem/grid_const.hpp>
 #include <mudock/chem/ligand_maps.hpp>
@@ -29,7 +29,7 @@ namespace mudock {
       // TODO value here for debug
       value = fp_type{0.4};
     else {
-      value = fp_type{0.4};
+      value = dist(generator);
     }
     return static_cast<T>(value * (max - min) + min);
   }
@@ -282,15 +282,16 @@ namespace mudock {
                         const int map_index_x,
                         const int map_index_xy,
                         individual* __restrict__ population_buffer1,
-                        individual* __restrict__ population_buffer2) {
+                        individual* __restrict__ population_buffer2,
+                        const int seed) {
     std::uniform_real_distribution<fp_type> dist{fp_type{0.0}, fp_type{1.0}};
-    std::mt19937 generator = std::mt19937{
-        static_cast<size_t>(std::chrono::high_resolution_clock::now().time_since_epoch().count())};
+    std::mt19937 generator(seed);
+
     auto* population      = population_buffer1;
     auto* next_population = population_buffer2;
-    auto altered_x        = std::array<fp_type, max_static_atoms()>();
-    auto altered_y        = std::array<fp_type, max_static_atoms()>();
-    auto altered_z        = std::array<fp_type, max_static_atoms()>();
+    auto altered_x        = std::make_unique<std::array<fp_type, max_static_atoms()>>();
+    auto altered_y        = std::make_unique<std::array<fp_type, max_static_atoms()>>();
+    auto altered_z        = std::make_unique<std::array<fp_type, max_static_atoms()>>();
 
     // Randomly initialize the population
     for (int element_index = 0; element_index < population_size; ++element_index) {
@@ -308,14 +309,14 @@ namespace mudock {
       for (int element_index = 0; element_index < population_size; ++element_index) {
         auto& element = population[element_index];
 
-        std::memcpy(altered_x.data(), ligand_x, num_atoms * sizeof(fp_type));
-        std::memcpy(altered_y.data(), ligand_y, num_atoms * sizeof(fp_type));
-        std::memcpy(altered_z.data(), ligand_z, num_atoms * sizeof(fp_type));
+        std::memcpy(altered_x.get()->data(), ligand_x, num_atoms * sizeof(fp_type));
+        std::memcpy(altered_y.get()->data(), ligand_y, num_atoms * sizeof(fp_type));
+        std::memcpy(altered_z.get()->data(), ligand_z, num_atoms * sizeof(fp_type));
         // TODO check it it makes sense -> print the MOL2
         // apply the transformation encoded in the element genes to the original ligand
-        apply(altered_x.data(),
-              altered_y.data(),
-              altered_z.data(),
+        apply(altered_x.get()->data(),
+              altered_y.get()->data(),
+              altered_z.get()->data(),
               element.genes,
               num_atoms,
               num_rotamers,
@@ -324,9 +325,9 @@ namespace mudock {
               frag_stop_indexes);
 
         // compute the energy of the system
-        const auto energy = calc_energy(altered_x.data(),
-                                        altered_y.data(),
-                                        altered_z.data(),
+        const auto energy = calc_energy(altered_x.get()->data(),
+                                        altered_y.get()->data(),
+                                        altered_z.get()->data(),
                                         ligand_vol,
                                         ligand_solpar,
                                         ligand_charge,
