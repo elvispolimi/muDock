@@ -25,6 +25,8 @@ namespace mudock {
         configuration(knobs) {}
 
   void virtual_screen_cpp::operator()(static_molecule& ligand) {
+    const auto seed =
+        static_cast<size_t>(std::chrono::high_resolution_clock::now().time_since_epoch().count());
     // Place the molecule to the center of the target protein
     const int num_atoms = ligand.num_atoms();
     const auto x = ligand.get_x(), y = ligand.get_y(), z = ligand.get_z();
@@ -116,7 +118,8 @@ namespace mudock {
                      electro_map.get()->index.size_x(),
                      electro_map.get()->index.size_xy(),
                      population.data(),
-                     next_population.data());
+                     next_population.data(),
+                     seed);
 
     LIKWID_MARKER_STOP("GA");
 
