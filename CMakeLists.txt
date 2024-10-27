@@ -94,16 +94,14 @@ enable_language(CXX)
 
 # Check if specific target architectures should be used
 # TODO check this
-if(MUDOCK_CPU_ARCHITECTURES STREQUAL "native")
-    if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "IntelLLVM")
-        if(MUDOCK_ENABLE_HIP)
-            list(APPEND release_flags -Xcompiler -march=native)
-        else()
-            list(APPEND release_flags "-march=native")
-        endif()
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "IntelLLVM")
+    if(MUDOCK_ENABLE_HIP)
+        list(APPEND release_flags -Xcompiler -march=native)
     else()
-        message(WARNING "Unable to optimize for the native architecture: unknown compiler \"${CMAKE_CXX_COMPILER_ID}\"")
+        list(APPEND release_flags "-mcpu=${MUDOCK_CPU_ARCHITECTURES}")
     endif()
+else()
+    message(WARNING "Unable to optimize for the given architecture: unknown compiler \"${CMAKE_CXX_COMPILER_ID}\"")
 endif()
 
 # CUDA
