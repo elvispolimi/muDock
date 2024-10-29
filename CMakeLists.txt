@@ -192,6 +192,8 @@ endif()
 option(MUDOCK_ENABLE_LIKWID "Enable profiling using likwid" OFF)
 set(LIKWID_PATH "" CACHE STRING "likwid installation folder")
 
+option(MUDOCK_ENABLE_SCOREP "Enable profiling using Score-P" OFF)
+
 option(MUDOCK_ENABLE_FJAPP "Enable profiling using Fujtsu App" OFF)
 option(MUDOCK_ENABLE_FJCOMPILER "Enable compilation using Fujtsu Compiler" OFF)
 # TODO FIXME
@@ -277,6 +279,9 @@ endif()
 
 if(MUDOCK_ENABLE_LIKWID)
     message(STATUS "Likwid Profiling....................: ${MUDOCK_ENABLE_LIKWID} (MUDOCK_ENABLE_LIKWID)")
+endif()
+if(MUDOCK_ENABLE_SCOREP)
+    message(STATUS "Score-P Profiling...................: ${MUDOCK_ENABLE_SCOREP} (MUDOCK_ENABLE_SCOREP)")
 endif()
 if(MUDOCK_ENABLE_FJAPP)
     message(STATUS "Fujtsu App Profiling................: ${MUDOCK_ENABLE_FJAPP} (MUDOCK_ENABLE_FJAPP)")

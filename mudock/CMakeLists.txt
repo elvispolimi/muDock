@@ -363,6 +363,9 @@ endif()
 if(MUDOCK_ENABLE_FJAPP)
   target_compile_definitions(libmudock PUBLIC MUDOCK_USE_FJAPP)
 endif()
+if(MUDOCK_ENABLE_SCOREP)
+  target_compile_definitions(libmudock PUBLIC MUDOCK_USE_SCOREP)
+endif()
 
 # ########################################################################
 # ### Declare the install step
