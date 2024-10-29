@@ -12,6 +12,7 @@
 #include <mudock/utils.hpp>
 #include <random>
 #include <stdexcept>
+#include <mudock/fjapp_utils.hpp>
 
 #define FLATTENED_2D(x, y, index_x) ((y) * index_x + (x))
 
@@ -287,6 +288,8 @@ namespace mudock {
     std::uniform_real_distribution<fp_type> dist{fp_type{0.0}, fp_type{1.0}};
     std::mt19937 generator(seed);
 
+    FJAPP_MARKER_START("GA");
+
     auto* population      = population_buffer1;
     auto* next_population = population_buffer2;
     auto altered_x        = std::make_unique<std::array<fp_type, max_static_atoms()>>();
@@ -384,5 +387,6 @@ namespace mudock {
       population      = next_population;
       next_population = temp;
     }
+    FJAPP_MARKER_STOP("GA");
   }
 } // namespace mudock

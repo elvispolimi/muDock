@@ -80,7 +80,6 @@ list(APPEND source_files
   "${source_path}/cpp_implementation/geometric_transformations.cpp"
   "${source_path}/cpp_implementation/virtual_screen.cpp"
   "${source_path}/cpp_implementation/weed_bonds.cpp"
-  "${source_path}/cpp_implementation/calc_energy_cpp.cpp"
   "${source_path}/format/dot.cpp"
   "${source_path}/format/mol2.cpp"
   "${source_path}/format/rdkit_wrapper.cpp"
@@ -92,6 +91,12 @@ list(APPEND source_files
   "${source_path}/molecule/property_table.cpp"
   "${source_path}/log.cpp"
 )
+
+if(NOT MUDOCK_ENABLE_FJCOMPILER)
+  list(APPEND source_files
+    "${source_path}/cpp_implementation/calc_energy_cpp.cpp"
+  )
+endif()
 
 # declare the CUDA sources
 if(MUDOCK_ENABLE_CUDA)
@@ -239,6 +244,7 @@ set_target_properties(libmudock
   CXX_STANDARD_REQUIRED ON
   CXX_EXTENSIONS OFF
   CUDA_SEPARABLE_COMPILATION ON
+  POSITION_INDEPENDENT_CODE FALSE
 )
 target_link_libraries(libmudock PUBLIC Microsoft.GSL::GSL)
 target_compile_options(libmudock PUBLIC $<$<AND:$<CONFIG:RELEASE>,$<COMPILE_LANGUAGE:CXX>>:${release_flags}>)
@@ -353,6 +359,9 @@ if(MUDOCK_ENABLE_LIKWID)
   target_link_directories(libmudock PUBLIC "${LIKWID_PATH}/lib")
   target_link_libraries(libmudock PUBLIC likwid)
   add_definitions(-DLIKWID_PERFMON)
+endif()
+if(MUDOCK_ENABLE_FJAPP)
+  target_compile_definitions(libmudock PUBLIC MUDOCK_USE_FJAPP)
 endif()
 
 # ########################################################################
