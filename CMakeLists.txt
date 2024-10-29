@@ -17,8 +17,8 @@ endfunction()
 # ########################################################################
 # Accelerator
 set(MUDOCK_GPU_ARCHITECTURES "none" CACHE STRING "Optimize for specific target GPU architecture (none to disable, otherwise cuda:sm_$$ or hip:$$)")
-set(MUDOCK_CPU_ARCHITECTURES "native" CACHE STRING "Optimize for specific target GPU architecture (default is native, none to disable optimizations, or specify the CPU architecture)")
-
+set(MUDOCK_CPU_TARGET "" CACHE STRING "Optimize for specific target CPU (default is empty, no optimizations)")
+set(MUDOCK_CPU_ARCHITECTURES "" CACHE STRING "Optimize for specific target CPU (default is empty, no optimizations")
 
 if(NOT MUDOCK_GPU_ARCHITECTURES STREQUAL "none")
     # Find the position of the colon
@@ -98,7 +98,13 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang
     if(MUDOCK_ENABLE_HIP)
         list(APPEND release_flags -Xcompiler -march=native)
     else()
-        list(APPEND release_flags "-mcpu=${MUDOCK_CPU_ARCHITECTURES}")
+        if(NOT MUDOCK_CPU_ARCHITECTURES STREQUAL "" AND NOT MUDOCK_CPU_TARGET STREQUAL "")
+            message(FATAL "Cannot specify both cpu target and arch")
+        elseif(NOT MUDOCK_CPU_ARCHITECTURES STREQUAL "")
+            list(APPEND release_flags "-march=${MUDOCK_CPU_ARCHITECTURES}")
+        elseif(NOT MUDOCK_CPU_TARGET STREQUAL "")
+            list(APPEND release_flags "-mcpu=${MUDOCK_CPU_TARGET}")
+        endif()
     endif()
 else()
     message(WARNING "Unable to optimize for the given architecture: unknown compiler \"${CMAKE_CXX_COMPILER_ID}\"")
@@ -186,11 +192,17 @@ endif()
 option(MUDOCK_ENABLE_LIKWID "Enable profiling using likwid" OFF)
 set(LIKWID_PATH "" CACHE STRING "likwid installation folder")
 
+option(MUDOCK_ENABLE_FJAPP "Enable profiling using Fujtsu App" OFF)
+option(MUDOCK_ENABLE_FJCOMPILER "Enable compilation using Fujtsu Compiler" OFF)
+# TODO FIXME
+set(CMAKE_POSITION_INDEPENDENT_CODE FALSE)
+
 # ########################################################################
 # ### Tweak the default configuration
 # ########################################################################
 
 # the idea is that we want to build the optimized version, unless the user says otherwise
+# FIX ME native is not supported by mcpu 
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_BUILD_TYPE "Release" CACHE STRING "The type of build" FORCE)
     message(STATUS "Setting build type to '${CMAKE_BUILD_TYPE}' as none was specified")
@@ -256,10 +268,22 @@ message(STATUS "//===---------------------------===//")
 message(STATUS "CXX compiler........................: ${CMAKE_CXX_COMPILER} (CMAKE_CXX_COMPILER)")
 message(STATUS "Build type..........................: ${CMAKE_BUILD_TYPE} (CMAKE_BUILD_TYPE)")
 message(STATUS "Install prefix......................: ${CMAKE_INSTALL_PREFIX} (CMAKE_INSTALL_PREFIX)")
+if(MUDOCK_CPU_ARCHITECTURES)
+    message(STATUS "CPU Architecture....................: ${MUDOCK_CPU_ARCHITECTURES} (MUDOCK_CPU_ARCHITECTURES)")
+endif()
+if(MUDOCK_CPU_TARGET)
+    message(STATUS "CPU Target..........................: ${MUDOCK_CPU_TARGET} (MUDOCK_CPU_TARGET)")
+endif()
+
 if(MUDOCK_ENABLE_LIKWID)
     message(STATUS "Likwid Profiling....................: ${MUDOCK_ENABLE_LIKWID} (MUDOCK_ENABLE_LIKWID)")
 endif()
-message(STATUS "CPU Architecture....................: ${MUDOCK_CPU_ARCHITECTURES} (MUDOCK_CPU_ARCHITECTURES)")
+if(MUDOCK_ENABLE_FJAPP)
+    message(STATUS "Fujtsu App Profiling................: ${MUDOCK_ENABLE_FJAPP} (MUDOCK_ENABLE_FJAPP)")
+endif()
+if(MUDOCK_ENABLE_FJCOMPILER)
+    message(STATUS "Fujtsu Compiler.....................: ${MUDOCK_ENABLE_FJCOMPILER} (MUDOCK_ENABLE_FJCOMPILER)")
+endif()
 
 message(STATUS "Enable CUDA.........................: ${MUDOCK_ENABLE_CUDA} (MUDOCK_ENABLE_CUDA)")
 
