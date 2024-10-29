@@ -9,6 +9,7 @@
 #include <mudock/grid.hpp>
 #include <mudock/likwid_utils.hpp>
 #include <mudock/molecule.hpp>
+#include <mudock/scorep_utils.hpp>
 #include <mudock/utils.hpp>
 
 namespace mudock {
@@ -52,8 +53,6 @@ namespace mudock {
     // weed_bonds(nbmatrix, non_bond_list, num_atoms, ligand_fragments);
     weed_bonds(nbmatrix, num_atoms, ligand_fragments);
 
-    LIKWID_MARKER_START("GA");
-
     const fp_type minimum[3] = {electro_map.get()->minimum_coord.x,
                                 electro_map.get()->minimum_coord.y,
                                 electro_map.get()->minimum_coord.z};
@@ -85,6 +84,9 @@ namespace mudock {
       frag_start_indexes.data()[rot]       = start_index;
       frag_stop_indexes.data()[rot]        = stop_index;
     }
+
+    LIKWID_MARKER_START("GA");
+    SCOREP_MARKER_START(ga, "GA")
 
     // Simulate the population evolution for the given amount of time
     evaluate_fitness(x.data(),
@@ -122,6 +124,7 @@ namespace mudock {
                      seed);
 
     LIKWID_MARKER_STOP("GA");
+    SCOREP_MARKER_STOP(ga);
 
     // update the ligand position with the best one that we found
     const auto best_individual_it =

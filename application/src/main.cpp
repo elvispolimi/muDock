@@ -106,7 +106,7 @@ int main(int argc, char* argv[]) {
   // compute all the ligands according to the input configuration
   mudock::info("Virtual screening the ligands ...");
   LIKWID_MARKER_INIT;
-
+  
   auto output_queue = std::make_shared<mudock::safe_stack<mudock::static_molecule>>();
   {
     auto threadpool = mudock::threadpool();
