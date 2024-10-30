@@ -1,6 +1,6 @@
 #pragma once
 
-#include <mudock/chem/autodock_types.hpp>
+#include <mudock/chem/ligand_maps.hpp>
 #include <mudock/cpp_implementation/chromosome.hpp>
 #include <mudock/type_alias.hpp>
 #include <stdint.h>
@@ -19,7 +19,7 @@ namespace mudock {
                         const fp_type* __restrict__ ligand_Rii,
                         const fp_type* __restrict__ ligand_epsij_hb,
                         const fp_type* __restrict__ ligand_epsii,
-                        const autodock_ff* __restrict__ ligand_autodock_type,
+                        const ligand_map_types* __restrict__ map_ligand_types,
                         const int num_atoms,
                         const int num_rotamers,
                         const int* __restrict__ frag_masks,
