@@ -55,7 +55,7 @@ if(MUDOCK_ENABLE_HIP)
             # TODO target arch
         else()
             # TODO add other HIP devices support
-            message(ERROR "Wrong target for HIP implementation")
+            message(FATAL_ERROR "Wrong target for HIP implementation")
         endif()
 
         set(HIP_ARCHITECTURES "${GPU_ARCHITECTURE}")
@@ -279,6 +279,7 @@ endif()
 
 if(MUDOCK_ENABLE_LIKWID)
     message(STATUS "Likwid Profiling....................: ${MUDOCK_ENABLE_LIKWID} (MUDOCK_ENABLE_LIKWID)")
+    message(STATUS "Likwid Path.........................: ${LIKWID_PATH} (LIKWID_PATH)")
 endif()
 if(MUDOCK_ENABLE_SCOREP)
     message(STATUS "Score-P Profiling...................: ${MUDOCK_ENABLE_SCOREP} (MUDOCK_ENABLE_SCOREP)")
