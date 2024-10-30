@@ -24,7 +24,6 @@ list(APPEND header_files
   "${header_path}/${header_prefix}/cpp_implementation/cpp_worker.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/geometric_transformations.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/virtual_screen.hpp"
-  "${header_path}/${header_prefix}/cpp_implementation/trilinear_interpolation.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/chromosome.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/mutate.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/center_of_mass.hpp"
@@ -309,7 +308,7 @@ if(MUDOCK_ENABLE_OMP)
       target_compile_options(libmudock PRIVATE "--offload-arch=${GPU_ARCHITECTURE}")
     elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
       # TODO test with GCC, check also if GCC supports this
-      message(ERROR "muDock does not support GCC and OpenMP offloading")
+      message(FATAL_ERROR "muDock does not support GCC and OpenMP offloading")
       # if(GPU_PLATFORM STREQUAL "cuda")
       #   target_compile_options(libmudock PRIVATE "-fopenmp")
       #   target_compile_options(libmudock PRIVATE "-foffload=nvptx-none")
@@ -320,7 +319,7 @@ if(MUDOCK_ENABLE_OMP)
       #   target_compile_options(libmudock PRIVATE "-foffload-options=amdgcn-amdhsa=-march=${GPU_ARCHITECTURE}")
       # endif()
     else()
-      message(ERROR "Not support OpenMP compiler")
+      message(FATAL_ERROR "Not support OpenMP compiler")
     endif()
   endif()
 endif()
@@ -353,7 +352,7 @@ endif()
 # Profiling
 if(MUDOCK_ENABLE_LIKWID)
   if(LIKWID_PATH STREQUAL "")
-    message(FATAL "Missing likwid installation path")
+    message(FATAL_ERROR "Missing likwid installation path")
   endif()
   target_include_directories(libmudock PRIVATE "${LIKWID_PATH}/include")
   target_link_directories(libmudock PUBLIC "${LIKWID_PATH}/lib")

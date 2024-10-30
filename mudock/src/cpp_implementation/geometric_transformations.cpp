@@ -12,6 +12,8 @@ namespace mudock {
                           const fp_type offset_x,
                           const fp_type offset_y,
                           const fp_type offset_z) {
+#pragma clang loop vectorize(enable)
+#pragma clang loop unroll(enable)
     for (int i = 0; i < num_atoms; ++i) {
       x[i] += offset_x;
       y[i] += offset_y;
@@ -46,7 +48,9 @@ namespace mudock {
     const auto m21 = sx * cy;
     const auto m22 = cx * cy;
 
-    // apply the rotation matrix
+// apply the rotation matrix
+#pragma clang loop vectorize(enable)
+#pragma clang loop unroll(enable)
     for (int i = 0; i < num_atoms; ++i) {
       const auto translated_x = x[i] - c.x, translated_y = y[i] - c.y, translated_z = z[i] - c.z;
       x[i] = translated_x * m00 + translated_y * m01 + translated_z * m02 + c.x;
@@ -98,7 +102,9 @@ namespace mudock {
     const auto m23 =
         ((origz * (u2 + v2) - w * (origx * u + origy * v)) * one_minus_c + (origx * v - origy * u) * ls) / l2;
 
-    // apply the rotation matrix
+// apply the rotation matrix
+#pragma clang loop vectorize(enable)
+#pragma clang loop unroll(enable)
     for (int i = 0; i < num_atoms; ++i) {
       if (frag_mask[i] == 1) {
         const auto prev_x = x[i], prev_y = y[i], prev_z = z[i];

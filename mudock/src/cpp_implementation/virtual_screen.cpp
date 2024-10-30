@@ -1,15 +1,13 @@
+#include <memory>
 #include <mudock/cpp_implementation/calc_energy_cpp.hpp>
 #include <mudock/cpp_implementation/center_of_mass.hpp>
 #include <mudock/cpp_implementation/chromosome.hpp>
 #include <mudock/cpp_implementation/geometric_transformations.hpp>
 #include <mudock/cpp_implementation/mutate.hpp>
-#include <mudock/cpp_implementation/trilinear_interpolation.hpp>
 #include <mudock/cpp_implementation/virtual_screen.hpp>
 #include <mudock/cpp_implementation/weed_bonds.hpp>
 #include <mudock/grid.hpp>
-#include <mudock/likwid_utils.hpp>
 #include <mudock/molecule.hpp>
-#include <mudock/scorep_utils.hpp>
 #include <mudock/utils.hpp>
 
 namespace mudock {
@@ -42,16 +40,16 @@ namespace mudock {
 
     // Find out the rotatable bonds in the ligand
     auto graph = make_graph(ligand.get_bonds());
-    const fragments<static_containers> ligand_fragments{graph, ligand.get_bonds(), ligand.num_atoms()};
+    const auto ligand_fragments = std::make_unique<fragments<static_containers>>(graph, ligand.get_bonds(), ligand.num_atoms());
 
-    const auto num_rotamers = ligand_fragments.get_num_rotatable_bonds();
+    const auto num_rotamers = ligand_fragments.get()->get_num_rotatable_bonds();
 
     // Get weed bonds and non bonds lists
     grid<uint_fast8_t, index2D> nbmatrix{{num_atoms, num_atoms}};
     nonbonds(nbmatrix, ligand.get_bonds(), num_atoms);
     // std::vector<non_bond_parameter> non_bond_list;
     // weed_bonds(nbmatrix, non_bond_list, num_atoms, ligand_fragments);
-    weed_bonds(nbmatrix, num_atoms, ligand_fragments);
+    weed_bonds(nbmatrix, num_atoms, *ligand_fragments.get());
 
     const fp_type minimum[3] = {electro_map.get()->minimum_coord.x,
                                 electro_map.get()->minimum_coord.y,
@@ -78,15 +76,17 @@ namespace mudock {
     frag_stop_indexes.resize(num_rotamers);
     for (int rot = 0; rot < num_rotamers; ++rot) {
       std::memcpy((frag_masks.data() + num_atoms * rot),
-                  ligand_fragments.get_mask(rot).data(),
+                  ligand_fragments.get()->get_mask(rot).data(),
                   num_atoms * sizeof(int));
-      const auto [start_index, stop_index] = ligand_fragments.get_rotatable_atoms(rot);
+      const auto [start_index, stop_index] = ligand_fragments.get()->get_rotatable_atoms(rot);
       frag_start_indexes.data()[rot]       = start_index;
       frag_stop_indexes.data()[rot]        = stop_index;
     }
 
-    LIKWID_MARKER_START("GA");
-    SCOREP_MARKER_START(ga, "GA")
+    std::vector<ligand_map_types> map_ligand_types;
+    map_ligand_types.resize(num_atoms);
+    for (int i = 0; i < num_atoms; i++)
+      map_ligand_types[i] = map_from_autodock_type(ligand.autodock_type(i));
 
     // Simulate the population evolution for the given amount of time
     evaluate_fitness(x.data(),
@@ -100,9 +100,9 @@ namespace mudock {
                      ligand.get_Rii().data(),
                      ligand.get_epsij_hb().data(),
                      ligand.get_epsii().data(),
-                     ligand.get_autodock_type().data(),
+                     map_ligand_types.data(),
                      num_atoms,
-                     ligand_fragments.get_num_rotatable_bonds(),
+                     ligand_fragments.get()->get_num_rotatable_bonds(),
                      frag_masks.data(),
                      frag_start_indexes.data(),
                      frag_stop_indexes.data(),
@@ -123,8 +123,6 @@ namespace mudock {
                      next_population.data(),
                      seed);
 
-    LIKWID_MARKER_STOP("GA");
-    SCOREP_MARKER_STOP(ga);
 
     // update the ligand position with the best one that we found
     const auto best_individual_it =
