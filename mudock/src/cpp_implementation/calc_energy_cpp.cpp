@@ -101,15 +101,27 @@ namespace mudock {
     const fp_type pv[2] = {p1v, p0v};
     const fp_type pw[2] = {p1w, p0w};
     fp_type value{0};
-#pragma unroll
-    for (int i = 0; i <= 1; i++)
-#pragma unroll
-      for (int t = 0; t <= 1; t++)
-#pragma unroll
-        for (int n = 0; n <= 1; n++) {
-          const fp_type tmp = map[FLATTENED_3D(u0 + n, v0 + t, w0 + i, map_index_x, map_index_xy)];
-          value += pu[n] * pv[t] * pw[i] * tmp;
-        }
+    // #pragma unroll
+    //     for (int i = 0; i <= 1; i++)
+    // #pragma unroll
+    //       for (int t = 0; t <= 1; t++)
+    // #pragma unroll
+    //         for (int n = 0; n <= 1; n++) {
+    //           const fp_type tmp = map[FLATTENED_3D(u0 + n, v0 + t, w0 + i, map_index_x, map_index_xy)];
+    //           value += pu[n] * pv[t] * pw[i] * tmp;
+    //         }
+    // Precompute flattened indices
+    const int base_index = FLATTENED_3D(u0, v0, w0, map_index_x, map_index_xy);
+
+    value += pu[0] * pv[0] * pw[0] * map[base_index];
+    value += pu[0] * pv[0] * pw[1] * map[base_index + map_index_xy];
+    value += pu[0] * pv[1] * pw[0] * map[base_index + map_index_x];
+    value += pu[0] * pv[1] * pw[1] * map[base_index + map_index_x + map_index_xy];
+    value += pu[1] * pv[0] * pw[0] * map[base_index + 1];
+    value += pu[1] * pv[0] * pw[1] * map[base_index + 1 + map_index_xy];
+    value += pu[1] * pv[1] * pw[0] * map[base_index + 1 + map_index_x];
+    value += pu[1] * pv[1] * pw[1] * map[base_index + 1 + map_index_x + map_index_xy];
+
     return value;
   }
 

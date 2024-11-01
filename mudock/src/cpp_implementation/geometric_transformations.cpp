@@ -5,31 +5,35 @@
 
 namespace mudock {
 
-  void translate_molecule(fp_type* __restrict__ x,
-                          fp_type* __restrict__ y,
-                          fp_type* __restrict__ z,
-                          const int num_atoms,
+  void translate_molecule(std::span<fp_type> x,
+                          std::span<fp_type> y,
+                          std::span<fp_type> z,
                           const fp_type offset_x,
                           const fp_type offset_y,
                           const fp_type offset_z) {
-#pragma clang loop vectorize(enable)
-#pragma clang loop unroll(enable)
-    for (int i = 0; i < num_atoms; ++i) {
+    const auto num_atoms = x.size();
+    assert(y.size() == num_atoms);
+    assert(z.size() == num_atoms);
+    for (std::size_t i = 0; i < num_atoms; ++i) {
       x[i] += offset_x;
       y[i] += offset_y;
       z[i] += offset_z;
     }
   }
 
-  void rotate_molecule(fp_type* __restrict__ x,
-                       fp_type* __restrict__ y,
-                       fp_type* __restrict__ z,
-                       const int num_atoms,
+  void rotate_molecule(std::span<fp_type> x,
+                       std::span<fp_type> y,
+                       std::span<fp_type> z,
                        const fp_type angle_x,
                        const fp_type angle_y,
                        const fp_type angle_z) {
+    // get the molecule number of atoms
+    const auto num_atoms = x.size();
+    assert(y.size() == num_atoms);
+    assert(z.size() == num_atoms);
+
     // compute the molecule center of mass
-    const auto c = compute_center_of_mass(x, y, z, num_atoms);
+    const auto c = compute_center_of_mass(x, y, z);
 
     // compute the angles sine and cosine
     const auto rad_x = deg_to_rad(angle_x), rad_y = deg_to_rad(angle_y), rad_z = deg_to_rad(angle_z);
@@ -48,10 +52,8 @@ namespace mudock {
     const auto m21 = sx * cy;
     const auto m22 = cx * cy;
 
-// apply the rotation matrix
-#pragma clang loop vectorize(enable)
-#pragma clang loop unroll(enable)
-    for (int i = 0; i < num_atoms; ++i) {
+    // apply the rotation matrix
+    for (std::size_t i = 0; i < num_atoms; ++i) {
       const auto translated_x = x[i] - c.x, translated_y = y[i] - c.y, translated_z = z[i] - c.z;
       x[i] = translated_x * m00 + translated_y * m01 + translated_z * m02 + c.x;
       y[i] = translated_x * m10 + translated_y * m11 + translated_z * m12 + c.y;
@@ -59,14 +61,20 @@ namespace mudock {
     }
   }
 
-  void rotate_fragment(fp_type* __restrict__ x,
-                       fp_type* __restrict__ y,
-                       fp_type* __restrict__ z,
-                       const int num_atoms,
-                       const int* __restrict__ frag_mask,
+  void rotate_fragment(std::span<fp_type> x,
+                       std::span<fp_type> y,
+                       std::span<fp_type> z,
+                       std::span<const typename fragments<static_containers>::value_type> bitmask,
                        const int start_index,
                        const int stop_index,
                        const fp_type angle) {
+    // get the molecule number of atoms
+    const int num_atoms = x.size();
+    assert(static_cast<int>(y.size()) == num_atoms);
+    assert(static_cast<int>(z.size()) == num_atoms);
+    assert(start_index < num_atoms);
+    assert(stop_index < num_atoms);
+
     // compute the axis vector (and some properties)
     const auto origx = x[start_index], origy = y[start_index], origz = z[start_index];
     const auto destx = x[stop_index], desty = y[stop_index], destz = z[stop_index];
@@ -102,11 +110,9 @@ namespace mudock {
     const auto m23 =
         ((origz * (u2 + v2) - w * (origx * u + origy * v)) * one_minus_c + (origx * v - origy * u) * ls) / l2;
 
-// apply the rotation matrix
-#pragma clang loop vectorize(enable)
-#pragma clang loop unroll(enable)
+    // apply the rotation matrix
     for (int i = 0; i < num_atoms; ++i) {
-      if (frag_mask[i] == 1) {
+      if (bitmask[i] == 1) {
         const auto prev_x = x[i], prev_y = y[i], prev_z = z[i];
         x[i] = prev_x * m00 + prev_y * m01 + prev_z * m02 + m03;
         y[i] = prev_x * m10 + prev_y * m11 + prev_z * m12 + m13;

@@ -30,10 +30,9 @@ namespace mudock {
     const int num_atoms = ligand.num_atoms();
     const auto x = ligand.get_x(), y = ligand.get_y(), z = ligand.get_z();
     const auto ligand_center_of_mass = compute_center_of_mass(x, y, z);
-    translate_molecule(x.data(),
-                       y.data(),
-                       z.data(),
-                       num_atoms,
+    translate_molecule(x,
+                       y,
+                       z,
                        electro_map->center.x - ligand_center_of_mass.x,
                        electro_map->center.y - ligand_center_of_mass.y,
                        electro_map->center.z - ligand_center_of_mass.z);
@@ -130,15 +129,7 @@ namespace mudock {
         std::min_element(std::begin(next_population),
                          std::end(next_population),
                          [](const auto a, const auto b) { return a.score < b.score; });
-    apply(x.data(),
-          y.data(),
-          z.data(),
-          best_individual_it->genes,
-          num_atoms,
-          num_rotamers,
-          frag_masks.data(),
-          frag_start_indexes.data(),
-          frag_stop_indexes.data());
+    apply(x, y, z, best_individual_it->genes, *ligand_fragments.get());
     ligand.properties.assign(property_type::SCORE, std::to_string(best_individual_it->score));
   }
 

@@ -2,14 +2,12 @@
 
 #include "chromosome.hpp"
 
+#include <span>
+
 namespace mudock {
-  void apply(fp_type* __restrict__ x,
-             fp_type* __restrict__ y,
-             fp_type* __restrict__ z,
+  void apply(std::span<fp_type> x,
+             std::span<fp_type> y,
+             std::span<fp_type> z,
              const chromosome& c,
-             const int num_atoms,
-             const int num_rotamers,
-             const int* __restrict__ frag_masks,
-             const int* __restrict__ frag_start_indexes,
-             const int* __restrict__ frag_stop_indexes);
+             const fragments<static_containers>& fragments);
 }
