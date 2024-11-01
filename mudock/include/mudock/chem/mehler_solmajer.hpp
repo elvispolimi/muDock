@@ -13,7 +13,7 @@ namespace mudock {
     const fp_type rk{7.7839};
     const fp_type lambda_B = -lambda * B;
 
-    fp_type epsilon = A + B / (fp_type{1} + rk * expf(lambda_B * distance));
+    fp_type epsilon = A + B / (fp_type{1} + rk * std::exp(lambda_B * distance));
 
     if (epsilon < std::numeric_limits<fp_type>::epsilon()) {
       epsilon = fp_type{1.0};

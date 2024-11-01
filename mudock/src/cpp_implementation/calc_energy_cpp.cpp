@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <arm_sve.h>
 #include <cmath>
 #include <cstring>
 #include <memory>
@@ -14,7 +15,6 @@
 #include <mudock/scorep_utils.hpp>
 #include <mudock/utils.hpp>
 #include <random>
-#include <stdexcept>
 
 #define FLATTENED_2D(x, y, index_x)              ((y) * index_x + (x))
 #define FLATTENED_3D(x, y, z, index_x, index_xy) (index_xy * (z) + (y) * index_x + (x))
@@ -24,9 +24,9 @@ namespace mudock {
   static constexpr auto angle_step      = fp_type{4};
 
   // TODO fix me from reorder_buffer.hpp
-  static constexpr int get_num_atom_clusters() { return 6; };
+  static constexpr int get_num_atom_clusters() { return 7; };
   // the description of how we generate the clusters
-  static constexpr std::array<int, 6> atoms_clusters = {{32, 64, 128, 160, 192, 256}};
+  static constexpr std::array<int, 7> atoms_clusters = {{0, 32, 64, 128, 160, 192, 256}};
 
   template<typename T>
   [[nodiscard]] inline const T random_gen_cpp(std::mt19937& generator,
@@ -121,6 +121,8 @@ namespace mudock {
                                  const fp_type offset_x,
                                  const fp_type offset_y,
                                  const fp_type offset_z) {
+#pragma GCC ivdep
+//#pragma GCC optimize("unroll-loops")
 #pragma clang loop vectorize(enable)
 #pragma clang loop unroll(enable)
     for (int i = 0; i < NUM_ATOMS; ++i)
@@ -141,6 +143,8 @@ namespace mudock {
                               const fp_type angle_z) {
     // compute the molecule center of mass
     point3D c{0, 0, 0};
+#pragma GCC ivdep
+//#pragma GCC optimize("unroll-loops")
 #pragma clang loop vectorize(enable)
 #pragma clang loop unroll(enable)
     for (int i = 0; i < NUM_ATOMS; i++)
@@ -171,6 +175,8 @@ namespace mudock {
     const auto m22 = cx * cy;
 
 // apply the rotation matrix
+#pragma GCC ivdep
+//#pragma GCC optimize("unroll-loops")
 #pragma clang loop vectorize(enable)
 #pragma clang loop unroll(enable)
     for (int i = 0; i < NUM_ATOMS; ++i)
@@ -207,26 +213,37 @@ namespace mudock {
     const auto one_minus_c = fp_type{1} - c;
     const auto ls          = l * s;
 
+    // Precompute common sub-expressions to reduce redundant calculations
+    const auto inv_l2 = fp_type{1} / l2;
+    const auto us_vc  = u * v * one_minus_c;
+    const auto uw_vc  = u * w * one_minus_c;
+    const auto vw_vc  = v * w * one_minus_c;
+
     // compute the rotation matrix (rodrigues' rotation formula)
-    const auto m00 = (u2 + (v2 + w2) * c) / l2;
-    const auto m01 = (u * v * one_minus_c - w * l * s) / l2;
-    const auto m02 = (u * w * one_minus_c + v * l * s) / l2;
+    const auto m00 = (u2 + (v2 + w2) * c) * inv_l2;
+    const auto m01 = (us_vc - w * l * s) * inv_l2;
+    const auto m02 = (uw_vc + v * l * s) * inv_l2;
     const auto m03 =
-        ((origx * (v2 + w2) - u * (origy * v + origz * w)) * one_minus_c + (origy * w - origz * v) * ls) / l2;
+        ((origx * (v2 + w2) - u * (origy * v + origz * w)) * one_minus_c + (origy * w - origz * v) * ls) *
+        inv_l2;
 
-    const auto m10 = (u * v * one_minus_c + w * ls) / l2;
-    const auto m11 = (v2 + (u2 + w2) * c) / l2;
-    const auto m12 = (v * w * one_minus_c - u * ls) / l2;
+    const auto m10 = (us_vc + w * ls) * inv_l2;
+    const auto m11 = (v2 + (u2 + w2) * c) * inv_l2;
+    const auto m12 = (vw_vc - u * ls) * inv_l2;
     const auto m13 =
-        ((origy * (u2 + w2) - v * (origx * u + origz * w)) * one_minus_c + (origz * u - origx * w) * ls) / l2;
+        ((origy * (u2 + w2) - v * (origx * u + origz * w)) * one_minus_c + (origz * u - origx * w) * ls) *
+        inv_l2;
 
-    const auto m20 = (u * w * one_minus_c - v * ls) / l2;
-    const auto m21 = (v * w * one_minus_c + u * ls) / l2;
-    const auto m22 = (w2 + (u2 + v2) * c) / l2;
+    const auto m20 = (uw_vc - v * ls) * inv_l2;
+    const auto m21 = (vw_vc + u * ls) * inv_l2;
+    const auto m22 = (w2 + (u2 + v2) * c) * inv_l2;
     const auto m23 =
-        ((origz * (u2 + v2) - w * (origx * u + origy * v)) * one_minus_c + (origx * v - origy * u) * ls) / l2;
+        ((origz * (u2 + v2) - w * (origx * u + origy * v)) * one_minus_c + (origx * v - origy * u) * ls) *
+        inv_l2;
 
 // apply the rotation matrix
+#pragma GCC ivdep
+//#pragma GCC optimize("unroll-loops")
 #pragma clang loop vectorize(enable)
 #pragma clang loop unroll(enable)
     for (int i = 0; i < NUM_ATOMS; ++i) {
@@ -278,7 +295,9 @@ namespace mudock {
                              const ligand_map_types* __restrict__ map_ligand_types,
                              const int num_atoms,
                              const int n_torsions,
-                             const uint_fast8_t* __restrict__ nbmatrix,
+                             const int num_nonbond,
+                             const int* __restrict__ non_bond_list_a1,
+                             const int* __restrict__ non_bond_list_a2,
                              const fp_type* __restrict__ minimum,
                              const fp_type* __restrict__ maximum,
                              const fp_type* __restrict__ center,
@@ -291,6 +310,8 @@ namespace mudock {
     fp_type emap_total_trilinear  = 0;
     fp_type dmap_total_trilinear  = 0;
 
+#pragma GCC ivdep
+//#pragma GCC optimize("unroll-loops")
 #pragma clang loop vectorize(enable)
 #pragma clang loop unroll(enable)
     for (int index = 0; index < NUM_ATOMS; ++index)
@@ -328,127 +349,89 @@ namespace mudock {
       // TODO @Davide suppose that the receptor does not have Flexible residues eintcal.cc:147
       // TODO
 
-#pragma clang loop vectorize(enable)
-#pragma clang loop unroll(enable)
-      for (int i = 0; i < NUM_ATOMS; ++i)
-        if (i < num_atoms)
+#pragma GCC ivdep
+//#pragma GCC optimize("unroll-loops")
 #pragma clang loop vectorize(enable)
 #pragma clang loop unroll(enable)
 #pragma fj loop prefetch
 #pragma statement scache_isolate_assign ligand_x, ligand_y, ligand_z, ligand_charge, ligand_num_hbond, \
     ligand_Rij_hb, ligand_Rii, ligand_epsij_hb, ligand_epsii
-          for (int j = i + 1; j < NUM_ATOMS; ++j)
-            if (j < num_atoms) {
-              // for (const auto& non_bond: non_bond_list) {
-              if ((nbmatrix[FLATTENED_2D(i, j, num_atoms)] == 1 &&
-                   nbmatrix[FLATTENED_2D(j, i, num_atoms)] == 1)) {
-                const int& a1 = i;
-                const int& a2 = j;
+      for (int i = 0; i < num_nonbond; ++i) {
+        const int& a1 = non_bond_list_a1[i];
+        const int& a2 = non_bond_list_a2[i];
 
-                const fp_type distance_two = std::pow(std::fabs(ligand_x[a1] - ligand_x[a2]), fp_type{2}) +
-                                             std::pow(std::fabs(ligand_y[a1] - ligand_y[a2]), fp_type{2}) +
-                                             std::pow(std::fabs(ligand_z[a1] - ligand_z[a2]), fp_type{2});
-                const fp_type distance_two_clamp =
-                    std::clamp(distance_two, RMIN_ELEC * RMIN_ELEC, distance_two);
-                const fp_type distance = std::sqrt(distance_two_clamp);
+        const fp_type distance_two = std::pow(std::fabs(ligand_x[a1] - ligand_x[a2]), fp_type{2}) +
+                                     std::pow(std::fabs(ligand_y[a1] - ligand_y[a2]), fp_type{2}) +
+                                     std::pow(std::fabs(ligand_z[a1] - ligand_z[a2]), fp_type{2});
+        const fp_type distance_two_clamp = std::clamp(distance_two, RMIN_ELEC * RMIN_ELEC, distance_two);
+        const fp_type distance           = std::sqrt(distance_two_clamp);
 
-                //  Calculate  Electrostatic  Energy
-                const fp_type r_dielectric = fp_type{1} / (distance * calc_ddd_Mehler_Solmajer(distance));
-                const fp_type e_elec       = ligand_charge[a1] * ligand_charge[a2] * ELECSCALE *
-                                       autodock_parameters::coeff_estat * r_dielectric;
-                elect_total_eintcal += e_elec;
+        //  Calculate  Electrostatic  Energy
+        const fp_type r_dielectric = fp_type{1} / (distance * calc_ddd_Mehler_Solmajer(distance));
+        const fp_type e_elec       = ligand_charge[a1] * ligand_charge[a2] * ELECSCALE *
+                               autodock_parameters::coeff_estat * r_dielectric;
+        elect_total_eintcal += e_elec;
 
-                // Calcuare desolv
-                const fp_type nb_desolv =
-                    (ligand_vol[a2] * (ligand_solpar[a1] + qsolpar * std::fabs(ligand_charge[a1])) +
-                     ligand_vol[a1] * (ligand_solpar[a2] + qsolpar * std::fabs(ligand_charge[a2])));
+        // Calcuare desolv
+        const fp_type nb_desolv =
+            (ligand_vol[a2] * (ligand_solpar[a1] + qsolpar * std::fabs(ligand_charge[a1])) +
+             ligand_vol[a1] * (ligand_solpar[a2] + qsolpar * std::fabs(ligand_charge[a2])));
 
-                const fp_type e_desolv = autodock_parameters::coeff_desolv *
-                                         std::exp(fp_type{-0.5} / (sigma * sigma) * distance_two_clamp) *
-                                         nb_desolv;
-                dmap_total_eintcal += e_desolv;
-                fp_type e_vdW_Hb{0};
-                if (distance_two_clamp < nbc2) {
-                  //  Find internal energy parameters, i.e.  epsilon and r-equilibrium values...
-                  //  Lennard-Jones and Hydrogen Bond Potentials
-                  // This can be precomputed as in intnbtable.cc
-                  const auto& hbond_i    = ligand_num_hbond[a1];
-                  const auto& hbond_j    = ligand_num_hbond[a2];
-                  const auto& Rij_hb_i   = ligand_Rij_hb[a1];
-                  const auto& Rij_hb_j   = ligand_Rij_hb[a2];
-                  const auto& Rii_i      = ligand_Rii[a1];
-                  const auto& Rii_j      = ligand_Rii[a2];
-                  const auto& epsij_hb_i = ligand_epsij_hb[a1];
-                  const auto& epsij_hb_j = ligand_epsij_hb[a2];
-                  const auto& epsii_i    = ligand_epsii[a1];
-                  const auto& epsii_j    = ligand_epsii[a2];
+        const fp_type e_desolv = autodock_parameters::coeff_desolv *
+                                 std::exp(fp_type{-0.5} / (sigma * sigma) * distance_two_clamp) * nb_desolv;
+        dmap_total_eintcal += e_desolv;
+        fp_type e_vdW_Hb{0};
+        if (distance_two_clamp < nbc2) {
+          //  Find internal energy parameters, i.e.  epsilon and r-equilibrium values...
+          //  Lennard-Jones and Hydrogen Bond Potentials
+          // This can be precomputed as in intnbtable.cc
+          const auto& hbond_i    = ligand_num_hbond[a1];
+          const auto& hbond_j    = ligand_num_hbond[a2];
+          const auto& Rij_hb_i   = ligand_Rij_hb[a1];
+          const auto& Rij_hb_j   = ligand_Rij_hb[a2];
+          const auto& Rii_i      = ligand_Rii[a1];
+          const auto& Rii_j      = ligand_Rii[a2];
+          const auto& epsij_hb_i = ligand_epsij_hb[a1];
+          const auto& epsij_hb_j = ligand_epsij_hb[a2];
+          const auto& epsii_i    = ligand_epsii[a1];
+          const auto& epsii_j    = ligand_epsii[a2];
 
-                  // we need to determine the correct xA and xB exponents
-                  int xA = 12; // for both LJ, 12-6 and HB, 12-10, xA is 12
-                  int xB = 6;  // assume we have LJ, 12-6
+          // we need to determine the correct xA and xB exponents
+          int xA = 12; // for both LJ, 12-6 and HB, 12-10, xA is 12
+          int xB = 6;  // assume we have LJ, 12-6
 
-                  fp_type Rij{0}, epsij{0};
-                  if ((hbond_i == 1 || hbond_i == 2) && hbond_j > 2) {
-                    // i is a donor and j is an acceptor.
-                    // i is a hydrogen, j is a heteroatom
-                    Rij   = Rij_hb_j;
-                    epsij = epsij_hb_j;
-                    xB    = 10;
-                  } else if ((hbond_i > 2) && (hbond_j == 1 || hbond_j == 2)) {
-                    // i is an acceptor and j is a donor.
-                    // i is a heteroatom, j is a hydrogen
-                    Rij   = Rij_hb_i;
-                    epsij = epsij_hb_i;
-                    xB    = 10;
-                  } else {
-                    // we need to calculate the arithmetic mean of Ri and Rj
-                    Rij = (Rii_i + Rii_j) / fp_type{2};
-                    // we need to calculate the geometric mean of epsi and epsj
-                    epsij = std::sqrt(epsii_i * epsii_j);
-                  }
-                  if (xA != xB) {
-                    const fp_type tmp = epsij / (xA - xB);
-                    const fp_type cA  = tmp * std::pow(Rij, static_cast<fp_type>(xA)) * xB;
-                    const fp_type cB  = tmp * std::pow(Rij, static_cast<fp_type>(xB)) * xA;
+          fp_type Rij{0}, epsij{0};
+          if ((hbond_i == 1 || hbond_i == 2) && hbond_j > 2) {
+            // i is a donor and j is an acceptor.
+            // i is a hydrogen, j is a heteroatom
+            Rij   = Rij_hb_j;
+            epsij = epsij_hb_j;
+            xB    = 10;
+          } else if ((hbond_i > 2) && (hbond_j == 1 || hbond_j == 2)) {
+            // i is an acceptor and j is a donor.
+            // i is a heteroatom, j is a hydrogen
+            Rij   = Rij_hb_i;
+            epsij = epsij_hb_i;
+            xB    = 10;
+          } else {
+            // we need to calculate the arithmetic mean of Ri and Rj
+            Rij = (Rii_i + Rii_j) / fp_type{2};
+            // we need to calculate the geometric mean of epsi and epsj
+            epsij = std::sqrt(epsii_i * epsii_j);
+          }
+          if (xA != xB) {
+            const fp_type tmp = epsij / (xA - xB);
+            const fp_type cA  = tmp * std::pow(Rij, static_cast<fp_type>(xA)) * xB;
+            const fp_type cB  = tmp * std::pow(Rij, static_cast<fp_type>(xB)) * xA;
 
-                    const fp_type rA = std::pow(distance, static_cast<fp_type>(xA));
-                    const fp_type rB = std::pow(distance, static_cast<fp_type>(xB));
+            const fp_type rA = std::pow(distance, static_cast<fp_type>(xA));
+            const fp_type rB = std::pow(distance, static_cast<fp_type>(xB));
 
-                    e_vdW_Hb = std::min(EINTCLAMP, (cA / rA - cB / rB));
-
-                    /* smooth with min function; 
-              r_smooth is Angstrom range of "smoothing" */
-                    // TODO rework considering this precomputing with other values
-                    // if (r_smooth > 0) {
-                    //   const fp_type rlow  = distance - r_smooth / 2;
-                    //   const fp_type rhigh = distance + r_smooth / 2;
-                    //   fp_type energy_smooth{100000};
-                    //   // ((((int)((r)*A_DIV)) > NEINT_1) ? NEINT_1 : ((int)((r)*A_DIV))
-                    //   for (int j = std::max(fp_type{0}, std::min(rlow * A_DIV, fp_type{NEINT - 1}));
-                    //        j <= std::min(fp_type{NEINT - 1}, std::min(rhigh * A_DIV, fp_type{NEINT - 1}));
-                    //        ++j)
-                    //     energy_smooth = std::min(energy_smooth, e_vdW_Hb);
-
-                    //   e_vdW_Hb = energy_smooth;
-                    // } /* endif smoothing */
-
-                    // TODO check energy smoothing intnbtable.cc:215
-                    // with NOSQRT to False it seems to be the same as calmping to EINTCLAMP
-                  } else {
-                    throw std::runtime_error(
-                        "ERROR: Exponents must be different, to avoid division by zero!");
-                  }
-                }
-                emap_total_eintcal += e_vdW_Hb;
-              }
-              // else if ((nbmatrix.at(i, j) != 0 && nbmatrix.at(j, i) == 0) ||
-              //                (nbmatrix.at(i, j) == 0 && nbmatrix.at(j, i) != 0)) {
-              //       std::ostringstream oss;
-              //       // Build the formatted string
-              //       oss << "BUG: ASSYMMETRY detected in Non-Bond Matrix at " << i << "," << j;
-              //       error(oss.str());
-              //     }
-            }
+            e_vdW_Hb = std::min(EINTCLAMP, (cA / rA - cB / rB));
+          }
+        }
+        emap_total_eintcal += e_vdW_Hb;
+      }
     }
     const fp_type tors_free_energy = n_torsions * autodock_parameters::coeff_tors;
 
@@ -475,7 +458,9 @@ namespace mudock {
                              const int* __restrict__ frag_masks,
                              const int* __restrict__ frag_start_indexes,
                              const int* __restrict__ frag_stop_indexes,
-                             const uint_fast8_t* __restrict__ nbmatrix,
+                             const int num_nonbond,
+                             const int* __restrict__ non_bond_list_a1,
+                             const int* __restrict__ non_bond_list_a2,
                              const fp_type* const __restrict__* const __restrict__ grid_maps,
                              const fp_type* __restrict__ electro_map,
                              const fp_type* __restrict__ desolv_map,
@@ -557,7 +542,9 @@ namespace mudock {
                                                    map_ligand_types,
                                                    num_atoms,
                                                    num_rotamers,
-                                                   nbmatrix,
+                                                   num_nonbond,
+                                                   non_bond_list_a1,
+                                                   non_bond_list_a2,
                                                    minimum,
                                                    maximum,
                                                    center,
@@ -570,6 +557,8 @@ namespace mudock {
       }
 
 // Generate the new population
+#pragma GCC ivdep
+//#pragma GCC optimize("unroll-loops")
 #pragma clang loop vectorize(enable)
       for (int element_index = 0; element_index < population_size; ++element_index) {
         auto& next_individual = next_population[element_index];
@@ -587,7 +576,9 @@ namespace mudock {
                   std::begin(next_individual.genes) + split_index);
         next_individual.score = fp_type{0};
 
-        // mutate the offspring
+// mutate the offspring
+#pragma GCC ivdep
+//#pragma GCC optimize("unroll-loops")
 #pragma clang loop vectorize(enable)
 #pragma clang loop unroll(enable)
         for (int i{0}; i < 3; ++i) {
@@ -628,7 +619,9 @@ namespace mudock {
                         const int* __restrict__ frag_masks,
                         const int* __restrict__ frag_start_indexes,
                         const int* __restrict__ frag_stop_indexes,
-                        const uint_fast8_t* __restrict__ nbmatrix,
+                        const int num_nonbond,
+                        const int* __restrict__ non_bond_list_a1,
+                        const int* __restrict__ non_bond_list_a2,
                         const fp_type* const __restrict__* const __restrict__ grid_maps,
                         const fp_type* __restrict__ electro_map,
                         const fp_type* __restrict__ desolv_map,
@@ -645,8 +638,9 @@ namespace mudock {
                         individual* __restrict__ population_buffer2,
                         const int seed) {
     constexpr_for<0, get_num_atom_clusters(), 1>([&](const auto cluster_index) {
-      const auto num_atoms_cluster = atoms_clusters[cluster_index];
-      if (num_atoms < num_atoms_cluster)
+      const auto num_atoms_cluster_prev = atoms_clusters[cluster_index - 1];
+      const auto num_atoms_cluster      = atoms_clusters[cluster_index];
+      if (num_atoms < num_atoms_cluster && num_atoms >= num_atoms_cluster_prev)
         // Simulate the population evolution for the given amount of time
         evaluate_fitness_impl<num_atoms_cluster>(ligand_x,
                                                  ligand_y,
@@ -665,7 +659,9 @@ namespace mudock {
                                                  frag_masks,
                                                  frag_start_indexes,
                                                  frag_stop_indexes,
-                                                 nbmatrix,
+                                                 num_nonbond,
+                                                 non_bond_list_a1,
+                                                 non_bond_list_a2,
                                                  grid_maps,
                                                  electro_map,
                                                  desolv_map,

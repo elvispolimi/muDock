@@ -40,16 +40,17 @@ namespace mudock {
 
     // Find out the rotatable bonds in the ligand
     auto graph = make_graph(ligand.get_bonds());
-    const auto ligand_fragments = std::make_unique<fragments<static_containers>>(graph, ligand.get_bonds(), ligand.num_atoms());
+    const auto ligand_fragments =
+        std::make_unique<fragments<static_containers>>(graph, ligand.get_bonds(), ligand.num_atoms());
 
     const auto num_rotamers = ligand_fragments.get()->get_num_rotatable_bonds();
 
     // Get weed bonds and non bonds lists
     grid<uint_fast8_t, index2D> nbmatrix{{num_atoms, num_atoms}};
     nonbonds(nbmatrix, ligand.get_bonds(), num_atoms);
-    // std::vector<non_bond_parameter> non_bond_list;
-    // weed_bonds(nbmatrix, non_bond_list, num_atoms, ligand_fragments);
-    weed_bonds(nbmatrix, num_atoms, *ligand_fragments.get());
+    std::vector<int> non_bond_list_a1, non_bond_list_a2;
+    weed_bonds(nbmatrix, non_bond_list_a1, non_bond_list_a2, num_atoms, *ligand_fragments.get());
+    // weed_bonds(nbmatrix, num_atoms, *ligand_fragments.get());
 
     const fp_type minimum[3] = {electro_map.get()->minimum_coord.x,
                                 electro_map.get()->minimum_coord.y,
@@ -85,8 +86,7 @@ namespace mudock {
 
     std::vector<ligand_map_types> map_ligand_types;
     map_ligand_types.resize(num_atoms);
-    for (int i = 0; i < num_atoms; i++)
-      map_ligand_types[i] = map_from_autodock_type(ligand.autodock_type(i));
+    for (int i = 0; i < num_atoms; i++) map_ligand_types[i] = map_from_autodock_type(ligand.autodock_type(i));
 
     // Simulate the population evolution for the given amount of time
     evaluate_fitness(x.data(),
@@ -106,7 +106,9 @@ namespace mudock {
                      frag_masks.data(),
                      frag_start_indexes.data(),
                      frag_stop_indexes.data(),
-                     nbmatrix.data(),
+                     non_bond_list_a1.size(),
+                     non_bond_list_a1.data(),
+                     non_bond_list_a2.data(),
                      grid_maps,
                      electro_map.get()->data(),
                      desolv_map.get()->data(),
@@ -122,7 +124,6 @@ namespace mudock {
                      population.data(),
                      next_population.data(),
                      seed);
-
 
     // update the ligand position with the best one that we found
     const auto best_individual_it =
