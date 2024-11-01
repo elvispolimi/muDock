@@ -15,13 +15,4 @@ namespace mudock {
                    std::accumulate(std::begin(z), std::end(z), fp_type{0}) / static_cast<fp_type>(z.size())};
   }
 
-  inline point3D compute_center_of_mass(fp_type* __restrict__ x,
-                                        fp_type* __restrict__ y,
-                                        fp_type* __restrict__ z,
-                                        const int num_atoms) {
-    return point3D{std::accumulate(x, x + num_atoms, fp_type{0}) / static_cast<fp_type>(num_atoms),
-                   std::accumulate(y, y + num_atoms, fp_type{0}) / static_cast<fp_type>(num_atoms),
-                   std::accumulate(z, z + num_atoms, fp_type{0}) / static_cast<fp_type>(num_atoms)};
-  }
-
 } // namespace mudock
