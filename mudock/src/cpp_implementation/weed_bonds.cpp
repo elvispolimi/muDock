@@ -86,7 +86,8 @@ namespace mudock {
   |____________________________________________________________________________|
   */
   void weed_bonds(grid<uint_fast8_t, index2D>& nbmatrix,
-                  // std::vector<non_bond_parameter>& non_bond_list,
+                  std::vector<int>& non_bond_list_a1,
+                  std::vector<int>& non_bond_list_a2,
                   const int num_atoms,
                   const fragments<static_containers>& ligand_fragments) {
     const auto& ligand_rigid_pieces = ligand_fragments.get_rigid_pieces();
@@ -104,7 +105,7 @@ namespace mudock {
           nbmatrix.at(i, j) = 0;
         }
       } // i
-    }   // j
+    } // j
     /* 
     \   Weed out bonds across torsions,
     \______________________________________________________________
@@ -155,22 +156,19 @@ namespace mudock {
 
     // intramolecular non-bonds for ligand
     // TODO check what true_ligand_atoms is
-    // for (int i = 0; i < num_atoms; ++i) {
-    //   for (int j = i + 1; j < num_atoms; ++j) {
-    //     if ((nbmatrix.at(i, j) == 1 && nbmatrix.at(j, i) == 1)) {
-    //       non_bond_list.emplace_back();
-    //       auto& nbl        = non_bond_list.back();
-    //       nbl.a1           = i;
-    //       nbl.a2           = j;
-    //       nbl.nonbond_type = nbmatrix.at(i, j);
-    //     } else if ((nbmatrix.at(i, j) != 0 && nbmatrix.at(j, i) == 0) ||
-    //                (nbmatrix.at(i, j) == 0 && nbmatrix.at(j, i) != 0)) {
-    //       std::ostringstream oss;
-    //       // Build the formatted string
-    //       oss << "BUG: ASSYMMETRY detected in Non-Bond Matrix at " << i << "," << j;
-    //       error(oss.str());
-    //     }
-    //   } // j
-    // }   // i
+    for (int i = 0; i < num_atoms; ++i) {
+      for (int j = i + 1; j < num_atoms; ++j) {
+        if ((nbmatrix.at(i, j) == 1 && nbmatrix.at(j, i) == 1)) {
+          non_bond_list_a1.push_back(i);
+          non_bond_list_a2.push_back(j);
+        } else if ((nbmatrix.at(i, j) != 0 && nbmatrix.at(j, i) == 0) ||
+                   (nbmatrix.at(i, j) == 0 && nbmatrix.at(j, i) != 0)) {
+          std::ostringstream oss;
+          // Build the formatted string
+          oss << "BUG: ASSYMMETRY detected in Non-Bond Matrix at " << i << "," << j;
+          error(oss.str());
+        }
+      } // j
+    } // i
   }
 } // namespace mudock

@@ -37,26 +37,6 @@ namespace mudock {
             static_cast<int>((grid_maximum.z - grid_minimum.z) / grid_spacing)};
   }
 
-  // TODO move it away from here
-  inline fp_type calc_ddd_Mehler_Solmajer(fp_type distance) {
-    /*____________________________________________________________________________
-     * Distance-dependent dielectric ewds: Mehler and Solmajer, Prot Eng 4, 903-910.
-     *____________________________________________________________________________*/
-    const fp_type lambda{0.003627};
-    const fp_type epsilon0{78.4};
-    const fp_type A{-8.5525};
-    const fp_type B = epsilon0 - A;
-    const fp_type rk{7.7839};
-    const fp_type lambda_B = -lambda * B;
-
-    fp_type epsilon = A + B / (fp_type{1} + rk * std::exp(lambda_B * distance));
-
-    if (epsilon < std::numeric_limits<fp_type>::epsilon()) {
-      epsilon = fp_type{1.0};
-    }
-    return epsilon;
-  }
-
   template<class T, class index_type>
     requires is_index<index_type>
   class grid {
