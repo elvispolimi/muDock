@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <mudock/cpp_implementation/chromosome.hpp>
+#include <mudock/chem/mehler_solmajer.hpp>
 #include <mudock/grid.hpp>
 #include <mudock/knobs.hpp>
 #include <mudock/molecule.hpp>
@@ -9,7 +10,6 @@
 #include <vector>
 
 namespace mudock {
-
   /**
    * The virtual screening algorithm is basically a genetic algorithm that use the ligand
    * energy as fitness function, and geometric transformations of the molecule as genes.
@@ -24,11 +24,10 @@ namespace mudock {
     std::vector<individual> population;
     std::vector<individual> next_population;
 
-    // TODO
-    // random_generator<int> rnd_gen;
-
     // the configuration of the GA algorithm
     knobs configuration;
+
+    const std::array<fp_type, num_radius_tick> r_dieletric_values;
 
     // utility function to select a parent for the crossover
     const chromosome& tournament_selection();

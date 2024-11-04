@@ -47,17 +47,17 @@ int main(int argc, char* argv[]) {
   ////////////////////
 
   mudock::apply_autodock_forcefield(protein);
-  // auto grid_atom_maps    = std::make_shared<const mudock::grid_atom_mapper>(generate_atom_grid_maps(protein));
-  // auto electrostatic_map = std::make_shared<const mudock::grid_map>(generate_electrostatic_grid_map(protein));
-  // auto desolvation_map   = std::make_shared<const mudock::grid_map>(generate_desolvation_grid_map(protein));
-  auto tp  = mudock::point3D{};
-  auto itp = mudock::index3D{1, 1, 1};
-  auto sv  = std::vector<mudock::grid_atom_map>{};
-  for (int i = 0; i < mudock::num_ligand_map_types(); ++i)
-    sv.emplace_back(mudock::autodock_type_from_map(static_cast<mudock::ligand_map_types>(i)), protein);
-  auto grid_atom_maps    = std::make_shared<const mudock::grid_atom_mapper>(sv);
-  auto electrostatic_map = std::make_shared<const mudock::grid_map>(protein);
-  auto desolvation_map   = std::make_shared<const mudock::grid_map>(protein);
+  auto grid_atom_maps    = std::make_shared<const mudock::grid_atom_mapper>(generate_atom_grid_maps(protein));
+  auto electrostatic_map = std::make_shared<const mudock::grid_map>(generate_electrostatic_grid_map(protein));
+  auto desolvation_map   = std::make_shared<const mudock::grid_map>(generate_desolvation_grid_map(protein));
+  // auto tp  = mudock::point3D{};
+  // auto itp = mudock::index3D{1, 1, 1};
+  // auto sv  = std::vector<mudock::grid_atom_map>{};
+  // for (int i = 0; i < mudock::num_ligand_map_types(); ++i)
+  //   sv.emplace_back(mudock::autodock_type_from_map(static_cast<mudock::ligand_map_types>(i)), protein);
+  // auto grid_atom_maps    = std::make_shared<const mudock::grid_atom_mapper>(sv);
+  // auto electrostatic_map = std::make_shared<const mudock::grid_map>(protein);
+  // auto desolvation_map   = std::make_shared<const mudock::grid_map>(protein);
 
   // read  all the ligands description from the standard input and split them
   mudock::info("Reading ligands from the stdin ...");

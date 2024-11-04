@@ -42,5 +42,6 @@ namespace mudock {
                         const int map_index_xy,
                         individual* __restrict__ population_buffer1,
                         individual* __restrict__ population_buffer2,
-                        const int seed);
+                        const int seed,
+                        const fp_type* __restrict__ r_dieletric_values);
 } // namespace mudock
