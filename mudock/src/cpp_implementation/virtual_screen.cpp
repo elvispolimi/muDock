@@ -1,4 +1,5 @@
 #include <memory>
+#include <mudock/chem/mehler_solmajer.hpp>
 #include <mudock/cpp_implementation/calc_energy_cpp.hpp>
 #include <mudock/cpp_implementation/center_of_mass.hpp>
 #include <mudock/cpp_implementation/chromosome.hpp>
@@ -8,10 +9,10 @@
 #include <mudock/cpp_implementation/weed_bonds.hpp>
 #include <mudock/grid.hpp>
 #include <mudock/molecule.hpp>
+#include <mudock/scorep_utils.hpp>
 #include <mudock/utils.hpp>
 
 namespace mudock {
-
   virtual_screen_cpp::virtual_screen_cpp(std::shared_ptr<const grid_atom_mapper>& _grid_atom_maps,
                                          std::shared_ptr<const grid_map>& _electro_map,
                                          std::shared_ptr<const grid_map>& _desolv_map,
@@ -21,9 +22,11 @@ namespace mudock {
         desolv_map(_desolv_map),
         population(knobs.population_number),
         next_population(knobs.population_number),
-        configuration(knobs) {}
+        configuration(knobs),
+        r_dieletric_values(compute_dielectric_ewds()) {}
 
   void virtual_screen_cpp::operator()(static_molecule& ligand) {
+    SCOREP_MARKER_START(ga, "GA");
     const auto seed =
         static_cast<size_t>(std::chrono::high_resolution_clock::now().time_since_epoch().count());
     // Place the molecule to the center of the target protein
@@ -122,7 +125,8 @@ namespace mudock {
                      electro_map.get()->index.size_xy(),
                      population.data(),
                      next_population.data(),
-                     seed);
+                     seed,
+                     r_dieletric_values.data());
 
     // update the ligand position with the best one that we found
     const auto best_individual_it =
@@ -131,6 +135,7 @@ namespace mudock {
                          [](const auto a, const auto b) { return a.score < b.score; });
     apply(x, y, z, best_individual_it->genes, *ligand_fragments.get());
     ligand.properties.assign(property_type::SCORE, std::to_string(best_individual_it->score));
+    SCOREP_MARKER_STOP(ga);
   }
 
 } // namespace mudock
