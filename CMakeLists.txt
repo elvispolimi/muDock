@@ -108,6 +108,10 @@ else()
     message(WARNING "Unable to optimize for the given architecture: unknown compiler \"${CMAKE_CXX_COMPILER_ID}\"")
 endif()
 
+# Google Highway
+option(MUDOCK_ENABLE_GH "Enable Google Highway for CPU vectorization" OFF)
+set(MUDOCK_GH_INCLUDE_PATH "" CACHE STRING "Google Highway include path")
+
 # CUDA
 option(MUDOCK_ENABLE_CUDA "Enable the CUDA kernel implementation" OFF)
 
@@ -287,6 +291,11 @@ if(MUDOCK_ENABLE_FJAPP)
 endif()
 if(MUDOCK_ENABLE_FJCOMPILER)
     message(STATUS "Fujtsu Compiler.....................: ${MUDOCK_ENABLE_FJCOMPILER} (MUDOCK_ENABLE_FJCOMPILER)")
+endif()
+
+message(STATUS "Enable Google Highway...............: ${MUDOCK_ENABLE_GH} (MUDOCK_ENABLE_GH)")
+if(MUDOCK_ENABLE_GH)
+    message(STATUS "Google Highway include path.........: ${MUDOCK_GH_INCLUDE_PATH} (MUDOCK_GH_INCLUDE_PATH)")
 endif()
 
 message(STATUS "Enable CUDA.........................: ${MUDOCK_ENABLE_CUDA} (MUDOCK_ENABLE_CUDA)")

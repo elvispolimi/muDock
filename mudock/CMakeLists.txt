@@ -22,7 +22,6 @@ list(APPEND header_files
   "${header_path}/${header_prefix}/compute/threadpool.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/cpp_manager.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/cpp_worker.hpp"
-  "${header_path}/${header_prefix}/cpp_implementation/geometric_transformations.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/virtual_screen.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/chromosome.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/mutate.hpp"
@@ -75,9 +74,6 @@ list(APPEND source_files
   "${source_path}/compute/reorder_buffer.cpp"
   "${source_path}/cpp_implementation/cpp_manager.cpp"
   "${source_path}/cpp_implementation/cpp_worker.cpp"
-  "${source_path}/cpp_implementation/mutate.cpp"
-  "${source_path}/cpp_implementation/geometric_transformations.cpp"
-  "${source_path}/cpp_implementation/virtual_screen.cpp"
   "${source_path}/cpp_implementation/weed_bonds.cpp"
   "${source_path}/format/dot.cpp"
   "${source_path}/format/mol2.cpp"
@@ -91,7 +87,28 @@ list(APPEND source_files
   "${source_path}/log.cpp"
 )
 
-if(NOT MUDOCK_ENABLE_FJCOMPILER)
+if(MUDOCK_ENABLE_GH)
+  list(APPEND header_files
+    "${header_path}/${header_prefix}/g_highway_implementation/geometric_transformations.hpp"
+  )
+  list(APPEND source_files
+  "${source_path}/g_highway_implementation/geometric_transformations.cpp"
+  "${source_path}/g_highway_implementation/calc_energy_cpp.cpp"
+  "${source_path}/g_highway_implementation/virtual_screen.cpp"
+  "${source_path}/g_highway_implementation/mutate.cpp"
+  )
+else()
+  list(APPEND header_files
+    "${header_path}/${header_prefix}/cpp_implementation/geometric_transformations.hpp"
+  )
+  list(APPEND source_files
+  "${source_path}/cpp_implementation/geometric_transformations.cpp"
+  "${source_path}/cpp_implementation/virtual_screen.cpp"
+  "${source_path}/cpp_implementation/mutate.cpp"
+  )
+endif()
+
+if(NOT MUDOCK_ENABLE_FJCOMPILER AND NOT MUDOCK_ENABLE_GH)
   list(APPEND source_files
     "${source_path}/cpp_implementation/calc_energy_cpp.cpp"
   )
@@ -248,6 +265,14 @@ set_target_properties(libmudock
 target_link_libraries(libmudock PUBLIC Microsoft.GSL::GSL)
 target_compile_options(libmudock PUBLIC $<$<AND:$<CONFIG:RELEASE>,$<COMPILE_LANGUAGE:CXX>>:${release_flags}>)
 add_rdkit_dep(libmudock)
+
+if(MUDOCK_ENABLE_GH)
+  if(MUDOCK_GH_INCLUDE_PATH STREQUAL "")
+    message(FATAL_ERROR "Missing Google Highway include path")
+  endif()
+  target_compile_definitions(libmudock PUBLIC MUDOCK_USE_GH)
+  target_include_directories(libmudock PRIVATE ${MUDOCK_GH_INCLUDE_PATH})
+endif()
 
 # check if we need to activate the compilation flag that signals Polygeist transpilation
 if(MUDOCK_ENABLE_POLY)

@@ -121,7 +121,7 @@ namespace mudock {
 
     // apply the rotation matrix
     for (int i = it.get_local_id(0); i < num_atoms; i += it.get_local_range(0)) {
-      if (bitmask[i] == 1) {
+      if (bitmask[i] != 0) {
         const auto prev_x = x[i], prev_y = y[i], prev_z = z[i];
         x[i] = prev_x * m00 + prev_y * m01 + prev_z * m02 + m03;
         y[i] = prev_x * m10 + prev_y * m11 + prev_z * m12 + m13;

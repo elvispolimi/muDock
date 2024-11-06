@@ -1,18 +1,20 @@
-  #include <memory>
+#include <memory>
 #include <mudock/chem/mehler_solmajer.hpp>
-#include <mudock/cpp_implementation/calc_energy_cpp.hpp>
 #include <mudock/cpp_implementation/center_of_mass.hpp>
 #include <mudock/cpp_implementation/chromosome.hpp>
-#include <mudock/cpp_implementation/geometric_transformations.hpp>
-#include <mudock/cpp_implementation/mutate.hpp>
 #include <mudock/cpp_implementation/virtual_screen.hpp>
 #include <mudock/cpp_implementation/weed_bonds.hpp>
+#include <mudock/cpp_implementation/calc_energy_cpp.hpp>
+#include <mudock/g_highway_implementation/geometric_transformations.hpp>
+#include <mudock/g_highway_implementation/mutate.hpp>
 #include <mudock/grid.hpp>
 #include <mudock/molecule.hpp>
 #include <mudock/scorep_utils.hpp>
 #include <mudock/utils.hpp>
 
 namespace mudock {
+  using HWY_NAMESPACE::translate_molecule;
+
   virtual_screen_cpp::virtual_screen_cpp(std::shared_ptr<const grid_atom_mapper>& _grid_atom_maps,
                                          std::shared_ptr<const grid_map>& _electro_map,
                                          std::shared_ptr<const grid_map>& _desolv_map,
@@ -33,9 +35,10 @@ namespace mudock {
     const int num_atoms = ligand.num_atoms();
     const auto x = ligand.get_x(), y = ligand.get_y(), z = ligand.get_z();
     const auto ligand_center_of_mass = compute_center_of_mass(x, y, z);
-    translate_molecule(x,
-                       y,
-                       z,
+    translate_molecule(x.data(),
+                       y.data(),
+                       z.data(),
+                       num_atoms,
                        electro_map->center.x - ligand_center_of_mass.x,
                        electro_map->center.y - ligand_center_of_mass.y,
                        electro_map->center.z - ligand_center_of_mass.z);
@@ -133,7 +136,15 @@ namespace mudock {
         std::min_element(std::begin(next_population),
                          std::end(next_population),
                          [](const auto a, const auto b) { return a.score < b.score; });
-    apply(x, y, z, best_individual_it->genes, *ligand_fragments.get());
+    apply(x.data(),
+          y.data(),
+          z.data(),
+          best_individual_it->genes,
+          num_atoms,
+          num_rotamers,
+          frag_masks.data(),
+          frag_start_indexes.data(),
+          frag_stop_indexes.data());
     ligand.properties.assign(property_type::SCORE, std::to_string(best_individual_it->score));
     SCOREP_MARKER_STOP(ga);
   }

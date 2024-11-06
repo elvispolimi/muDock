@@ -134,7 +134,7 @@ namespace mudock {
                                  const fp_type offset_z) {
 #pragma GCC ivdep
 //#pragma GCC optimize("unroll-loops")
-#pragma clang loop vectorize(enable)
+#pragma clang loop vectorize(enable) interleave(enable)
 #pragma clang loop unroll(enable)
     for (int i = 0; i < NUM_ATOMS; ++i)
       if (i < num_atoms) {
@@ -255,10 +255,10 @@ namespace mudock {
 // apply the rotation matrix
 #pragma GCC ivdep
 //#pragma GCC optimize("unroll-loops")
-#pragma clang loop vectorize(enable)
+#pragma clang loop vectorize(enable) interleave(enable)
 #pragma clang loop unroll(enable)
     for (int i = 0; i < NUM_ATOMS; ++i) {
-      if (frag_mask[i] == 1 && i < num_atoms) {
+      if (frag_mask[i] != 0 && i < num_atoms) {
         const auto prev_x = x[i], prev_y = y[i], prev_z = z[i];
         x[i] = prev_x * m00 + prev_y * m01 + prev_z * m02 + m03;
         y[i] = prev_x * m10 + prev_y * m11 + prev_z * m12 + m13;
@@ -324,7 +324,7 @@ namespace mudock {
 
 #pragma GCC ivdep
 //#pragma GCC optimize("unroll-loops")
-#pragma clang loop vectorize(enable)
+#pragma clang loop vectorize(enable) interleave(enable)
 #pragma clang loop unroll(enable)
     for (int index = 0; index < NUM_ATOMS; ++index)
       if (index < num_atoms) {
@@ -363,7 +363,7 @@ namespace mudock {
 
 #pragma GCC ivdep
 //#pragma GCC optimize("unroll-loops")
-#pragma clang loop vectorize(enable)
+#pragma clang loop vectorize(enable) interleave(enable)
 #pragma clang loop unroll(enable)
 #pragma fj loop prefetch
 #pragma statement scache_isolate_assign ligand_x, ligand_y, ligand_z, ligand_charge, ligand_num_hbond, \
@@ -576,7 +576,7 @@ namespace mudock {
 // Generate the new population
 #pragma GCC ivdep
 //#pragma GCC optimize("unroll-loops")
-#pragma clang loop vectorize(enable)
+#pragma clang loop vectorize(enable) interleave(enable)
       for (int element_index = 0; element_index < population_size; ++element_index) {
         auto& next_individual = next_population[element_index];
         // select the parent
@@ -596,7 +596,7 @@ namespace mudock {
 // mutate the offspring
 #pragma GCC ivdep
 //#pragma GCC optimize("unroll-loops")
-#pragma clang loop vectorize(enable)
+#pragma clang loop vectorize(enable) interleave(enable)
 #pragma clang loop unroll(enable)
         for (int i{0}; i < 3; ++i) {
           if (get_mutation_coin_distribution(generator, dist) < mutation_prob)
