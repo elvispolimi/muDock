@@ -1,5 +1,4 @@
 #include <algorithm>
-#include <arm_sve.h>
 #include <cmath>
 #include <cstring>
 #include <memory>
@@ -316,8 +315,7 @@ namespace mudock {
                              const int map_index_xy,
                              const fp_type* const __restrict__* const __restrict__ grid_maps,
                              const fp_type* __restrict__ electro_map,
-                             const fp_type* __restrict__ desolv_map,
-                             const fp_type* __restrict__ r_dieletric_values) {
+                             const fp_type* __restrict__ desolv_map) {
     fp_type elect_total_trilinear = 0;
     fp_type emap_total_trilinear  = 0;
     fp_type dmap_total_trilinear  = 0;
@@ -375,16 +373,12 @@ namespace mudock {
         const fp_type distance_two = std::pow(std::fabs(ligand_x[a1] - ligand_x[a2]), fp_type{2}) +
                                      std::pow(std::fabs(ligand_y[a1] - ligand_y[a2]), fp_type{2}) +
                                      std::pow(std::fabs(ligand_z[a1] - ligand_z[a2]), fp_type{2});
-        const fp_type distance_two_clamp = std::clamp(distance_two, RMIN_ELEC * RMIN_ELEC, distance_two);
+        const fp_type distance_two_clamp = std::clamp(distance_two, RMIN_ELEC_SQUARE, distance_two);
         const fp_type distance           = std::sqrt(distance_two_clamp);
 
-        // //  Calculate  Electrostatic  Energy
-        // const fp_type r_dielectric = fp_type{1} / (distance * calc_ddd_Mehler_Solmajer(distance));
         //  Calculate  Electrostatic  Energy
-        // TODO check this value
-        const fp_type r_dielectric =
-            r_dieletric_values[static_cast<int>(distance * num_radius_tick / num_radius_angstrom)];
-        const fp_type e_elec = ligand_charge[a1] * ligand_charge[a2] * ELECSCALE *
+        const fp_type r_dielectric = fp_type{1} / (distance * calc_ddd_Mehler_Solmajer(distance));
+        const fp_type e_elec       = ligand_charge[a1] * ligand_charge[a2] * ELECSCALE *
                                autodock_parameters::coeff_estat * r_dielectric;
         elect_total_eintcal += e_elec;
 
@@ -394,7 +388,7 @@ namespace mudock {
              ligand_vol[a1] * (ligand_solpar[a2] + qsolpar * std::fabs(ligand_charge[a2])));
 
         const fp_type e_desolv = autodock_parameters::coeff_desolv *
-                                 std::exp(fp_type{-0.5} / (sigma * sigma) * distance_two_clamp) * nb_desolv;
+                                 std::exp(fp_type{-0.5} / (sigma_square) * distance_two_clamp) * nb_desolv;
         dmap_total_eintcal += e_desolv;
         fp_type e_vdW_Hb{0};
         if (distance_two_clamp < nbc2) {
@@ -491,8 +485,7 @@ namespace mudock {
                              const int map_index_xy,
                              individual* __restrict__ population_buffer1,
                              individual* __restrict__ population_buffer2,
-                             const int seed,
-                             const fp_type* __restrict__ r_dieletric_values) {
+                             const int seed) {
     std::uniform_real_distribution<fp_type> dist{fp_type{0.0}, fp_type{1.0}};
     std::mt19937 generator(seed);
 
@@ -568,8 +561,7 @@ namespace mudock {
                                                    map_index_xy,
                                                    grid_maps,
                                                    electro_map,
-                                                   desolv_map,
-                                                   r_dieletric_values);
+                                                   desolv_map);
         element.score     = energy; // dummy implementation to test the genetic
       }
 
@@ -580,10 +572,24 @@ namespace mudock {
       for (int element_index = 0; element_index < population_size; ++element_index) {
         auto& next_individual = next_population[element_index];
         // select the parent
-        const auto& parent1 =
-            tournament_selection(generator, dist, tournament_length, population, population_size);
-        const auto& parent2 =
-            tournament_selection(generator, dist, tournament_length, population, population_size);
+        auto best_individual_1 = get_selection_distribution(generator, dist, population_size);
+        auto best_individual_2 = get_selection_distribution(generator, dist, population_size);
+        for (int i = 0; i < tournament_length; ++i) {
+          const auto contendent_1 = get_selection_distribution(generator, dist, population_size);
+          const auto contendent_2 = get_selection_distribution(generator, dist, population_size);
+          if (population[contendent_1].score < population[best_individual_1].score) {
+            best_individual_1 = contendent_1;
+          }
+          if (population[contendent_2].score < population[best_individual_2].score) {
+            best_individual_2 = contendent_2;
+          }
+        }
+        const auto& parent1 = population[best_individual_1].genes;
+        const auto& parent2 = population[best_individual_2].genes;
+        // const auto& parent1 =
+        //     tournament_selection(generator, dist, tournament_length, population, population_size);
+        // const auto& parent2 =
+        //     tournament_selection(generator, dist, tournament_length, population, population_size);
 
         // generate the offspring
         const auto split_index = get_crossover_distribution(generator, dist, num_rotamers);
@@ -652,8 +658,7 @@ namespace mudock {
                         const int map_index_xy,
                         individual* __restrict__ population_buffer1,
                         individual* __restrict__ population_buffer2,
-                        const int seed,
-                        const fp_type* __restrict__ r_dieletric_values) {
+                        const int seed) {
     constexpr_for<0, get_num_atom_clusters(), 1>([&](const auto cluster_index) {
       const auto num_atoms_cluster_prev = atoms_clusters[cluster_index - 1];
       const auto num_atoms_cluster      = atoms_clusters[cluster_index];
@@ -693,8 +698,7 @@ namespace mudock {
                                                  map_index_xy,
                                                  population_buffer1,
                                                  population_buffer2,
-                                                 seed,
-                                                 r_dieletric_values);
+                                                 seed);
     });
   }
 } // namespace mudock

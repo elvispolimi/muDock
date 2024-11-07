@@ -15,6 +15,6 @@ constexpr auto is_debug() {
 #ifdef DEBUG_MODE
   return true;
 #else
-  return true;
+  return false;
 #endif
 }

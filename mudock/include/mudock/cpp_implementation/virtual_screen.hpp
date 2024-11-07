@@ -27,8 +27,6 @@ namespace mudock {
     // the configuration of the GA algorithm
     knobs configuration;
 
-    const std::array<fp_type, num_radius_tick> r_dieletric_values;
-
     // utility function to select a parent for the crossover
     const chromosome& tournament_selection();
 
