@@ -36,10 +36,12 @@ namespace mudock {
 
   static constexpr fp_type solpar_q{0.01097};
   static constexpr fp_type sigma{3.6};
+  static constexpr fp_type sigma_square{sigma*sigma};
 
   static constexpr fp_type precision{0.0001};
 
   static constexpr fp_type RMIN_ELEC{0.5};
+  static constexpr fp_type RMIN_ELEC_SQUARE{RMIN_ELEC*RMIN_ELEC};
   static constexpr fp_type ELECSCALE{332.06363};
   static constexpr fp_type qsolpar{0.01097};
   static constexpr fp_type r_smooth{

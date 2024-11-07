@@ -24,8 +24,7 @@ namespace mudock {
         desolv_map(_desolv_map),
         population(knobs.population_number),
         next_population(knobs.population_number),
-        configuration(knobs),
-        r_dieletric_values(compute_dielectric_ewds()) {}
+        configuration(knobs){}
 
   void virtual_screen_cpp::operator()(static_molecule& ligand) {
     SCOREP_MARKER_START(ga, "GA");
@@ -128,8 +127,7 @@ namespace mudock {
                      electro_map.get()->index.size_xy(),
                      population.data(),
                      next_population.data(),
-                     seed,
-                     r_dieletric_values.data());
+                     seed);
 
     // update the ligand position with the best one that we found
     const auto best_individual_it =
