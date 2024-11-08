@@ -91,6 +91,8 @@ endif()
 # TODO check this
 project(muDock VERSION 1.0)
 enable_language(CXX)
+# TODO check interference with other frameworks
+set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
 
 # Check if specific target architectures should be used
 # TODO check this
@@ -197,7 +199,7 @@ set(LIKWID_PATH "" CACHE STRING "likwid installation folder")
 option(MUDOCK_ENABLE_SCOREP "Enable profiling using Score-P" OFF)
 
 option(MUDOCK_ENABLE_FJAPP "Enable profiling using Fujtsu App" OFF)
-option(MUDOCK_ENABLE_FJCOMPILER "Enable compilation using Fujtsu Compiler" OFF)
+option(MUDOCK_EXCLUDE_CPU_KERNEL "Enable compilation using Fujtsu Compiler" OFF)
 # TODO FIXME
 set(CMAKE_POSITION_INDEPENDENT_CODE FALSE)
 
@@ -289,8 +291,8 @@ endif()
 if(MUDOCK_ENABLE_FJAPP)
     message(STATUS "Fujtsu App Profiling................: ${MUDOCK_ENABLE_FJAPP} (MUDOCK_ENABLE_FJAPP)")
 endif()
-if(MUDOCK_ENABLE_FJCOMPILER)
-    message(STATUS "Fujtsu Compiler.....................: ${MUDOCK_ENABLE_FJCOMPILER} (MUDOCK_ENABLE_FJCOMPILER)")
+if(MUDOCK_EXCLUDE_CPU_KERNEL)
+    message(STATUS "Exclude CPU kernels.................: ${MUDOCK_EXCLUDE_CPU_KERNEL} (MUDOCK_EXCLUDE_CPU_KERNEL)")
 endif()
 
 message(STATUS "Enable Google Highway...............: ${MUDOCK_ENABLE_GH} (MUDOCK_ENABLE_GH)")
