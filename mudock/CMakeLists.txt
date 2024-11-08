@@ -108,7 +108,7 @@ else()
   )
 endif()
 
-if(NOT MUDOCK_ENABLE_FJCOMPILER AND NOT MUDOCK_ENABLE_GH)
+if(NOT MUDOCK_EXCLUDE_CPU_KERNEL AND NOT MUDOCK_ENABLE_GH)
   list(APPEND source_files
     "${source_path}/cpp_implementation/calc_energy_cpp.cpp"
   )
