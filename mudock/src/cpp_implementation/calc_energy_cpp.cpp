@@ -33,7 +33,6 @@ namespace mudock {
                                               const T& max) {
     fp_type value;
     if constexpr (is_debug())
-      // TODO value here for debug
       value = fp_type{0.4};
     else {
       value = dist(generator);
@@ -99,15 +98,6 @@ namespace mudock {
     const fp_type pv[2] = {p1v, p0v};
     const fp_type pw[2] = {p1w, p0w};
     fp_type value{0};
-    // #pragma unroll
-    //     for (int i = 0; i <= 1; i++)
-    // #pragma unroll
-    //       for (int t = 0; t <= 1; t++)
-    // #pragma unroll
-    //         for (int n = 0; n <= 1; n++) {
-    //           const fp_type tmp = map[FLATTENED_3D(u0 + n, v0 + t, w0 + i, map_index_x, map_index_xy)];
-    //           value += pu[n] * pv[t] * pw[i] * tmp;
-    //         }
     // Precompute flattened indices
     const int base_index = FLATTENED_3D(u0, v0, w0, map_index_x, map_index_xy);
 
@@ -132,7 +122,6 @@ namespace mudock {
                                  const fp_type offset_y,
                                  const fp_type offset_z) {
 #pragma GCC ivdep
-//#pragma GCC optimize("unroll-loops")
 #pragma clang loop vectorize(enable) interleave(enable)
 #pragma clang loop unroll(enable)
     for (int i = 0; i < NUM_ATOMS; ++i)
@@ -154,7 +143,6 @@ namespace mudock {
     // compute the molecule center of mass
     point3D c{0, 0, 0};
 #pragma GCC ivdep
-//#pragma GCC optimize("unroll-loops")
 #pragma clang loop vectorize(enable)
 #pragma clang loop unroll(enable)
     for (int i = 0; i < NUM_ATOMS; i++)
@@ -186,7 +174,6 @@ namespace mudock {
 
 // apply the rotation matrix
 #pragma GCC ivdep
-//#pragma GCC optimize("unroll-loops")
 #pragma clang loop vectorize(enable)
 #pragma clang loop unroll(enable)
     for (int i = 0; i < NUM_ATOMS; ++i)
@@ -253,7 +240,6 @@ namespace mudock {
 
 // apply the rotation matrix
 #pragma GCC ivdep
-//#pragma GCC optimize("unroll-loops")
 #pragma clang loop vectorize(enable) interleave(enable)
 #pragma clang loop unroll(enable)
     for (int i = 0; i < NUM_ATOMS; ++i) {
@@ -321,7 +307,6 @@ namespace mudock {
     fp_type dmap_total_trilinear  = 0;
 
 #pragma GCC ivdep
-//#pragma GCC optimize("unroll-loops")
 #pragma clang loop vectorize(enable) interleave(enable)
 #pragma clang loop unroll(enable)
     for (int index = 0; index < NUM_ATOMS; ++index)
@@ -331,9 +316,9 @@ namespace mudock {
         if (coord[0] < minimum[0] || coord[0] > maximum[0] || coord[1] < minimum[1] ||
             coord[1] > maximum[1] || coord[2] < minimum[2] || coord[2] > maximum[2]) {
           // printf("Atom %d is outside\n", index);
-          const fp_type dist = std::pow(std::fabs(coord[0] - center[0]), fp_type{2}) +
-                               std::pow(std::fabs(coord[1] - center[1]), fp_type{2}) +
-                               std::pow(std::fabs(coord[2] - center[2]), fp_type{2});
+          const fp_type dist = std::pow(coord[0] - center[0], fp_type{2}) +
+                               std::pow(coord[1] - center[1], fp_type{2}) +
+                               std::pow(coord[2] - center[2], fp_type{2});
           const fp_type epenalty = dist * ENERGYPENALTY;
           elect_total_trilinear += epenalty;
           emap_total_trilinear += epenalty;
@@ -356,11 +341,7 @@ namespace mudock {
 
     fp_type elect_total_eintcal{0}, emap_total_eintcal{0}, dmap_total_eintcal{0};
     if (n_torsions > 0) {
-      // TODO @Davide suppose that the receptor does not have Flexible residues eintcal.cc:147
-      // TODO
-
 #pragma GCC ivdep
-//#pragma GCC optimize("unroll-loops")
 #pragma clang loop vectorize(enable) interleave(enable)
 #pragma clang loop unroll(enable)
 #pragma fj loop prefetch
@@ -370,9 +351,9 @@ namespace mudock {
         const int& a1 = non_bond_list_a1[i];
         const int& a2 = non_bond_list_a2[i];
 
-        const fp_type distance_two = std::pow(std::fabs(ligand_x[a1] - ligand_x[a2]), fp_type{2}) +
-                                     std::pow(std::fabs(ligand_y[a1] - ligand_y[a2]), fp_type{2}) +
-                                     std::pow(std::fabs(ligand_z[a1] - ligand_z[a2]), fp_type{2});
+        const fp_type distance_two = std::pow(ligand_x[a1] - ligand_x[a2], fp_type{2}) +
+                                     std::pow(ligand_y[a1] - ligand_y[a2], fp_type{2}) +
+                                     std::pow(ligand_z[a1] - ligand_z[a2], fp_type{2});
         const fp_type distance_two_clamp = std::clamp(distance_two, RMIN_ELEC_SQUARE, distance_two);
         const fp_type distance           = std::sqrt(distance_two_clamp);
 
@@ -388,7 +369,7 @@ namespace mudock {
              ligand_vol[a1] * (ligand_solpar[a2] + qsolpar * std::fabs(ligand_charge[a2])));
 
         const fp_type e_desolv = autodock_parameters::coeff_desolv *
-                                 std::exp(fp_type{-0.5} / (sigma_square) * distance_two_clamp) * nb_desolv;
+                                 std::exp(fp_type{-0.5} / (sigma_square) *distance_two_clamp) * nb_desolv;
         dmap_total_eintcal += e_desolv;
         fp_type e_vdW_Hb{0};
         if (distance_two_clamp < nbc2) {
@@ -514,7 +495,6 @@ namespace mudock {
 
     for (int generation = 0; generation < num_generations; ++generation) {
 // Evaluate the fitness of the population
-#pragma clang loop unroll(enable)
 #pragma fj loop prefetch
 #pragma statement scache_isolate_assign ligand_x, ligand_y, ligand_z
       for (int element_index = 0; element_index < population_size; ++element_index) {
@@ -565,10 +545,7 @@ namespace mudock {
         element.score     = energy; // dummy implementation to test the genetic
       }
 
-// Generate the new population
-#pragma GCC ivdep
-//#pragma GCC optimize("unroll-loops")
-#pragma clang loop vectorize(enable) interleave(enable)
+      // Generate the new population
       for (int element_index = 0; element_index < population_size; ++element_index) {
         auto& next_individual = next_population[element_index];
         // select the parent
@@ -586,10 +563,6 @@ namespace mudock {
         }
         const auto& parent1 = population[best_individual_1].genes;
         const auto& parent2 = population[best_individual_2].genes;
-        // const auto& parent1 =
-        //     tournament_selection(generator, dist, tournament_length, population, population_size);
-        // const auto& parent2 =
-        //     tournament_selection(generator, dist, tournament_length, population, population_size);
 
         // generate the offspring
         const auto split_index = get_crossover_distribution(generator, dist, num_rotamers);
@@ -600,9 +573,6 @@ namespace mudock {
         next_individual.score = fp_type{0};
 
 // mutate the offspring
-#pragma GCC ivdep
-//#pragma GCC optimize("unroll-loops")
-#pragma clang loop vectorize(enable) interleave(enable)
 #pragma clang loop unroll(enable)
         for (int i{0}; i < 3; ++i) {
           if (get_mutation_coin_distribution(generator, dist) < mutation_prob)
