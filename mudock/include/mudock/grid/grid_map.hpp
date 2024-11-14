@@ -47,7 +47,7 @@ namespace mudock {
     std::vector<T> grid_values;
 
   public:
-    grid(const index_type _index): grid_values(_index.get_dim()), index(_index){};
+    grid(const index_type _index): grid_values(_index.get_dim()), index(_index) {};
     ~grid()                       = default;
     grid(grid&& other)            = default;
     grid(const grid& other)       = default;
@@ -135,8 +135,10 @@ namespace mudock {
 
   // TODO check if we should put it together with also other maps
   class grid_atom_mapper {
+#ifdef MUDOCK_USE_GH
     std::vector<fp_type> fused_maps;
     int map_size;
+#endif
     std::unordered_map<autodock_ff, grid_atom_map> grid_maps;
 
   public:

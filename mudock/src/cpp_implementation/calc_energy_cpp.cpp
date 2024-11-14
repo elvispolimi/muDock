@@ -79,36 +79,20 @@ namespace mudock {
   }
 
   inline fp_type trilinear_interpolation(const fp_type* __restrict__ map,
-                                         const fp_type* __restrict__ coord,
+                                         const fp_type* __restrict__ coeffs,
+                                         const int base_index,
                                          const int& map_index_x,
                                          const int& map_index_xy) {
-    const int u0      = coord[0];
-    const fp_type p0u = coord[0] - static_cast<fp_type>(u0);
-    const fp_type p1u = fp_type{1} - p0u;
-
-    const int v0      = coord[1];
-    const fp_type p0v = coord[1] - static_cast<fp_type>(v0);
-    const fp_type p1v = fp_type{1} - p0v;
-
-    const int w0      = coord[2];
-    const fp_type p0w = coord[2] - static_cast<fp_type>(w0);
-    const fp_type p1w = fp_type{1} - p0w;
-
-    const fp_type pu[2] = {p1u, p0u};
-    const fp_type pv[2] = {p1v, p0v};
-    const fp_type pw[2] = {p1w, p0w};
     fp_type value{0};
-    // Precompute flattened indices
-    const int base_index = FLATTENED_3D(u0, v0, w0, map_index_x, map_index_xy);
 
-    value += pu[0] * pv[0] * pw[0] * map[base_index];
-    value += pu[0] * pv[0] * pw[1] * map[base_index + map_index_xy];
-    value += pu[0] * pv[1] * pw[0] * map[base_index + map_index_x];
-    value += pu[0] * pv[1] * pw[1] * map[base_index + map_index_x + map_index_xy];
-    value += pu[1] * pv[0] * pw[0] * map[base_index + 1];
-    value += pu[1] * pv[0] * pw[1] * map[base_index + 1 + map_index_xy];
-    value += pu[1] * pv[1] * pw[0] * map[base_index + 1 + map_index_x];
-    value += pu[1] * pv[1] * pw[1] * map[base_index + 1 + map_index_x + map_index_xy];
+    value = coeffs[0] * map[base_index] + value;
+    value = coeffs[1] * map[base_index + map_index_xy] + value;
+    value = coeffs[2] * map[base_index + map_index_x] + value;
+    value = coeffs[3] * map[base_index + map_index_x + map_index_xy] + value;
+    value = coeffs[4] * map[base_index + 1] + value;
+    value = coeffs[5] * map[base_index + 1 + map_index_xy] + value;
+    value = coeffs[6] * map[base_index + 1 + map_index_x] + value;
+    value = coeffs[7] * map[base_index + 1 + map_index_x + map_index_xy] + value;
 
     return value;
   }
@@ -329,12 +313,43 @@ namespace mudock {
           coord[1] = (coord[1] - minimum[1]) * inv_spacing;
           coord[2] = (coord[2] - minimum[2]) * inv_spacing;
 
+          const int u0      = coord[0];
+          const fp_type p0u = coord[0] - static_cast<fp_type>(u0);
+          const fp_type p1u = fp_type{1} - p0u;
+
+          const int v0      = coord[1];
+          const fp_type p0v = coord[1] - static_cast<fp_type>(v0);
+          const fp_type p1v = fp_type{1} - p0v;
+
+          const int w0      = coord[2];
+          const fp_type p0w = coord[2] - static_cast<fp_type>(w0);
+          const fp_type p1w = fp_type{1} - p0w;
+
+          const fp_type pu[2] = {p1u, p0u};
+          const fp_type pv[2] = {p1v, p0v};
+          const fp_type pw[2] = {p1w, p0w};
+
+          // Compute coefficients
+          const fp_type coeffs[8] = {pu[0] * pv[0] * pw[0],
+                                     pu[0] * pv[0] * pw[1],
+                                     pu[0] * pv[1] * pw[0],
+                                     pu[0] * pv[1] * pw[1],
+                                     pu[1] * pv[0] * pw[0],
+                                     pu[1] * pv[0] * pw[1],
+                                     pu[1] * pv[1] * pw[0],
+                                     pu[1] * pv[1] * pw[1]};
+
+          // Precompute flattened indices
+          const int base_index = FLATTENED_3D(u0, v0, w0, map_index_x, map_index_xy);
           // Trilinear Interpolationp
           elect_total_trilinear +=
-              trilinear_interpolation(electro_map, coord, map_index_x, map_index_xy) * atom_charge;
-          emap_total_trilinear += trilinear_interpolation(atom_map, coord, map_index_x, map_index_xy);
+              trilinear_interpolation(electro_map, coeffs, base_index, map_index_x, map_index_xy) *
+              atom_charge;
+          emap_total_trilinear +=
+              trilinear_interpolation(atom_map, coeffs, base_index, map_index_x, map_index_xy);
           dmap_total_trilinear +=
-              trilinear_interpolation(desolv_map, coord, map_index_x, map_index_xy) * std::fabs(atom_charge);
+              trilinear_interpolation(desolv_map, coeffs, base_index, map_index_x, map_index_xy) *
+              std::fabs(atom_charge);
         }
       }
 
@@ -478,15 +493,14 @@ namespace mudock {
     FJAPP_MARKER_START("GA");
     LIKWID_MARKER_START("GA");
 
-// Randomly initialize the population
-#pragma clang loop unroll(enable)
+    // Randomly initialize the population
+    // TODO enable vectorization
     for (int element_index = 0; element_index < population_size; ++element_index) {
       auto& element = population[element_index];
 #pragma clang loop unroll(enable)
       for (int i{0}; i < 3; ++i) { // initialize the rigid translation
         element.genes[i] = get_init_change_distribution(generator, dist) * coordinate_step;
       }
-#pragma clang loop unroll(enable)
       for (int i{3}; i < 6 + num_rotamers; ++i) { // initialize the rotations
         element.genes[i] = get_init_change_distribution(generator, dist) * angle_step;
       }
@@ -545,6 +559,7 @@ namespace mudock {
       }
 
       // Generate the new population
+      // TODO enable vectorization
       for (int element_index = 0; element_index < population_size; ++element_index) {
         auto& next_individual = next_population[element_index];
         // select the parent
@@ -577,7 +592,6 @@ namespace mudock {
           if (get_mutation_coin_distribution(generator, dist) < mutation_prob)
             next_individual.genes[i] += get_mutation_change_distribution(generator, dist) * coordinate_step;
         }
-#pragma clang loop unroll(enable)
         for (int i{3}; i < 6 + num_rotamers; ++i) {
           if (get_mutation_coin_distribution(generator, dist) < mutation_prob)
             next_individual.genes[i] += get_mutation_change_distribution(generator, dist) * angle_step;
