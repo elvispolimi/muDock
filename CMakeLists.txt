@@ -114,10 +114,6 @@ endif()
 option(MUDOCK_ENABLE_GH "Enable Google Highway for CPU vectorization" OFF)
 set(MUDOCK_GH_INCLUDE_PATH "" CACHE STRING "Google Highway include path")
 
-if(MUDOCK_ENABLE_GH)
-    find_package(Highway REQUIRED)
-endif()
-
 # CUDA
 option(MUDOCK_ENABLE_CUDA "Enable the CUDA kernel implementation" OFF)
 
