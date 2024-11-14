@@ -4,47 +4,42 @@
 
 // TODO #include "hwy/aligned_allocator.h"
 
-// Use HWY namespace to access Highway API
-HWY_BEFORE_NAMESPACE();
 namespace mudock {
-  namespace HWY_NAMESPACE {
-    using namespace hwy::HWY_NAMESPACE;
-    void translate_molecule(fp_type* __restrict__ x,
-                            fp_type* __restrict__ y,
-                            fp_type* __restrict__ z,
-                            const int num_atoms,
-                            const fp_type offset_x,
-                            const fp_type offset_y,
-                            const fp_type offset_z) {
-      // Define SIMD type for fp_type (e.g., float or double)
-      const HWY_FULL(fp_type) d;
+  // TODO check if this NAMESPACE is needed
+  void translate_molecule(fp_type* __restrict__ x,
+                          fp_type* __restrict__ y,
+                          fp_type* __restrict__ z,
+                          const int num_atoms,
+                          const fp_type offset_x,
+                          const fp_type offset_y,
+                          const fp_type offset_z) {
+    // Define SIMD type for fp_type (e.g., float or double)
+    const HWY_FULL(fp_type) d;
 
-      // Load offsets as SIMD vectors
-      const auto v_offset_x = Set(d, offset_x);
-      const auto v_offset_y = Set(d, offset_y);
-      const auto v_offset_z = Set(d, offset_z);
+    // Load offsets as SIMD vectors
+    const auto v_offset_x = Set(d, offset_x);
+    const auto v_offset_y = Set(d, offset_y);
+    const auto v_offset_z = Set(d, offset_z);
 
-      // Process in SIMD lanes
-      for (int i = 0; i <= num_atoms; i += Lanes(d)) {
-        const auto remaining = num_atoms - i;
-        // Load elements from x, y, and z arrays
-        auto vx = LoadN(d, x + i, remaining);
-        auto vy = LoadN(d, y + i, remaining);
-        auto vz = LoadN(d, z + i, remaining);
+    // Process in SIMD lanes
+    for (int i = 0; i <= num_atoms; i += Lanes(d)) {
+      const auto remaining = num_atoms - i;
+      // Load elements from x, y, and z arrays
+      auto vx = LoadN(d, x + i, remaining);
+      auto vy = LoadN(d, y + i, remaining);
+      auto vz = LoadN(d, z + i, remaining);
 
-        // Add offsets to each component
-        vx = hwy::HWY_NAMESPACE::Add(vx, v_offset_x);
-        vy = hwy::HWY_NAMESPACE::Add(vy, v_offset_y);
-        vz = hwy::HWY_NAMESPACE::Add(vz, v_offset_z);
+      // Add offsets to each component
+      vx = hwy::HWY_NAMESPACE::Add(vx, v_offset_x);
+      vy = hwy::HWY_NAMESPACE::Add(vy, v_offset_y);
+      vz = hwy::HWY_NAMESPACE::Add(vz, v_offset_z);
 
-        // Store results back into the arrays
-        StoreN(vx, d, x + i, remaining);
-        StoreN(vy, d, y + i, remaining);
-        StoreN(vz, d, z + i, remaining);
-      }
+      // Store results back into the arrays
+      StoreN(vx, d, x + i, remaining);
+      StoreN(vy, d, y + i, remaining);
+      StoreN(vz, d, z + i, remaining);
     }
-
-  } // namespace HWY_NAMESPACE
+  }
 
   void rotate_molecule(fp_type* __restrict__ x,
                        fp_type* __restrict__ y,
@@ -129,6 +124,7 @@ namespace mudock {
       translate_y = hwy::HWY_NAMESPACE::Sub(translate_y, v_c_y);
       translate_z = hwy::HWY_NAMESPACE::Sub(translate_z, v_c_z);
 
+      // TODO Fuse multiply add?
       const auto v_t_x = hwy::HWY_NAMESPACE::Add(
           hwy::HWY_NAMESPACE::Add(hwy::HWY_NAMESPACE::Add(hwy::HWY_NAMESPACE::Mul(translate_x, v_m00),
                                                           hwy::HWY_NAMESPACE::Mul(translate_y, v_m01)),
@@ -234,8 +230,8 @@ namespace mudock {
       // const auto m = hwy::HWY_NAMESPACE::LoadMaskBits(d, frag_mask + i);
       const auto int_mask_vec = LoadN(d_mask, frag_mask + i, remaining);
       // Convert integer mask (0 or 1) to a Highway boolean mask
-      const auto m = hwy::HWY_NAMESPACE::MaskFromVec(int_mask_vec);
-      // const auto m     = hwy::HWY_NAMESPACE::RebindMask(d, m_int);
+      const auto m_int = hwy::HWY_NAMESPACE::MaskFromVec(int_mask_vec);
+      const auto m     = hwy::HWY_NAMESPACE::RebindMask(d, m_int);
 
       const auto v_t_x = hwy::HWY_NAMESPACE::Add(
           hwy::HWY_NAMESPACE::Add(hwy::HWY_NAMESPACE::Add(hwy::HWY_NAMESPACE::Mul(v_x, v_m00),
@@ -260,4 +256,3 @@ namespace mudock {
     }
   }
 } // namespace mudock
-HWY_AFTER_NAMESPACE();

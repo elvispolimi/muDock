@@ -3,8 +3,6 @@
 #include <mudock/molecule/fragments.hpp>
 
 namespace mudock {
-  using HWY_NAMESPACE::translate_molecule;
-
   void apply(fp_type* __restrict__ x,
              fp_type* __restrict__ y,
              fp_type* __restrict__ z,

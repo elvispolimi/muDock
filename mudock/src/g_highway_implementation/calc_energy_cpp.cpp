@@ -1,7 +1,9 @@
 #include <algorithm>
-#include <arm_sve.h>
 #include <cmath>
+#include <cstdint>
 #include <cstring>
+#include <hwy/contrib/math/math-inl.h>
+#include <hwy/highway.h>
 #include <memory>
 #include <mudock/chem/autodock_parameters.hpp>
 #include <mudock/chem/grid_const.hpp>
@@ -17,19 +19,19 @@
 #include <mudock/utils.hpp>
 #include <random>
 
-#define FLATTENED_2D(x, y, index_x)              ((y) * index_x + (x))
-#define FLATTENED_3D(x, y, z, index_x, index_xy) (index_xy * (z) + (y) * index_x + (x))
+#define FLATTENED_2D(x, y, index_x) ((y) *index_x + (x))
 
 namespace mudock {
-  using HWY_NAMESPACE::translate_molecule;
+  // using HWY_NAMESPACE::translate_molecule;
+  using namespace hwy::HWY_NAMESPACE;
 
   static constexpr auto coordinate_step = fp_type{0.2};
   static constexpr auto angle_step      = fp_type{4};
 
-  // TODO fix me from reorder_buffer.hpp
-  static constexpr int get_num_atom_clusters() { return 7; };
-  // the description of how we generate the clusters
-  static constexpr std::array<int, 7> atoms_clusters = {{0, 32, 64, 128, 160, 192, 256}};
+  // // TODO fix me from reorder_buffer.hpp
+  // static constexpr int get_num_atom_clusters() { return 7; };
+  // // the description of how we generate the clusters
+  // static constexpr std::array<int, 7> atoms_clusters = {{0, 32, 64, 128, 160, 192, 256}};
 
   template<typename T>
   [[nodiscard]] inline const T random_gen_cpp(std::mt19937& generator,
@@ -38,10 +40,9 @@ namespace mudock {
                                               const T& max) {
     fp_type value;
     if constexpr (is_debug())
-      // TODO value here for debug
       value = fp_type{0.4};
     else {
-      value = fp_type{0.4};
+      value = dist(generator);
     }
     return static_cast<T>(value * (max - min) + min);
   }
@@ -84,50 +85,40 @@ namespace mudock {
     return population[best_individual].genes;
   }
 
-  inline fp_type trilinear_interpolation(const fp_type* __restrict__ map,
-                                         const fp_type* __restrict__ coord,
-                                         const int& map_index_x,
-                                         const int& map_index_xy) {
-    const int u0      = coord[0];
-    const fp_type p0u = coord[0] - static_cast<fp_type>(u0);
-    const fp_type p1u = fp_type{1} - p0u;
+  template<typename V, typename VI, typename T>
+  inline V trilinear_interpolation_vectorized(const T* __restrict__ map,
+                                              const VI& base_index,
+                                              const V& p1u,
+                                              const V& p1v,
+                                              const V& p1w,
+                                              const V& p0u,
+                                              const V& p0v,
+                                              const V& p0w,
+                                              const int& map_index_x,
+                                              const int& map_index_xy) {
+    const HWY_FULL(T) d;
+    const HWY_FULL(int) di;
 
-    const int v0      = coord[1];
-    const fp_type p0v = coord[1] - static_cast<fp_type>(v0);
-    const fp_type p1v = fp_type{1} - p0v;
-
-    const int w0      = coord[2];
-    const fp_type p0w = coord[2] - static_cast<fp_type>(w0);
-    const fp_type p1w = fp_type{1} - p0w;
-
-    const fp_type pu[2] = {p1u, p0u};
-    const fp_type pv[2] = {p1v, p0v};
-    const fp_type pw[2] = {p1w, p0w};
-    fp_type value{0};
-    // #pragma unroll
-    //     for (int i = 0; i <= 1; i++)
-    // #pragma unroll
-    //       for (int t = 0; t <= 1; t++)
-    // #pragma unroll
-    //         for (int n = 0; n <= 1; n++) {
-    //           const fp_type tmp = map[FLATTENED_3D(u0 + n, v0 + t, w0 + i, map_index_x, map_index_xy)];
-    //           value += pu[n] * pv[t] * pw[i] * tmp;
-    //         }
     // Precompute flattened indices
-    const int base_index = FLATTENED_3D(u0, v0, w0, map_index_x, map_index_xy);
+    auto value = Zero(d);
 
-    value += pu[0] * pv[0] * pw[0] * map[base_index];
-    value += pu[0] * pv[0] * pw[1] * map[base_index + map_index_xy];
-    value += pu[0] * pv[1] * pw[0] * map[base_index + map_index_x];
-    value += pu[0] * pv[1] * pw[1] * map[base_index + map_index_x + map_index_xy];
-    value += pu[1] * pv[0] * pw[0] * map[base_index + 1];
-    value += pu[1] * pv[0] * pw[1] * map[base_index + 1 + map_index_xy];
-    value += pu[1] * pv[1] * pw[0] * map[base_index + 1 + map_index_x];
-    value += pu[1] * pv[1] * pw[1] * map[base_index + 1 + map_index_x + map_index_xy];
+    // Gather and accumulate the values based on offsets
+    value = MulAdd(p1u * p1v * p1w, GatherIndex(d, map, base_index), value);
+    value = MulAdd(p1u * p1v * p0w, GatherIndex(d, map, Add(base_index, Set(di, map_index_xy))), value);
+    value = MulAdd(p1u * p0v * p1w, GatherIndex(d, map, Add(base_index, Set(di, map_index_x))), value);
+    value = MulAdd(p1u * p0v * p0w,
+                   GatherIndex(d, map, Add(base_index, Set(di, map_index_x + map_index_xy))),
+                   value);
+    value = MulAdd(p0u * p1v * p1w, GatherIndex(d, map, Add(base_index, Set(di, 1))), value);
+    value = MulAdd(p0u * p1v * p0w, GatherIndex(d, map, Add(base_index, Set(di, 1 + map_index_xy))), value);
+    value = MulAdd(p0u * p0v * p1w, GatherIndex(d, map, Add(base_index, Set(di, 1 + map_index_x))), value);
+    value = MulAdd(p0u * p0v * p0w,
+                   GatherIndex(d, map, Add(base_index, Set(di, 1 + map_index_x + map_index_xy))),
+                   value);
 
     return value;
   }
-  
+
   inline fp_type calc_energy(const fp_type* __restrict__ ligand_x,
                              const fp_type* __restrict__ ligand_y,
                              const fp_type* __restrict__ ligand_z,
@@ -139,7 +130,7 @@ namespace mudock {
                              const fp_type* __restrict__ ligand_Rii,
                              const fp_type* __restrict__ ligand_epsij_hb,
                              const fp_type* __restrict__ ligand_epsii,
-                             const ligand_map_types* __restrict__ map_ligand_types,
+                             const int* __restrict__ map_ligand_offsets,
                              const int num_atoms,
                              const int n_torsions,
                              const int num_nonbond,
@@ -150,133 +141,174 @@ namespace mudock {
                              const fp_type* __restrict__ center,
                              const int map_index_x,
                              const int map_index_xy,
-                             const fp_type* const __restrict__* const __restrict__ grid_maps,
+                             const fp_type* __restrict__ grid_maps,
                              const fp_type* __restrict__ electro_map,
                              const fp_type* __restrict__ desolv_map) {
+    const HWY_FULL(fp_type) d;
+    const HWY_FULL(int) di;
+
     fp_type elect_total_trilinear = 0;
     fp_type emap_total_trilinear  = 0;
     fp_type dmap_total_trilinear  = 0;
 
-#pragma GCC ivdep
-//#pragma GCC optimize("unroll-loops")
-#pragma clang loop vectorize(enable)
-#pragma clang loop unroll(enable)
-    for (int index = 0; index < num_atoms; ++index) {
-      fp_type coord[3]{ligand_x[index], ligand_y[index], ligand_z[index]};
+    for (int index = 0; index < num_atoms; index += Lanes(d)) {
+      const auto remaining = num_atoms - index;
+      // Load the x, y, z coordinates in a SIMD fashion
+      auto x                 = LoadN(d, ligand_x + index, remaining);
+      auto y                 = LoadN(d, ligand_y + index, remaining);
+      auto z                 = LoadN(d, ligand_z + index, remaining);
+      const auto valid_coord = FirstN(d, remaining);
+      const auto atom_charge = LoadN(d, ligand_charge + index, remaining);
 
-      if (coord[0] < minimum[0] || coord[0] > maximum[0] || coord[1] < minimum[1] || coord[1] > maximum[1] ||
-          coord[2] < minimum[2] || coord[2] > maximum[2]) {
-        // printf("Atom %d is outside\n", index);
-        const fp_type dist = std::pow(std::fabs(coord[0] - center[0]), fp_type{2}) +
-                             std::pow(std::fabs(coord[1] - center[1]), fp_type{2}) +
-                             std::pow(std::fabs(coord[2] - center[2]), fp_type{2});
-        const fp_type epenalty = dist * ENERGYPENALTY;
-        elect_total_trilinear += epenalty;
-        emap_total_trilinear += epenalty;
-      } else {
-        const auto& atom_charge = ligand_charge[index];
-        const fp_type* atom_map = grid_maps[static_cast<int>(map_ligand_types[index])];
+      // Set up constants for SIMD operations
+      const auto min_x = Set(d, minimum[0]);
+      const auto max_x = Set(d, maximum[0]);
+      const auto min_y = Set(d, minimum[1]);
+      const auto max_y = Set(d, maximum[1]);
+      const auto min_z = Set(d, minimum[2]);
+      const auto max_z = Set(d, maximum[2]);
 
-        coord[0] = (coord[0] - minimum[0]) * inv_spacing;
-        coord[1] = (coord[1] - minimum[1]) * inv_spacing;
-        coord[2] = (coord[2] - minimum[2]) * inv_spacing;
+      // Bounds check for each atom in vectorized form
+      const auto outside_x = Or(Lt(x, min_x), Gt(x, max_x));
+      const auto outside_y = Or(Lt(y, min_y), Gt(y, max_y));
+      const auto outside_z = Or(Lt(z, min_z), Gt(z, max_z));
+      const auto outside   = And(Or(outside_x, Or(outside_y, outside_z)), valid_coord);
 
-        // Trilinear Interpolationp
-        elect_total_trilinear +=
-            trilinear_interpolation(electro_map, coord, map_index_x, map_index_xy) * atom_charge;
-        emap_total_trilinear += trilinear_interpolation(atom_map, coord, map_index_x, map_index_xy);
-        dmap_total_trilinear +=
-            trilinear_interpolation(desolv_map, coord, map_index_x, map_index_xy) * std::fabs(atom_charge);
-      }
+      // For atoms outside the boundaries
+      const auto dx      = Sub(x, Set(d, center[0]));
+      const auto dy      = Sub(y, Set(d, center[1]));
+      const auto dz      = Sub(z, Set(d, center[2]));
+      const auto dist    = MulAdd(dx, dx, MulAdd(dy, dy, Mul(dz, dz)));
+      const auto penalty = Mul(dist, Set(d, ENERGYPENALTY));
+      elect_total_trilinear += ReduceSum(d, IfThenElseZero(outside, penalty));
+      emap_total_trilinear += ReduceSum(d, IfThenElseZero(outside, penalty));
+
+      // For atoms inside
+      const auto inside = And(Not(outside), valid_coord);
+
+      // Calculate trilinear interpolation coordinates for in-bounds atoms
+      x = Mul(Sub(x, min_x), Set(d, inv_spacing));
+      y = Mul(Sub(y, min_y), Set(d, inv_spacing));
+      z = Mul(Sub(z, min_z), Set(d, inv_spacing));
+
+      // Map loading
+      const auto atom_map_offsets = LoadN(di, map_ligand_offsets + index, remaining);
+
+      // Decompose coordinates and weights
+      const auto u0 = ConvertTo(di, x);
+      const auto v0 = ConvertTo(di, y);
+      const auto w0 = ConvertTo(di, z);
+
+      const auto p0u = Sub(x, ConvertTo(d, u0));
+      const auto p0v = Sub(y, ConvertTo(d, v0));
+      const auto p0w = Sub(z, ConvertTo(d, w0));
+
+      const auto one = Set(d, fp_type{1.0});
+      const auto p1u = Sub(one, p0u);
+      const auto p1v = Sub(one, p0v);
+      const auto p1w = Sub(one, p0w);
+
+      // Precompute flattened indices
+      const auto default_offset = Set(di, 0);
+      const auto base_default_index =
+          Add(Add(Add(Mul(v0, Set(di, map_index_x)), Mul(w0, Set(di, map_index_xy))), u0), default_offset);
+      elect_total_trilinear += ReduceSum(
+          d,
+          IfThenElseZero(
+              inside,
+              trilinear_interpolation_vectorized<decltype(p1u), decltype(base_default_index), fp_type>(
+                  electro_map,
+                  base_default_index,
+                  p1u,
+                  p1v,
+                  p1w,
+                  p0u,
+                  p0v,
+                  p0w,
+                  map_index_x,
+                  map_index_xy)) *
+              atom_charge);
+      dmap_total_trilinear += ReduceSum(
+          d,
+          IfThenElseZero(
+              inside,
+              trilinear_interpolation_vectorized<decltype(p1u), decltype(base_default_index), fp_type>(
+                  desolv_map,
+                  base_default_index,
+                  p1u,
+                  p1v,
+                  p1w,
+                  p0u,
+                  p0v,
+                  p0w,
+                  map_index_x,
+                  map_index_xy)) *
+              Abs(atom_charge));
+      const auto base_atom_index =
+          Add(Add(Add(Mul(v0, Set(di, map_index_x)), Mul(w0, Set(di, map_index_xy))), u0), atom_map_offsets);
+      emap_total_trilinear +=
+          ReduceSum(d,
+                    IfThenElseZero(
+                        inside,
+                        trilinear_interpolation_vectorized<decltype(p1u), decltype(base_atom_index), fp_type>(
+                            grid_maps,
+                            base_atom_index,
+                            p1u,
+                            p1v,
+                            p1w,
+                            p0u,
+                            p0v,
+                            p0w,
+                            map_index_x,
+                            map_index_xy)));
     }
 
     fp_type elect_total_eintcal{0}, emap_total_eintcal{0}, dmap_total_eintcal{0};
     if (n_torsions > 0) {
-      // TODO @Davide suppose that the receptor does not have Flexible residues eintcal.cc:147
-      // TODO
+      const auto ms_A_vec        = Set(d, ms_A);
+      const auto ms_B_vec        = Set(d, ms_B);
+      const auto ms_rk_vec       = Set(d, ms_rk);
+      const auto ms_lambda_B_vec = Set(d, ms_lambda_B);
+      const auto one_vec         = Set(d, fp_type{1});
+      const auto elec_scale      = Set(d, ELECSCALE);
+      const auto coeff_estat_vec = Set(d, autodock_parameters::coeff_estat);
 
-#pragma GCC ivdep
-//#pragma GCC optimize("unroll-loops")
-#pragma clang loop vectorize(enable)
-#pragma clang loop unroll(enable)
-#pragma fj loop prefetch
-#pragma statement scache_isolate_assign ligand_x, ligand_y, ligand_z, ligand_charge, ligand_num_hbond, \
-    ligand_Rij_hb, ligand_Rii, ligand_epsij_hb, ligand_epsii
-      for (int i = 0; i < num_nonbond; ++i) {
-        const int& a1 = non_bond_list_a1[i];
-        const int& a2 = non_bond_list_a2[i];
+      for (int i = 0; i < num_nonbond; i += Lanes(di)) {
+        const auto remaining = num_atoms - i;
+        const auto a1        = LoadN(di, non_bond_list_a1 + i, remaining);
+        const auto a2        = LoadN(di, non_bond_list_a2 + i, remaining);
 
-        const fp_type distance_two = std::pow(std::fabs(ligand_x[a1] - ligand_x[a2]), fp_type{2}) +
-                                     std::pow(std::fabs(ligand_y[a1] - ligand_y[a2]), fp_type{2}) +
-                                     std::pow(std::fabs(ligand_z[a1] - ligand_z[a2]), fp_type{2});
-        const fp_type distance_two_clamp = std::clamp(distance_two, RMIN_ELEC * RMIN_ELEC, distance_two);
-        const fp_type distance           = std::sqrt(distance_two_clamp);
+        // Load vectorized data for each coordinate difference between a1 and a2
+        const auto diff_x =
+            Sub(GatherIndexN(d, ligand_x, a1, remaining), GatherIndexN(d, ligand_x, a2, remaining));
+        const auto diff_y =
+            Sub(GatherIndexN(d, ligand_y, a1, remaining), GatherIndexN(d, ligand_y, a2, remaining));
+        const auto diff_z =
+            Sub(GatherIndexN(d, ligand_z, a1, remaining), GatherIndexN(d, ligand_z, a2, remaining));
+
+        // Calculate squared distances
+        const auto distance_two = Add(Mul(diff_x, diff_x), Add(Mul(diff_y, diff_y), Mul(diff_z, diff_z)));
+        // Clamp `distance_two` between `RMIN_ELEC_SQUARE` and `distance_two` itself
+        const auto clamped_distance_two = Max(Set(d, RMIN_ELEC_SQUARE), distance_two);
+        // Compute the square root of the clamped distance
+        const auto distance = Sqrt(clamped_distance_two);
 
         //  Calculate  Electrostatic  Energy
-        const fp_type r_dielectric = fp_type{1} / (distance * calc_ddd_Mehler_Solmajer(distance));
-        const fp_type e_elec = ligand_charge[a1] * ligand_charge[a2] * ELECSCALE *
-                               autodock_parameters::coeff_estat * r_dielectric;
-        elect_total_eintcal += e_elec;
+        // TODO missing epsilon check
+        // Calculate the r_dielectric term
+        const auto exp_term = Exp(d, Mul(ms_lambda_B_vec, distance));
+        const auto r_dielectric =
+            Div(one_vec, Add(Mul(distance, ms_A_vec), Div(ms_B_vec, Add(one_vec, Mul(ms_rk_vec, exp_term)))));
 
-        // Calcuare desolv
-        const fp_type nb_desolv =
-            (ligand_vol[a2] * (ligand_solpar[a1] + qsolpar * std::fabs(ligand_charge[a1])) +
-             ligand_vol[a1] * (ligand_solpar[a2] + qsolpar * std::fabs(ligand_charge[a2])));
+        // Calculate the electrostatic energy (e_elec)
+        const auto charge_a1 = GatherIndexN(d, ligand_charge, a1, remaining);
+        const auto charge_a2 = GatherIndexN(d, ligand_charge, a2, remaining);
 
-        const fp_type e_desolv = autodock_parameters::coeff_desolv *
-                                 std::exp(fp_type{-0.5} / (sigma * sigma) * distance_two_clamp) * nb_desolv;
-        dmap_total_eintcal += e_desolv;
-        fp_type e_vdW_Hb{0};
-        if (distance_two_clamp < nbc2) {
-          //  Find internal energy parameters, i.e.  epsilon and r-equilibrium values...
-          //  Lennard-Jones and Hydrogen Bond Potentials
-          // This can be precomputed as in intnbtable.cc
-          const auto& hbond_i    = ligand_num_hbond[a1];
-          const auto& hbond_j    = ligand_num_hbond[a2];
-          const auto& Rij_hb_i   = ligand_Rij_hb[a1];
-          const auto& Rij_hb_j   = ligand_Rij_hb[a2];
-          const auto& Rii_i      = ligand_Rii[a1];
-          const auto& Rii_j      = ligand_Rii[a2];
-          const auto& epsij_hb_i = ligand_epsij_hb[a1];
-          const auto& epsij_hb_j = ligand_epsij_hb[a2];
-          const auto& epsii_i    = ligand_epsii[a1];
-          const auto& epsii_j    = ligand_epsii[a2];
+        const auto e_elec =
+            Mul(Mul(charge_a1, charge_a2), Mul(elec_scale, Mul(coeff_estat_vec, r_dielectric)));
 
-          // we need to determine the correct xA and xB exponents
-          int xA = 12; // for both LJ, 12-6 and HB, 12-10, xA is 12
-          int xB = 6;  // assume we have LJ, 12-6
-
-          fp_type Rij{0}, epsij{0};
-          if ((hbond_i == 1 || hbond_i == 2) && hbond_j > 2) {
-            // i is a donor and j is an acceptor.
-            // i is a hydrogen, j is a heteroatom
-            Rij   = Rij_hb_j;
-            epsij = epsij_hb_j;
-            xB    = 10;
-          } else if ((hbond_i > 2) && (hbond_j == 1 || hbond_j == 2)) {
-            // i is an acceptor and j is a donor.
-            // i is a heteroatom, j is a hydrogen
-            Rij   = Rij_hb_i;
-            epsij = epsij_hb_i;
-            xB    = 10;
-          } else {
-            // we need to calculate the arithmetic mean of Ri and Rj
-            Rij = (Rii_i + Rii_j) / fp_type{2};
-            // we need to calculate the geometric mean of epsi and epsj
-            epsij = std::sqrt(epsii_i * epsii_j);
-          }
-          if (xA != xB) {
-            const fp_type tmp = epsij / (xA - xB);
-            const fp_type cA  = tmp * std::pow(Rij, static_cast<fp_type>(xA)) * xB;
-            const fp_type cB  = tmp * std::pow(Rij, static_cast<fp_type>(xB)) * xA;
-
-            const fp_type rA = std::pow(distance, static_cast<fp_type>(xA));
-            const fp_type rB = std::pow(distance, static_cast<fp_type>(xB));
-
-            e_vdW_Hb = std::min(EINTCLAMP, (cA / rA - cB / rB));
-          }
-        }
-        emap_total_eintcal += e_vdW_Hb;
+        // Accumulate the electrostatic energy
+        elect_total_eintcal += ReduceSum(d, e_elec);
       }
     }
     const fp_type tors_free_energy = n_torsions * autodock_parameters::coeff_tors;
@@ -297,7 +329,7 @@ namespace mudock {
                         const fp_type* __restrict__ ligand_Rii,
                         const fp_type* __restrict__ ligand_epsij_hb,
                         const fp_type* __restrict__ ligand_epsii,
-                        const ligand_map_types* __restrict__ map_ligand_types,
+                        const int* __restrict__ map_ligand_offsets,
                         const int num_atoms,
                         const int num_rotamers,
                         const int* __restrict__ frag_masks,
@@ -306,7 +338,7 @@ namespace mudock {
                         const int num_nonbond,
                         const int* __restrict__ non_bond_list_a1,
                         const int* __restrict__ non_bond_list_a2,
-                        const fp_type* const __restrict__* const __restrict__ grid_maps,
+                        const fp_type* __restrict__ grid_maps,
                         const fp_type* __restrict__ electro_map,
                         const fp_type* __restrict__ desolv_map,
                         const int num_generations,
@@ -348,10 +380,7 @@ namespace mudock {
     }
 
     for (int generation = 0; generation < num_generations; ++generation) {
-// Evaluate the fitness of the population
-#pragma clang loop unroll(enable)
-#pragma fj loop prefetch
-#pragma statement scache_isolate_assign ligand_x, ligand_y, ligand_z
+      // Evaluate the fitness of the population
       for (int element_index = 0; element_index < population_size; ++element_index) {
         auto& element = population[element_index];
 
@@ -383,7 +412,7 @@ namespace mudock {
                                         ligand_Rii,
                                         ligand_epsij_hb,
                                         ligand_epsii,
-                                        map_ligand_types,
+                                        map_ligand_offsets,
                                         num_atoms,
                                         num_rotamers,
                                         num_nonbond,
@@ -400,10 +429,7 @@ namespace mudock {
         element.score     = energy; // dummy implementation to test the genetic
       }
 
-// Generate the new population
-#pragma GCC ivdep
-//#pragma GCC optimize("unroll-loops")
-#pragma clang loop vectorize(enable)
+      // Generate the new population
       for (int element_index = 0; element_index < population_size; ++element_index) {
         auto& next_individual = next_population[element_index];
         // select the parent
@@ -421,9 +447,6 @@ namespace mudock {
         next_individual.score = fp_type{0};
 
 // mutate the offspring
-#pragma GCC ivdep
-//#pragma GCC optimize("unroll-loops")
-#pragma clang loop vectorize(enable)
 #pragma clang loop unroll(enable)
         for (int i{0}; i < 3; ++i) {
           if (get_mutation_coin_distribution(generator, dist) < mutation_prob)
