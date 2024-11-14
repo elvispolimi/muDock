@@ -1,13 +1,17 @@
 #pragma once
 
+#include <cassert>
 #include <cmath>
+#include <cstring>
 #include <mudock/chem.hpp>
 #include <mudock/chem/grid_const.hpp>
+#include <mudock/chem/ligand_maps.hpp>
 #include <mudock/grid/mdindex.hpp>
 #include <mudock/grid/point3D.hpp>
 #include <mudock/log.hpp>
 #include <mudock/molecule.hpp>
 #include <mudock/type_alias.hpp>
+#include <span>
 #include <vector>
 
 namespace mudock {
@@ -43,7 +47,7 @@ namespace mudock {
     std::vector<T> grid_values;
 
   public:
-    grid(const index_type _index): grid_values(_index.get_dim()), index(_index) {};
+    grid(const index_type _index): grid_values(_index.get_dim()), index(_index){};
     ~grid()                       = default;
     grid(grid&& other)            = default;
     grid(const grid& other)       = default;
@@ -131,14 +135,29 @@ namespace mudock {
 
   // TODO check if we should put it together with also other maps
   class grid_atom_mapper {
-    // TODO @Davide
+    std::vector<fp_type> fused_maps;
+    int map_size;
     std::unordered_map<autodock_ff, grid_atom_map> grid_maps;
 
   public:
+#ifdef MUDOCK_USE_GH
     grid_atom_mapper(std::vector<grid_atom_map>& maps) {
+      assert(!maps.empty());
+      map_size = maps[0].index.get_dim();
+      fused_maps.resize(map_size * maps.size());
+      for (int i = 0; i < num_ligand_map_types(); ++i)
+        std::memcpy(fused_maps.data() + map_size * i, maps[i].data(), sizeof(fp_type) * map_size);
       for (auto& map: maps) { grid_maps.emplace(map.get_atom_type(), std::move(map)); }
     }
 
+    auto get_fused_maps() const { return make_span(fused_maps, fused_maps.size()); }
+
+    int get_single_map_size() const { return map_size; }
+#else
+    grid_atom_mapper(std::vector<grid_atom_map>& maps) {
+      for (auto& map: maps) { grid_maps.emplace(map.get_atom_type(), std::move(map)); }
+    }
+#endif
     [[nodiscard]] inline const grid_atom_map& get_atom_map(const autodock_ff& type) const {
       return grid_maps.at(type);
     }

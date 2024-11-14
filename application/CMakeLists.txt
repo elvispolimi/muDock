@@ -41,6 +41,11 @@ else()
   target_link_libraries("${CMAKE_PROJECT_NAME}" libmudock boost_program_options boost_context pthread m stdc++)
 endif()
 
+if(MUDOCK_ENABLE_GH)
+  target_include_directories("${CMAKE_PROJECT_NAME}" PRIVATE )
+  target_link_libraries("${CMAKE_PROJECT_NAME}" hwy)
+endif()
+
 if(MUDOCK_ENABLE_OMP)
   target_compile_options("${CMAKE_PROJECT_NAME}" PRIVATE "-fopenmp-targets=nvptx64")
   target_link_options("${CMAKE_PROJECT_NAME}" PRIVATE "-fopenmp")

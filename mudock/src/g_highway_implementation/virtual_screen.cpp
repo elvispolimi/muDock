@@ -4,7 +4,7 @@
 #include <mudock/cpp_implementation/chromosome.hpp>
 #include <mudock/cpp_implementation/virtual_screen.hpp>
 #include <mudock/cpp_implementation/weed_bonds.hpp>
-#include <mudock/cpp_implementation/calc_energy_cpp.hpp>
+#include <mudock/g_highway_implementation/calc_energy_cpp.hpp>
 #include <mudock/g_highway_implementation/geometric_transformations.hpp>
 #include <mudock/g_highway_implementation/mutate.hpp>
 #include <mudock/grid.hpp>
@@ -13,8 +13,6 @@
 #include <mudock/utils.hpp>
 
 namespace mudock {
-  using HWY_NAMESPACE::translate_molecule;
-
   virtual_screen_cpp::virtual_screen_cpp(std::shared_ptr<const grid_atom_mapper>& _grid_atom_maps,
                                          std::shared_ptr<const grid_map>& _electro_map,
                                          std::shared_ptr<const grid_map>& _desolv_map,
@@ -24,7 +22,7 @@ namespace mudock {
         desolv_map(_desolv_map),
         population(knobs.population_number),
         next_population(knobs.population_number),
-        configuration(knobs){}
+        configuration(knobs) {}
 
   void virtual_screen_cpp::operator()(static_molecule& ligand) {
     SCOREP_MARKER_START(ga, "GA");
@@ -56,22 +54,17 @@ namespace mudock {
     weed_bonds(nbmatrix, non_bond_list_a1, non_bond_list_a2, num_atoms, *ligand_fragments.get());
     // weed_bonds(nbmatrix, num_atoms, *ligand_fragments.get());
 
-    const fp_type minimum[3] = {electro_map.get()->minimum_coord.x,
-                                electro_map.get()->minimum_coord.y,
-                                electro_map.get()->minimum_coord.z};
-    const fp_type maximum[3] = {electro_map.get()->maximum_coord.x,
-                                electro_map.get()->maximum_coord.y,
-                                electro_map.get()->maximum_coord.z};
-    const fp_type center[3]  = {electro_map.get()->center.x,
-                                electro_map.get()->center.y,
-                                electro_map.get()->center.z};
-
-    fp_type const* grid_maps[num_ligand_map_types()];
-    constexpr_for<0, num_ligand_map_types(), 1>([&](const int type) {
-      grid_maps[type] = grid_atom_maps.get()
-                            ->get_atom_map(autodock_type_from_map(static_cast<ligand_map_types>(type)))
-                            .data();
-    });
+    const fp_type minimum[3]        = {electro_map.get()->minimum_coord.x,
+                                       electro_map.get()->minimum_coord.y,
+                                       electro_map.get()->minimum_coord.z};
+    const fp_type maximum[3]        = {electro_map.get()->maximum_coord.x,
+                                       electro_map.get()->maximum_coord.y,
+                                       electro_map.get()->maximum_coord.z};
+    const fp_type center[3]         = {electro_map.get()->center.x,
+                                       electro_map.get()->center.y,
+                                       electro_map.get()->center.z};
+    const int atom_map_size         = grid_atom_maps.get()->get_single_map_size();
+    const fp_type* atom_map_pointer = grid_atom_maps.get()->get_fused_maps().data();
 
     std::vector<int> frag_masks;
     std::vector<int> frag_start_indexes;
@@ -88,9 +81,11 @@ namespace mudock {
       frag_stop_indexes.data()[rot]        = stop_index;
     }
 
-    std::vector<ligand_map_types> map_ligand_types;
-    map_ligand_types.resize(num_atoms);
-    for (int i = 0; i < num_atoms; i++) map_ligand_types[i] = map_from_autodock_type(ligand.autodock_type(i));
+    std::vector<int> map_ligand_offsets;
+    map_ligand_offsets.resize(num_atoms);
+    for (int i = 0; i < num_atoms; i++)
+      map_ligand_offsets[i] =
+          static_cast<int>(map_from_autodock_type(ligand.autodock_type(i))) * atom_map_size;
 
     // Simulate the population evolution for the given amount of time
     evaluate_fitness(x.data(),
@@ -104,7 +99,7 @@ namespace mudock {
                      ligand.get_Rii().data(),
                      ligand.get_epsij_hb().data(),
                      ligand.get_epsii().data(),
-                     map_ligand_types.data(),
+                     map_ligand_offsets.data(),
                      num_atoms,
                      ligand_fragments.get()->get_num_rotatable_bonds(),
                      frag_masks.data(),
@@ -113,7 +108,7 @@ namespace mudock {
                      non_bond_list_a1.size(),
                      non_bond_list_a1.data(),
                      non_bond_list_a2.data(),
-                     grid_maps,
+                     atom_map_pointer,
                      electro_map.get()->data(),
                      desolv_map.get()->data(),
                      configuration.num_generations,

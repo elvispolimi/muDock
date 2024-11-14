@@ -6,8 +6,7 @@
 #include <mudock/cpp_implementation/virtual_screen.hpp>
 #include <mudock/cpp_implementation/weed_bonds.hpp>
 
-#ifdef MUDOCK_ENABLE_GH
-  // #include <mudock/cpp_implementation/calc_energy_cpp.hpp>
+#ifdef MUDOCK_USE_GH
   #include <mudock/g_highway_implementation/geometric_transformations.hpp>
 #else
   #include <mudock/cpp_implementation/calc_energy_cpp.hpp>

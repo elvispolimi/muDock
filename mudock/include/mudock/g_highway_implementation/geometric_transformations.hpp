@@ -6,15 +6,13 @@
 #include <mudock/type_alias.hpp>
 
 namespace mudock {
-  namespace HWY_NAMESPACE {
-    void translate_molecule(fp_type* __restrict__ x,
-                            fp_type* __restrict__ y,
-                            fp_type* __restrict__ z,
-                            const int num_atoms,
-                            const fp_type offset_x,
-                            const fp_type offset_y,
-                            const fp_type offset_z);
-  }
+  void translate_molecule(fp_type* __restrict__ x,
+                          fp_type* __restrict__ y,
+                          fp_type* __restrict__ z,
+                          const int num_atoms,
+                          const fp_type offset_x,
+                          const fp_type offset_y,
+                          const fp_type offset_z);
 
   void rotate_molecule(fp_type* __restrict__ x,
                        fp_type* __restrict__ y,

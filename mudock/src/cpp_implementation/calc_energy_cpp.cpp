@@ -315,7 +315,6 @@ namespace mudock {
 
         if (coord[0] < minimum[0] || coord[0] > maximum[0] || coord[1] < minimum[1] ||
             coord[1] > maximum[1] || coord[2] < minimum[2] || coord[2] > maximum[2]) {
-          // printf("Atom %d is outside\n", index);
           const fp_type dist = std::pow(coord[0] - center[0], fp_type{2}) +
                                std::pow(coord[1] - center[1], fp_type{2}) +
                                std::pow(coord[2] - center[2], fp_type{2});
