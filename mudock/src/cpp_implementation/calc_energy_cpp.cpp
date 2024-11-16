@@ -14,8 +14,8 @@
 #include <mudock/utils.hpp>
 #include <random>
 
-#define FLATTENED_2D(x, y, index_x)              ((y) * index_x + (x))
-#define FLATTENED_3D(x, y, z, index_x, index_xy) (index_xy * (z) + (y) * index_x + (x))
+#define FLATTENED_2D(x, y, index_x)              ((y) *index_x + (x))
+#define FLATTENED_3D(x, y, z, index_x, index_xy) (index_xy * (z) + (y) *index_x + (x))
 
 namespace mudock {
   static constexpr auto coordinate_step = fp_type{0.2};

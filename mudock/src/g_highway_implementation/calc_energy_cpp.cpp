@@ -1,3 +1,5 @@
+#include "mudock/type_alias.hpp"
+
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
@@ -175,108 +177,130 @@ namespace mudock {
       const auto outside   = And(Or(outside_x, Or(outside_y, outside_z)), valid_coord);
 
       // For atoms outside the boundaries
-      const auto dx      = Sub(x, Set(d, center[0]));
-      const auto dy      = Sub(y, Set(d, center[1]));
-      const auto dz      = Sub(z, Set(d, center[2]));
-      const auto dist    = MulAdd(dx, dx, MulAdd(dy, dy, Mul(dz, dz)));
-      const auto penalty = Mul(dist, Set(d, ENERGYPENALTY));
-      elect_total_trilinear += ReduceSum(d, IfThenElseZero(outside, penalty));
-      emap_total_trilinear += ReduceSum(d, IfThenElseZero(outside, penalty));
+      if (FindFirstTrue(d, outside) != -1) {
+        const auto dx      = Sub(x, Set(d, center[0]));
+        const auto dy      = Sub(y, Set(d, center[1]));
+        const auto dz      = Sub(z, Set(d, center[2]));
+        const auto dist    = MulAdd(dx, dx, MulAdd(dy, dy, Mul(dz, dz)));
+        const auto penalty = Mul(dist, Set(d, ENERGYPENALTY));
+        elect_total_trilinear += ReduceSum(d, IfThenElseZero(outside, penalty));
+        emap_total_trilinear += ReduceSum(d, IfThenElseZero(outside, penalty));
+      }
 
       // For atoms inside
       const auto inside = And(Not(outside), valid_coord);
 
-      // Calculate trilinear interpolation coordinates for in-bounds atoms
-      x = Mul(Sub(x, min_x), Set(d, inv_spacing));
-      y = Mul(Sub(y, min_y), Set(d, inv_spacing));
-      z = Mul(Sub(z, min_z), Set(d, inv_spacing));
+      if (FindFirstTrue(d, inside) != -1) {
+        // Calculate trilinear interpolation coordinates for in-bounds atoms
+        x = Mul(Sub(x, min_x), Set(d, inv_spacing));
+        y = Mul(Sub(y, min_y), Set(d, inv_spacing));
+        z = Mul(Sub(z, min_z), Set(d, inv_spacing));
 
-      // Map loading
-      const auto atom_map_offsets = LoadN(di, map_ligand_offsets + index, remaining);
+        // Map loading
+        const auto atom_map_offsets = LoadN(di, map_ligand_offsets + index, remaining);
 
-      // Decompose coordinates and weights
-      const auto u0 = ConvertTo(di, x);
-      const auto v0 = ConvertTo(di, y);
-      const auto w0 = ConvertTo(di, z);
+        // Decompose coordinates and weights
+        const auto u0 = ConvertTo(di, x);
+        const auto v0 = ConvertTo(di, y);
+        const auto w0 = ConvertTo(di, z);
 
-      const auto p0u = Sub(x, ConvertTo(d, u0));
-      const auto p0v = Sub(y, ConvertTo(d, v0));
-      const auto p0w = Sub(z, ConvertTo(d, w0));
+        const auto p0u = Sub(x, ConvertTo(d, u0));
+        const auto p0v = Sub(y, ConvertTo(d, v0));
+        const auto p0w = Sub(z, ConvertTo(d, w0));
 
-      const auto one = Set(d, fp_type{1.0});
-      const auto p1u = Sub(one, p0u);
-      const auto p1v = Sub(one, p0v);
-      const auto p1w = Sub(one, p0w);
+        const auto one = Set(d, fp_type{1.0});
+        const auto p1u = Sub(one, p0u);
+        const auto p1v = Sub(one, p0v);
+        const auto p1w = Sub(one, p0w);
 
-      // Precompute flattened indices
-      const auto default_offset = Set(di, 0);
-      const auto base_default_index =
-          Add(Add(Add(Mul(v0, Set(di, map_index_x)), Mul(w0, Set(di, map_index_xy))), u0), default_offset);
-      elect_total_trilinear += ReduceSum(
-          d,
-          IfThenElseZero(
-              inside,
-              trilinear_interpolation_vectorized<decltype(p1u), decltype(base_default_index), fp_type>(
-                  electro_map,
-                  base_default_index,
-                  p1u,
-                  p1v,
-                  p1w,
-                  p0u,
-                  p0v,
-                  p0w,
-                  map_index_x,
-                  map_index_xy)) *
-              atom_charge);
-      dmap_total_trilinear += ReduceSum(
-          d,
-          IfThenElseZero(
-              inside,
-              trilinear_interpolation_vectorized<decltype(p1u), decltype(base_default_index), fp_type>(
-                  desolv_map,
-                  base_default_index,
-                  p1u,
-                  p1v,
-                  p1w,
-                  p0u,
-                  p0v,
-                  p0w,
-                  map_index_x,
-                  map_index_xy)) *
-              Abs(atom_charge));
-      const auto base_atom_index =
-          Add(Add(Add(Mul(v0, Set(di, map_index_x)), Mul(w0, Set(di, map_index_xy))), u0), atom_map_offsets);
-      emap_total_trilinear +=
-          ReduceSum(d,
-                    IfThenElseZero(
-                        inside,
-                        trilinear_interpolation_vectorized<decltype(p1u), decltype(base_atom_index), fp_type>(
-                            grid_maps,
-                            base_atom_index,
-                            p1u,
-                            p1v,
-                            p1w,
-                            p0u,
-                            p0v,
-                            p0w,
-                            map_index_x,
-                            map_index_xy)));
+        // Precompute flattened indices
+        const auto default_offset = Set(di, 0);
+        const auto base_default_index =
+            Add(Add(Add(Mul(v0, Set(di, map_index_x)), Mul(w0, Set(di, map_index_xy))), u0), default_offset);
+        elect_total_trilinear += ReduceSum(
+            d,
+            IfThenElseZero(
+                inside,
+                trilinear_interpolation_vectorized<decltype(p1u), decltype(base_default_index), fp_type>(
+                    electro_map,
+                    base_default_index,
+                    p1u,
+                    p1v,
+                    p1w,
+                    p0u,
+                    p0v,
+                    p0w,
+                    map_index_x,
+                    map_index_xy)) *
+                atom_charge);
+        dmap_total_trilinear += ReduceSum(
+            d,
+            IfThenElseZero(
+                inside,
+                trilinear_interpolation_vectorized<decltype(p1u), decltype(base_default_index), fp_type>(
+                    desolv_map,
+                    base_default_index,
+                    p1u,
+                    p1v,
+                    p1w,
+                    p0u,
+                    p0v,
+                    p0w,
+                    map_index_x,
+                    map_index_xy)) *
+                Abs(atom_charge));
+        const auto base_atom_index =
+            Add(Add(Add(Mul(v0, Set(di, map_index_x)), Mul(w0, Set(di, map_index_xy))), u0),
+                atom_map_offsets);
+        emap_total_trilinear += ReduceSum(
+            d,
+            IfThenElseZero(
+                inside,
+                trilinear_interpolation_vectorized<decltype(p1u), decltype(base_atom_index), fp_type>(
+                    grid_maps,
+                    base_atom_index,
+                    p1u,
+                    p1v,
+                    p1w,
+                    p0u,
+                    p0v,
+                    p0w,
+                    map_index_x,
+                    map_index_xy)));
+      }
     }
 
     fp_type elect_total_eintcal{0}, emap_total_eintcal{0}, dmap_total_eintcal{0};
     if (n_torsions > 0) {
-      const auto ms_A_vec        = Set(d, ms_A);
-      const auto ms_B_vec        = Set(d, ms_B);
-      const auto ms_rk_vec       = Set(d, ms_rk);
-      const auto ms_lambda_B_vec = Set(d, ms_lambda_B);
-      const auto one_vec         = Set(d, fp_type{1});
-      const auto elec_scale      = Set(d, ELECSCALE);
-      const auto coeff_estat_vec = Set(d, autodock_parameters::coeff_estat);
+      const auto ms_A_vec           = Set(d, mehler_solmajer::A);
+      const auto ms_B_vec           = Set(d, mehler_solmajer::B);
+      const auto ms_rk_vec          = Set(d, mehler_solmajer::rk);
+      const auto ms_lambda_B_vec    = Set(d, mehler_solmajer::lambda_B);
+      const auto ms_min_epsilon_vec = Set(d, std::numeric_limits<fp_type>::epsilon());
+      const auto one_vec            = Set(d, fp_type{1});
+      const auto elec_scale         = Set(d, ELECSCALE);
+      const auto coeff_estat_vec    = Set(d, autodock_parameters::coeff_estat);
+      const auto nbc2_vec           = Set(d, nbc2);
+      const auto hbond_two_vev      = Set(di, 2);
+      const auto two_fp_vec         = Set(d, 2);
+      const auto one_fp_vec         = Set(d, 1);
+      const auto half_fp_vec        = Set(d, -0.5);
+
+      const auto hbond_one_vec    = Set(di, 1);
+      const auto xA_vec           = Set(di, 12);
+      const auto xB_ten_vec       = Set(di, 10);
+      const auto xB_six_vec       = Set(di, 6);
+      const auto eintclamp_vec    = Set(d, EINTCLAMP);
+      const auto qsolpar_vec      = Set(d, 0.01097);
+      const auto coeff_desolv_vec = Set(d, autodock_parameters::coeff_desolv);
+      const auto sigma_square_vec = Set(d, sigma_square);
 
       for (int i = 0; i < num_nonbond; i += Lanes(di)) {
-        const auto remaining = num_atoms - i;
-        const auto a1        = LoadN(di, non_bond_list_a1 + i, remaining);
-        const auto a2        = LoadN(di, non_bond_list_a2 + i, remaining);
+        const auto remaining     = num_nonbond - i;
+        const auto valid_nonbond = FirstN(d, remaining);
+
+        const auto a1 = LoadN(di, non_bond_list_a1 + i, remaining);
+        const auto a2 = LoadN(di, non_bond_list_a2 + i, remaining);
 
         // Load vectorized data for each coordinate difference between a1 and a2
         const auto diff_x =
@@ -296,9 +320,11 @@ namespace mudock {
         //  Calculate  Electrostatic  Energy
         // TODO missing epsilon check
         // Calculate the r_dielectric term
-        const auto exp_term = Exp(d, Mul(ms_lambda_B_vec, distance));
-        const auto r_dielectric =
-            Div(one_vec, Add(Mul(distance, ms_A_vec), Div(ms_B_vec, Add(one_vec, Mul(ms_rk_vec, exp_term)))));
+        const auto epsilon =
+            Add(Div(ms_B_vec, Add(one_vec, Mul(ms_rk_vec, Exp(d, Mul(ms_lambda_B_vec, distance))))),
+                ms_A_vec);
+        const auto ms_vec       = IfThenElse(Lt(epsilon, ms_min_epsilon_vec), one_fp_vec, epsilon);
+        const auto r_dielectric = Div(one_vec, Mul(distance, ms_vec));
 
         // Calculate the electrostatic energy (e_elec)
         const auto charge_a1 = GatherIndexN(d, ligand_charge, a1, remaining);
@@ -308,7 +334,87 @@ namespace mudock {
             Mul(Mul(charge_a1, charge_a2), Mul(elec_scale, Mul(coeff_estat_vec, r_dielectric)));
 
         // Accumulate the electrostatic energy
-        elect_total_eintcal += ReduceSum(d, e_elec);
+        elect_total_eintcal += ReduceSum(d, IfThenElseZero(valid_nonbond, e_elec));
+
+        // Calcuate desolv
+        const auto ligand_vol_a1_v    = GatherIndexN(d, ligand_vol, a1, remaining);
+        const auto ligand_vol_a2_v    = GatherIndexN(d, ligand_vol, a2, remaining);
+        const auto ligand_solpar_a1_v = GatherIndexN(d, ligand_solpar, a1, remaining);
+        const auto ligand_solpar_a2_v = GatherIndexN(d, ligand_solpar, a2, remaining);
+
+        const auto nb_desolv =
+            Add(Mul(ligand_vol_a2_v, Add(ligand_solpar_a1_v, Mul(qsolpar_vec, Abs(charge_a1)))),
+                Mul(ligand_vol_a1_v, Add(ligand_solpar_a2_v, Mul(qsolpar_vec, Abs(charge_a2)))));
+
+        const auto e_desolv =
+            Mul(coeff_desolv_vec,
+                Mul(Exp(d, Mul(Div(half_fp_vec, sigma_square_vec), clamped_distance_two)), nb_desolv));
+        dmap_total_eintcal += ReduceSum(d, IfThenElseZero(valid_nonbond, e_desolv));
+
+        const auto low_distance = And(Lt(clamped_distance_two, nbc2_vec), valid_nonbond);
+        auto e_vdW_Hb           = Zero(d);
+        if (FindFirstTrue(d, low_distance) != -1) {
+          // Vectorized arrays
+          const auto hbond_i_v = GatherIndexN(di, ligand_num_hbond, a1, remaining);
+          const auto hbond_j_v =
+              GatherIndexN(di, ligand_num_hbond, a2, remaining); // example: next element for hbond_j
+
+          const auto Rij_hb_i_v = GatherIndexN(d, ligand_Rij_hb, a1, remaining);
+          const auto Rij_hb_j_v = GatherIndexN(d, ligand_Rij_hb, a2, remaining);
+
+          const auto Rii_i_v = GatherIndexN(d, ligand_Rii, a1, remaining);
+          const auto Rii_j_v = GatherIndexN(d, ligand_Rii, a2, remaining);
+
+          const auto epsij_hb_i_v = GatherIndexN(d, ligand_epsij_hb, a1, remaining);
+          const auto epsij_hb_j_v = GatherIndexN(d, ligand_epsij_hb, a2, remaining);
+
+          const auto epsii_i_v = GatherIndexN(d, ligand_epsii, a1, remaining);
+          const auto epsii_j_v = GatherIndexN(d, ligand_epsii, a2, remaining);
+
+          // Compute Rij and epsij with masks
+          // TODO force to do floating point comparison due to IfThenElse
+          const auto i_donor_j_acceptor =
+              RebindMask(d,
+                         And(Or(Eq(hbond_i_v, hbond_one_vec), Eq(hbond_i_v, hbond_two_vev)),
+                             Gt(hbond_j_v, hbond_two_vev)));
+          const auto j_donor_i_acceptor =
+              RebindMask(d,
+                         And(Or(Eq(hbond_j_v, hbond_one_vec), Eq(hbond_j_v, hbond_two_vev)),
+                             Gt(hbond_i_v, hbond_two_vev)));
+
+          const auto Rij_v =
+              IfThenElse(i_donor_j_acceptor,
+                         Rij_hb_j_v,
+                         IfThenElse(j_donor_i_acceptor, Rij_hb_i_v, (Rii_i_v + Rii_j_v) / two_fp_vec));
+
+          const auto epsij_v =
+              IfThenElse(i_donor_j_acceptor,
+                         epsij_hb_j_v,
+                         IfThenElse(j_donor_i_acceptor, epsij_hb_i_v, Sqrt(Mul(epsii_i_v, epsii_j_v))));
+
+          const auto xB_vec =
+              IfThenElse(RebindMask(di, Or(i_donor_j_acceptor, j_donor_i_acceptor)), xB_ten_vec, xB_six_vec);
+
+          const auto xab_cond = Ne(xA_vec, xB_vec);
+
+          if (FindFirstTrue(di, xab_cond) != -1) {
+            const auto tmp = Div(epsij_v, ConvertTo(d, Sub(xA_vec, xB_vec)));
+
+            // Hack, Pow is not yet support by GH [x^y = exp(y*ln(x))]
+            const auto pow_A_vec = Exp(d, Mul(ConvertTo(d, xA_vec), Log(d, Rij_v)));
+            const auto pow_B_vec = Exp(d, Mul(ConvertTo(d, xB_vec), Log(d, Rij_v)));
+            const auto cA        = Mul(tmp, Mul(pow_A_vec, ConvertTo(d, xB_vec)));
+            const auto cB        = Mul(tmp, Mul(pow_B_vec, ConvertTo(d, xA_vec)));
+
+            const auto rA = Exp(d, Mul(ConvertTo(d, xA_vec), Log(d, distance)));
+            const auto rB = Exp(d, Mul(ConvertTo(d, xB_vec), Log(d, distance)));
+
+            // TODO IfThenElse to enable final reduction
+            e_vdW_Hb =
+                IfThenElseZero(RebindMask(d, xab_cond), Min(eintclamp_vec, Sub(Div(cA, rA), Div(cB, rB))));
+          }
+        }
+        emap_total_eintcal += ReduceSum(d, IfThenElseZero(low_distance, e_vdW_Hb));
       }
     }
     const fp_type tors_free_energy = n_torsions * autodock_parameters::coeff_tors;
