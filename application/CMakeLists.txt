@@ -42,7 +42,7 @@ else()
 endif()
 
 if(MUDOCK_ENABLE_GH)
-  target_include_directories("${CMAKE_PROJECT_NAME}" PRIVATE )
+  target_include_directories("${CMAKE_PROJECT_NAME}" PRIVATE "${MUDOCK_GH_INCLUDE_PATH}")
   target_link_libraries("${CMAKE_PROJECT_NAME}" hwy)
 endif()
 

@@ -21,7 +21,7 @@
 #include <mudock/utils.hpp>
 #include <random>
 
-#define FLATTENED_2D(x, y, index_x) ((y) *index_x + (x))
+#define FLATTENED_2D(x, y, index_x) ((y) * index_x + (x))
 
 namespace mudock {
   // using HWY_NAMESPACE::translate_molecule;
@@ -468,9 +468,6 @@ namespace mudock {
     auto altered_y        = std::make_unique<std::array<fp_type, max_static_atoms()>>();
     auto altered_z        = std::make_unique<std::array<fp_type, max_static_atoms()>>();
 
-    FJAPP_MARKER_START("GA");
-    LIKWID_MARKER_START("GA");
-
 // Randomly initialize the population
 #pragma clang loop unroll(enable)
     for (int element_index = 0; element_index < population_size; ++element_index) {
@@ -486,6 +483,8 @@ namespace mudock {
     }
 
     for (int generation = 0; generation < num_generations; ++generation) {
+      FJAPP_MARKER_START("GA");
+      LIKWID_MARKER_START("GA");
       // Evaluate the fitness of the population
       for (int element_index = 0; element_index < population_size; ++element_index) {
         auto& element = population[element_index];
@@ -534,6 +533,8 @@ namespace mudock {
                                         desolv_map);
         element.score     = energy; // dummy implementation to test the genetic
       }
+      FJAPP_MARKER_STOP("GA");
+      LIKWID_MARKER_STOP("GA");
 
       // Generate the new population
       for (int element_index = 0; element_index < population_size; ++element_index) {
@@ -570,7 +571,5 @@ namespace mudock {
       population      = next_population;
       next_population = temp;
     }
-    FJAPP_MARKER_STOP("GA");
-    LIKWID_MARKER_STOP("GA");
   }
 } // namespace mudock
