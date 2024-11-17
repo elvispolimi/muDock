@@ -368,7 +368,7 @@ namespace mudock {
         const fp_type distance_two = std::pow(ligand_x[a1] - ligand_x[a2], fp_type{2}) +
                                      std::pow(ligand_y[a1] - ligand_y[a2], fp_type{2}) +
                                      std::pow(ligand_z[a1] - ligand_z[a2], fp_type{2});
-        const fp_type distance_two_clamp = std::clamp(distance_two, RMIN_ELEC_SQUARE, distance_two);
+        const fp_type distance_two_clamp = std::max(distance_two, RMIN_ELEC_SQUARE);
         const fp_type distance           = std::sqrt(distance_two_clamp);
 
         //  Calculate  Electrostatic  Energy
