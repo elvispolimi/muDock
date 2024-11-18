@@ -287,7 +287,7 @@ namespace mudock {
     fp_type dmap_total_trilinear  = 0;
 
 #pragma GCC ivdep
-#pragma clang loop vectorize(enable) vectorize_width(4) interleave(enable) interleave_count(4) unroll(enable)
+#pragma clang loop vectorize(enable) interleave(enable) unroll(enable)
     for (int index = 0; index < NUM_ATOMS; ++index)
       if (index < num_atoms) {
         fp_type coord[3]{ligand_x[index], ligand_y[index], ligand_z[index]};
@@ -351,7 +351,7 @@ namespace mudock {
     fp_type elect_total_eintcal{0}, emap_total_eintcal{0}, dmap_total_eintcal{0};
     if (n_torsions > 0) {
 #pragma GCC ivdep
-#pragma clang loop vectorize(enable) vectorize_width(4) interleave(enable) interleave_count(4) unroll(enable)
+#pragma clang loop vectorize(enable) interleave(enable) unroll(enable)
 #pragma fj loop prefetch
 #pragma statement scache_isolate_assign ligand_x, ligand_y, ligand_z, ligand_charge, ligand_num_hbond, \
     ligand_Rij_hb, ligand_Rii, ligand_epsij_hb, ligand_epsii
