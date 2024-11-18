@@ -21,7 +21,8 @@ namespace mudock {
     const auto v_offset_y = Set(d, offset_y);
     const auto v_offset_z = Set(d, offset_z);
 
-    // Process in SIMD lanes
+// Process in SIMD lanes
+#pragma clang loop interleave(enable) unroll(enable)
     for (int i = 0; i <= num_atoms; i += Lanes(d)) {
       const auto remaining = num_atoms - i;
       // Load elements from x, y, and z arrays
@@ -111,8 +112,9 @@ namespace mudock {
     const auto v_m20 = Set(d, m20);
     const auto v_m21 = Set(d, m21);
     const auto v_m22 = Set(d, m22);
-    // Process in SIMD lanes
-    // TODO check the equal comparison
+// Process in SIMD lanes
+// TODO check the equal comparison
+#pragma clang loop interleave(enable) unroll(enable)
     for (int i = 0; i <= num_atoms; i += Lanes(d)) {
       const auto remaining = num_atoms - i;
       // Load elements from x, y, and z arrays
@@ -216,7 +218,8 @@ namespace mudock {
     const auto v_m21 = Set(d, m21);
     const auto v_m22 = Set(d, m22);
     const auto v_m23 = Set(d, m23);
-    // Process in SIMD lanes
+// Process in SIMD lanes
+#pragma clang loop interleave(enable) unroll(enable)
     for (int i = 0; i <= num_atoms; i += Lanes(d)) {
       // for (int i = 0; i < num_atoms; ++i) {
       const auto remaining = num_atoms - i;

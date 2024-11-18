@@ -267,11 +267,11 @@ target_compile_options(libmudock PUBLIC $<$<AND:$<CONFIG:RELEASE>,$<COMPILE_LANG
 add_rdkit_dep(libmudock)
 
 if(MUDOCK_ENABLE_GH)
-  if(MUDOCK_GH_INCLUDE_PATH STREQUAL "")
+  if(MUDOCK_GH_PATH STREQUAL "")
     message(FATAL_ERROR "Missing Google Highway include path")
   endif()
   target_compile_definitions(libmudock PUBLIC MUDOCK_USE_GH)
-  target_include_directories(libmudock PRIVATE ${MUDOCK_GH_INCLUDE_PATH})
+  target_include_directories(libmudock PRIVATE ${MUDOCK_GH_PATH}/include)
 endif()
 
 # check if we need to activate the compilation flag that signals Polygeist transpilation

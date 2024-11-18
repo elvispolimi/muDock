@@ -153,6 +153,7 @@ namespace mudock {
     fp_type emap_total_trilinear  = 0;
     fp_type dmap_total_trilinear  = 0;
 
+#pragma clang loop interleave(enable) interleave_count(4) unroll(enable)
     for (int index = 0; index < num_atoms; index += Lanes(d)) {
       const auto remaining = num_atoms - index;
       // Load the x, y, z coordinates in a SIMD fashion
@@ -295,6 +296,7 @@ namespace mudock {
       const auto coeff_desolv_vec = Set(d, autodock_parameters::coeff_desolv);
       const auto sigma_square_vec = Set(d, sigma_square);
 
+#pragma clang loop interleave(enable) interleave_count(4) unroll(enable)
       for (int i = 0; i < num_nonbond; i += Lanes(di)) {
         const auto remaining     = num_nonbond - i;
         const auto valid_nonbond = FirstN(d, remaining);
@@ -315,16 +317,17 @@ namespace mudock {
         // Clamp `distance_two` between `RMIN_ELEC_SQUARE` and `distance_two` itself
         const auto clamped_distance_two = Max(Set(d, RMIN_ELEC_SQUARE), distance_two);
         // Compute the square root of the clamped distance
-        const auto distance = Sqrt(clamped_distance_two);
+        const auto distance = Mul(clamped_distance_two, ApproximateReciprocalSqrt(clamped_distance_two));
 
         //  Calculate  Electrostatic  Energy
         // TODO missing epsilon check
         // Calculate the r_dielectric term
-        const auto epsilon =
-            Add(Div(ms_B_vec, Add(one_vec, Mul(ms_rk_vec, Exp(d, Mul(ms_lambda_B_vec, distance))))),
-                ms_A_vec);
+        const auto epsilon = Add(
+            Mul(ms_B_vec,
+                ApproximateReciprocal(Add(one_vec, Mul(ms_rk_vec, Exp(d, Mul(ms_lambda_B_vec, distance)))))),
+            ms_A_vec);
         const auto ms_vec       = IfThenElse(Lt(epsilon, ms_min_epsilon_vec), one_fp_vec, epsilon);
-        const auto r_dielectric = Div(one_vec, Mul(distance, ms_vec));
+        const auto r_dielectric = Mul(one_vec, ApproximateReciprocal(Mul(distance, ms_vec)));
 
         // Calculate the electrostatic energy (e_elec)
         const auto charge_a1 = GatherIndexN(d, ligand_charge, a1, remaining);
@@ -346,9 +349,10 @@ namespace mudock {
             Add(Mul(ligand_vol_a2_v, Add(ligand_solpar_a1_v, Mul(qsolpar_vec, Abs(charge_a1)))),
                 Mul(ligand_vol_a1_v, Add(ligand_solpar_a2_v, Mul(qsolpar_vec, Abs(charge_a2)))));
 
-        const auto e_desolv =
-            Mul(coeff_desolv_vec,
-                Mul(Exp(d, Mul(Div(half_fp_vec, sigma_square_vec), clamped_distance_two)), nb_desolv));
+        const auto e_desolv = Mul(
+            coeff_desolv_vec,
+            Mul(Exp(d, Mul(Mul(half_fp_vec, ApproximateReciprocal(sigma_square_vec)), clamped_distance_two)),
+                nb_desolv));
         dmap_total_eintcal += ReduceSum(d, IfThenElseZero(valid_nonbond, e_desolv));
 
         const auto low_distance = And(Lt(clamped_distance_two, nbc2_vec), valid_nonbond);
@@ -387,10 +391,11 @@ namespace mudock {
                          Rij_hb_j_v,
                          IfThenElse(j_donor_i_acceptor, Rij_hb_i_v, (Rii_i_v + Rii_j_v) / two_fp_vec));
 
-          const auto epsij_v =
-              IfThenElse(i_donor_j_acceptor,
-                         epsij_hb_j_v,
-                         IfThenElse(j_donor_i_acceptor, epsij_hb_i_v, Sqrt(Mul(epsii_i_v, epsii_j_v))));
+          const auto eps_mul = Mul(epsii_i_v, epsii_j_v);
+          const auto epsij_v = IfThenElse(
+              i_donor_j_acceptor,
+              epsij_hb_j_v,
+              IfThenElse(j_donor_i_acceptor, epsij_hb_i_v, Mul(eps_mul, ApproximateReciprocalSqrt(eps_mul))));
 
           const auto xB_vec =
               IfThenElse(RebindMask(di, Or(i_donor_j_acceptor, j_donor_i_acceptor)), xB_ten_vec, xB_six_vec);
@@ -398,7 +403,7 @@ namespace mudock {
           const auto xab_cond = Ne(xA_vec, xB_vec);
 
           if (FindFirstTrue(di, xab_cond) != -1) {
-            const auto tmp = Div(epsij_v, ConvertTo(d, Sub(xA_vec, xB_vec)));
+            const auto tmp = Mul(epsij_v, ApproximateReciprocal(ConvertTo(d, Sub(xA_vec, xB_vec))));
 
             // Hack, Pow is not yet support by GH [x^y = exp(y*ln(x))]
             const auto pow_A_vec = Exp(d, Mul(ConvertTo(d, xA_vec), Log(d, Rij_v)));
@@ -410,8 +415,10 @@ namespace mudock {
             const auto rB = Exp(d, Mul(ConvertTo(d, xB_vec), Log(d, distance)));
 
             // TODO IfThenElse to enable final reduction
-            e_vdW_Hb =
-                IfThenElseZero(RebindMask(d, xab_cond), Min(eintclamp_vec, Sub(Div(cA, rA), Div(cB, rB))));
+            e_vdW_Hb = IfThenElseZero(
+                RebindMask(d, xab_cond),
+                Min(eintclamp_vec,
+                    Sub(Mul(cA, ApproximateReciprocal(rA)), Mul(cB, ApproximateReciprocal(rB)))));
           }
         }
         emap_total_eintcal += ReduceSum(d, IfThenElseZero(low_distance, e_vdW_Hb));
@@ -469,14 +476,14 @@ namespace mudock {
     auto altered_z        = std::make_unique<std::array<fp_type, max_static_atoms()>>();
 
 // Randomly initialize the population
-#pragma clang loop unroll(enable)
+#pragma clang loop interleave(enable) unroll(enable)
     for (int element_index = 0; element_index < population_size; ++element_index) {
       auto& element = population[element_index];
-#pragma clang loop unroll(enable)
+#pragma clang loop interleave(enable) unroll(enable)
       for (int i{0}; i < 3; ++i) { // initialize the rigid translation
         element.genes[i] = get_init_change_distribution(generator, dist) * coordinate_step;
       }
-#pragma clang loop unroll(enable)
+#pragma clang loop interleave(enable) unroll(enable)
       for (int i{3}; i < 6 + num_rotamers; ++i) { // initialize the rotations
         element.genes[i] = get_init_change_distribution(generator, dist) * angle_step;
       }
@@ -536,7 +543,8 @@ namespace mudock {
       FJAPP_MARKER_STOP("GA");
       LIKWID_MARKER_STOP("GA");
 
-      // Generate the new population
+// Generate the new population
+#pragma clang loop interleave(enable) unroll(enable)
       for (int element_index = 0; element_index < population_size; ++element_index) {
         auto& next_individual = next_population[element_index];
         // select the parent
@@ -554,12 +562,12 @@ namespace mudock {
         next_individual.score = fp_type{0};
 
 // mutate the offspring
-#pragma clang loop unroll(enable)
+#pragma clang loop interleave(enable) unroll(enable)
         for (int i{0}; i < 3; ++i) {
           if (get_mutation_coin_distribution(generator, dist) < mutation_prob)
             next_individual.genes[i] += get_mutation_change_distribution(generator, dist) * coordinate_step;
         }
-#pragma clang loop unroll(enable)
+#pragma clang loop interleave(enable) unroll(enable)
         for (int i{3}; i < 6 + num_rotamers; ++i) {
           if (get_mutation_coin_distribution(generator, dist) < mutation_prob)
             next_individual.genes[i] += get_mutation_change_distribution(generator, dist) * angle_step;

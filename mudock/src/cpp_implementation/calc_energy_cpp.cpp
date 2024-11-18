@@ -106,8 +106,7 @@ namespace mudock {
                                  const fp_type offset_y,
                                  const fp_type offset_z) {
 #pragma GCC ivdep
-#pragma clang loop vectorize(enable) interleave(enable)
-#pragma clang loop unroll(enable)
+#pragma clang loop vectorize(enable) interleave(enable) unroll(enable)
     for (int i = 0; i < NUM_ATOMS; ++i)
       if (i < num_atoms) {
         x[i] += offset_x;
@@ -127,8 +126,7 @@ namespace mudock {
     // compute the molecule center of mass
     point3D c{0, 0, 0};
 #pragma GCC ivdep
-#pragma clang loop vectorize(enable)
-#pragma clang loop unroll(enable)
+#pragma clang loop vectorize(enable) interleave(enable) unroll(enable)
     for (int i = 0; i < NUM_ATOMS; i++)
       if (i < num_atoms) {
         c.x += x[i];
@@ -158,8 +156,7 @@ namespace mudock {
 
 // apply the rotation matrix
 #pragma GCC ivdep
-#pragma clang loop vectorize(enable)
-#pragma clang loop unroll(enable)
+#pragma clang loop vectorize(enable) interleave(enable) unroll(enable)
     for (int i = 0; i < NUM_ATOMS; ++i)
       if (i < num_atoms) {
         const auto translated_x = x[i] - c.x, translated_y = y[i] - c.y, translated_z = z[i] - c.z;
@@ -224,8 +221,7 @@ namespace mudock {
 
 // apply the rotation matrix
 #pragma GCC ivdep
-#pragma clang loop vectorize(enable) interleave(enable)
-#pragma clang loop unroll(enable)
+#pragma clang loop vectorize(enable) interleave(enable) unroll(enable)
     for (int i = 0; i < NUM_ATOMS; ++i) {
       if (frag_mask[i] != 0 && i < num_atoms) {
         const auto prev_x = x[i], prev_y = y[i], prev_z = z[i];
@@ -251,7 +247,7 @@ namespace mudock {
     rotate_molecule<NUM_ATOMS>(x, y, z, num_atoms, c[3], c[4], c[5]);
 
 // change the molecule shape
-#pragma clang loop unroll(enable)
+#pragma clang loop interleave(enable) unroll(enable)
     for (int i = 0; i < num_rotamers; ++i) {
       const auto* bitmask    = frag_masks + i * num_atoms;
       const auto start_index = frag_start_indexes[i];
@@ -291,8 +287,7 @@ namespace mudock {
     fp_type dmap_total_trilinear  = 0;
 
 #pragma GCC ivdep
-#pragma clang loop vectorize(enable) interleave(enable)
-#pragma clang loop unroll(enable)
+#pragma clang loop vectorize(enable) vectorize_width(4) interleave(enable) interleave_count(4) unroll(enable)
     for (int index = 0; index < NUM_ATOMS; ++index)
       if (index < num_atoms) {
         fp_type coord[3]{ligand_x[index], ligand_y[index], ligand_z[index]};
@@ -356,8 +351,7 @@ namespace mudock {
     fp_type elect_total_eintcal{0}, emap_total_eintcal{0}, dmap_total_eintcal{0};
     if (n_torsions > 0) {
 #pragma GCC ivdep
-#pragma clang loop vectorize(enable) interleave(enable)
-#pragma clang loop unroll(enable)
+#pragma clang loop vectorize(enable) vectorize_width(4) interleave(enable) interleave_count(4) unroll(enable)
 #pragma fj loop prefetch
 #pragma statement scache_isolate_assign ligand_x, ligand_y, ligand_z, ligand_charge, ligand_num_hbond, \
     ligand_Rij_hb, ligand_Rii, ligand_epsij_hb, ligand_epsii
@@ -490,14 +484,16 @@ namespace mudock {
     auto altered_y        = std::make_unique<std::array<fp_type, max_static_atoms()>>();
     auto altered_z        = std::make_unique<std::array<fp_type, max_static_atoms()>>();
 
-    // Randomly initialize the population
-    // TODO enable vectorization
+// Randomly initialize the population
+// TODO enable vectorization
+#pragma clang loop interleave(enable) unroll(enable)
     for (int element_index = 0; element_index < population_size; ++element_index) {
       auto& element = population[element_index];
-#pragma clang loop unroll(enable)
+#pragma clang loop interleave(enable) unroll(enable)
       for (int i{0}; i < 3; ++i) { // initialize the rigid translation
         element.genes[i] = get_init_change_distribution(generator, dist) * coordinate_step;
       }
+#pragma clang loop interleave(enable) unroll(enable)
       for (int i{3}; i < 6 + num_rotamers; ++i) { // initialize the rotations
         element.genes[i] = get_init_change_distribution(generator, dist) * angle_step;
       }
@@ -507,6 +503,7 @@ namespace mudock {
       FJAPP_MARKER_START("GA");
       LIKWID_MARKER_START("GA");
 // Evaluate the fitness of the population
+#pragma clang loop interleave(enable) unroll(enable)
 #pragma fj loop prefetch
 #pragma statement scache_isolate_assign ligand_x, ligand_y, ligand_z
       for (int element_index = 0; element_index < population_size; ++element_index) {
@@ -558,8 +555,9 @@ namespace mudock {
       }
       FJAPP_MARKER_STOP("GA");
       LIKWID_MARKER_STOP("GA");
-      // Generate the new population
-      // TODO enable vectorization
+// Generate the new population
+// TODO enable vectorization
+#pragma clang loop interleave(enable) unroll(enable)
       for (int element_index = 0; element_index < population_size; ++element_index) {
         auto& next_individual = next_population[element_index];
         // select the parent
@@ -587,11 +585,12 @@ namespace mudock {
         next_individual.score = fp_type{0};
 
 // mutate the offspring
-#pragma clang loop unroll(enable)
+#pragma clang loop interleave(enable) unroll(enable)
         for (int i{0}; i < 3; ++i) {
           if (get_mutation_coin_distribution(generator, dist) < mutation_prob)
             next_individual.genes[i] += get_mutation_change_distribution(generator, dist) * coordinate_step;
         }
+#pragma clang loop interleave(enable) unroll(enable)
         for (int i{3}; i < 6 + num_rotamers; ++i) {
           if (get_mutation_coin_distribution(generator, dist) < mutation_prob)
             next_individual.genes[i] += get_mutation_change_distribution(generator, dist) * angle_step;

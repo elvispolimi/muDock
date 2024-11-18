@@ -92,7 +92,7 @@ endif()
 project(muDock VERSION 1.0)
 enable_language(CXX)
 # TODO check interference with other frameworks
-set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+#set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
 
 # Check if specific target architectures should be used
 # TODO check this
@@ -112,7 +112,7 @@ endif()
 
 # Google Highway
 option(MUDOCK_ENABLE_GH "Enable Google Highway for CPU vectorization" OFF)
-set(MUDOCK_GH_INCLUDE_PATH "" CACHE STRING "Google Highway include path")
+set(MUDOCK_GH_PATH "" CACHE STRING "Google Highway installation path")
 
 # CUDA
 option(MUDOCK_ENABLE_CUDA "Enable the CUDA kernel implementation" OFF)
@@ -297,7 +297,7 @@ endif()
 
 message(STATUS "Enable Google Highway...............: ${MUDOCK_ENABLE_GH} (MUDOCK_ENABLE_GH)")
 if(MUDOCK_ENABLE_GH)
-    message(STATUS "Google Highway include path.........: ${MUDOCK_GH_INCLUDE_PATH} (MUDOCK_GH_INCLUDE_PATH)")
+    message(STATUS "Google Highway installation path....: ${MUDOCK_GH_PATH} (MUDOCK_GH_PATH)")
 endif()
 
 message(STATUS "Enable CUDA.........................: ${MUDOCK_ENABLE_CUDA} (MUDOCK_ENABLE_CUDA)")
