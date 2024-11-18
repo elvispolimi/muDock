@@ -105,16 +105,16 @@ namespace mudock {
     auto value = Zero(d);
 
     // Gather and accumulate the values based on offsets
-    value = MulAdd(p1u * p1v * p1w, GatherIndex(d, map, base_index), value);
-    value = MulAdd(p1u * p1v * p0w, GatherIndex(d, map, Add(base_index, Set(di, map_index_xy))), value);
-    value = MulAdd(p1u * p0v * p1w, GatherIndex(d, map, Add(base_index, Set(di, map_index_x))), value);
-    value = MulAdd(p1u * p0v * p0w,
+    value = MulAdd(Mul(p1u, Mul(p1v, p1w)), GatherIndex(d, map, base_index), value);
+    value = MulAdd(Mul(p1u, Mul(p1v, p0w)), GatherIndex(d, map, Add(base_index, Set(di, map_index_xy))), value);
+    value = MulAdd(Mul(p1u, Mul(p0v, p1w)), GatherIndex(d, map, Add(base_index, Set(di, map_index_x))), value);
+    value = MulAdd(Mul(p1u, Mul(p0v, p0w)),
                    GatherIndex(d, map, Add(base_index, Set(di, map_index_x + map_index_xy))),
                    value);
-    value = MulAdd(p0u * p1v * p1w, GatherIndex(d, map, Add(base_index, Set(di, 1))), value);
-    value = MulAdd(p0u * p1v * p0w, GatherIndex(d, map, Add(base_index, Set(di, 1 + map_index_xy))), value);
-    value = MulAdd(p0u * p0v * p1w, GatherIndex(d, map, Add(base_index, Set(di, 1 + map_index_x))), value);
-    value = MulAdd(p0u * p0v * p0w,
+    value = MulAdd(Mul(p0u, Mul(p1v, p1w)), GatherIndex(d, map, Add(base_index, Set(di, 1))), value);
+    value = MulAdd(Mul(p0u, Mul(p1v, p0w)), GatherIndex(d, map, Add(base_index, Set(di, 1 + map_index_xy))), value);
+    value = MulAdd(Mul(p0u, Mul(p0v, p1w)), GatherIndex(d, map, Add(base_index, Set(di, 1 + map_index_x))), value);
+    value = MulAdd(Mul(p0u, Mul(p0v, p0w)),
                    GatherIndex(d, map, Add(base_index, Set(di, 1 + map_index_x + map_index_xy))),
                    value);
 
@@ -222,7 +222,7 @@ namespace mudock {
             d,
             IfThenElseZero(
                 inside,
-                trilinear_interpolation_vectorized<decltype(p1u), decltype(base_default_index), fp_type>(
+                Mul(trilinear_interpolation_vectorized<decltype(p1u), decltype(base_default_index), fp_type>(
                     electro_map,
                     base_default_index,
                     p1u,
@@ -232,13 +232,13 @@ namespace mudock {
                     p0v,
                     p0w,
                     map_index_x,
-                    map_index_xy)) *
-                atom_charge);
+                    map_index_xy),
+                atom_charge)));
         dmap_total_trilinear += ReduceSum(
             d,
             IfThenElseZero(
                 inside,
-                trilinear_interpolation_vectorized<decltype(p1u), decltype(base_default_index), fp_type>(
+                Mul(trilinear_interpolation_vectorized<decltype(p1u), decltype(base_default_index), fp_type>(
                     desolv_map,
                     base_default_index,
                     p1u,
@@ -248,8 +248,8 @@ namespace mudock {
                     p0v,
                     p0w,
                     map_index_x,
-                    map_index_xy)) *
-                Abs(atom_charge));
+                    map_index_xy),
+                Abs(atom_charge))));
         const auto base_atom_index =
             Add(Add(Add(Mul(v0, Set(di, map_index_x)), Mul(w0, Set(di, map_index_xy))), u0),
                 atom_map_offsets);
@@ -284,6 +284,7 @@ namespace mudock {
       const auto nbc2_vec           = Set(d, nbc2);
       const auto hbond_two_vev      = Set(di, 2);
       const auto two_fp_vec         = Set(d, 2);
+      const auto reciprocal_two_fp_vec         = Set(d, 0.5);
       const auto one_fp_vec         = Set(d, 1);
       const auto half_fp_vec        = Set(d, -0.5);
 
@@ -294,7 +295,7 @@ namespace mudock {
       const auto eintclamp_vec    = Set(d, EINTCLAMP);
       const auto qsolpar_vec      = Set(d, 0.01097);
       const auto coeff_desolv_vec = Set(d, autodock_parameters::coeff_desolv);
-      const auto sigma_square_vec = Set(d, sigma_square);
+      const auto reciprocal_sigma_square_vec = ApproximateReciprocal(Set(d, sigma_square));
 
 #pragma clang loop interleave(enable) interleave_count(4) unroll(enable)
       for (int i = 0; i < num_nonbond; i += Lanes(di)) {
@@ -351,7 +352,7 @@ namespace mudock {
 
         const auto e_desolv = Mul(
             coeff_desolv_vec,
-            Mul(Exp(d, Mul(Mul(half_fp_vec, ApproximateReciprocal(sigma_square_vec)), clamped_distance_two)),
+            Mul(Exp(d, Mul(Mul(half_fp_vec, reciprocal_sigma_square_vec), clamped_distance_two)),
                 nb_desolv));
         dmap_total_eintcal += ReduceSum(d, IfThenElseZero(valid_nonbond, e_desolv));
 
@@ -389,7 +390,7 @@ namespace mudock {
           const auto Rij_v =
               IfThenElse(i_donor_j_acceptor,
                          Rij_hb_j_v,
-                         IfThenElse(j_donor_i_acceptor, Rij_hb_i_v, (Rii_i_v + Rii_j_v) / two_fp_vec));
+                         IfThenElse(j_donor_i_acceptor, Rij_hb_i_v, Mul(Add(Rii_i_v ,Rii_j_v), reciprocal_two_fp_vec)));
 
           const auto eps_mul = Mul(epsii_i_v, epsii_j_v);
           const auto epsij_v = IfThenElse(
