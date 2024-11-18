@@ -153,7 +153,7 @@ namespace mudock {
     fp_type emap_total_trilinear  = 0;
     fp_type dmap_total_trilinear  = 0;
 
-#pragma clang loop interleave(enable) interleave_count(4) unroll(enable)
+#pragma clang loop interleave(enable) unroll(enable)
     for (int index = 0; index < num_atoms; index += Lanes(d)) {
       const auto remaining = num_atoms - index;
       // Load the x, y, z coordinates in a SIMD fashion
@@ -297,7 +297,7 @@ namespace mudock {
       const auto coeff_desolv_vec = Set(d, autodock_parameters::coeff_desolv);
       const auto reciprocal_sigma_square_vec = ApproximateReciprocal(Set(d, sigma_square));
 
-#pragma clang loop interleave(enable) interleave_count(4) unroll(enable)
+#pragma clang loop interleave(enable) unroll(enable)
       for (int i = 0; i < num_nonbond; i += Lanes(di)) {
         const auto remaining     = num_nonbond - i;
         const auto valid_nonbond = FirstN(d, remaining);
