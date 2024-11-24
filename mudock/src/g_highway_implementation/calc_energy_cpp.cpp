@@ -87,9 +87,10 @@ namespace mudock {
     return population[best_individual].genes;
   }
 
-  template<typename V, typename VI, typename T>
+  template<typename VM, typename V, typename VI, typename T>
   inline V trilinear_interpolation_vectorized(const T* __restrict__ map,
                                               const VI& base_index,
+                                              const VM inside,
                                               const V& p1u,
                                               const V& p1v,
                                               const V& p1w,
@@ -105,17 +106,17 @@ namespace mudock {
     auto value = Zero(d);
 
     // Gather and accumulate the values based on offsets
-    value = MulAdd(Mul(p1u, Mul(p1v, p1w)), GatherIndex(d, map, base_index), value);
-    value = MulAdd(Mul(p1u, Mul(p1v, p0w)), GatherIndex(d, map, Add(base_index, Set(di, map_index_xy))), value);
-    value = MulAdd(Mul(p1u, Mul(p0v, p1w)), GatherIndex(d, map, Add(base_index, Set(di, map_index_x))), value);
+    value = MulAdd(Mul(p1u, Mul(p1v, p1w)), MaskedGatherIndex(inside, d, map, base_index), value);
+    value = MulAdd(Mul(p1u, Mul(p1v, p0w)), MaskedGatherIndex(inside, d, map, Add(base_index, Set(di, map_index_xy))), value);
+    value = MulAdd(Mul(p1u, Mul(p0v, p1w)), MaskedGatherIndex(inside, d, map, Add(base_index, Set(di, map_index_x))), value);
     value = MulAdd(Mul(p1u, Mul(p0v, p0w)),
-                   GatherIndex(d, map, Add(base_index, Set(di, map_index_x + map_index_xy))),
+                   MaskedGatherIndex(inside, d, map, Add(base_index, Set(di, map_index_x + map_index_xy))),
                    value);
-    value = MulAdd(Mul(p0u, Mul(p1v, p1w)), GatherIndex(d, map, Add(base_index, Set(di, 1))), value);
-    value = MulAdd(Mul(p0u, Mul(p1v, p0w)), GatherIndex(d, map, Add(base_index, Set(di, 1 + map_index_xy))), value);
-    value = MulAdd(Mul(p0u, Mul(p0v, p1w)), GatherIndex(d, map, Add(base_index, Set(di, 1 + map_index_x))), value);
+    value = MulAdd(Mul(p0u, Mul(p1v, p1w)), MaskedGatherIndex(inside, d, map, Add(base_index, Set(di, 1))), value);
+    value = MulAdd(Mul(p0u, Mul(p1v, p0w)), MaskedGatherIndex(inside, d, map, Add(base_index, Set(di, 1 + map_index_xy))), value);
+    value = MulAdd(Mul(p0u, Mul(p0v, p1w)), MaskedGatherIndex(inside, d, map, Add(base_index, Set(di, 1 + map_index_x))), value);
     value = MulAdd(Mul(p0u, Mul(p0v, p0w)),
-                   GatherIndex(d, map, Add(base_index, Set(di, 1 + map_index_x + map_index_xy))),
+                   MaskedGatherIndex(inside, d, map, Add(base_index, Set(di, 1 + map_index_x + map_index_xy))),
                    value);
 
     return value;
@@ -222,9 +223,10 @@ namespace mudock {
             d,
             IfThenElseZero(
                 inside,
-                Mul(trilinear_interpolation_vectorized<decltype(p1u), decltype(base_default_index), fp_type>(
+                Mul(trilinear_interpolation_vectorized<decltype(inside),decltype(p1u), decltype(base_default_index), fp_type>(
                     electro_map,
                     base_default_index,
+                    inside,
                     p1u,
                     p1v,
                     p1w,
@@ -238,9 +240,10 @@ namespace mudock {
             d,
             IfThenElseZero(
                 inside,
-                Mul(trilinear_interpolation_vectorized<decltype(p1u), decltype(base_default_index), fp_type>(
+                Mul(trilinear_interpolation_vectorized<decltype(inside),decltype(p1u), decltype(base_default_index), fp_type>(
                     desolv_map,
                     base_default_index,
+                    inside,
                     p1u,
                     p1v,
                     p1w,
@@ -257,9 +260,10 @@ namespace mudock {
             d,
             IfThenElseZero(
                 inside,
-                trilinear_interpolation_vectorized<decltype(p1u), decltype(base_atom_index), fp_type>(
+                trilinear_interpolation_vectorized<decltype(inside),decltype(p1u), decltype(base_atom_index), fp_type>(
                     grid_maps,
                     base_atom_index,
+                    inside,
                     p1u,
                     p1v,
                     p1w,
@@ -273,6 +277,7 @@ namespace mudock {
 
     fp_type elect_total_eintcal{0}, emap_total_eintcal{0}, dmap_total_eintcal{0};
     if (n_torsions > 0) {
+      // TODO check how they are managed in memory these constants
       const auto ms_A_vec           = Set(d, mehler_solmajer::A);
       const auto ms_B_vec           = Set(d, mehler_solmajer::B);
       const auto ms_rk_vec          = Set(d, mehler_solmajer::rk);
