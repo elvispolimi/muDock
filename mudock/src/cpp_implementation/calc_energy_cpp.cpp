@@ -223,7 +223,7 @@ namespace mudock {
 #pragma GCC ivdep
 #pragma clang loop vectorize(enable) interleave(enable) unroll(enable)
     for (int i = 0; i < NUM_ATOMS; ++i) {
-      if (frag_mask[i] != 0 && i < num_atoms) {
+      if (i < num_atoms && frag_mask[i] != 0) {
         const auto prev_x = x[i], prev_y = y[i], prev_z = z[i];
         x[i] = prev_x * m00 + prev_y * m01 + prev_z * m02 + m03;
         y[i] = prev_x * m10 + prev_y * m11 + prev_z * m12 + m13;
@@ -359,9 +359,12 @@ namespace mudock {
         const int& a1 = non_bond_list_a1[i];
         const int& a2 = non_bond_list_a2[i];
 
-        const fp_type distance_two = std::pow(ligand_x[a1] - ligand_x[a2], fp_type{2}) +
-                                     std::pow(ligand_y[a1] - ligand_y[a2], fp_type{2}) +
-                                     std::pow(ligand_z[a1] - ligand_z[a2], fp_type{2});
+        const auto diff_x = ligand_x[a1] - ligand_x[a2];
+        const auto diff_y = ligand_y[a1] - ligand_y[a2];
+        const auto diff_z = ligand_z[a1] - ligand_z[a2];
+        const fp_type distance_two = diff_x*diff_x +
+                                     diff_y*diff_y +
+                                     diff_z*diff_z;
         const fp_type distance_two_clamp = std::max(distance_two, RMIN_ELEC_SQUARE);
         const fp_type distance           = std::sqrt(distance_two_clamp);
 
