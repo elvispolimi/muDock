@@ -93,10 +93,14 @@ if(MUDOCK_ENABLE_GH)
   )
   list(APPEND source_files
   "${source_path}/g_highway_implementation/geometric_transformations.cpp"
-  "${source_path}/g_highway_implementation/calc_energy_cpp.cpp"
   "${source_path}/g_highway_implementation/virtual_screen.cpp"
   "${source_path}/g_highway_implementation/mutate.cpp"
   )
+  if(NOT MUDOCK_EXCLUDE_CPU_KERNEL)
+    list(APPEND source_files
+      "${source_path}/g_highway_implementation/calc_energy_cpp.cpp"
+    )
+  endif()
 else()
   list(APPEND header_files
     "${header_path}/${header_prefix}/cpp_implementation/geometric_transformations.hpp"
