@@ -22,6 +22,7 @@ list(APPEND source_files
 # declare the application executable
 add_executable("${CMAKE_PROJECT_NAME}" ${header_files} ${source_files})
 target_include_directories("${CMAKE_PROJECT_NAME}" PRIVATE "${header_path}")
+target_include_directories("${CMAKE_PROJECT_NAME}" PRIVATE ${Boost_INCLUDE_DIRS})
 set_target_properties("${CMAKE_PROJECT_NAME}"
   PROPERTIES
   CXX_STANDARD 20
