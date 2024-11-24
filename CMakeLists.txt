@@ -92,7 +92,14 @@ endif()
 project(muDock VERSION 1.0)
 enable_language(CXX)
 # TODO check interference with other frameworks
-#set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+include(CheckIPOSupported)
+check_ipo_supported(RESULT ipo_supported OUTPUT ipo_output)
+if(ipo_supported)
+    message(STATUS "IPO is enabled.")
+    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+else()
+    message(WARNING "IPO is not supported: ${ipo_output}")
+endif()
 
 # Check if specific target architectures should be used
 # TODO check this
@@ -105,6 +112,9 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang
         endif()
         if(NOT MUDOCK_CPU_TARGET STREQUAL "")
             list(APPEND release_flags "-mcpu=${MUDOCK_CPU_TARGET}")
+        endif()
+        if(NOT MUDOCK_CPU_TUNE STREQUAL "")
+            list(APPEND release_flags "-mtune=${MUDOCK_CPU_TUNE}")
         endif()
     endif()
 else()
@@ -241,7 +251,7 @@ include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/prerequisite.cmake")
 
 # add more warnings (these flags are compatible with gcc and clang)
 # TODO check here
-if(NOT MUDOCK_ENABLE_HIP)
+if(NOT MUDOCK_ENABLE_HIP AND (("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU") OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang"))
     list(APPEND global_c_cxx_flags -Wall -Wextra -Wpedantic -Wshadow -Wdouble-promotion)
 endif()
 
@@ -280,6 +290,9 @@ if(MUDOCK_CPU_ARCHITECTURES)
 endif()
 if(MUDOCK_CPU_TARGET)
     message(STATUS "CPU Target..........................: ${MUDOCK_CPU_TARGET} (MUDOCK_CPU_TARGET)")
+endif()
+if(MUDOCK_CPU_TUNE)
+    message(STATUS "CPU Tune............................: ${MUDOCK_CPU_TUNE} (MUDOCK_CPU_TUNE)")
 endif()
 
 if(MUDOCK_ENABLE_LIKWID)
