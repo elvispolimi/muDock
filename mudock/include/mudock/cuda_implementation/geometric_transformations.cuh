@@ -140,7 +140,7 @@ namespace mudock {
 // apply the rotation matrix
 #pragma unroll
     for (int i = threadIdx.x; i < MAX_ATOMS; i += blockDim.x) {
-      if (i < num_atoms && bitmask[i] == 1) {
+      if (i < num_atoms && bitmask[i] != 0) {
         const auto prev_x = x[i], prev_y = y[i], prev_z = z[i];
         x[i] = prev_x * m00 + prev_y * m01 + prev_z * m02 + m03;
         y[i] = prev_x * m10 + prev_y * m11 + prev_z * m12 + m13;
