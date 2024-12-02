@@ -2,6 +2,7 @@
 
 #include <mudock/molecule/constraints.hpp>
 #include <mudock/type_alias.hpp>
+#include <array>
 
 namespace mudock {
 
@@ -22,7 +23,8 @@ namespace mudock {
    *
    * The actual number of genes depends on the given molecule
   */
-  using chromosome = fp_type[6 + max_static_bonds()];
+  // TODO return to vector
+  using chromosome = std::array<fp_type, 6 + max_static_bonds()>;
 
   struct individual {
     chromosome genes;
