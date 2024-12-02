@@ -13,9 +13,10 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
   arguments_description.add_options()("protein",
                                       po::value(&args.protein_path)->default_value(args.protein_path),
                                       "Path to the protein file (in PDB)");
-  arguments_description.add_options()("use",
-                                      po::value(&args.device_conf)->default_value(args.device_conf),
-                                      "Map each implementation to the device");
+  arguments_description.add_options()(
+      "use",
+      po::value<std::vector<std::string>>(&args.device_confs)->multitoken()->composing(),
+      "Map each implementation to the device");
 
   // define the knobs command line arguments
   po::options_description knobs_description("Virtual Screening Knobs");
@@ -48,7 +49,7 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
               << std::endl;
     std::cout << "print on the standard output the score of each of them" << std::endl;
     std::cout << std::endl;
-    std::cout << "USAGE: " << argv[0] << " --protein " << args.protein_path << " --use " << args.device_conf
+    std::cout << "USAGE: " << argv[0] << " --protein " << args.protein_path << " --use " << use_cpu_conf
               << " [KNOBS] < \"/path/to/ligands.mol2\"" << std::endl;
     std::cout << std::endl;
     std::cout << arguments_description << std::endl;

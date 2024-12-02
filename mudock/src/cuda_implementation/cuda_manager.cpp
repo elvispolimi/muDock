@@ -10,7 +10,7 @@ namespace mudock {
 
   static constexpr auto cuda_token = std::string_view{"CUDA"};
 
-  void manage_cuda(std::string_view configuration,
+  void manage_cuda(const std::vector<std::string>& configurations,
                    threadpool& pool,
                    const knobs knobs,
                    std::shared_ptr<const grid_atom_mapper>& grid_atom_maps,
@@ -19,13 +19,17 @@ namespace mudock {
                    std::shared_ptr<safe_stack<static_molecule>>& input_molecules,
                    std::shared_ptr<safe_stack<static_molecule>>& output_molecules) {
     // single out the CUDA description
-    const auto begin_cuda_description = configuration.find(cuda_token);
-    const auto end_cuda_description   = configuration.find(";", begin_cuda_description);
-    configuration                     = configuration.substr(begin_cuda_description + cuda_token.size(),
-                                         end_cuda_description - begin_cuda_description);
+    const auto it =
+        std::find_if(configurations.begin(), configurations.end(), [](const std::string_view& str) {
+          return str.find(cuda_token) != std::string::npos; // Check if the target is a substring
+        });
 
     // parse the CUDA description (if any)
-    if (!configuration.empty()) {
+    if (it != configurations.end()) {
+      auto configuration = *it;
+
+      configuration = configuration.substr(cuda_token.size());
+
       // the description should start with a colon
       if (configuration.front() != ':') [[unlikely]] {
         throw std::runtime_error(std::string{"CUDA description should start with ':' ("} +

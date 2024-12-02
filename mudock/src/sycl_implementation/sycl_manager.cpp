@@ -8,7 +8,7 @@ namespace mudock {
 
   static constexpr auto sycl_token = std::string_view{"SYCL"};
 
-  void manage_sycl(std::string_view configuration,
+  void manage_sycl(const std::vector<std::string>& configurations,
                    threadpool& pool,
                    const knobs knobs,
                    std::shared_ptr<const grid_atom_mapper>& grid_atom_maps,
@@ -17,13 +17,17 @@ namespace mudock {
                    std::shared_ptr<safe_stack<static_molecule>>& input_molecules,
                    std::shared_ptr<safe_stack<static_molecule>>& output_molecules) {
     // single out the SYCL description
-    const auto begin_sycl_description = configuration.find(sycl_token);
-    const auto end_sycl_description   = configuration.find(";", begin_sycl_description);
-    configuration                     = configuration.substr(begin_sycl_description + sycl_token.size(),
-                                         end_sycl_description - begin_sycl_description);
+    const auto it =
+        std::find_if(configurations.begin(), configurations.end(), [](const std::string_view& str) {
+          return str.find(sycl_token) != std::string::npos; // Check if the target is a substring
+        });
 
     // parse the SYCL description (if any)
-    if (!configuration.empty()) {
+    if (it != configurations.end()) {
+      auto configuration = *it;
+
+      configuration = configuration.substr(sycl_token.size());
+
       // the description should start with a colon
       if (configuration.front() != ':') [[unlikely]] {
         throw std::runtime_error(std::string{"SYCL description should start with ':' ("} +

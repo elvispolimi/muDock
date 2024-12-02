@@ -6,7 +6,7 @@
 #else
   #include <mudock/log.hpp>
 namespace mudock {
-  inline void manage_cuda(std::string_view,
+  inline void manage_cuda(const std::vector<std::string>&,
                           threadpool&,
                           const knobs,
                           [[maybe_unused]] std::shared_ptr<const grid_atom_mapper> grid_atom_maps,
