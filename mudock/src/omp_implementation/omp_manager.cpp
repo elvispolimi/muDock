@@ -9,7 +9,7 @@ namespace mudock {
 
   static constexpr auto omp_token = std::string_view{"OMP"};
 
-  void manage_omp(std::string_view configuration,
+  void manage_omp(const std::vector<std::string>& configurations,
                   threadpool& pool,
                   const knobs knobs,
                   std::shared_ptr<const grid_atom_mapper>& grid_atom_maps,
@@ -18,13 +18,16 @@ namespace mudock {
                   std::shared_ptr<safe_stack<static_molecule>>& input_molecules,
                   std::shared_ptr<safe_stack<static_molecule>>& output_molecules) {
     // single out the OpenMP description
-    const auto begin_omp_description = configuration.find(omp_token);
-    const auto end_omp_description   = configuration.find(";", begin_omp_description);
-    configuration                    = configuration.substr(begin_omp_description + omp_token.size(),
-                                         end_omp_description - begin_omp_description);
+    const auto it =
+        std::find_if(configurations.begin(), configurations.end(), [](const std::string_view& str) {
+          return str.find(omp_token) != std::string::npos; // Check if the target is a substring
+        });
 
     // parse the OpenMP description (if any)
-    if (!configuration.empty()) {
+    if (it != configurations.end()) {
+      auto configuration = *it;
+
+      configuration = configuration.substr(omp_token.size());
       // the description should start with a colon
       if (configuration.front() != ':') [[unlikely]] {
         throw std::runtime_error(std::string{"OpenMP description should start with ':' ("} +

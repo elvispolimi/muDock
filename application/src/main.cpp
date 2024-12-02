@@ -110,7 +110,7 @@ int main(int argc, char* argv[]) {
   auto output_queue = std::make_shared<mudock::safe_stack<mudock::static_molecule>>();
   {
     auto threadpool = mudock::threadpool();
-    mudock::manage_cpp(args.device_conf,
+    mudock::manage_cpp(args.device_confs,
                        threadpool,
                        grid_atom_maps,
                        electrostatic_map,
@@ -118,7 +118,7 @@ int main(int argc, char* argv[]) {
                        args.knobs,
                        input_queue,
                        output_queue);
-    mudock::manage_cuda(args.device_conf,
+    mudock::manage_cuda(args.device_confs,
                         threadpool,
                         args.knobs,
                         grid_atom_maps,
@@ -126,7 +126,7 @@ int main(int argc, char* argv[]) {
                         desolvation_map,
                         input_queue,
                         output_queue);
-    mudock::manage_hip(args.device_conf,
+    mudock::manage_hip(args.device_confs,
                        threadpool,
                        args.knobs,
                        grid_atom_maps,
@@ -134,7 +134,7 @@ int main(int argc, char* argv[]) {
                        desolvation_map,
                        input_queue,
                        output_queue);
-    mudock::manage_sycl(args.device_conf,
+    mudock::manage_sycl(args.device_confs,
                         threadpool,
                         args.knobs,
                         grid_atom_maps,
@@ -142,7 +142,7 @@ int main(int argc, char* argv[]) {
                         desolvation_map,
                         input_queue,
                         output_queue);
-    mudock::manage_omp(args.device_conf,
+    mudock::manage_omp(args.device_confs,
                        threadpool,
                        args.knobs,
                        grid_atom_maps,

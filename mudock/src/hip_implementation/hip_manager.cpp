@@ -7,7 +7,7 @@ namespace mudock {
 
   static constexpr auto hip_token = std::string_view{"HIP"};
 
-  void manage_hip(std::string_view configuration,
+  void manage_hip(const std::vector<std::string>& configurations,
                   threadpool& pool,
                   const knobs knobs,
                   std::shared_ptr<const grid_atom_mapper>& grid_atom_maps,
@@ -16,19 +16,16 @@ namespace mudock {
                   std::shared_ptr<safe_stack<static_molecule>>& input_molecules,
                   std::shared_ptr<safe_stack<static_molecule>>& output_molecules) {
     // single out the HIP description
-    const auto begin_hip_description = configuration.find(hip_token);
-    const auto end_hip_description   = configuration.find(";", begin_hip_description);
-    configuration                    = configuration.substr(begin_hip_description + hip_token.size(),
-                                         end_hip_description - begin_hip_description);
+    const auto it =
+        std::find_if(configurations.begin(), configurations.end(), [](const std::string_view& str) {
+          return str.find(hip_token) != std::string::npos; // Check if the target is a substring
+        });
 
     // parse the HIP description (if any)
-    if (!configuration.empty()) {
-      // the description should start with a colon
-      if (configuration.front() != ':') [[unlikely]] {
-        throw std::runtime_error(std::string{"HIP description should start with ':' ("} +
-                                 std::string{configuration} + std::string{")"});
-      }
-      configuration = configuration.substr(1);
+    if (it != configurations.end()) {
+      auto configuration = *it;
+
+      configuration = configuration.substr(hip_token.size());
 
       // make sure that the device is the GPU
       // TODO extend to other devices

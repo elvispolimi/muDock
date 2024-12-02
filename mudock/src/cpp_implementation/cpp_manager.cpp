@@ -7,7 +7,7 @@ namespace mudock {
 
   static constexpr auto cpp_token = std::string_view{"CPP"};
 
-  void manage_cpp(std::string_view configuration,
+  void manage_cpp(const std::vector<std::string>& configurations,
                   threadpool& pool,
                   std::shared_ptr<const grid_atom_mapper>& grid_atom_maps,
                   std::shared_ptr<const grid_map>& electro_map,
@@ -16,13 +16,17 @@ namespace mudock {
                   std::shared_ptr<safe_stack<static_molecule>>& input_molecules,
                   std::shared_ptr<safe_stack<static_molecule>>& output_molecules) {
     // single out the CPP description
-    const auto begin_cpp_description = configuration.find(cpp_token);
-    const auto end_cpp_description   = configuration.find(";", begin_cpp_description);
-    configuration                    = configuration.substr(begin_cpp_description + cpp_token.size(),
-                                         end_cpp_description - begin_cpp_description);
+    const auto it =
+        std::find_if(configurations.begin(), configurations.end(), [](const std::string_view& str) {
+          return str.find(cpp_token) != std::string::npos; // Check if the target is a substring
+        });
 
     // parse the CPP description (if any)
-    if (!configuration.empty()) {
+    if (it != configurations.end()) {
+      auto configuration = *it;
+
+      configuration = configuration.substr( cpp_token.size());
+
       // the description should start with a colon
       if (configuration.front() != ':') [[unlikely]] {
         throw std::runtime_error(std::string{"CPP description should start with ':' ("} +

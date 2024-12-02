@@ -10,7 +10,7 @@
 namespace mudock {
 
   // this function will configure and create (if needed) cuda workers to the threadpool
-  void manage_hip(std::string_view configuration,
+  void manage_hip(const std::vector<std::string>& configurations,
                   threadpool& pool,
                   const knobs knobs,
                   std::shared_ptr<const grid_atom_mapper>& grid_atom_maps,

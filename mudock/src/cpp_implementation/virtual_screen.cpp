@@ -25,6 +25,7 @@ namespace mudock {
         configuration(knobs){}
 
   void virtual_screen_cpp::operator()(static_molecule& ligand) {
+    std::cout<<"CPP "<<1<<std::endl;
     SCOREP_MARKER_START(ga, "GA");
     const auto seed =
         static_cast<size_t>(std::chrono::high_resolution_clock::now().time_since_epoch().count());
