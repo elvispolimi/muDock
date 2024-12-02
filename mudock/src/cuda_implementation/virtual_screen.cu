@@ -14,7 +14,8 @@
 #include <span>
 
 namespace mudock {
-  static constexpr std::size_t max_non_bonds{1024 * 10};
+  // TODO this can be removed, only need the nbmatrix
+  static constexpr std::size_t max_non_bonds{1 << 26};
 
   virtual_screen_cuda::virtual_screen_cuda(const knobs k, const std::shared_ptr<const device> dev)
       : configuration(k),
@@ -39,7 +40,7 @@ namespace mudock {
         ligand_fragments(stream),
         frag_start_atom_indices(stream),
         frag_stop_atom_indices(stream),
-        num_nonbonds(stream),
+        index_nonbonds(stream),
         nonbond_a1(stream),
         nonbond_a2(stream),
         map_texture_index(stream),
@@ -57,7 +58,6 @@ namespace mudock {
     // const std::size_t tot_atoms_in_population     = tot_atoms_in_batch * configuration.population_number;
     const std::size_t tot_rotamers_atoms_in_batch = tot_atoms_in_batch * batch_rotamers;
     const std::size_t tot_rotamers_in_batch       = batch_ligands * batch_rotamers;
-    const std::size_t batch_nonbonds              = batch_ligands * max_non_bonds;
     // Use double buffering on the GPU for actual and next population at each iteration
     const std::size_t population_stride = configuration.population_number * 2;
     original_ligand_x.alloc(tot_atoms_in_batch);
@@ -83,9 +83,11 @@ namespace mudock {
     ligand_scores.alloc(batch_ligands);
     best_chromosomes.alloc(batch_ligands);
     // Bonds
-    num_nonbonds.alloc(batch_ligands);
-    nonbond_a1.alloc(batch_nonbonds);
-    nonbond_a2.alloc(batch_nonbonds);
+    // +1 for the initial 0
+    index_nonbonds.alloc(batch_ligands + 1);
+    index_nonbonds.host_pointer()[0] = 0;
+    nonbond_a1.alloc(max_non_bonds);
+    nonbond_a2.alloc(max_non_bonds);
     // GA Data structures
     chromosomes.alloc(population_stride * batch_ligands);
     // Support data precomputation
@@ -98,9 +100,9 @@ namespace mudock {
     std::vector<fragments<static_containers>> batch_fragments;
     batch_fragments.reserve(batch_ligands);
     // Support data structures
+    // TODO you can upload directly the nbmatrix
+    // Actually also the nb matrix can be computed on the GPU
     grid<uint_fast8_t, index2D> nbmatrix{{static_cast<int>(batch_atoms), static_cast<int>(batch_atoms)}};
-    std::vector<non_bond_parameter> non_bond_list;
-    non_bond_list.reserve(max_non_bonds);
     for (auto &ligand: std::span(incoming_batch.molecules.data(), batch_ligands)) {
       const int stride_atoms = index * batch_atoms;
       // Atoms and bonds
@@ -153,22 +155,17 @@ namespace mudock {
       // No need to move data -> already computed on the GPU
       nbmatrix.reset();
       nonbonds(nbmatrix, ligand.get()->get_bonds(), num_atoms);
-      non_bond_list.clear();
-      weed_bonds(nbmatrix, non_bond_list, num_atoms, l_fragments);
-      if constexpr (is_debug())
-        if (non_bond_list.size() >= max_non_bonds) {
-          throw std::runtime_error("Bond list size exceed maximum value " +
-                                   std::to_string(non_bond_list.size()) + ".");
-        }
+      std::vector<int> non_bond_a1_tmp, non_bond_a2_tmp;
+      weed_bonds(nbmatrix, non_bond_a1_tmp, non_bond_a2_tmp, num_atoms, l_fragments);
 
-      num_nonbonds.host_pointer()[index] = non_bond_list.size();
-      const int stride_nonbonds          = index * max_non_bonds;
-      int nonbond_index{0};
-      for (auto &bond: non_bond_list) {
-        nonbond_a1.host_pointer()[stride_nonbonds + nonbond_index] = bond.a1;
-        nonbond_a2.host_pointer()[stride_nonbonds + nonbond_index] = bond.a2;
-        ++nonbond_index;
-      }
+      std::memcpy((void *) (nonbond_a1.host_pointer() + index_nonbonds.host_pointer()[index]),
+                  non_bond_a1_tmp.data(),
+                  non_bond_a1_tmp.size() * sizeof(int));
+      std::memcpy((void *) (nonbond_a2.host_pointer() + index_nonbonds.host_pointer()[index]),
+                  non_bond_a2_tmp.data(),
+                  non_bond_a2_tmp.size() * sizeof(int));
+      index_nonbonds.host_pointer()[index + 1] =
+          index_nonbonds.host_pointer()[index] + non_bond_a1_tmp.size();
 
       // Autodock typing
       std::memcpy((void *) (ligand_vol.host_pointer() + stride_atoms),
@@ -223,7 +220,7 @@ namespace mudock {
     ligand_epsii.copy_host2device();
     ligand_num_hbond.copy_host2device();
     map_texture_index.copy_host2device();
-    num_nonbonds.copy_host2device();
+    index_nonbonds.copy_host2device();
     nonbond_a1.copy_host2device();
     nonbond_a2.copy_host2device();
 
@@ -242,44 +239,53 @@ namespace mudock {
         std::max(configuration.population_number, static_cast<std::size_t>(BLOCK_SIZE)) * sizeof(fp_type);
     const std::size_t shared_mem = min_energy_reduction_s_mem;
 
-    evaluate_fitness<<<batch_ligands, BLOCK_SIZE, shared_mem, stream>>>(num_generations,
-                                                                        configuration.tournament_length,
-                                                                        configuration.mutation_prob,
-                                                                        configuration.population_number,
-                                                                        population_stride,
-                                                                        batch_atoms,
-                                                                        batch_rotamers,
-                                                                        max_non_bonds,
-                                                                        original_ligand_x.dev_pointer(),
-                                                                        original_ligand_y.dev_pointer(),
-                                                                        original_ligand_z.dev_pointer(),
-                                                                        scratch_ligand_x.dev_pointer(),
-                                                                        scratch_ligand_y.dev_pointer(),
-                                                                        scratch_ligand_z.dev_pointer(),
-                                                                        ligand_vol.dev_pointer(),
-                                                                        ligand_solpar.dev_pointer(),
-                                                                        ligand_charge.dev_pointer(),
-                                                                        ligand_num_hbond.dev_pointer(),
-                                                                        ligand_Rij_hb.dev_pointer(),
-                                                                        ligand_Rii.dev_pointer(),
-                                                                        ligand_epsij_hb.dev_pointer(),
-                                                                        ligand_epsii.dev_pointer(),
-                                                                        num_nonbonds.dev_pointer(),
-                                                                        nonbond_a1.dev_pointer(),
-                                                                        nonbond_a2.dev_pointer(),
-                                                                        ligand_num_atoms.dev_pointer(),
-                                                                        ligand_num_rotamers.dev_pointer(),
-                                                                        ligand_fragments.dev_pointer(),
-                                                                        frag_start_atom_indices.dev_pointer(),
-                                                                        frag_stop_atom_indices.dev_pointer(),
-                                                                        chromosomes.dev_pointer(),
-                                                                        dev.get()->atom_texs.dev_pointer(),
-                                                                        map_texture_index.dev_pointer(),
-                                                                        dev.get()->electro_tex,
-                                                                        dev.get()->desolv_tex,
-                                                                        curand_states.dev_pointer(),
-                                                                        ligand_scores.dev_pointer(),
-                                                                        best_chromosomes.dev_pointer());
+    // TODO it should not be necessary, operations on the same stream are executed in order
+    constexpr_for<0, reorder_buffer::atoms_clusters.size(), 1>([&](const auto atoms_index) {
+      const auto n_atoms = reorder_buffer::atoms_clusters[atoms_index];
+      constexpr_for<0, reorder_buffer::rotamer_clusters.size(), 1>([&](const auto rotamers_index) {
+        const auto n_rotamers = reorder_buffer::rotamer_clusters[rotamers_index];
+        if (batch_atoms == n_atoms && batch_rotamers == n_rotamers)
+          evaluate_fitness<n_atoms, n_rotamers>
+              <<<batch_ligands, BLOCK_SIZE, shared_mem, stream>>>(num_generations,
+                                                                  configuration.tournament_length,
+                                                                  configuration.mutation_prob,
+                                                                  configuration.population_number,
+                                                                  population_stride,
+                                                                  batch_atoms,
+                                                                  batch_rotamers,
+                                                                  max_non_bonds,
+                                                                  original_ligand_x.dev_pointer(),
+                                                                  original_ligand_y.dev_pointer(),
+                                                                  original_ligand_z.dev_pointer(),
+                                                                  scratch_ligand_x.dev_pointer(),
+                                                                  scratch_ligand_y.dev_pointer(),
+                                                                  scratch_ligand_z.dev_pointer(),
+                                                                  ligand_vol.dev_pointer(),
+                                                                  ligand_solpar.dev_pointer(),
+                                                                  ligand_charge.dev_pointer(),
+                                                                  ligand_num_hbond.dev_pointer(),
+                                                                  ligand_Rij_hb.dev_pointer(),
+                                                                  ligand_Rii.dev_pointer(),
+                                                                  ligand_epsij_hb.dev_pointer(),
+                                                                  ligand_epsii.dev_pointer(),
+                                                                  index_nonbonds.dev_pointer(),
+                                                                  nonbond_a1.dev_pointer(),
+                                                                  nonbond_a2.dev_pointer(),
+                                                                  ligand_num_atoms.dev_pointer(),
+                                                                  ligand_num_rotamers.dev_pointer(),
+                                                                  ligand_fragments.dev_pointer(),
+                                                                  frag_start_atom_indices.dev_pointer(),
+                                                                  frag_stop_atom_indices.dev_pointer(),
+                                                                  chromosomes.dev_pointer(),
+                                                                  dev.get()->atom_texs.dev_pointer(),
+                                                                  map_texture_index.dev_pointer(),
+                                                                  dev.get()->electro_tex,
+                                                                  dev.get()->desolv_tex,
+                                                                  curand_states.dev_pointer(),
+                                                                  ligand_scores.dev_pointer(),
+                                                                  best_chromosomes.dev_pointer());
+      });
+    });
 
     MUDOCK_CHECK_KERNELCALL();
     MUDOCK_CHECK(cudaStreamSynchronize(stream));
