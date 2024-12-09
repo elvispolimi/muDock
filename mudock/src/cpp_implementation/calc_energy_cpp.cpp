@@ -292,61 +292,61 @@ namespace mudock {
       if (index < num_atoms) {
         fp_type coord[3]{ligand_x[index], ligand_y[index], ligand_z[index]};
 
-        if (coord[0] < minimum[0] || coord[0] > maximum[0] || coord[1] < minimum[1] ||
-            coord[1] > maximum[1] || coord[2] < minimum[2] || coord[2] > maximum[2]) {
-          const fp_type dist = std::pow(coord[0] - center[0], fp_type{2}) +
-                               std::pow(coord[1] - center[1], fp_type{2}) +
-                               std::pow(coord[2] - center[2], fp_type{2});
-          const fp_type epenalty = dist * ENERGYPENALTY;
-          elect_total_trilinear += epenalty;
-          emap_total_trilinear += epenalty;
-        } else {
-          const auto& atom_charge = ligand_charge[index];
-          const fp_type* atom_map = grid_maps[static_cast<int>(map_ligand_types[index])];
+      if (coord[0] < minimum[0] || coord[0] > maximum[0] || coord[1] < minimum[1] || coord[1] > maximum[1] ||
+          coord[2] < minimum[2] || coord[2] > maximum[2]) {
+        const auto diff_x      = coord[0] - center[0];
+        const auto diff_y      = coord[1] - center[1];
+        const auto diff_z      = coord[2] - center[2];
+        const fp_type dist     = diff_x * diff_x + diff_y * diff_y + diff_z * diff_z;
+        const fp_type epenalty = dist * ENERGYPENALTY;
+        elect_total_trilinear += epenalty;
+        emap_total_trilinear += epenalty;
+      } else {
+        const auto& atom_charge = ligand_charge[index];
+        const fp_type* atom_map = grid_maps[static_cast<int>(map_ligand_types[index])];
 
-          coord[0] = (coord[0] - minimum[0]) * inv_spacing;
-          coord[1] = (coord[1] - minimum[1]) * inv_spacing;
-          coord[2] = (coord[2] - minimum[2]) * inv_spacing;
+        coord[0] = (coord[0] - minimum[0]) * inv_spacing;
+        coord[1] = (coord[1] - minimum[1]) * inv_spacing;
+        coord[2] = (coord[2] - minimum[2]) * inv_spacing;
 
-          const int u0      = coord[0];
-          const fp_type p0u = coord[0] - static_cast<fp_type>(u0);
-          const fp_type p1u = fp_type{1} - p0u;
+        const int u0      = coord[0];
+        const fp_type p0u = coord[0] - static_cast<fp_type>(u0);
+        const fp_type p1u = fp_type{1} - p0u;
 
-          const int v0      = coord[1];
-          const fp_type p0v = coord[1] - static_cast<fp_type>(v0);
-          const fp_type p1v = fp_type{1} - p0v;
+        const int v0      = coord[1];
+        const fp_type p0v = coord[1] - static_cast<fp_type>(v0);
+        const fp_type p1v = fp_type{1} - p0v;
 
-          const int w0      = coord[2];
-          const fp_type p0w = coord[2] - static_cast<fp_type>(w0);
-          const fp_type p1w = fp_type{1} - p0w;
+        const int w0      = coord[2];
+        const fp_type p0w = coord[2] - static_cast<fp_type>(w0);
+        const fp_type p1w = fp_type{1} - p0w;
 
-          const fp_type pu[2] = {p1u, p0u};
-          const fp_type pv[2] = {p1v, p0v};
-          const fp_type pw[2] = {p1w, p0w};
+        const fp_type pu[2] = {p1u, p0u};
+        const fp_type pv[2] = {p1v, p0v};
+        const fp_type pw[2] = {p1w, p0w};
 
-          // Compute coefficients
-          const fp_type coeffs[8] = {pu[0] * pv[0] * pw[0],
-                                     pu[0] * pv[0] * pw[1],
-                                     pu[0] * pv[1] * pw[0],
-                                     pu[0] * pv[1] * pw[1],
-                                     pu[1] * pv[0] * pw[0],
-                                     pu[1] * pv[0] * pw[1],
-                                     pu[1] * pv[1] * pw[0],
-                                     pu[1] * pv[1] * pw[1]};
+        // Compute coefficients
+        const fp_type coeffs[8] = {pu[0] * pv[0] * pw[0],
+                                   pu[0] * pv[0] * pw[1],
+                                   pu[0] * pv[1] * pw[0],
+                                   pu[0] * pv[1] * pw[1],
+                                   pu[1] * pv[0] * pw[0],
+                                   pu[1] * pv[0] * pw[1],
+                                   pu[1] * pv[1] * pw[0],
+                                   pu[1] * pv[1] * pw[1]};
 
-          // Precompute flattened indices
-          const int base_index = FLATTENED_3D(u0, v0, w0, map_index_x, map_index_xy);
-          // Trilinear Interpolationp
-          elect_total_trilinear +=
-              trilinear_interpolation(electro_map, coeffs, base_index, map_index_x, map_index_xy) *
-              atom_charge;
-          emap_total_trilinear +=
-              trilinear_interpolation(atom_map, coeffs, base_index, map_index_x, map_index_xy);
-          dmap_total_trilinear +=
-              trilinear_interpolation(desolv_map, coeffs, base_index, map_index_x, map_index_xy) *
-              std::fabs(atom_charge);
-        }
+        // Precompute flattened indices
+        const int base_index = FLATTENED_3D(u0, v0, w0, map_index_x, map_index_xy);
+        // Trilinear Interpolationp
+        elect_total_trilinear +=
+            trilinear_interpolation(electro_map, coeffs, base_index, map_index_x, map_index_xy) * atom_charge;
+        emap_total_trilinear +=
+            trilinear_interpolation(atom_map, coeffs, base_index, map_index_x, map_index_xy);
+        dmap_total_trilinear +=
+            trilinear_interpolation(desolv_map, coeffs, base_index, map_index_x, map_index_xy) *
+            std::fabs(atom_charge);
       }
+    }
 
     fp_type elect_total_eintcal{0}, emap_total_eintcal{0}, dmap_total_eintcal{0};
     if (n_torsions > 0) {
@@ -355,21 +355,25 @@ namespace mudock {
 #pragma fj loop prefetch
 #pragma statement scache_isolate_assign ligand_x, ligand_y, ligand_z, ligand_charge, ligand_num_hbond, \
     ligand_Rij_hb, ligand_Rii, ligand_epsij_hb, ligand_epsii
+    // TODO check reciprocal math here 
       for (int i = 0; i < num_nonbond; ++i) {
         const int& a1 = non_bond_list_a1[i];
         const int& a2 = non_bond_list_a2[i];
 
-        const auto diff_x = ligand_x[a1] - ligand_x[a2];
-        const auto diff_y = ligand_y[a1] - ligand_y[a2];
-        const auto diff_z = ligand_z[a1] - ligand_z[a2];
-        const fp_type distance_two = diff_x*diff_x +
-                                     diff_y*diff_y +
-                                     diff_z*diff_z;
+        const auto diff_x                = ligand_x[a1] - ligand_x[a2];
+        const auto diff_y                = ligand_y[a1] - ligand_y[a2];
+        const auto diff_z                = ligand_z[a1] - ligand_z[a2];
+        const fp_type distance_two       = diff_x * diff_x + diff_y * diff_y + diff_z * diff_z;
         const fp_type distance_two_clamp = std::max(distance_two, RMIN_ELEC_SQUARE);
         const fp_type distance           = std::sqrt(distance_two_clamp);
 
         //  Calculate  Electrostatic  Energy
-        const fp_type r_dielectric = fp_type{1} / (distance * calc_ddd_Mehler_Solmajer(distance));
+        const fp_type epsilon = std::max(
+            mehler_solmajer::A +
+                mehler_solmajer::B /
+                    (fp_type{1} + mehler_solmajer::rk * std::exp(mehler_solmajer::lambda_B * distance)),
+            fp_type{1.0});
+        const fp_type r_dielectric = fp_type{1} / (distance * epsilon);
         const fp_type e_elec       = ligand_charge[a1] * ligand_charge[a2] * ELECSCALE *
                                autodock_parameters::coeff_estat * r_dielectric;
         elect_total_eintcal += e_elec;
@@ -380,7 +384,7 @@ namespace mudock {
              ligand_vol[a1] * (ligand_solpar[a2] + qsolpar * std::fabs(ligand_charge[a2])));
 
         const fp_type e_desolv = autodock_parameters::coeff_desolv *
-                                 std::exp(fp_type{-0.5} / (sigma_square) *distance_two_clamp) * nb_desolv;
+                                 (fp_type{-0.5} / (sigma_square) *distance_two_clamp) * nb_desolv;
         dmap_total_eintcal += e_desolv;
         fp_type e_vdW_Hb{0};
         if (distance_two_clamp < nbc2) {
@@ -417,17 +421,25 @@ namespace mudock {
             xB    = 10;
           } else {
             // we need to calculate the arithmetic mean of Ri and Rj
-            Rij = (Rii_i + Rii_j) / fp_type{2};
+            Rij = (Rii_i + Rii_j) * fp_type{0.5};
             // we need to calculate the geometric mean of epsi and epsj
             epsij = std::sqrt(epsii_i * epsii_j);
           }
           if (xA != xB) {
             const fp_type tmp = epsij / (xA - xB);
-            const fp_type cA  = tmp * std::pow(Rij, static_cast<fp_type>(xA)) * xB;
-            const fp_type cB  = tmp * std::pow(Rij, static_cast<fp_type>(xB)) * xA;
+            // const fp_type cA  = tmp * std::pow(Rij, static_cast<fp_type>(xA)) * xB;
+            // const fp_type cB  = tmp * std::pow(Rij, static_cast<fp_type>(xB)) * xA;
 
-            const fp_type rA = std::pow(distance, static_cast<fp_type>(xA));
-            const fp_type rB = std::pow(distance, static_cast<fp_type>(xB));
+            // const fp_type rA = std::pow(distance, static_cast<fp_type>(xA));
+            // const fp_type rB = std::pow(distance, static_cast<fp_type>(xB));
+
+            const auto log_Rij = std::log(Rij);
+            const fp_type cA   = tmp * expf(static_cast<fp_type>(xA) * log_Rij) * xB;
+            const fp_type cB   = tmp * expf(static_cast<fp_type>(xB) * log_Rij) * xA;
+
+            const auto log_distance = std::log(distance);
+            const fp_type rA        = expf(static_cast<fp_type>(xA) * log_distance);
+            const fp_type rB        = expf(static_cast<fp_type>(xB) * log_distance);
 
             e_vdW_Hb = std::min(EINTCLAMP, (cA / rA - cB / rB));
           }
