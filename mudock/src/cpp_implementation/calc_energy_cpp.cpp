@@ -434,12 +434,12 @@ namespace mudock {
             // const fp_type rB = std::pow(distance, static_cast<fp_type>(xB));
 
             const auto log_Rij = std::log(Rij);
-            const fp_type cA   = tmp * expf(static_cast<fp_type>(xA) * log_Rij) * xB;
-            const fp_type cB   = tmp * expf(static_cast<fp_type>(xB) * log_Rij) * xA;
+            const fp_type cA   = tmp * std::exp(static_cast<fp_type>(xA) * log_Rij) * xB;
+            const fp_type cB   = tmp * std::exp(static_cast<fp_type>(xB) * log_Rij) * xA;
 
             const auto log_distance = std::log(distance);
-            const fp_type rA        = expf(static_cast<fp_type>(xA) * log_distance);
-            const fp_type rB        = expf(static_cast<fp_type>(xB) * log_distance);
+            const fp_type rA        = std::exp(static_cast<fp_type>(xA) * log_distance);
+            const fp_type rB        = std::exp(static_cast<fp_type>(xB) * log_distance);
 
             e_vdW_Hb = std::min(EINTCLAMP, (cA / rA - cB / rB));
           }
