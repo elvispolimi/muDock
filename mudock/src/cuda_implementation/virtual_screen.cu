@@ -54,7 +54,6 @@ namespace mudock {
     const std::size_t batch_atoms    = incoming_batch.batch_max_atoms;
     const std::size_t batch_rotamers = incoming_batch.batch_max_rotamers;
     const std::size_t batch_ligands  = incoming_batch.num_ligands;
-    std::cout<<"CUDA "<<batch_ligands<<std::endl;
     // Resize data structures
     const std::size_t tot_atoms_in_batch = batch_ligands * batch_atoms;
     // const std::size_t tot_atoms_in_population     = tot_atoms_in_batch * configuration.population_number;
