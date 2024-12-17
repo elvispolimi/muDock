@@ -97,26 +97,36 @@ namespace mudock {
                                               const V& p0u,
                                               const V& p0v,
                                               const V& p0w,
-                                              const int& map_index_x,
-                                              const int& map_index_xy) {
+                                              const VI& map_index_plus_one_vec,
+                                              const VI& map_index_x_vec,
+                                              const VI& map_index_x_plus_one_vec,
+                                              const VI& map_index_xy_vec,
+                                              const VI& map_index_xy_plus_one_vec,
+                                              const VI& map_index_x_xy_vec,
+                                              const VI& map_index_x_xy_plus_one_vec) {
     const HWY_FULL(T) d;
     const HWY_FULL(int) di;
 
     // Precompute flattened indices
     auto value = Zero(d);
 
+    const auto p1v_p1w = Mul(p1v, p1w);
+    const auto p1v_p0w = Mul(p1v, p0w);
+    const auto p0v_p1w = Mul(p0v, p1w);
+    const auto p0v_p0w = Mul(p0v, p0w);
+
     // Gather and accumulate the values based on offsets
-    value = MulAdd(Mul(p1u, Mul(p1v, p1w)), MaskedGatherIndex(inside, d, map, base_index), value);
-    value = MulAdd(Mul(p1u, Mul(p1v, p0w)), MaskedGatherIndex(inside, d, map, Add(base_index, Set(di, map_index_xy))), value);
-    value = MulAdd(Mul(p1u, Mul(p0v, p1w)), MaskedGatherIndex(inside, d, map, Add(base_index, Set(di, map_index_x))), value);
-    value = MulAdd(Mul(p1u, Mul(p0v, p0w)),
-                   MaskedGatherIndex(inside, d, map, Add(base_index, Set(di, map_index_x + map_index_xy))),
+    value = MulAdd(Mul(p1u, p1v_p1w), MaskedGatherIndex(inside, d, map, base_index), value);
+    value = MulAdd(Mul(p0u, p1v_p1w), MaskedGatherIndex(inside, d, map, Add(base_index, map_index_plus_one_vec)), value);
+    value = MulAdd(Mul(p1u, p1v_p0w), MaskedGatherIndex(inside, d, map, Add(base_index, map_index_xy_vec)), value);
+    value = MulAdd(Mul(p0u, p1v_p0w), MaskedGatherIndex(inside, d, map, Add(base_index, map_index_xy_plus_one_vec)), value);
+    value = MulAdd(Mul(p1u, p0v_p1w), MaskedGatherIndex(inside, d, map, Add(base_index, map_index_x_vec)), value);
+    value = MulAdd(Mul(p0u, p0v_p1w), MaskedGatherIndex(inside, d, map, Add(base_index, map_index_x_plus_one_vec)), value);
+    value = MulAdd(Mul(p1u, p0v_p0w),
+                   MaskedGatherIndex(inside, d, map, Add(base_index, map_index_x_xy_vec)),
                    value);
-    value = MulAdd(Mul(p0u, Mul(p1v, p1w)), MaskedGatherIndex(inside, d, map, Add(base_index, Set(di, 1))), value);
-    value = MulAdd(Mul(p0u, Mul(p1v, p0w)), MaskedGatherIndex(inside, d, map, Add(base_index, Set(di, 1 + map_index_xy))), value);
-    value = MulAdd(Mul(p0u, Mul(p0v, p1w)), MaskedGatherIndex(inside, d, map, Add(base_index, Set(di, 1 + map_index_x))), value);
-    value = MulAdd(Mul(p0u, Mul(p0v, p0w)),
-                   MaskedGatherIndex(inside, d, map, Add(base_index, Set(di, 1 + map_index_x + map_index_xy))),
+    value = MulAdd(Mul(p0u, p0v_p0w),
+                   MaskedGatherIndex(inside, d, map, Add(base_index, map_index_x_xy_plus_one_vec)),
                    value);
 
     return value;
@@ -154,6 +164,30 @@ namespace mudock {
     fp_type emap_total_trilinear  = 0;
     fp_type dmap_total_trilinear  = 0;
 
+    // Set up constants for SIMD operations
+    const auto min_x = Set(d, minimum[0]);
+    const auto max_x = Set(d, maximum[0]);
+    const auto min_y = Set(d, minimum[1]);
+    const auto max_y = Set(d, maximum[1]);
+    const auto min_z = Set(d, minimum[2]);
+    const auto max_z = Set(d, maximum[2]);
+
+    const auto center_x = Set(d, center[0]);
+    const auto center_y = Set(d, center[1]);
+    const auto center_z = Set(d, center[2]);
+
+    const auto inv_spacing_vec = Set(d, inv_spacing);
+    const auto one = Set(d, fp_type{1.0});
+    const auto penalty_vec = Set(d, ENERGYPENALTY);
+    const auto default_offset = Set(di, 0);
+    const auto map_index_plus_one_vec = Set(di, 1);
+    const auto map_index_x_vec = Set(di, map_index_x);
+    const auto map_index_x_plus_one_vec = Set(di, map_index_x+1);
+    const auto map_index_xy_vec = Set(di, map_index_xy);
+    const auto map_index_xy_plus_one_vec = Set(di, map_index_xy+1);
+    const auto map_index_x_xy_vec = Set(di, map_index_x + map_index_xy);
+    const auto map_index_x_xy_plus_one_vec = Set(di, map_index_x + map_index_xy+1);
+
 #pragma clang loop interleave(enable) unroll(enable)
     for (int index = 0; index < num_atoms; index += Lanes(d)) {
       const auto remaining = num_atoms - index;
@@ -164,14 +198,6 @@ namespace mudock {
       const auto valid_coord = FirstN(d, remaining);
       const auto atom_charge = LoadN(d, ligand_charge + index, remaining);
 
-      // Set up constants for SIMD operations
-      const auto min_x = Set(d, minimum[0]);
-      const auto max_x = Set(d, maximum[0]);
-      const auto min_y = Set(d, minimum[1]);
-      const auto max_y = Set(d, maximum[1]);
-      const auto min_z = Set(d, minimum[2]);
-      const auto max_z = Set(d, maximum[2]);
-
       // Bounds check for each atom in vectorized form
       const auto outside_x = Or(Lt(x, min_x), Gt(x, max_x));
       const auto outside_y = Or(Lt(y, min_y), Gt(y, max_y));
@@ -180,11 +206,11 @@ namespace mudock {
 
       // For atoms outside the boundaries
       if (FindFirstTrue(d, outside) != -1) {
-        const auto dx      = Sub(x, Set(d, center[0]));
-        const auto dy      = Sub(y, Set(d, center[1]));
-        const auto dz      = Sub(z, Set(d, center[2]));
+        const auto dx      = Sub(x, center_x);
+        const auto dy      = Sub(y, center_y);
+        const auto dz      = Sub(z, center_z);
         const auto dist    = MulAdd(dx, dx, MulAdd(dy, dy, Mul(dz, dz)));
-        const auto penalty = Mul(dist, Set(d, ENERGYPENALTY));
+        const auto penalty = Mul(dist, penalty_vec);
         elect_total_trilinear += ReduceSum(d, IfThenElseZero(outside, penalty));
         emap_total_trilinear += ReduceSum(d, IfThenElseZero(outside, penalty));
       }
@@ -194,9 +220,9 @@ namespace mudock {
 
       if (FindFirstTrue(d, inside) != -1) {
         // Calculate trilinear interpolation coordinates for in-bounds atoms
-        x = Mul(Sub(x, min_x), Set(d, inv_spacing));
-        y = Mul(Sub(y, min_y), Set(d, inv_spacing));
-        z = Mul(Sub(z, min_z), Set(d, inv_spacing));
+        x = Mul(Sub(x, min_x), inv_spacing_vec);
+        y = Mul(Sub(y, min_y), inv_spacing_vec);
+        z = Mul(Sub(z, min_z), inv_spacing_vec);
 
         // Map loading
         const auto atom_map_offsets = LoadN(di, map_ligand_offsets + index, remaining);
@@ -210,15 +236,13 @@ namespace mudock {
         const auto p0v = Sub(y, ConvertTo(d, v0));
         const auto p0w = Sub(z, ConvertTo(d, w0));
 
-        const auto one = Set(d, fp_type{1.0});
         const auto p1u = Sub(one, p0u);
         const auto p1v = Sub(one, p0v);
         const auto p1w = Sub(one, p0w);
 
         // Precompute flattened indices
-        const auto default_offset = Set(di, 0);
         const auto base_default_index =
-            Add(Add(Add(Mul(v0, Set(di, map_index_x)), Mul(w0, Set(di, map_index_xy))), u0), default_offset);
+            Add(Add(Add(Mul(v0, map_index_x_vec), Mul(w0, map_index_xy_vec)), u0), default_offset);
         elect_total_trilinear += ReduceSum(
             d,
             IfThenElseZero(
@@ -233,8 +257,13 @@ namespace mudock {
                     p0u,
                     p0v,
                     p0w,
-                    map_index_x,
-                    map_index_xy),
+                    map_index_plus_one_vec,
+                    map_index_x_vec,
+                    map_index_x_plus_one_vec,
+                    map_index_xy_vec,
+                    map_index_xy_plus_one_vec,
+                    map_index_x_xy_vec,
+                    map_index_x_xy_plus_one_vec),
                 atom_charge)));
         dmap_total_trilinear += ReduceSum(
             d,
@@ -250,11 +279,16 @@ namespace mudock {
                     p0u,
                     p0v,
                     p0w,
-                    map_index_x,
-                    map_index_xy),
+                    map_index_plus_one_vec,
+                    map_index_x_vec,
+                    map_index_x_plus_one_vec,
+                    map_index_xy_vec,
+                    map_index_xy_plus_one_vec,
+                    map_index_x_xy_vec,
+                    map_index_x_xy_plus_one_vec),
                 Abs(atom_charge))));
         const auto base_atom_index =
-            Add(Add(Add(Mul(v0, Set(di, map_index_x)), Mul(w0, Set(di, map_index_xy))), u0),
+            Add(Add(Add(Mul(v0, map_index_x_vec), Mul(w0, map_index_xy_vec)), u0),
                 atom_map_offsets);
         emap_total_trilinear += ReduceSum(
             d,
@@ -270,8 +304,13 @@ namespace mudock {
                     p0u,
                     p0v,
                     p0w,
-                    map_index_x,
-                    map_index_xy)));
+                    map_index_plus_one_vec,
+                    map_index_x_vec,
+                    map_index_x_plus_one_vec,
+                    map_index_xy_vec,
+                    map_index_xy_plus_one_vec,
+                    map_index_x_xy_vec,
+                    map_index_x_xy_plus_one_vec)));
       }
     }
 
@@ -298,6 +337,7 @@ namespace mudock {
       const auto xB_ten_vec       = Set(di, 10);
       const auto xB_six_vec       = Set(di, 6);
       const auto eintclamp_vec    = Set(d, EINTCLAMP);
+      const auto rmin_elec_square_vec    = Set(d, RMIN_ELEC_SQUARE);
       const auto qsolpar_vec      = Set(d, 0.01097);
       const auto coeff_desolv_vec = Set(d, autodock_parameters::coeff_desolv);
       const auto reciprocal_sigma_square_vec = ApproximateReciprocal(Set(d, sigma_square));
@@ -321,7 +361,7 @@ namespace mudock {
         // Calculate squared distances
         const auto distance_two = Add(Mul(diff_x, diff_x), Add(Mul(diff_y, diff_y), Mul(diff_z, diff_z)));
         // Clamp `distance_two` between `RMIN_ELEC_SQUARE` and `distance_two` itself
-        const auto clamped_distance_two = Max(Set(d, RMIN_ELEC_SQUARE), distance_two);
+        const auto clamped_distance_two = Max(rmin_elec_square_vec, distance_two);
         // Compute the square root of the clamped distance
         const auto distance = Mul(clamped_distance_two, ApproximateReciprocalSqrt(clamped_distance_two));
 
@@ -351,8 +391,11 @@ namespace mudock {
         const auto ligand_solpar_a1_v = GatherIndexN(d, ligand_solpar, a1, remaining);
         const auto ligand_solpar_a2_v = GatherIndexN(d, ligand_solpar, a2, remaining);
 
+        // const auto nb_desolv =
+        //     Add(Mul(ligand_vol_a2_v, Add(ligand_solpar_a1_v, Mul(qsolpar_vec, Abs(charge_a1)))),
+        //         Mul(ligand_vol_a1_v, Add(ligand_solpar_a2_v, Mul(qsolpar_vec, Abs(charge_a2)))));
         const auto nb_desolv =
-            Add(Mul(ligand_vol_a2_v, Add(ligand_solpar_a1_v, Mul(qsolpar_vec, Abs(charge_a1)))),
+            MulAdd(ligand_vol_a2_v, Add(ligand_solpar_a1_v, Mul(qsolpar_vec, Abs(charge_a1))),
                 Mul(ligand_vol_a1_v, Add(ligand_solpar_a2_v, Mul(qsolpar_vec, Abs(charge_a2)))));
 
         const auto e_desolv = Mul(
@@ -410,21 +453,24 @@ namespace mudock {
 
           if (FindFirstTrue(di, xab_cond) != -1) {
             const auto tmp = Mul(epsij_v, ApproximateReciprocal(ConvertTo(d, Sub(xA_vec, xB_vec))));
+            const auto log_rij_v = Log(d, Rij_v);
 
             // Hack, Pow is not yet support by GH [x^y = exp(y*ln(x))]
-            const auto pow_A_vec = Exp(d, Mul(ConvertTo(d, xA_vec), Log(d, Rij_v)));
-            const auto pow_B_vec = Exp(d, Mul(ConvertTo(d, xB_vec), Log(d, Rij_v)));
+            const auto pow_A_vec = Exp(d, Mul(ConvertTo(d, xA_vec), log_rij_v));
+            const auto pow_B_vec = Exp(d, Mul(ConvertTo(d, xB_vec), log_rij_v));
             const auto cA        = Mul(tmp, Mul(pow_A_vec, ConvertTo(d, xB_vec)));
             const auto cB        = Mul(tmp, Mul(pow_B_vec, ConvertTo(d, xA_vec)));
 
-            const auto rA = Exp(d, Mul(ConvertTo(d, xA_vec), Log(d, distance)));
-            const auto rB = Exp(d, Mul(ConvertTo(d, xB_vec), Log(d, distance)));
+            const auto log_distance = Log(d, distance);
+
+            const auto rA = Exp(d, Mul(ConvertTo(d, xA_vec), log_distance));
+            const auto rB = Exp(d, Mul(ConvertTo(d, xB_vec), log_distance));
 
             // TODO IfThenElse to enable final reduction
             e_vdW_Hb = IfThenElseZero(
                 RebindMask(d, xab_cond),
                 Min(eintclamp_vec,
-                    Sub(Mul(cA, ApproximateReciprocal(rA)), Mul(cB, ApproximateReciprocal(rB)))));
+                    MulSub(cA, ApproximateReciprocal(rA), Mul(cB, ApproximateReciprocal(rB)))));
           }
         }
         emap_total_eintcal += ReduceSum(d, IfThenElseZero(low_distance, e_vdW_Hb));
