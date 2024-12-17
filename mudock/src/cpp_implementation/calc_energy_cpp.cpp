@@ -403,10 +403,10 @@ namespace mudock {
           const auto& epsii_j    = ligand_epsii[a2];
 
           // we need to determine the correct xA and xB exponents
-          int xA = 12; // for both LJ, 12-6 and HB, 12-10, xA is 12
+          const int xA = 12; // for both LJ, 12-6 and HB, 12-10, xA is 12
           int xB = 6;  // assume we have LJ, 12-6
 
-          fp_type Rij{0}, epsij{0};
+          fp_type Rij{(Rii_i + Rii_j) * fp_type{0.5}}, epsij{std::sqrt(epsii_i * epsii_j)};
           if ((hbond_i == 1 || hbond_i == 2) && hbond_j > 2) {
             // i is a donor and j is an acceptor.
             // i is a hydrogen, j is a heteroatom
@@ -419,11 +419,6 @@ namespace mudock {
             Rij   = Rij_hb_i;
             epsij = epsij_hb_i;
             xB    = 10;
-          } else {
-            // we need to calculate the arithmetic mean of Ri and Rj
-            Rij = (Rii_i + Rii_j) * fp_type{0.5};
-            // we need to calculate the geometric mean of epsi and epsj
-            epsij = std::sqrt(epsii_i * epsii_j);
           }
           if (xA != xB) {
             const fp_type tmp = epsij / (xA - xB);
