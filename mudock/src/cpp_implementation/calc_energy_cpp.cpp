@@ -85,6 +85,7 @@ namespace mudock {
                                          const int& map_index_xy) {
     fp_type value{0};
 
+// TODO try without base_index
     value = coeffs[0] * map[base_index] + value;
     value = coeffs[1] * map[base_index + map_index_xy] + value;
     value = coeffs[2] * map[base_index + map_index_x] + value;
@@ -349,99 +350,99 @@ namespace mudock {
     }
 
     fp_type elect_total_eintcal{0}, emap_total_eintcal{0}, dmap_total_eintcal{0};
-    if (n_torsions > 0) {
-#pragma GCC ivdep
-#pragma clang loop vectorize(enable) interleave(enable) unroll(enable)
-#pragma fj loop prefetch
-#pragma statement scache_isolate_assign ligand_x, ligand_y, ligand_z, ligand_charge, ligand_num_hbond, \
-    ligand_Rij_hb, ligand_Rii, ligand_epsij_hb, ligand_epsii
-    // TODO check reciprocal math here 
-      for (int i = 0; i < num_nonbond; ++i) {
-        const int& a1 = non_bond_list_a1[i];
-        const int& a2 = non_bond_list_a2[i];
+//     if (n_torsions > 0) {
+// #pragma GCC ivdep
+// #pragma clang loop vectorize(enable) interleave(enable) unroll(enable)
+// #pragma fj loop prefetch
+// #pragma statement scache_isolate_assign ligand_x, ligand_y, ligand_z, ligand_charge, ligand_num_hbond, \
+//     ligand_Rij_hb, ligand_Rii, ligand_epsij_hb, ligand_epsii
+//     // TODO check reciprocal math here 
+//       for (int i = 0; i < num_nonbond; ++i) {
+//         const int& a1 = non_bond_list_a1[i];
+//         const int& a2 = non_bond_list_a2[i];
 
-        const auto diff_x                = ligand_x[a1] - ligand_x[a2];
-        const auto diff_y                = ligand_y[a1] - ligand_y[a2];
-        const auto diff_z                = ligand_z[a1] - ligand_z[a2];
-        const fp_type distance_two       = diff_x * diff_x + diff_y * diff_y + diff_z * diff_z;
-        const fp_type distance_two_clamp = std::max(distance_two, RMIN_ELEC_SQUARE);
-        const fp_type distance           = std::sqrt(distance_two_clamp);
+//         const auto diff_x                = ligand_x[a1] - ligand_x[a2];
+//         const auto diff_y                = ligand_y[a1] - ligand_y[a2];
+//         const auto diff_z                = ligand_z[a1] - ligand_z[a2];
+//         const fp_type distance_two       = diff_x * diff_x + diff_y * diff_y + diff_z * diff_z;
+//         const fp_type distance_two_clamp = std::max(distance_two, RMIN_ELEC_SQUARE);
+//         const fp_type distance           = std::sqrt(distance_two_clamp);
 
-        //  Calculate  Electrostatic  Energy
-        const fp_type epsilon = std::max(
-            mehler_solmajer::A +
-                mehler_solmajer::B /
-                    (fp_type{1} + mehler_solmajer::rk * std::exp(mehler_solmajer::lambda_B * distance)),
-            fp_type{1.0});
-        const fp_type r_dielectric = fp_type{1} / (distance * epsilon);
-        const fp_type e_elec       = ligand_charge[a1] * ligand_charge[a2] * ELECSCALE *
-                               autodock_parameters::coeff_estat * r_dielectric;
-        elect_total_eintcal += e_elec;
+//         //  Calculate  Electrostatic  Energy
+//         const fp_type epsilon = std::max(
+//             mehler_solmajer::A +
+//                 mehler_solmajer::B /
+//                     (fp_type{1} + mehler_solmajer::rk * std::exp(mehler_solmajer::lambda_B * distance)),
+//             fp_type{1.0});
+//         const fp_type r_dielectric = fp_type{1} / (distance * epsilon);
+//         const fp_type e_elec       = ligand_charge[a1] * ligand_charge[a2] * ELECSCALE *
+//                                autodock_parameters::coeff_estat * r_dielectric;
+//         elect_total_eintcal += e_elec;
 
-        // Calcuare desolv
-        const fp_type nb_desolv =
-            (ligand_vol[a2] * (ligand_solpar[a1] + qsolpar * std::fabs(ligand_charge[a1])) +
-             ligand_vol[a1] * (ligand_solpar[a2] + qsolpar * std::fabs(ligand_charge[a2])));
+//         // Calcuare desolv
+//         const fp_type nb_desolv =
+//             (ligand_vol[a2] * (ligand_solpar[a1] + qsolpar * std::fabs(ligand_charge[a1])) +
+//              ligand_vol[a1] * (ligand_solpar[a2] + qsolpar * std::fabs(ligand_charge[a2])));
 
-        const fp_type e_desolv = autodock_parameters::coeff_desolv *
-                                 (fp_type{-0.5} / (sigma_square) *distance_two_clamp) * nb_desolv;
-        dmap_total_eintcal += e_desolv;
-        fp_type e_vdW_Hb{0};
-        if (distance_two_clamp < nbc2) {
-          //  Find internal energy parameters, i.e.  epsilon and r-equilibrium values...
-          //  Lennard-Jones and Hydrogen Bond Potentials
-          // This can be precomputed as in intnbtable.cc
-          const auto& hbond_i    = ligand_num_hbond[a1];
-          const auto& hbond_j    = ligand_num_hbond[a2];
-          const auto& Rij_hb_i   = ligand_Rij_hb[a1];
-          const auto& Rij_hb_j   = ligand_Rij_hb[a2];
-          const auto& Rii_i      = ligand_Rii[a1];
-          const auto& Rii_j      = ligand_Rii[a2];
-          const auto& epsij_hb_i = ligand_epsij_hb[a1];
-          const auto& epsij_hb_j = ligand_epsij_hb[a2];
-          const auto& epsii_i    = ligand_epsii[a1];
-          const auto& epsii_j    = ligand_epsii[a2];
+//         const fp_type e_desolv = autodock_parameters::coeff_desolv *
+//                                  (fp_type{-0.5} / (sigma_square) *distance_two_clamp) * nb_desolv;
+//         dmap_total_eintcal += e_desolv;
+//         fp_type e_vdW_Hb{0};
+//         if (distance_two_clamp < nbc2) {
+//           //  Find internal energy parameters, i.e.  epsilon and r-equilibrium values...
+//           //  Lennard-Jones and Hydrogen Bond Potentials
+//           // This can be precomputed as in intnbtable.cc
+//           const auto& hbond_i    = ligand_num_hbond[a1];
+//           const auto& hbond_j    = ligand_num_hbond[a2];
+//           const auto& Rij_hb_i   = ligand_Rij_hb[a1];
+//           const auto& Rij_hb_j   = ligand_Rij_hb[a2];
+//           const auto& Rii_i      = ligand_Rii[a1];
+//           const auto& Rii_j      = ligand_Rii[a2];
+//           const auto& epsij_hb_i = ligand_epsij_hb[a1];
+//           const auto& epsij_hb_j = ligand_epsij_hb[a2];
+//           const auto& epsii_i    = ligand_epsii[a1];
+//           const auto& epsii_j    = ligand_epsii[a2];
 
-          // we need to determine the correct xA and xB exponents
-          const int xA = 12; // for both LJ, 12-6 and HB, 12-10, xA is 12
-          int xB = 6;  // assume we have LJ, 12-6
+//           // we need to determine the correct xA and xB exponents
+//           const int xA = 12; // for both LJ, 12-6 and HB, 12-10, xA is 12
+//           int xB = 6;  // assume we have LJ, 12-6
 
-          fp_type Rij{(Rii_i + Rii_j) * fp_type{0.5}}, epsij{std::sqrt(epsii_i * epsii_j)};
-          if ((hbond_i == 1 || hbond_i == 2) && hbond_j > 2) {
-            // i is a donor and j is an acceptor.
-            // i is a hydrogen, j is a heteroatom
-            Rij   = Rij_hb_j;
-            epsij = epsij_hb_j;
-            xB    = 10;
-          } else if ((hbond_i > 2) && (hbond_j == 1 || hbond_j == 2)) {
-            // i is an acceptor and j is a donor.
-            // i is a heteroatom, j is a hydrogen
-            Rij   = Rij_hb_i;
-            epsij = epsij_hb_i;
-            xB    = 10;
-          }
-          if (xA != xB) {
-            const fp_type tmp = epsij / (xA - xB);
-            // const fp_type cA  = tmp * std::pow(Rij, static_cast<fp_type>(xA)) * xB;
-            // const fp_type cB  = tmp * std::pow(Rij, static_cast<fp_type>(xB)) * xA;
+//           fp_type Rij{(Rii_i + Rii_j) * fp_type{0.5}}, epsij{std::sqrt(epsii_i * epsii_j)};
+//           if ((hbond_i == 1 || hbond_i == 2) && hbond_j > 2) {
+//             // i is a donor and j is an acceptor.
+//             // i is a hydrogen, j is a heteroatom
+//             Rij   = Rij_hb_j;
+//             epsij = epsij_hb_j;
+//             xB    = 10;
+//           } else if ((hbond_i > 2) && (hbond_j == 1 || hbond_j == 2)) {
+//             // i is an acceptor and j is a donor.
+//             // i is a heteroatom, j is a hydrogen
+//             Rij   = Rij_hb_i;
+//             epsij = epsij_hb_i;
+//             xB    = 10;
+//           }
+//           if (xA != xB) {
+//             const fp_type tmp = epsij / (xA - xB);
+//             // const fp_type cA  = tmp * std::pow(Rij, static_cast<fp_type>(xA)) * xB;
+//             // const fp_type cB  = tmp * std::pow(Rij, static_cast<fp_type>(xB)) * xA;
 
-            // const fp_type rA = std::pow(distance, static_cast<fp_type>(xA));
-            // const fp_type rB = std::pow(distance, static_cast<fp_type>(xB));
+//             // const fp_type rA = std::pow(distance, static_cast<fp_type>(xA));
+//             // const fp_type rB = std::pow(distance, static_cast<fp_type>(xB));
 
-            const auto log_Rij = std::log(Rij);
-            const fp_type cA   = tmp * std::exp(static_cast<fp_type>(xA) * log_Rij) * xB;
-            const fp_type cB   = tmp * std::exp(static_cast<fp_type>(xB) * log_Rij) * xA;
+//             const auto log_Rij = std::log(Rij);
+//             const fp_type cA   = tmp * std::exp(static_cast<fp_type>(xA) * log_Rij) * xB;
+//             const fp_type cB   = tmp * std::exp(static_cast<fp_type>(xB) * log_Rij) * xA;
 
-            const auto log_distance = std::log(distance);
-            const fp_type rA        = std::exp(static_cast<fp_type>(xA) * log_distance);
-            const fp_type rB        = std::exp(static_cast<fp_type>(xB) * log_distance);
+//             const auto log_distance = std::log(distance);
+//             const fp_type rA        = std::exp(static_cast<fp_type>(xA) * log_distance);
+//             const fp_type rB        = std::exp(static_cast<fp_type>(xB) * log_distance);
 
-            e_vdW_Hb = std::min(EINTCLAMP, (cA / rA - cB / rB));
-          }
-        }
-        emap_total_eintcal += e_vdW_Hb;
-      }
-    }
+//             e_vdW_Hb = std::min(EINTCLAMP, (cA / rA - cB / rB));
+//           }
+//         }
+//         emap_total_eintcal += e_vdW_Hb;
+//       }
+//     }
     const fp_type tors_free_energy = n_torsions * autodock_parameters::coeff_tors;
 
     const fp_type total_trilinear = emap_total_trilinear + elect_total_trilinear + dmap_total_trilinear;
