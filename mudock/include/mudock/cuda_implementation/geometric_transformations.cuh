@@ -107,6 +107,7 @@ namespace mudock {
     const auto l2 = u * u + v * v + w * w;
     // Check if origin and dest coincide
     // No need to continue the intramolecular energy will be very high
+    // TODO check this
     if (isinf(l2) || l2 == fp_type{0} || isnan(l2))
       // TODO print error?
       return;

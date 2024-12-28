@@ -280,21 +280,21 @@ namespace mudock {
         fp_type total_trilinear = elect_total_trilinear + dmap_total_trilinear + emap_total_trilinear;
 
         fp_type total_eintcal{0};
-        if (num_rotamers > 0)
-          total_eintcal += calc_intra_energy(l_scratch_ligand_x,
-                                             l_scratch_ligand_y,
-                                             l_scratch_ligand_z,
-                                             l_ligand_vol,
-                                             l_ligand_solpar,
-                                             l_ligand_charge,
-                                             l_ligand_num_hbond,
-                                             l_ligand_Rij_hb,
-                                             l_ligand_Rii,
-                                             l_ligand_epsij_hb,
-                                             l_ligand_epsii,
-                                             num_nonbonds,
-                                             l_ligand_nonbond_a1,
-                                             l_ligand_nonbond_a2);
+        // if (num_rotamers > 0)
+        //   total_eintcal += calc_intra_energy(l_scratch_ligand_x,
+        //                                      l_scratch_ligand_y,
+        //                                      l_scratch_ligand_z,
+        //                                      l_ligand_vol,
+        //                                      l_ligand_solpar,
+        //                                      l_ligand_charge,
+        //                                      l_ligand_num_hbond,
+        //                                      l_ligand_Rij_hb,
+        //                                      l_ligand_Rii,
+        //                                      l_ligand_epsij_hb,
+        //                                      l_ligand_epsii,
+        //                                      num_nonbonds,
+        //                                      l_ligand_nonbond_a1,
+        //                                      l_ligand_nonbond_a2);
 
 // Perform a tree reduction using __shfl_down_sync
 // TODO check performance
