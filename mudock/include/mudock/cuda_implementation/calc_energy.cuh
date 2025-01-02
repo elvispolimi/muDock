@@ -5,22 +5,15 @@
 #include <mudock/chem.hpp>
 
 namespace mudock {
-  // TODO should be precomputed some value
-  __device__ inline  fp_type calc_ddd_Mehler_Solmajer_cuda(fp_type distance) {
-    const fp_type lambda{0.003627};
-    const fp_type epsilon0{78.4};
-    const fp_type A{-8.5525};
-    const fp_type B = epsilon0 - A;
-    const fp_type rk{7.7839};
-    const fp_type lambda_B = -lambda * B;
+  __device__ static constexpr fp_type lambda{0.003627};
+  __device__ static constexpr fp_type epsilon0{78.4};
+  __device__ static constexpr fp_type A{-8.5525};
+  __device__ static constexpr fp_type B = epsilon0 - A;
+  __device__ static constexpr fp_type rk{7.7839};
+  __device__ static constexpr fp_type lambda_B = -lambda * B;
 
-    fp_type epsilon = A + B / (fp_type{1} + rk * expf(lambda_B * distance));
-
-    if (epsilon < std::numeric_limits<fp_type>::epsilon()) {
-      epsilon = fp_type{1.0};
-    }
-    return epsilon;
-  }
+  __device__ static constexpr fp_type RMIN_ELEC_SQUARE_CUDA = RMIN_ELEC_SQUARE;
+  __device__ static constexpr fp_type sigma_square_cuda = sigma_square;
 
   // TODO check math functions if they are from CUDA
   // TODO template parameters here for nonbond list sizes
@@ -44,14 +37,16 @@ namespace mudock {
       const int& a1 = ligand_nonbond_a1[nonbond_list];
       const int& a2 = ligand_nonbond_a2[nonbond_list];
 
-      const fp_type distance_two = powf(fabs(ligand_x[a1] - ligand_x[a2]), fp_type{2}) +
-                                   powf(fabs(ligand_y[a1] - ligand_y[a2]), fp_type{2}) +
-                                   powf(fabs(ligand_z[a1] - ligand_z[a2]), fp_type{2});
-      const fp_type distance_two_clamp = std::clamp(distance_two, RMIN_ELEC * RMIN_ELEC, distance_two);
+      const auto diff_x                = ligand_x[a1] - ligand_x[a2];
+      const auto diff_y                = ligand_y[a1] - ligand_y[a2];
+      const auto diff_z                = ligand_z[a1] - ligand_z[a2];
+      const fp_type distance_two = diff_x * diff_x + diff_y * diff_y + diff_z * diff_z;
+      const fp_type distance_two_clamp = std::max(distance_two, RMIN_ELEC_SQUARE_CUDA);
       const fp_type distance           = sqrtf(distance_two_clamp);
 
       //  Calculate  Electrostatic  Energy
-      const fp_type r_dielectric = fp_type{1} / (distance * calc_ddd_Mehler_Solmajer_cuda(distance));
+      const fp_type epsilon = A + B / (fp_type{1} + rk * expf(lambda_B * distance));
+      const fp_type r_dielectric = fp_type{1} / (distance * epsilon);
       const fp_type e_elec =
           ligand_charge[a1] * ligand_charge[a2] * ELECSCALE * autodock_parameters::coeff_estat * r_dielectric;
       elect_total_eintcal += e_elec;
@@ -61,7 +56,7 @@ namespace mudock {
                                  ligand_vol[a1] * (ligand_solpar[a2] + qsolpar * fabsf(ligand_charge[a2])));
 
       const fp_type e_desolv = autodock_parameters::coeff_desolv *
-                               expf(fp_type{-0.5} / (sigma * sigma) * distance_two_clamp) * nb_desolv;
+                               expf(fp_type{-0.5} / (sigma_square_cuda) * distance_two_clamp) * nb_desolv;
       dmap_total_eintcal += e_desolv;
 
       fp_type e_vdW_Hb{0};
@@ -102,18 +97,6 @@ namespace mudock {
           const fp_type rB = powf(distance, static_cast<fp_type>(xB));
 
           e_vdW_Hb = fminf(EINTCLAMP, (cA / rA - cB / rB));
-
-          if (r_smooth > 0) {
-            const fp_type rlow  = distance - r_smooth / 2;
-            const fp_type rhigh = distance + r_smooth / 2;
-            fp_type energy_smooth{100000};
-            for (int j = fmaxf(fp_type{0}, fminf(rlow * A_DIV, fp_type{NEINT - 1}));
-                 j <= fminf(fp_type{NEINT - 1}, fminf(rhigh * A_DIV, fp_type{NEINT - 1}));
-                 ++j)
-              energy_smooth = fminf(energy_smooth, e_vdW_Hb);
-
-            e_vdW_Hb = energy_smooth;
-          }
         }
       }
       emap_total_eintcal += e_vdW_Hb;

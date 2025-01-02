@@ -127,9 +127,11 @@ namespace mudock {
                      seed);
 
     // update the ligand position with the best one that we found
+    const std::vector<individual>& last_population = (configuration.num_generations % 2 == 0) ? next_population : population ;
+
     const auto best_individual_it =
-        std::min_element(std::begin(next_population),
-                         std::end(next_population),
+        std::min_element(std::begin(last_population),
+                         std::end(last_population),
                          [](const auto a, const auto b) { return a.score < b.score; });
     apply(x, y, z, best_individual_it->genes, *ligand_fragments.get());
     ligand.properties.assign(property_type::SCORE, std::to_string(best_individual_it->score));

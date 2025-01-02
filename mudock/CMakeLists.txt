@@ -264,7 +264,7 @@ set_target_properties(libmudock
   CXX_STANDARD_REQUIRED ON
   CXX_EXTENSIONS OFF
   CUDA_SEPARABLE_COMPILATION ON
-  POSITION_INDEPENDENT_CODE FALSE
+  POSITION_INDEPENDENT_CODE ON
 )
 target_link_libraries(libmudock PUBLIC Microsoft.GSL::GSL)
 target_compile_options(libmudock PUBLIC $<$<AND:$<CONFIG:RELEASE>,$<COMPILE_LANGUAGE:CXX>>:${release_flags}>)
@@ -314,6 +314,7 @@ if(MUDOCK_ENABLE_CUDA)
   set(CMAKE_CUDA_ARCHITECTURES OFF)
   set(CMAKE_CUDA_FLAGS "--expt-relaxed-constexpr")
   set(CMAKE_CUDA_FLAGS_RELEASE "-O3 -use_fast_math --expt-relaxed-constexpr")
+  set(CMAKE_CUDA_FLAGS_RELWITHDEBINFO "-G -g -Xptxas -v --expt-relaxed-constexpr")
   set(CMAKE_CUDA_FLAGS_DEBUG "-G -g -Xptxas -v --expt-relaxed-constexpr")
 endif()
 
