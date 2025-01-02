@@ -26,34 +26,21 @@ namespace mudock {
                              const point3D& maximum_coord,
                              const point3D& center);
 
-  __device__ inline fp_type trilinear_interpolation_cuda(const fp_type coord[],
-                                                         const cudaTextureObject_t& tex) {
+  __device__ inline fp_type trilinear_interpolation_cuda(const int coord[],
+                                                         const cudaTextureObject_t& tex,
+                                                         const fp_type* __restrict__ coeffs) {
     // Interpolation CUDA
-    const int u0      = coord[0];
-    const fp_type p0u = coord[0] - static_cast<fp_type>(u0);
-    const fp_type p1u = fp_type{1} - p0u;
-
-    const int v0      = coord[1];
-    const fp_type p0v = coord[1] - static_cast<fp_type>(v0);
-    const fp_type p1v = fp_type{1} - p0v;
-
-    const int w0      = coord[2];
-    const fp_type p0w = coord[2] - static_cast<fp_type>(w0);
-    const fp_type p1w = fp_type{1} - p0w;
-
-    const fp_type pu[2] = {p1u, p0u};
-    const fp_type pv[2] = {p1v, p0v};
-    const fp_type pw[2] = {p1w, p0w};
     fp_type value{0};
-#pragma unroll
-    for (int i = 0; i <= 1; i++)
-#pragma unroll
-      for (int t = 0; t <= 1; t++)
-#pragma unroll
-        for (int n = 0; n <= 1; n++) {
-          const fp_type tmp = tex3D<fp_type>(tex, u0 + n, v0 + t, w0 + i);
-          value += pu[n] * pv[t] * pw[i] * tmp;
-        }
+
+    value = coeffs[0] * tex3D<fp_type>(tex, coord[0], coord[1], coord[2]) + value;
+    value = coeffs[1] * tex3D<fp_type>(tex, coord[0], coord[1], coord[2] + 1) + value;
+    value = coeffs[2] * tex3D<fp_type>(tex, coord[0], coord[1] + 1, coord[2]) + value;
+    value = coeffs[3] * tex3D<fp_type>(tex, coord[0], coord[1] + 1, coord[2] + 1) + value;
+    value = coeffs[4] * tex3D<fp_type>(tex, coord[0] + 1, coord[1], coord[2]) + value;
+    value = coeffs[5] * tex3D<fp_type>(tex, coord[0] + 1, coord[1], coord[2] + 1) + value;
+    value = coeffs[6] * tex3D<fp_type>(tex, coord[0] + 1, coord[1] + 1, coord[2]) + value;
+    value = coeffs[7] * tex3D<fp_type>(tex, coord[0] + 1, coord[1] + 1, coord[2] + 1) + value;
+
     return value;
   }
 
@@ -234,7 +221,7 @@ namespace mudock {
         fp_type dmap_total_trilinear  = 0;
 #pragma unroll
         for (int atom_index = local_thread_id; atom_index < MAX_ATOMS; atom_index += thread_per_block) {
-          if (atom_index < num_atoms) {
+          if (atom_index < num_atoms) { 
             fp_type coord_tex[3]{l_scratch_ligand_x[atom_index],
                                  l_scratch_ligand_y[atom_index],
                                  l_scratch_ligand_z[atom_index]};
@@ -243,9 +230,10 @@ namespace mudock {
                 coord_tex[1] < map_min_const[1] || coord_tex[1] > map_max_const[1] ||
                 coord_tex[2] < map_min_const[2] || coord_tex[2] > map_max_const[2]) {
               // Is outside
-              const fp_type distance_two = powf(fabs(coord_tex[0] - map_center_const[0]), fp_type{2}) +
-                                           powf(fabs(coord_tex[1] - map_center_const[1]), fp_type{2}) +
-                                           powf(fabs(coord_tex[2] - map_center_const[2]), fp_type{2});
+              const auto diff_x      = coord_tex[0] - map_center_const[0];
+              const auto diff_y      = coord_tex[1] - map_center_const[1];
+              const auto diff_z      = coord_tex[2] - map_center_const[2];
+              const fp_type distance_two     = diff_x * diff_x + diff_y * diff_y + diff_z * diff_z;
 
               const fp_type epenalty = distance_two * ENERGYPENALTY;
               elect_total_trilinear += epenalty;
@@ -256,57 +244,83 @@ namespace mudock {
               coord_tex[0] = (coord_tex[0] - map_min_const[0]) * inv_spacing,
               coord_tex[1] = (coord_tex[1] - map_min_const[1]) * inv_spacing;
               coord_tex[2] = (coord_tex[2] - map_min_const[2]) * inv_spacing;
+
+              const int u0      = coord_tex[0];
+              const fp_type p0u = coord_tex[0] - static_cast<fp_type>(u0);
+              const fp_type p1u = fp_type{1} - p0u;
+
+              const int v0      = coord_tex[1];
+              const fp_type p0v = coord_tex[1] - static_cast<fp_type>(v0);
+              const fp_type p1v = fp_type{1} - p0v;
+
+              const int w0      = coord_tex[2];
+              const fp_type p0w = coord_tex[2] - static_cast<fp_type>(w0);
+              const fp_type p1w = fp_type{1} - p0w;
+
+              const fp_type pu[2] = {p1u, p0u};
+              const fp_type pv[2] = {p1v, p0v};
+              const fp_type pw[2] = {p1w, p0w};
+
+              // Compute coefficients
+              const fp_type coeffs[8] = {pu[0] * pv[0] * pw[0],
+                                        pu[0] * pv[0] * pw[1],
+                                        pu[0] * pv[1] * pw[0],
+                                        pu[0] * pv[1] * pw[1],
+                                        pu[1] * pv[0] * pw[0],
+                                        pu[1] * pv[0] * pw[1],
+                                        pu[1] * pv[1] * pw[0],
+                                        pu[1] * pv[1] * pw[1]};
+              const int int_coord [3] = {u0,v0,w0};                  
               //  TODO check approximations with in hardware interpolation
               // elect_total_trilinear +=
               //     tex3D<fp_type>(electro_texture, coord_tex[0], coord_tex[1], coord_tex[2]) *
               //     l_ligand_charge[atom_index];
               // dmap_total_trilinear += tex3D<fp_type>(desolv_texture, coord_tex[0], coord_tex[1], coord_tex[2]) *
               //                         fabsf(l_ligand_charge[atom_index]);
-              // emap_total_trilinear += tex3D<fp_type>(atom_textures[l_atom_tex_indexes[atom_index]],
+              // const auto temp = tex3D<fp_type>(atom_textures[l_atom_tex_indexes[atom_index]],
               //                                        coord_tex[0],
               //                                        coord_tex[1],
               //                                        coord_tex[2]);
-
+              //                                        printf("%f\n",temp);
+              //                                        emap_total_trilinear +=temp;
               elect_total_trilinear +=
-                  trilinear_interpolation_cuda(coord_tex, electro_texture) * l_ligand_charge[atom_index];
-              dmap_total_trilinear += trilinear_interpolation_cuda(coord_tex, desolv_texture) *
+                  trilinear_interpolation_cuda(int_coord, electro_texture, coeffs) * l_ligand_charge[atom_index];
+              dmap_total_trilinear += trilinear_interpolation_cuda(int_coord, desolv_texture, coeffs) *
                                       fabsf(l_ligand_charge[atom_index]);
-              emap_total_trilinear +=
-                  trilinear_interpolation_cuda(coord_tex, atom_textures[l_atom_tex_indexes[atom_index]]);
+              emap_total_trilinear =
+                  trilinear_interpolation_cuda(int_coord, atom_textures[l_atom_tex_indexes[atom_index]], coeffs);
             }
           }
         }
         __syncwarp();
-        fp_type total_trilinear = elect_total_trilinear + dmap_total_trilinear + emap_total_trilinear;
+        fp_type total_trilinear_eintcal = elect_total_trilinear + dmap_total_trilinear + emap_total_trilinear;
 
-        fp_type total_eintcal{0};
-        // if (num_rotamers > 0)
-        //   total_eintcal += calc_intra_energy(l_scratch_ligand_x,
-        //                                      l_scratch_ligand_y,
-        //                                      l_scratch_ligand_z,
-        //                                      l_ligand_vol,
-        //                                      l_ligand_solpar,
-        //                                      l_ligand_charge,
-        //                                      l_ligand_num_hbond,
-        //                                      l_ligand_Rij_hb,
-        //                                      l_ligand_Rii,
-        //                                      l_ligand_epsij_hb,
-        //                                      l_ligand_epsii,
-        //                                      num_nonbonds,
-        //                                      l_ligand_nonbond_a1,
-        //                                      l_ligand_nonbond_a2);
+        if (num_rotamers > 0)
+          total_trilinear_eintcal += calc_intra_energy(l_scratch_ligand_x,
+                                             l_scratch_ligand_y,
+                                             l_scratch_ligand_z,
+                                             l_ligand_vol,
+                                             l_ligand_solpar,
+                                             l_ligand_charge,
+                                             l_ligand_num_hbond,
+                                             l_ligand_Rij_hb,
+                                             l_ligand_Rii,
+                                             l_ligand_epsij_hb,
+                                             l_ligand_epsii,
+                                             num_nonbonds,
+                                             l_ligand_nonbond_a1,
+                                             l_ligand_nonbond_a2);
 
 // Perform a tree reduction using __shfl_down_sync
-// TODO check performance
+// TODO merge them togheter
 #pragma unroll
         for (int offset = BLOCK_SIZE / 2; offset > 0; offset /= 2) {
-          total_trilinear += __shfl_down_sync(0xffffffff, total_trilinear, offset);
-          total_eintcal += __shfl_down_sync(0xffffffff, total_eintcal, offset);
+          total_trilinear_eintcal += __shfl_down_sync(0xffffffff, total_trilinear_eintcal, offset);
         }
 
         if (local_thread_id == 0) {
           const fp_type tors_free_energy        = num_rotamers * autodock_parameters::coeff_tors;
-          s_chromosome_scores[chromosome_index] = total_trilinear + total_eintcal + tors_free_energy;
+          s_chromosome_scores[chromosome_index] = total_trilinear_eintcal + tors_free_energy;
         }
       }
 
