@@ -101,12 +101,11 @@ namespace mudock {
                                  const fp_type offset_z) {
 #pragma GCC ivdep
 #pragma clang loop vectorize(enable) interleave(enable) unroll(enable)
-    for (int i = 0; i < num_atoms; ++i)
-      {
-        x[i] += offset_x;
-        y[i] += offset_y;
-        z[i] += offset_z;
-      }
+    for (int i = 0; i < num_atoms; ++i) {
+      x[i] += offset_x;
+      y[i] += offset_y;
+      z[i] += offset_z;
+    }
   }
 
   inline void rotate_molecule(fp_type* __restrict__ x,
@@ -120,12 +119,11 @@ namespace mudock {
     point3D c{0, 0, 0};
 #pragma GCC ivdep
 #pragma clang loop vectorize(enable) interleave(enable) unroll(enable)
-    for (int i = 0; i < num_atoms; i++)
-      {
-        c.x += x[i];
-        c.y += y[i];
-        c.z += z[i];
-      }
+    for (int i = 0; i < num_atoms; i++) {
+      c.x += x[i];
+      c.y += y[i];
+      c.z += z[i];
+    }
     c.x /= num_atoms;
     c.y /= num_atoms;
     c.z /= num_atoms;
@@ -150,13 +148,12 @@ namespace mudock {
 // apply the rotation matrix
 #pragma GCC ivdep
 #pragma clang loop vectorize(enable) interleave(enable) unroll(enable)
-    for (int i = 0; i < num_atoms; ++i)
-      {
-        const auto translated_x = x[i] - c.x, translated_y = y[i] - c.y, translated_z = z[i] - c.z;
-        x[i] = translated_x * m00 + translated_y * m01 + translated_z * m02 + c.x;
-        y[i] = translated_x * m10 + translated_y * m11 + translated_z * m12 + c.y;
-        z[i] = translated_x * m20 + translated_y * m21 + translated_z * m22 + c.z;
-      }
+    for (int i = 0; i < num_atoms; ++i) {
+      const auto translated_x = x[i] - c.x, translated_y = y[i] - c.y, translated_z = z[i] - c.z;
+      x[i] = translated_x * m00 + translated_y * m01 + translated_z * m02 + c.x;
+      y[i] = translated_x * m10 + translated_y * m11 + translated_z * m12 + c.y;
+      z[i] = translated_x * m20 + translated_y * m21 + translated_z * m22 + c.z;
+    }
   }
 
   inline void rotate_fragment(fp_type* __restrict__ x,
@@ -278,9 +275,8 @@ namespace mudock {
 
 #pragma GCC ivdep
 #pragma clang loop vectorize(enable) interleave(enable) unroll(enable)
-    for (int index = 0; index < num_atoms; ++index)
-      {
-        fp_type coord[3]{ligand_x[index], ligand_y[index], ligand_z[index]};
+    for (int index = 0; index < num_atoms; ++index) {
+      fp_type coord[3]{ligand_x[index], ligand_y[index], ligand_z[index]};
 
       if (coord[0] < minimum[0] || coord[0] > maximum[0] || coord[1] < minimum[1] || coord[1] > maximum[1] ||
           coord[2] < minimum[2] || coord[2] > maximum[2]) {
@@ -329,11 +325,12 @@ namespace mudock {
         const int base_index = FLATTENED_3D(u0, v0, w0, map_index_x, map_index_xy);
         // Trilinear Interpolationp
         elect_total_trilinear +=
-            trilinear_interpolation(electro_map+base_index, coeffs, base_index, map_index_x, map_index_xy) * atom_charge;
+            trilinear_interpolation(electro_map + base_index, coeffs, base_index, map_index_x, map_index_xy) *
+            atom_charge;
         emap_total_trilinear +=
-            trilinear_interpolation(atom_map+base_index, coeffs, base_index, map_index_x, map_index_xy);
+            trilinear_interpolation(atom_map + base_index, coeffs, base_index, map_index_x, map_index_xy);
         dmap_total_trilinear +=
-            trilinear_interpolation(desolv_map+base_index, coeffs, base_index, map_index_x, map_index_xy) *
+            trilinear_interpolation(desolv_map + base_index, coeffs, base_index, map_index_x, map_index_xy) *
             std::fabs(atom_charge);
       }
     }
@@ -345,7 +342,7 @@ namespace mudock {
 #pragma fj loop prefetch
 #pragma statement scache_isolate_assign ligand_x, ligand_y, ligand_z, ligand_charge, ligand_num_hbond, \
     ligand_Rij_hb, ligand_Rii, ligand_epsij_hb, ligand_epsii
-    // TODO check reciprocal math here 
+      // TODO check reciprocal math here
       for (int i = 0; i < num_nonbond; ++i) {
         const int& a1 = non_bond_list_a1[i];
         const int& a2 = non_bond_list_a2[i];
@@ -358,10 +355,10 @@ namespace mudock {
         const fp_type distance           = std::sqrt(distance_two_clamp);
 
         //  Calculate  Electrostatic  Energy
-        const fp_type epsilon = 
+        const fp_type epsilon =
             mehler_solmajer::A +
-                mehler_solmajer::B /
-                    (fp_type{1} + mehler_solmajer::rk * std::exp(mehler_solmajer::lambda_B * distance));
+            mehler_solmajer::B /
+                (fp_type{1} + mehler_solmajer::rk * std::exp(mehler_solmajer::lambda_B * distance));
         const fp_type r_dielectric = fp_type{1} / (distance * epsilon);
         const fp_type e_elec       = ligand_charge[a1] * ligand_charge[a2] * ELECSCALE *
                                autodock_parameters::coeff_estat * r_dielectric;
@@ -393,7 +390,7 @@ namespace mudock {
 
           // we need to determine the correct xA and xB exponents
           const int xA = 12; // for both LJ, 12-6 and HB, 12-10, xA is 12
-          int xB = 6;  // assume we have LJ, 12-6
+          int xB       = 6;  // assume we have LJ, 12-6
 
           fp_type Rij{(Rii_i + Rii_j) * fp_type{0.5}}, epsij{std::sqrt(epsii_i * epsii_j)};
           if ((hbond_i == 1 || hbond_i == 2) && hbond_j > 2) {
@@ -411,21 +408,21 @@ namespace mudock {
           }
           if (xA != xB) {
             const fp_type tmp = epsij / (xA - xB);
-            #ifdef __aarch64__
-              const auto log_Rij = std::log(Rij);
-              const fp_type cA   = tmp * std::exp(static_cast<fp_type>(xA) * log_Rij) * xB;
-              const fp_type cB   = tmp * std::exp(static_cast<fp_type>(xB) * log_Rij) * xA;
+#ifdef __aarch64__
+            const auto log_Rij = std::log(Rij);
+            const fp_type cA   = tmp * std::exp(static_cast<fp_type>(xA) * log_Rij) * xB;
+            const fp_type cB   = tmp * std::exp(static_cast<fp_type>(xB) * log_Rij) * xA;
 
-              const auto log_distance = std::log(distance);
-              const fp_type rA        = std::exp(static_cast<fp_type>(xA) * log_distance);
-              const fp_type rB        = std::exp(static_cast<fp_type>(xB) * log_distance);
-            #else
-              const fp_type cA  = tmp * std::pow(Rij, static_cast<fp_type>(xA)) * xB;
-              const fp_type cB  = tmp * std::pow(Rij, static_cast<fp_type>(xB)) * xA;
+            const auto log_distance = std::log(distance);
+            const fp_type rA        = std::exp(static_cast<fp_type>(xA) * log_distance);
+            const fp_type rB        = std::exp(static_cast<fp_type>(xB) * log_distance);
+#else
+            const fp_type cA = tmp * std::pow(Rij, static_cast<fp_type>(xA)) * xB;
+            const fp_type cB = tmp * std::pow(Rij, static_cast<fp_type>(xB)) * xA;
 
-              const fp_type rA = std::pow(distance, static_cast<fp_type>(xA));
-              const fp_type rB = std::pow(distance, static_cast<fp_type>(xB));
-            #endif
+            const fp_type rA = std::pow(distance, static_cast<fp_type>(xA));
+            const fp_type rB = std::pow(distance, static_cast<fp_type>(xB));
+#endif
 
             e_vdW_Hb = std::min(EINTCLAMP, (cA / rA - cB / rB));
           }
@@ -441,40 +438,40 @@ namespace mudock {
   }
 
   void evaluate_fitness(const fp_type* __restrict__ ligand_x,
-                             const fp_type* __restrict__ ligand_y,
-                             const fp_type* __restrict__ ligand_z,
-                             const fp_type* __restrict__ ligand_vol,
-                             const fp_type* __restrict__ ligand_solpar,
-                             const fp_type* __restrict__ ligand_charge,
-                             const int* __restrict__ ligand_num_hbond,
-                             const fp_type* __restrict__ ligand_Rij_hb,
-                             const fp_type* __restrict__ ligand_Rii,
-                             const fp_type* __restrict__ ligand_epsij_hb,
-                             const fp_type* __restrict__ ligand_epsii,
-                             const int* __restrict__ map_ligand_types,
-                             const int num_atoms,
-                             const int num_rotamers,
-                             const int* __restrict__ frag_masks,
-                             const int* __restrict__ frag_start_indexes,
-                             const int* __restrict__ frag_stop_indexes,
-                             const int num_nonbond,
-                             const int* __restrict__ non_bond_list_a1,
-                             const int* __restrict__ non_bond_list_a2,
-                             const fp_type* const __restrict__* const __restrict__ grid_maps,
-                             const fp_type* __restrict__ electro_map,
-                             const fp_type* __restrict__ desolv_map,
-                             const int num_generations,
-                             const int population_size,
-                             const int tournament_length,
-                             const fp_type mutation_prob,
-                             const fp_type* __restrict__ minimum,
-                             const fp_type* __restrict__ maximum,
-                             const fp_type* __restrict__ center,
-                             const int map_index_x,
-                             const int map_index_xy,
-                             individual* __restrict__ population_buffer1,
-                             individual* __restrict__ population_buffer2,
-                             const int seed) {
+                        const fp_type* __restrict__ ligand_y,
+                        const fp_type* __restrict__ ligand_z,
+                        const fp_type* __restrict__ ligand_vol,
+                        const fp_type* __restrict__ ligand_solpar,
+                        const fp_type* __restrict__ ligand_charge,
+                        const int* __restrict__ ligand_num_hbond,
+                        const fp_type* __restrict__ ligand_Rij_hb,
+                        const fp_type* __restrict__ ligand_Rii,
+                        const fp_type* __restrict__ ligand_epsij_hb,
+                        const fp_type* __restrict__ ligand_epsii,
+                        const int* __restrict__ map_ligand_types,
+                        const int num_atoms,
+                        const int num_rotamers,
+                        const int* __restrict__ frag_masks,
+                        const int* __restrict__ frag_start_indexes,
+                        const int* __restrict__ frag_stop_indexes,
+                        const int num_nonbond,
+                        const int* __restrict__ non_bond_list_a1,
+                        const int* __restrict__ non_bond_list_a2,
+                        const fp_type* const __restrict__* const __restrict__ grid_maps,
+                        const fp_type* __restrict__ electro_map,
+                        const fp_type* __restrict__ desolv_map,
+                        const int num_generations,
+                        const int population_size,
+                        const int tournament_length,
+                        const fp_type mutation_prob,
+                        const fp_type* __restrict__ minimum,
+                        const fp_type* __restrict__ maximum,
+                        const fp_type* __restrict__ center,
+                        const int map_index_x,
+                        const int map_index_xy,
+                        individual* __restrict__ population_buffer1,
+                        individual* __restrict__ population_buffer2,
+                        const int seed) {
     std::uniform_real_distribution<fp_type> dist{fp_type{0.0}, fp_type{1.0}};
     std::mt19937 generator(seed);
 
@@ -516,41 +513,41 @@ namespace mudock {
         // TODO check it it makes sense -> print the MOL2
         // apply the transformation encoded in the element genes to the original ligand
         apply(altered_x.get()->data(),
-                         altered_y.get()->data(),
-                         altered_z.get()->data(),
-                         element.genes,
-                         num_atoms,
-                         num_rotamers,
-                         frag_masks,
-                         frag_start_indexes,
-                         frag_stop_indexes);
+              altered_y.get()->data(),
+              altered_z.get()->data(),
+              element.genes,
+              num_atoms,
+              num_rotamers,
+              frag_masks,
+              frag_start_indexes,
+              frag_stop_indexes);
 
         // compute the energy of the system
         const auto energy = calc_energy(altered_x.get()->data(),
-                                                   altered_y.get()->data(),
-                                                   altered_z.get()->data(),
-                                                   ligand_vol,
-                                                   ligand_solpar,
-                                                   ligand_charge,
-                                                   ligand_num_hbond,
-                                                   ligand_Rij_hb,
-                                                   ligand_Rii,
-                                                   ligand_epsij_hb,
-                                                   ligand_epsii,
-                                                   map_ligand_types,
-                                                   num_atoms,
-                                                   num_rotamers,
-                                                   num_nonbond,
-                                                   non_bond_list_a1,
-                                                   non_bond_list_a2,
-                                                   minimum,
-                                                   maximum,
-                                                   center,
-                                                   map_index_x,
-                                                   map_index_xy,
-                                                   grid_maps,
-                                                   electro_map,
-                                                   desolv_map);
+                                        altered_y.get()->data(),
+                                        altered_z.get()->data(),
+                                        ligand_vol,
+                                        ligand_solpar,
+                                        ligand_charge,
+                                        ligand_num_hbond,
+                                        ligand_Rij_hb,
+                                        ligand_Rii,
+                                        ligand_epsij_hb,
+                                        ligand_epsii,
+                                        map_ligand_types,
+                                        num_atoms,
+                                        num_rotamers,
+                                        num_nonbond,
+                                        non_bond_list_a1,
+                                        non_bond_list_a2,
+                                        minimum,
+                                        maximum,
+                                        center,
+                                        map_index_x,
+                                        map_index_xy,
+                                        grid_maps,
+                                        electro_map,
+                                        desolv_map);
         element.score     = energy; // dummy implementation to test the genetic
       }
       FJAPP_MARKER_STOP("GA");

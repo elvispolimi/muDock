@@ -12,7 +12,7 @@ namespace mudock {
     std::size_t size = 0;
 
   public:
-    sycl_object(sycl::queue& _queue): queue(_queue){};
+    sycl_object(sycl::queue& _queue): queue(_queue) {};
     sycl_object(const sycl_object&) = delete;
     inline sycl_object(sycl_object&& other): queue(other.queue) {
       // TODO the other remains with the same queue

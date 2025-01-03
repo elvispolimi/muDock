@@ -1,9 +1,9 @@
 #include <algorithm>
 #include <array>
 #include <mudock/chem.hpp>
+#include <mudock/chem/mehler_solmajer.hpp>
 #include <mudock/grid.hpp>
 #include <mudock/type_alias.hpp>
-#include <mudock/chem/mehler_solmajer.hpp>
 
 namespace mudock {
   grid_map generate_electrostatic_grid_map(dynamic_molecule& receptor) {

@@ -1,8 +1,8 @@
+#include <mudock/chem/ligand_maps.hpp>
 #include <mudock/cpp_implementation/center_of_mass.hpp>
 #include <mudock/cpp_implementation/geometric_transformations.hpp>
 #include <mudock/cpp_implementation/mutate.hpp>
 #include <mudock/cpp_implementation/weed_bonds.hpp>
-#include <mudock/chem/ligand_maps.hpp>
 #include <mudock/sycl_implementation/evaluate_fitness.hpp>
 #include <mudock/sycl_implementation/virtual_screen.hpp>
 

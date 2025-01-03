@@ -26,7 +26,7 @@ namespace mudock {
   };
 
   struct omp_random_object: private omp_wrapper<std::vector, XORWOWState> {
-    omp_random_object(): omp_wrapper<std::vector, XORWOWState>(){};
+    omp_random_object(): omp_wrapper<std::vector, XORWOWState>() {};
     omp_random_object(const omp_random_object &)            = delete;
     omp_random_object(omp_random_object &&)                 = default;
     omp_random_object &operator=(const omp_random_object &) = delete;
