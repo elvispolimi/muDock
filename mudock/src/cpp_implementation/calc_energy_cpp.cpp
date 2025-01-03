@@ -21,11 +21,6 @@ namespace mudock {
   static constexpr auto coordinate_step = fp_type{0.2};
   static constexpr auto angle_step      = fp_type{4};
 
-  // TODO fix me from reorder_buffer.hpp
-  static constexpr int get_num_atom_clusters() { return 7; };
-  // the description of how we generate the clusters
-  static constexpr std::array<int, 7> atoms_clusters = {{0, 32, 64, 128, 160, 192, 256}};
-
   template<typename T>
   [[nodiscard]] inline const T random_gen_cpp(std::mt19937& generator,
                                               std::uniform_real_distribution<fp_type>& dist,
@@ -97,7 +92,6 @@ namespace mudock {
     return value;
   }
 
-  template<int NUM_ATOMS>
   inline void translate_molecule(fp_type* __restrict__ x,
                                  fp_type* __restrict__ y,
                                  fp_type* __restrict__ z,
@@ -107,15 +101,14 @@ namespace mudock {
                                  const fp_type offset_z) {
 #pragma GCC ivdep
 #pragma clang loop vectorize(enable) interleave(enable) unroll(enable)
-    for (int i = 0; i < NUM_ATOMS; ++i)
-      if (i < num_atoms) {
+    for (int i = 0; i < num_atoms; ++i)
+      {
         x[i] += offset_x;
         y[i] += offset_y;
         z[i] += offset_z;
       }
   }
 
-  template<int NUM_ATOMS>
   inline void rotate_molecule(fp_type* __restrict__ x,
                               fp_type* __restrict__ y,
                               fp_type* __restrict__ z,
@@ -127,8 +120,8 @@ namespace mudock {
     point3D c{0, 0, 0};
 #pragma GCC ivdep
 #pragma clang loop vectorize(enable) interleave(enable) unroll(enable)
-    for (int i = 0; i < NUM_ATOMS; i++)
-      if (i < num_atoms) {
+    for (int i = 0; i < num_atoms; i++)
+      {
         c.x += x[i];
         c.y += y[i];
         c.z += z[i];
@@ -157,8 +150,8 @@ namespace mudock {
 // apply the rotation matrix
 #pragma GCC ivdep
 #pragma clang loop vectorize(enable) interleave(enable) unroll(enable)
-    for (int i = 0; i < NUM_ATOMS; ++i)
-      if (i < num_atoms) {
+    for (int i = 0; i < num_atoms; ++i)
+      {
         const auto translated_x = x[i] - c.x, translated_y = y[i] - c.y, translated_z = z[i] - c.z;
         x[i] = translated_x * m00 + translated_y * m01 + translated_z * m02 + c.x;
         y[i] = translated_x * m10 + translated_y * m11 + translated_z * m12 + c.y;
@@ -166,7 +159,6 @@ namespace mudock {
       }
   }
 
-  template<int NUM_ATOMS>
   inline void rotate_fragment(fp_type* __restrict__ x,
                               fp_type* __restrict__ y,
                               fp_type* __restrict__ z,
@@ -222,8 +214,8 @@ namespace mudock {
 // apply the rotation matrix
 #pragma GCC ivdep
 #pragma clang loop vectorize(enable) interleave(enable) unroll(enable)
-    for (int i = 0; i < NUM_ATOMS; ++i) {
-      if (i < num_atoms && frag_mask[i] != 0) {
+    for (int i = 0; i < num_atoms; ++i) {
+      if (frag_mask[i] != 0) {
         const auto prev_x = x[i], prev_y = y[i], prev_z = z[i];
         x[i] = prev_x * m00 + prev_y * m01 + prev_z * m02 + m03;
         y[i] = prev_x * m10 + prev_y * m11 + prev_z * m12 + m13;
@@ -232,7 +224,6 @@ namespace mudock {
     }
   }
 
-  template<int NUM_ATOMS>
   inline void apply(fp_type* __restrict__ x,
                     fp_type* __restrict__ y,
                     fp_type* __restrict__ z,
@@ -243,8 +234,8 @@ namespace mudock {
                     const int* __restrict__ frag_start_indexes,
                     const int* __restrict__ frag_stop_indexes) {
     // apply rigid transformations
-    translate_molecule<NUM_ATOMS>(x, y, z, num_atoms, c[0], c[1], c[2]);
-    rotate_molecule<NUM_ATOMS>(x, y, z, num_atoms, c[3], c[4], c[5]);
+    translate_molecule(x, y, z, num_atoms, c[0], c[1], c[2]);
+    rotate_molecule(x, y, z, num_atoms, c[3], c[4], c[5]);
 
 // change the molecule shape
 #pragma clang loop interleave(enable) unroll(enable)
@@ -252,11 +243,10 @@ namespace mudock {
       const auto* bitmask    = frag_masks + i * num_atoms;
       const auto start_index = frag_start_indexes[i];
       const auto stop_index  = frag_stop_indexes[i];
-      rotate_fragment<NUM_ATOMS>(x, y, z, num_atoms, bitmask, start_index, stop_index, c[int{6} + i]);
+      rotate_fragment(x, y, z, num_atoms, bitmask, start_index, stop_index, c[int{6} + i]);
     }
   }
 
-  template<int NUM_ATOMS>
   inline fp_type calc_energy(const fp_type* __restrict__ ligand_x,
                              const fp_type* __restrict__ ligand_y,
                              const fp_type* __restrict__ ligand_z,
@@ -268,7 +258,7 @@ namespace mudock {
                              const fp_type* __restrict__ ligand_Rii,
                              const fp_type* __restrict__ ligand_epsij_hb,
                              const fp_type* __restrict__ ligand_epsii,
-                             const ligand_map_types* __restrict__ map_ligand_types,
+                             const int* __restrict__ map_ligand_types,
                              const int num_atoms,
                              const int n_torsions,
                              const int num_nonbond,
@@ -288,8 +278,8 @@ namespace mudock {
 
 #pragma GCC ivdep
 #pragma clang loop vectorize(enable) interleave(enable) unroll(enable)
-    for (int index = 0; index < NUM_ATOMS; ++index)
-      if (index < num_atoms) {
+    for (int index = 0; index < num_atoms; ++index)
+      {
         fp_type coord[3]{ligand_x[index], ligand_y[index], ligand_z[index]};
 
       if (coord[0] < minimum[0] || coord[0] > maximum[0] || coord[1] < minimum[1] || coord[1] > maximum[1] ||
@@ -340,7 +330,7 @@ namespace mudock {
         // Trilinear Interpolationp
         elect_total_trilinear +=
             trilinear_interpolation(electro_map+base_index, coeffs, base_index, map_index_x, map_index_xy) * atom_charge;
-        emap_total_trilinear
+        emap_total_trilinear +=
             trilinear_interpolation(atom_map+base_index, coeffs, base_index, map_index_x, map_index_xy);
         dmap_total_trilinear +=
             trilinear_interpolation(desolv_map+base_index, coeffs, base_index, map_index_x, map_index_xy) *
@@ -421,19 +411,21 @@ namespace mudock {
           }
           if (xA != xB) {
             const fp_type tmp = epsij / (xA - xB);
-            // const fp_type cA  = tmp * std::pow(Rij, static_cast<fp_type>(xA)) * xB;
-            // const fp_type cB  = tmp * std::pow(Rij, static_cast<fp_type>(xB)) * xA;
+            #ifdef __aarch64__
+              const auto log_Rij = std::log(Rij);
+              const fp_type cA   = tmp * std::exp(static_cast<fp_type>(xA) * log_Rij) * xB;
+              const fp_type cB   = tmp * std::exp(static_cast<fp_type>(xB) * log_Rij) * xA;
 
-            // const fp_type rA = std::pow(distance, static_cast<fp_type>(xA));
-            // const fp_type rB = std::pow(distance, static_cast<fp_type>(xB));
+              const auto log_distance = std::log(distance);
+              const fp_type rA        = std::exp(static_cast<fp_type>(xA) * log_distance);
+              const fp_type rB        = std::exp(static_cast<fp_type>(xB) * log_distance);
+            #else
+              const fp_type cA  = tmp * std::pow(Rij, static_cast<fp_type>(xA)) * xB;
+              const fp_type cB  = tmp * std::pow(Rij, static_cast<fp_type>(xB)) * xA;
 
-            const auto log_Rij = std::log(Rij);
-            const fp_type cA   = tmp * std::exp(static_cast<fp_type>(xA) * log_Rij) * xB;
-            const fp_type cB   = tmp * std::exp(static_cast<fp_type>(xB) * log_Rij) * xA;
-
-            const auto log_distance = std::log(distance);
-            const fp_type rA        = std::exp(static_cast<fp_type>(xA) * log_distance);
-            const fp_type rB        = std::exp(static_cast<fp_type>(xB) * log_distance);
+              const fp_type rA = std::pow(distance, static_cast<fp_type>(xA));
+              const fp_type rB = std::pow(distance, static_cast<fp_type>(xB));
+            #endif
 
             e_vdW_Hb = std::min(EINTCLAMP, (cA / rA - cB / rB));
           }
@@ -448,8 +440,7 @@ namespace mudock {
     return total_trilinear + total_eintcal + tors_free_energy;
   }
 
-  template<int NUM_ATOMS>
-  void evaluate_fitness_impl(const fp_type* __restrict__ ligand_x,
+  void evaluate_fitness(const fp_type* __restrict__ ligand_x,
                              const fp_type* __restrict__ ligand_y,
                              const fp_type* __restrict__ ligand_z,
                              const fp_type* __restrict__ ligand_vol,
@@ -460,7 +451,7 @@ namespace mudock {
                              const fp_type* __restrict__ ligand_Rii,
                              const fp_type* __restrict__ ligand_epsij_hb,
                              const fp_type* __restrict__ ligand_epsii,
-                             const ligand_map_types* __restrict__ map_ligand_types,
+                             const int* __restrict__ map_ligand_types,
                              const int num_atoms,
                              const int num_rotamers,
                              const int* __restrict__ frag_masks,
@@ -524,7 +515,7 @@ namespace mudock {
 
         // TODO check it it makes sense -> print the MOL2
         // apply the transformation encoded in the element genes to the original ligand
-        apply<NUM_ATOMS>(altered_x.get()->data(),
+        apply(altered_x.get()->data(),
                          altered_y.get()->data(),
                          altered_z.get()->data(),
                          element.genes,
@@ -535,7 +526,7 @@ namespace mudock {
                          frag_stop_indexes);
 
         // compute the energy of the system
-        const auto energy = calc_energy<NUM_ATOMS>(altered_x.get()->data(),
+        const auto energy = calc_energy(altered_x.get()->data(),
                                                    altered_y.get()->data(),
                                                    altered_z.get()->data(),
                                                    ligand_vol,
@@ -611,83 +602,5 @@ namespace mudock {
       population      = next_population;
       next_population = temp;
     }
-  }
-
-  void evaluate_fitness(const fp_type* __restrict__ ligand_x,
-                        const fp_type* __restrict__ ligand_y,
-                        const fp_type* __restrict__ ligand_z,
-                        const fp_type* __restrict__ ligand_vol,
-                        const fp_type* __restrict__ ligand_solpar,
-                        const fp_type* __restrict__ ligand_charge,
-                        const int* __restrict__ ligand_num_hbond,
-                        const fp_type* __restrict__ ligand_Rij_hb,
-                        const fp_type* __restrict__ ligand_Rii,
-                        const fp_type* __restrict__ ligand_epsij_hb,
-                        const fp_type* __restrict__ ligand_epsii,
-                        const ligand_map_types* __restrict__ map_ligand_types,
-                        const int num_atoms,
-                        const int num_rotamers,
-                        const int* __restrict__ frag_masks,
-                        const int* __restrict__ frag_start_indexes,
-                        const int* __restrict__ frag_stop_indexes,
-                        const int num_nonbond,
-                        const int* __restrict__ non_bond_list_a1,
-                        const int* __restrict__ non_bond_list_a2,
-                        const fp_type* const __restrict__* const __restrict__ grid_maps,
-                        const fp_type* __restrict__ electro_map,
-                        const fp_type* __restrict__ desolv_map,
-                        const int num_generations,
-                        const int population_size,
-                        const int tournament_length,
-                        const fp_type mutation_prob,
-                        const fp_type* __restrict__ minimum,
-                        const fp_type* __restrict__ maximum,
-                        const fp_type* __restrict__ center,
-                        const int map_index_x,
-                        const int map_index_xy,
-                        individual* __restrict__ population_buffer1,
-                        individual* __restrict__ population_buffer2,
-                        const int seed) {
-    constexpr_for<0, get_num_atom_clusters(), 1>([&](const auto cluster_index) {
-      const auto num_atoms_cluster_prev = atoms_clusters[cluster_index - 1];
-      const auto num_atoms_cluster      = atoms_clusters[cluster_index];
-      if (num_atoms < num_atoms_cluster && num_atoms >= num_atoms_cluster_prev)
-        // Simulate the population evolution for the given amount of time
-        evaluate_fitness_impl<num_atoms_cluster>(ligand_x,
-                                                 ligand_y,
-                                                 ligand_z,
-                                                 ligand_vol,
-                                                 ligand_solpar,
-                                                 ligand_charge,
-                                                 ligand_num_hbond,
-                                                 ligand_Rij_hb,
-                                                 ligand_Rii,
-                                                 ligand_epsij_hb,
-                                                 ligand_epsii,
-                                                 map_ligand_types,
-                                                 num_atoms,
-                                                 num_rotamers,
-                                                 frag_masks,
-                                                 frag_start_indexes,
-                                                 frag_stop_indexes,
-                                                 num_nonbond,
-                                                 non_bond_list_a1,
-                                                 non_bond_list_a2,
-                                                 grid_maps,
-                                                 electro_map,
-                                                 desolv_map,
-                                                 num_generations,
-                                                 population_size,
-                                                 tournament_length,
-                                                 mutation_prob,
-                                                 minimum,
-                                                 maximum,
-                                                 center,
-                                                 map_index_x,
-                                                 map_index_xy,
-                                                 population_buffer1,
-                                                 population_buffer2,
-                                                 seed);
-    });
   }
 } // namespace mudock

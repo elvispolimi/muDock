@@ -97,7 +97,7 @@ include(CheckIPOSupported)
 check_ipo_supported(RESULT ipo_supported OUTPUT ipo_output)
 if(ipo_supported)
     message(STATUS "IPO is enabled.")
-#    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
 else()
     message(WARNING "IPO is not supported: ${ipo_output}")
 endif()
@@ -213,7 +213,7 @@ option(MUDOCK_ENABLE_SCOREP "Enable profiling using Score-P" OFF)
 option(MUDOCK_ENABLE_FJAPP "Enable profiling using Fujtsu App" OFF)
 option(MUDOCK_EXCLUDE_CPU_KERNEL "Enable compilation using Fujtsu Compiler" OFF)
 # TODO FIXME
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+set(CMAKE_POSITION_INDEPENDENT_CODE FALSE)
 
 # ########################################################################
 # ### Tweak the default configuration
