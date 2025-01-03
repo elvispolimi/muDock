@@ -1,8 +1,8 @@
 #pragma once
 
 #include <mudock/batch.hpp>
-#include <mudock/cpp_implementation/chromosome.hpp>
 #include <mudock/chem/ligand_maps.hpp>
+#include <mudock/cpp_implementation/chromosome.hpp>
 #include <mudock/grid.hpp>
 #include <mudock/hip_implementation/hip_random.hpp>
 #include <mudock/hip_implementation/hip_wrapper.hpp>

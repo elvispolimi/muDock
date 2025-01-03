@@ -9,7 +9,7 @@ namespace mudock {
   template<template<class...> class container_type, typename T, class... args>
   class sycl_wrapper: sycl_object<T> {
   public:
-    sycl_wrapper(sycl::queue &_queue): sycl_object<T>(_queue){};
+    sycl_wrapper(sycl::queue &_queue): sycl_object<T>(_queue) {};
     sycl_wrapper(const sycl_wrapper &)            = delete;
     sycl_wrapper(sycl_wrapper &&)                 = default;
     sycl_wrapper &operator=(const sycl_wrapper &) = delete;

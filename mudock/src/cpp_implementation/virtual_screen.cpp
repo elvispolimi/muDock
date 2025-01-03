@@ -22,7 +22,7 @@ namespace mudock {
         desolv_map(_desolv_map),
         population(knobs.population_number),
         next_population(knobs.population_number),
-        configuration(knobs){}
+        configuration(knobs) {}
 
   void virtual_screen_cpp::operator()(static_molecule& ligand) {
     SCOREP_MARKER_START(ga, "GA");
@@ -87,7 +87,8 @@ namespace mudock {
 
     std::vector<int> map_ligand_types;
     map_ligand_types.resize(num_atoms);
-    for (int i = 0; i < num_atoms; i++) map_ligand_types[i] = static_cast<int>(map_from_autodock_type(ligand.autodock_type(i)));
+    for (int i = 0; i < num_atoms; i++)
+      map_ligand_types[i] = static_cast<int>(map_from_autodock_type(ligand.autodock_type(i)));
 
     // Simulate the population evolution for the given amount of time
     evaluate_fitness(x.data(),
@@ -127,7 +128,8 @@ namespace mudock {
                      seed);
 
     // update the ligand position with the best one that we found
-    const std::vector<individual>& last_population = (configuration.num_generations % 2 == 0) ? next_population : population ;
+    const std::vector<individual>& last_population =
+        (configuration.num_generations % 2 == 0) ? next_population : population;
 
     const auto best_individual_it =
         std::min_element(std::begin(last_population),

@@ -1,8 +1,8 @@
 #pragma once
 
 #include <mudock/batch.hpp>
-#include <mudock/cpp_implementation/chromosome.hpp>
 #include <mudock/chem/ligand_maps.hpp>
+#include <mudock/cpp_implementation/chromosome.hpp>
 #include <mudock/grid.hpp>
 #include <mudock/knobs.hpp>
 #include <mudock/molecule.hpp>
@@ -16,7 +16,7 @@ namespace mudock {
     std::vector<omp_object<fp_type>> wrappers;
     omp_wrapper<std::vector, fp_type*> wrappers_pointer;
 
-    wrappers_container(): wrappers_pointer(){};
+    wrappers_container(): wrappers_pointer() {};
   };
 
   class virtual_screen_omp {

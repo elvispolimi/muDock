@@ -25,7 +25,7 @@ namespace mudock {
     if (it != configurations.end()) {
       auto configuration = *it;
 
-      configuration = configuration.substr( cpp_token.size());
+      configuration = configuration.substr(cpp_token.size());
 
       // the description should start with a colon
       if (configuration.front() != ':') [[unlikely]] {

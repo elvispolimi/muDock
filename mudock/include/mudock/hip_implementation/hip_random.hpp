@@ -6,7 +6,7 @@
 
 namespace mudock {
   struct hip_random_object: private hip_object<hiprandState> {
-    hip_random_object(const hipStream_t &_stream): hip_object<hiprandState>::hip_object(_stream){};
+    hip_random_object(const hipStream_t &_stream): hip_object<hiprandState>::hip_object(_stream) {};
     hip_random_object(const hip_random_object &)            = delete;
     hip_random_object(hip_random_object &&)                 = default;
     hip_random_object &operator=(const hip_random_object &) = delete;

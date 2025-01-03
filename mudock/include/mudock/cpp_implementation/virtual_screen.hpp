@@ -1,8 +1,8 @@
 #pragma once
 
 #include <memory>
-#include <mudock/cpp_implementation/chromosome.hpp>
 #include <mudock/chem/mehler_solmajer.hpp>
+#include <mudock/cpp_implementation/chromosome.hpp>
 #include <mudock/grid.hpp>
 #include <mudock/knobs.hpp>
 #include <mudock/molecule.hpp>

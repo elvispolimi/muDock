@@ -77,7 +77,7 @@ namespace mudock {
           xB(_xB),
           hbonder(_hbonder),
           receptor_type(_receptor_type),
-          vdw_hb_table(cA, cB, xA, xB){};
+          vdw_hb_table(cA, cB, xA, xB) {};
   };
 
   struct scratchpad {
@@ -334,7 +334,7 @@ namespace mudock {
               }
             }
           } /*i2-loop*/
-        }   /* endif nbond==1 */
+        } /* endif nbond==1 */
 
         /* two bonds: Hydroxyl or Ether Oxygen X1-O-X2 */
         if (nbond == 2) {
@@ -462,7 +462,7 @@ namespace mudock {
                 closestH = index;
               }
             } /* Hydrogen test */
-          }   /* ia loop */
+          } /* ia loop */
           /* END NEW2: Find Min Hbond */
 
           for (int index = 0; index < receptor.num_atoms(); ++index) {

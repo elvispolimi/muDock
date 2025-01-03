@@ -43,7 +43,7 @@ namespace mudock {
   };
 
   struct sycl_random_object: private sycl_wrapper<std::vector, XORWOWState> {
-    sycl_random_object(sycl::queue &_queue): sycl_wrapper<std::vector, XORWOWState>(_queue){};
+    sycl_random_object(sycl::queue &_queue): sycl_wrapper<std::vector, XORWOWState>(_queue) {};
     sycl_random_object(const sycl_random_object &)            = delete;
     sycl_random_object(sycl_random_object &&)                 = default;
     sycl_random_object &operator=(const sycl_random_object &) = delete;

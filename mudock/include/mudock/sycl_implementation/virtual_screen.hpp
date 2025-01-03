@@ -12,7 +12,7 @@ namespace mudock {
     std::vector<sycl_object<fp_type>> wrappers;
     sycl_wrapper<std::vector, fp_type*> wrappers_pointer;
 
-    wrappers_container(sycl::queue& queue): wrappers_pointer(queue){};
+    wrappers_container(sycl::queue& queue): wrappers_pointer(queue) {};
   };
 
   class virtual_screen_sycl {

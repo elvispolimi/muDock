@@ -1,8 +1,8 @@
 #pragma once
 
+#include <array>
 #include <mudock/molecule/constraints.hpp>
 #include <mudock/type_alias.hpp>
-#include <array>
 
 namespace mudock {
 
