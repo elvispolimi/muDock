@@ -85,9 +85,9 @@ namespace mudock {
       frag_stop_indexes.data()[rot]        = stop_index;
     }
 
-    std::vector<ligand_map_types> map_ligand_types;
+    std::vector<int> map_ligand_types;
     map_ligand_types.resize(num_atoms);
-    for (int i = 0; i < num_atoms; i++) map_ligand_types[i] = map_from_autodock_type(ligand.autodock_type(i));
+    for (int i = 0; i < num_atoms; i++) map_ligand_types[i] = static_cast<int>(map_from_autodock_type(ligand.autodock_type(i)));
 
     // Simulate the population evolution for the given amount of time
     evaluate_fitness(x.data(),
