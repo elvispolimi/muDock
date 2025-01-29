@@ -75,7 +75,6 @@ namespace mudock {
 
   inline fp_type trilinear_interpolation(const fp_type* __restrict__ map,
                                          const fp_type* __restrict__ coeffs,
-                                         const int base_index,
                                          const int& map_index_x,
                                          const int& map_index_xy) {
     fp_type value{0};
@@ -250,17 +249,15 @@ namespace mudock {
                              const fp_type* __restrict__ ligand_vol,
                              const fp_type* __restrict__ ligand_solpar,
                              const fp_type* __restrict__ ligand_charge,
-                             const int* __restrict__ ligand_num_hbond,
-                             const fp_type* __restrict__ ligand_Rij_hb,
-                             const fp_type* __restrict__ ligand_Rii,
-                             const fp_type* __restrict__ ligand_epsij_hb,
-                             const fp_type* __restrict__ ligand_epsii,
                              const int* __restrict__ map_ligand_types,
                              const int num_atoms,
                              const int n_torsions,
                              const int num_nonbond,
                              const int* __restrict__ non_bond_list_a1,
                              const int* __restrict__ non_bond_list_a2,
+                             const fp_type* __restrict__ cA_list,
+                             const fp_type* __restrict__ cB_list,
+                             const int* __restrict__ xB_list,
                              const fp_type* __restrict__ minimum,
                              const fp_type* __restrict__ maximum,
                              const fp_type* __restrict__ center,
@@ -325,12 +322,12 @@ namespace mudock {
         const int base_index = FLATTENED_3D(u0, v0, w0, map_index_x, map_index_xy);
         // Trilinear Interpolationp
         elect_total_trilinear +=
-            trilinear_interpolation(electro_map + base_index, coeffs, base_index, map_index_x, map_index_xy) *
+            trilinear_interpolation(electro_map + base_index, coeffs, map_index_x, map_index_xy) *
             atom_charge;
         emap_total_trilinear +=
-            trilinear_interpolation(atom_map + base_index, coeffs, base_index, map_index_x, map_index_xy);
+            trilinear_interpolation(atom_map + base_index, coeffs, map_index_x, map_index_xy);
         dmap_total_trilinear +=
-            trilinear_interpolation(desolv_map + base_index, coeffs, base_index, map_index_x, map_index_xy) *
+            trilinear_interpolation(desolv_map + base_index, coeffs, map_index_x, map_index_xy) *
             std::fabs(atom_charge);
       }
     }
@@ -377,53 +374,20 @@ namespace mudock {
           //  Find internal energy parameters, i.e.  epsilon and r-equilibrium values...
           //  Lennard-Jones and Hydrogen Bond Potentials
           // This can be precomputed as in intnbtable.cc
-          const auto& hbond_i    = ligand_num_hbond[a1];
-          const auto& hbond_j    = ligand_num_hbond[a2];
-          const auto& Rij_hb_i   = ligand_Rij_hb[a1];
-          const auto& Rij_hb_j   = ligand_Rij_hb[a2];
-          const auto& Rii_i      = ligand_Rii[a1];
-          const auto& Rii_j      = ligand_Rii[a2];
-          const auto& epsij_hb_i = ligand_epsij_hb[a1];
-          const auto& epsij_hb_j = ligand_epsij_hb[a2];
-          const auto& epsii_i    = ligand_epsii[a1];
-          const auto& epsii_j    = ligand_epsii[a2];
+          const int xA = xA_default;
+          const int xB = xB_list[i];
 
-          // we need to determine the correct xA and xB exponents
-          const int xA = 12; // for both LJ, 12-6 and HB, 12-10, xA is 12
-          int xB       = 6;  // assume we have LJ, 12-6
-
-          fp_type Rij{(Rii_i + Rii_j) * fp_type{0.5}}, epsij{std::sqrt(epsii_i * epsii_j)};
-          if ((hbond_i == 1 || hbond_i == 2) && hbond_j > 2) {
-            // i is a donor and j is an acceptor.
-            // i is a hydrogen, j is a heteroatom
-            Rij   = Rij_hb_j;
-            epsij = epsij_hb_j;
-            xB    = 10;
-          } else if ((hbond_i > 2) && (hbond_j == 1 || hbond_j == 2)) {
-            // i is an acceptor and j is a donor.
-            // i is a heteroatom, j is a hydrogen
-            Rij   = Rij_hb_i;
-            epsij = epsij_hb_i;
-            xB    = 10;
-          }
           if (xA != xB) {
-            const fp_type tmp = epsij / (xA - xB);
-#ifdef __aarch64__
-            const auto log_Rij = std::log(Rij);
-            const fp_type cA   = tmp * std::exp(static_cast<fp_type>(xA) * log_Rij) * xB;
-            const fp_type cB   = tmp * std::exp(static_cast<fp_type>(xB) * log_Rij) * xA;
-
+            const fp_type cA = cA_list[i];
+            const fp_type cB = cB_list[i];
+// #ifdef __aarch64__
             const auto log_distance = std::log(distance);
             const fp_type rA        = std::exp(static_cast<fp_type>(xA) * log_distance);
             const fp_type rB        = std::exp(static_cast<fp_type>(xB) * log_distance);
-#else
-            const fp_type cA = tmp * std::pow(Rij, static_cast<fp_type>(xA)) * xB;
-            const fp_type cB = tmp * std::pow(Rij, static_cast<fp_type>(xB)) * xA;
-
-            const fp_type rA = std::pow(distance, static_cast<fp_type>(xA));
-            const fp_type rB = std::pow(distance, static_cast<fp_type>(xB));
-#endif
-
+// #else
+            // const fp_type rA = std::pow(distance, static_cast<fp_type>(xA));
+            // const fp_type rB = std::pow(distance, static_cast<fp_type>(xB));
+// #endif
             e_vdW_Hb = std::min(EINTCLAMP, (cA / rA - cB / rB));
           }
         }
@@ -443,11 +407,6 @@ namespace mudock {
                         const fp_type* __restrict__ ligand_vol,
                         const fp_type* __restrict__ ligand_solpar,
                         const fp_type* __restrict__ ligand_charge,
-                        const int* __restrict__ ligand_num_hbond,
-                        const fp_type* __restrict__ ligand_Rij_hb,
-                        const fp_type* __restrict__ ligand_Rii,
-                        const fp_type* __restrict__ ligand_epsij_hb,
-                        const fp_type* __restrict__ ligand_epsii,
                         const int* __restrict__ map_ligand_types,
                         const int num_atoms,
                         const int num_rotamers,
@@ -457,6 +416,9 @@ namespace mudock {
                         const int num_nonbond,
                         const int* __restrict__ non_bond_list_a1,
                         const int* __restrict__ non_bond_list_a2,
+                        const fp_type* __restrict__ cA_list,
+                        const fp_type* __restrict__ cB_list,
+                        const int* __restrict__ xB_list,
                         const fp_type* const __restrict__* const __restrict__ grid_maps,
                         const fp_type* __restrict__ electro_map,
                         const fp_type* __restrict__ desolv_map,
@@ -529,17 +491,15 @@ namespace mudock {
                                         ligand_vol,
                                         ligand_solpar,
                                         ligand_charge,
-                                        ligand_num_hbond,
-                                        ligand_Rij_hb,
-                                        ligand_Rii,
-                                        ligand_epsij_hb,
-                                        ligand_epsii,
                                         map_ligand_types,
                                         num_atoms,
                                         num_rotamers,
                                         num_nonbond,
                                         non_bond_list_a1,
                                         non_bond_list_a2,
+                                        cA_list,
+                                        cB_list,
+                                        xB_list,
                                         minimum,
                                         maximum,
                                         center,
