@@ -93,14 +93,14 @@ endif()
 project(muDock VERSION 1.0)
 enable_language(CXX)
 # TODO check interference with other frameworks
-include(CheckIPOSupported)
-check_ipo_supported(RESULT ipo_supported OUTPUT ipo_output)
-if(ipo_supported)
-    message(STATUS "IPO is enabled.")
-    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
-else()
-    message(WARNING "IPO is not supported: ${ipo_output}")
-endif()
+#include(CheckIPOSupported)
+#check_ipo_supported(RESULT ipo_supported OUTPUT ipo_output)
+#if(ipo_supported)
+#    message(STATUS "IPO is enabled.")
+#    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+#else()
+#    message(WARNING "IPO is not supported: ${ipo_output}")
+#endif()
 
 # Check if specific target architectures should be used
 # TODO check this
