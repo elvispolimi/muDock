@@ -55,9 +55,10 @@ int main(int argc, char* argv[]) {
       mudock::apply_autodock_forcefield(*ligand);
       input_queue->enqueue(std::move(ligand));
     } catch (const std::exception& e) {
-      std::cerr << "Unable to parse the following ligand: " << std::endl;
-      std::cerr << description << std::endl;
-      std::cerr << "Due to: " << e.what() << std::endl;
+      // TODO add a flag to disable rdkit error ligands
+      // std::cerr << "Unable to parse the following ligand: " << std::endl;
+      // std::cerr << description << std::endl;
+      // std::cerr << "Due to: " << e.what() << std::endl;
     }
   }
 
