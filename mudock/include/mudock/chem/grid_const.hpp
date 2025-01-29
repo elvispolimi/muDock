@@ -49,4 +49,8 @@ namespace mudock {
   // Non bond cutoff
   static constexpr fp_type nbc2{64}; // 8*8
   static constexpr fp_type ENERGYPENALTY{500};
+
+  // Lennard-Jones
+  static constexpr fp_type xA_default = 12;
+  static constexpr fp_type xB_default = 6;
 } // namespace mudock
