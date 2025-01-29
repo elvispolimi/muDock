@@ -146,17 +146,15 @@ namespace mudock {
                              const fp_type* __restrict__ ligand_vol,
                              const fp_type* __restrict__ ligand_solpar,
                              const fp_type* __restrict__ ligand_charge,
-                             const int* __restrict__ ligand_num_hbond,
-                             const fp_type* __restrict__ ligand_Rij_hb,
-                             const fp_type* __restrict__ ligand_Rii,
-                             const fp_type* __restrict__ ligand_epsij_hb,
-                             const fp_type* __restrict__ ligand_epsii,
                              const int* __restrict__ map_ligand_offsets,
                              const int num_atoms,
                              const int n_torsions,
                              const int num_nonbond,
                              const int* __restrict__ non_bond_list_a1,
                              const int* __restrict__ non_bond_list_a2,
+                             const fp_type* __restrict__ cA_list,
+                             const fp_type* __restrict__ cB_list,
+                             const int* __restrict__ xB_list,
                              const fp_type* __restrict__ minimum,
                              const fp_type* __restrict__ maximum,
                              const fp_type* __restrict__ center,
@@ -340,8 +338,6 @@ namespace mudock {
       const auto half_fp_vec           = Set(d, -0.5);
 
       const auto xA_vec                      = Set(di, 12);
-      const auto xB_ten_vec                  = Set(di, 10);
-      const auto xB_six_vec                  = Set(di, 6);
       const auto eintclamp_vec               = Set(d, EINTCLAMP);
       const auto rmin_elec_square_vec        = Set(d, RMIN_ELEC_SQUARE);
       const auto qsolpar_vec                 = Set(d, 0.01097);
@@ -397,9 +393,6 @@ namespace mudock {
         const auto ligand_solpar_a1_v = GatherIndexN(d, ligand_solpar, a1, remaining);
         const auto ligand_solpar_a2_v = GatherIndexN(d, ligand_solpar, a2, remaining);
 
-        // const auto nb_desolv =
-        //     Add(Mul(ligand_vol_a2_v, Add(ligand_solpar_a1_v, Mul(qsolpar_vec, Abs(charge_a1)))),
-        //         Mul(ligand_vol_a1_v, Add(ligand_solpar_a2_v, Mul(qsolpar_vec, Abs(charge_a2)))));
         const auto nb_desolv =
             MulAdd(ligand_vol_a2_v,
                    Add(ligand_solpar_a1_v, Mul(qsolpar_vec, Abs(charge_a1))),
@@ -413,59 +406,13 @@ namespace mudock {
         const auto low_distance = And(Lt(clamped_distance_two, nbc2_vec), valid_nonbond);
         auto e_vdW_Hb           = Zero(d);
         if (FindFirstTrue(d, low_distance) != -1) {
-          // Vectorized arrays
-          const auto hbond_i_v = GatherIndexN(di, ligand_num_hbond, a1, remaining);
-          const auto hbond_j_v =
-              GatherIndexN(di, ligand_num_hbond, a2, remaining); // example: next element for hbond_j
-
-          const auto Rij_hb_i_v = GatherIndexN(d, ligand_Rij_hb, a1, remaining);
-          const auto Rij_hb_j_v = GatherIndexN(d, ligand_Rij_hb, a2, remaining);
-
-          const auto Rii_i_v = GatherIndexN(d, ligand_Rii, a1, remaining);
-          const auto Rii_j_v = GatherIndexN(d, ligand_Rii, a2, remaining);
-
-          const auto epsij_hb_i_v = GatherIndexN(d, ligand_epsij_hb, a1, remaining);
-          const auto epsij_hb_j_v = GatherIndexN(d, ligand_epsij_hb, a2, remaining);
-
-          const auto epsii_i_v = GatherIndexN(d, ligand_epsii, a1, remaining);
-          const auto epsii_j_v = GatherIndexN(d, ligand_epsii, a2, remaining);
-
-          // Compute Rij and epsij with masks
-          // TODO force to do floating point comparison due to IfThenElse
-          const auto i_donor_j_acceptor =
-              RebindMask(d,
-                         And(Or(Eq(hbond_i_v, hbond_one_vec), Eq(hbond_i_v, hbond_two_vev)),
-                             Gt(hbond_j_v, hbond_two_vev)));
-          const auto j_donor_i_acceptor =
-              RebindMask(d,
-                         And(Or(Eq(hbond_j_v, hbond_one_vec), Eq(hbond_j_v, hbond_two_vev)),
-                             Gt(hbond_i_v, hbond_two_vev)));
-
-          const auto Rij_v = IfThenElse(
-              i_donor_j_acceptor,
-              Rij_hb_j_v,
-              IfThenElse(j_donor_i_acceptor, Rij_hb_i_v, Mul(Add(Rii_i_v, Rii_j_v), reciprocal_two_fp_vec)));
-
-          const auto eps_mul = Mul(epsii_i_v, epsii_j_v);
-          const auto epsij_v = IfThenElse(
-              i_donor_j_acceptor,
-              epsij_hb_j_v,
-              IfThenElse(j_donor_i_acceptor, epsij_hb_i_v, Mul(eps_mul, ApproximateReciprocalSqrt(eps_mul))));
-
-          const auto xB_vec =
-              IfThenElse(RebindMask(di, Or(i_donor_j_acceptor, j_donor_i_acceptor)), xB_ten_vec, xB_six_vec);
+          const auto xB_vec = LoadN(di, xB_list + i, remaining);
 
           const auto xab_cond = Ne(xA_vec, xB_vec);
 
           if (FindFirstTrue(di, xab_cond) != -1) {
-            const auto tmp       = Mul(epsij_v, ApproximateReciprocal(ConvertTo(d, Sub(xA_vec, xB_vec))));
-            const auto log_rij_v = Log(d, Rij_v);
-
-            // Hack, Pow is not yet support by GH [x^y = exp(y*ln(x))]
-            const auto pow_A_vec = Exp(d, Mul(ConvertTo(d, xA_vec), log_rij_v));
-            const auto pow_B_vec = Exp(d, Mul(ConvertTo(d, xB_vec), log_rij_v));
-            const auto cA        = Mul(tmp, Mul(pow_A_vec, ConvertTo(d, xB_vec)));
-            const auto cB        = Mul(tmp, Mul(pow_B_vec, ConvertTo(d, xA_vec)));
+            const auto cA        = LoadN(d, cA_list + i, remaining);
+            const auto cB        = LoadN(d, cB_list + i, remaining);
 
             const auto log_distance = Log(d, distance);
 
@@ -495,11 +442,6 @@ namespace mudock {
                         const fp_type* __restrict__ ligand_vol,
                         const fp_type* __restrict__ ligand_solpar,
                         const fp_type* __restrict__ ligand_charge,
-                        const int* __restrict__ ligand_num_hbond,
-                        const fp_type* __restrict__ ligand_Rij_hb,
-                        const fp_type* __restrict__ ligand_Rii,
-                        const fp_type* __restrict__ ligand_epsij_hb,
-                        const fp_type* __restrict__ ligand_epsii,
                         const int* __restrict__ map_ligand_offsets,
                         const int num_atoms,
                         const int num_rotamers,
@@ -509,6 +451,9 @@ namespace mudock {
                         const int num_nonbond,
                         const int* __restrict__ non_bond_list_a1,
                         const int* __restrict__ non_bond_list_a2,
+                        const fp_type* __restrict__ cA_list,
+                        const fp_type* __restrict__ cB_list,
+                        const int* __restrict__ xB_list,
                         const fp_type* __restrict__ grid_maps,
                         const fp_type* __restrict__ electro_map,
                         const fp_type* __restrict__ desolv_map,
@@ -577,17 +522,15 @@ namespace mudock {
                                         ligand_vol,
                                         ligand_solpar,
                                         ligand_charge,
-                                        ligand_num_hbond,
-                                        ligand_Rij_hb,
-                                        ligand_Rii,
-                                        ligand_epsij_hb,
-                                        ligand_epsii,
                                         map_ligand_offsets,
                                         num_atoms,
                                         num_rotamers,
                                         num_nonbond,
                                         non_bond_list_a1,
                                         non_bond_list_a2,
+                                        cA_list,
+                                        cB_list,
+                                        xB_list,
                                         minimum,
                                         maximum,
                                         center,
