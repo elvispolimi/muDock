@@ -105,7 +105,6 @@ namespace mudock {
                                               const VI& map_index_x_xy_vec,
                                               const VI& map_index_x_xy_plus_one_vec) {
     const HWY_FULL(T) d;
-    const HWY_FULL(int) di;
 
     // Precompute flattened indices
     auto value = Zero(d);
@@ -337,13 +336,9 @@ namespace mudock {
       const auto elec_scale            = Set(d, ELECSCALE);
       const auto coeff_estat_vec       = Set(d, autodock_parameters::coeff_estat);
       const auto nbc2_vec              = Set(d, nbc2);
-      const auto hbond_two_vev         = Set(di, 2);
-      const auto two_fp_vec            = Set(d, 2);
-      const auto reciprocal_two_fp_vec = Set(d, 0.5);
       const auto one_fp_vec            = Set(d, 1);
       const auto half_fp_vec           = Set(d, -0.5);
 
-      const auto hbond_one_vec               = Set(di, 1);
       const auto xA_vec                      = Set(di, 12);
       const auto xB_ten_vec                  = Set(di, 10);
       const auto xB_six_vec                  = Set(di, 6);
