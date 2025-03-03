@@ -1,78 +1,13 @@
-#include <algorithm>
-#include <cmath>
-#include <cstring>
-#include <memory>
 #include <mudock/chem/autodock_parameters.hpp>
 #include <mudock/chem/grid_const.hpp>
-#include <mudock/chem/ligand_maps.hpp>
 #include <mudock/chem/mehler_solmajer.hpp>
-#include <mudock/cpp_implementation/chromosome.hpp>
-#include <mudock/fjapp_utils.hpp>
-#include <mudock/grid/point3D.hpp>
-#include <mudock/likwid_utils.hpp>
-#include <mudock/molecule/constraints.hpp>
-#include <mudock/utils.hpp>
-#include <random>
+#include <mudock/cpp_implementation/calc_energy_cpp.hpp>
+#include <mudock/type_alias.hpp>
 
 #define FLATTENED_2D(x, y, index_x)              ((y) * index_x + (x))
 #define FLATTENED_3D(x, y, z, index_x, index_xy) (index_xy * (z) + (y) * index_x + (x))
 
 namespace mudock {
-  static constexpr auto coordinate_step = fp_type{0.2};
-  static constexpr auto angle_step      = fp_type{4};
-
-  template<typename T>
-  [[nodiscard]] inline const T random_gen_cpp(std::mt19937& generator,
-                                              std::uniform_real_distribution<fp_type>& dist,
-                                              const T& min,
-                                              const T& max) {
-    fp_type value;
-    if constexpr (is_debug())
-      value = fp_type{0.4};
-    else {
-      value = dist(generator);
-    }
-    return static_cast<T>(value * (max - min) + min);
-  }
-
-  inline int get_selection_distribution(std::mt19937& generator,
-                                        std::uniform_real_distribution<fp_type>& dist,
-                                        const int& population_number) {
-    return random_gen_cpp<int>(generator, dist, 0, population_number - 1);
-  };
-  inline fp_type get_init_change_distribution(std::mt19937& generator,
-                                              std::uniform_real_distribution<fp_type>& dist) {
-    return random_gen_cpp<fp_type>(generator, dist, -45, 45);
-  }
-  inline fp_type get_mutation_change_distribution(std::mt19937& generator,
-                                                  std::uniform_real_distribution<fp_type>& dist) {
-    return random_gen_cpp<fp_type>(generator, dist, -10, 10);
-  };
-  inline fp_type get_mutation_coin_distribution(std::mt19937& generator,
-                                                std::uniform_real_distribution<fp_type>& dist) {
-    return random_gen_cpp<fp_type>(generator, dist, 0, 1);
-  };
-  inline int get_crossover_distribution(std::mt19937& generator,
-                                        std::uniform_real_distribution<fp_type>& dist,
-                                        const int& num_rotamers) {
-    return random_gen_cpp<int>(generator, dist, 0, 6 + num_rotamers);
-  };
-  inline const chromosome& tournament_selection(std::mt19937& generator,
-                                                std::uniform_real_distribution<fp_type>& dist,
-                                                const int& tournament_length,
-                                                const individual* __restrict__ population,
-                                                const int& population_number) {
-    const auto num_iterations = tournament_length;
-    auto best_individual      = get_selection_distribution(generator, dist, population_number);
-    for (int i = 0; i < num_iterations; ++i) {
-      auto contendent = get_selection_distribution(generator, dist, population_number);
-      if (population[contendent].score < population[best_individual].score) {
-        best_individual = contendent;
-      }
-    }
-    return population[best_individual].genes;
-  }
-
   inline fp_type trilinear_interpolation(const fp_type* __restrict__ map,
                                          const fp_type* __restrict__ coeffs,
                                          const int& map_index_x,
@@ -91,165 +26,13 @@ namespace mudock {
     return value;
   }
 
-  inline void translate_molecule(fp_type* __restrict__ x,
-                                 fp_type* __restrict__ y,
-                                 fp_type* __restrict__ z,
-                                 const int num_atoms,
-                                 const fp_type offset_x,
-                                 const fp_type offset_y,
-                                 const fp_type offset_z) {
-#pragma GCC ivdep
-#pragma clang loop vectorize(enable) interleave(enable) unroll(enable)
-    for (int i = 0; i < num_atoms; ++i) {
-      x[i] += offset_x;
-      y[i] += offset_y;
-      z[i] += offset_z;
-    }
-  }
-
-  inline void rotate_molecule(fp_type* __restrict__ x,
-                              fp_type* __restrict__ y,
-                              fp_type* __restrict__ z,
-                              const int num_atoms,
-                              const fp_type angle_x,
-                              const fp_type angle_y,
-                              const fp_type angle_z) {
-    // compute the molecule center of mass
-    point3D c{0, 0, 0};
-#pragma GCC ivdep
-#pragma clang loop vectorize(enable) interleave(enable) unroll(enable)
-    for (int i = 0; i < num_atoms; i++) {
-      c.x += x[i];
-      c.y += y[i];
-      c.z += z[i];
-    }
-    c.x /= num_atoms;
-    c.y /= num_atoms;
-    c.z /= num_atoms;
-
-    // compute the angles sine and cosine
-    const auto rad_x = deg_to_rad(angle_x), rad_y = deg_to_rad(angle_y), rad_z = deg_to_rad(angle_z);
-    const auto cx = std::cos(rad_x), sx = std::sin(rad_x);
-    const auto cy = std::cos(rad_y), sy = std::sin(rad_y);
-    const auto cz = std::cos(rad_z), sz = std::sin(rad_z);
-
-    // compute the rotation matrix defined as Rz*Ry*Rx
-    const auto m00 = cy * cz;
-    const auto m01 = sx * sy * cz - cx * sz;
-    const auto m02 = cx * sy * cz + sx * sz;
-    const auto m10 = cy * sz;
-    const auto m11 = sx * sy * sz + cx * cz;
-    const auto m12 = cx * sy * sz - sx * cz;
-    const auto m20 = -sy;
-    const auto m21 = sx * cy;
-    const auto m22 = cx * cy;
-
-// apply the rotation matrix
-#pragma GCC ivdep
-#pragma clang loop vectorize(enable) interleave(enable) unroll(enable)
-    for (int i = 0; i < num_atoms; ++i) {
-      const auto translated_x = x[i] - c.x, translated_y = y[i] - c.y, translated_z = z[i] - c.z;
-      x[i] = translated_x * m00 + translated_y * m01 + translated_z * m02 + c.x;
-      y[i] = translated_x * m10 + translated_y * m11 + translated_z * m12 + c.y;
-      z[i] = translated_x * m20 + translated_y * m21 + translated_z * m22 + c.z;
-    }
-  }
-
-  inline void rotate_fragment(fp_type* __restrict__ x,
-                              fp_type* __restrict__ y,
-                              fp_type* __restrict__ z,
-                              const int num_atoms,
-                              const int* __restrict__ frag_mask,
-                              const int start_index,
-                              const int stop_index,
-                              const fp_type angle) {
-    // compute the axis vector (and some properties)
-    const auto origx = x[start_index], origy = y[start_index], origz = z[start_index];
-    const auto destx = x[stop_index], desty = y[stop_index], destz = z[stop_index];
-    const auto u  = destx - origx;
-    const auto v  = desty - origy;
-    const auto w  = destz - origz;
-    const auto u2 = u * u, v2 = v * v, w2 = w * w;
-    const auto l2 = u * u + v * v + w * w;
-    const auto l  = std::sqrt(l2);
-
-    // compute the angle sine and cosine
-    const auto rad = deg_to_rad(angle);
-    const auto s = std::sin(rad), c = std::cos(rad);
-    const auto one_minus_c = fp_type{1} - c;
-    const auto ls          = l * s;
-
-    // Precompute common sub-expressions to reduce redundant calculations
-    const auto inv_l2 = fp_type{1} / l2;
-    const auto us_vc  = u * v * one_minus_c;
-    const auto uw_vc  = u * w * one_minus_c;
-    const auto vw_vc  = v * w * one_minus_c;
-
-    // compute the rotation matrix (rodrigues' rotation formula)
-    const auto m00 = (u2 + (v2 + w2) * c) * inv_l2;
-    const auto m01 = (us_vc - w * l * s) * inv_l2;
-    const auto m02 = (uw_vc + v * l * s) * inv_l2;
-    const auto m03 =
-        ((origx * (v2 + w2) - u * (origy * v + origz * w)) * one_minus_c + (origy * w - origz * v) * ls) *
-        inv_l2;
-
-    const auto m10 = (us_vc + w * ls) * inv_l2;
-    const auto m11 = (v2 + (u2 + w2) * c) * inv_l2;
-    const auto m12 = (vw_vc - u * ls) * inv_l2;
-    const auto m13 =
-        ((origy * (u2 + w2) - v * (origx * u + origz * w)) * one_minus_c + (origz * u - origx * w) * ls) *
-        inv_l2;
-
-    const auto m20 = (uw_vc - v * ls) * inv_l2;
-    const auto m21 = (vw_vc + u * ls) * inv_l2;
-    const auto m22 = (w2 + (u2 + v2) * c) * inv_l2;
-    const auto m23 =
-        ((origz * (u2 + v2) - w * (origx * u + origy * v)) * one_minus_c + (origx * v - origy * u) * ls) *
-        inv_l2;
-
-// apply the rotation matrix
-#pragma GCC ivdep
-#pragma clang loop vectorize(enable) interleave(enable) unroll(enable)
-    for (int i = 0; i < num_atoms; ++i) {
-      if (frag_mask[i] != 0) {
-        const auto prev_x = x[i], prev_y = y[i], prev_z = z[i];
-        x[i] = prev_x * m00 + prev_y * m01 + prev_z * m02 + m03;
-        y[i] = prev_x * m10 + prev_y * m11 + prev_z * m12 + m13;
-        z[i] = prev_x * m20 + prev_y * m21 + prev_z * m22 + m23;
-      }
-    }
-  }
-
-  inline void apply(fp_type* __restrict__ x,
-                    fp_type* __restrict__ y,
-                    fp_type* __restrict__ z,
-                    const chromosome& c,
-                    const int num_atoms,
-                    const int num_rotamers,
-                    const int* __restrict__ frag_masks,
-                    const int* __restrict__ frag_start_indexes,
-                    const int* __restrict__ frag_stop_indexes) {
-    // apply rigid transformations
-    translate_molecule(x, y, z, num_atoms, c[0], c[1], c[2]);
-    rotate_molecule(x, y, z, num_atoms, c[3], c[4], c[5]);
-
-// change the molecule shape
-#pragma clang loop interleave(enable) unroll(enable)
-    for (int i = 0; i < num_rotamers; ++i) {
-      const auto* bitmask    = frag_masks + i * num_atoms;
-      const auto start_index = frag_start_indexes[i];
-      const auto stop_index  = frag_stop_indexes[i];
-      rotate_fragment(x, y, z, num_atoms, bitmask, start_index, stop_index, c[int{6} + i]);
-    }
-  }
-
   inline fp_type calc_energy(const fp_type* __restrict__ ligand_x,
                              const fp_type* __restrict__ ligand_y,
                              const fp_type* __restrict__ ligand_z,
                              const fp_type* __restrict__ ligand_vol,
                              const fp_type* __restrict__ ligand_solpar,
                              const fp_type* __restrict__ ligand_charge,
-                             const int* __restrict__ map_ligand_types,
+                             const int* __restrict__ map_ligand_offsets,
                              const int num_atoms,
                              const int n_torsions,
                              const int num_nonbond,
@@ -263,7 +46,7 @@ namespace mudock {
                              const fp_type* __restrict__ center,
                              const int map_index_x,
                              const int map_index_xy,
-                             const fp_type* const __restrict__* const __restrict__ grid_maps,
+                             const fp_type* __restrict__ grid_maps,
                              const fp_type* __restrict__ electro_map,
                              const fp_type* __restrict__ desolv_map) {
     fp_type elect_total_trilinear = 0;
@@ -286,7 +69,7 @@ namespace mudock {
         emap_total_trilinear += epenalty;
       } else {
         const auto& atom_charge = ligand_charge[index];
-        const fp_type* atom_map = grid_maps[static_cast<int>(map_ligand_types[index])];
+        const fp_type* atom_map = grid_maps + map_ligand_offsets[index];
 
         coord[0] = (coord[0] - minimum[0]) * inv_spacing;
         coord[1] = (coord[1] - minimum[1]) * inv_spacing;
@@ -336,9 +119,6 @@ namespace mudock {
     if (n_torsions > 0) {
 #pragma GCC ivdep
 #pragma clang loop vectorize(enable) interleave(enable) unroll(enable)
-#pragma fj loop prefetch
-#pragma statement scache_isolate_assign ligand_x, ligand_y, ligand_z, ligand_charge, ligand_num_hbond, \
-    ligand_Rij_hb, ligand_Rii, ligand_epsij_hb, ligand_epsii
       // TODO check reciprocal math here
       for (int i = 0; i < num_nonbond; ++i) {
         const int& a1 = non_bond_list_a1[i];
@@ -380,14 +160,11 @@ namespace mudock {
           if (xA != xB) {
             const fp_type cA = cA_list[i];
             const fp_type cB = cB_list[i];
-// #ifdef __aarch64__
+
             const auto log_distance = std::log(distance);
             const fp_type rA        = std::exp(static_cast<fp_type>(xA) * log_distance);
             const fp_type rB        = std::exp(static_cast<fp_type>(xB) * log_distance);
-// #else
-            // const fp_type rA = std::pow(distance, static_cast<fp_type>(xA));
-            // const fp_type rB = std::pow(distance, static_cast<fp_type>(xB));
-// #endif
+
             e_vdW_Hb = std::min(EINTCLAMP, (cA / rA - cB / rB));
           }
         }
@@ -401,163 +178,4 @@ namespace mudock {
     return total_trilinear + total_eintcal + tors_free_energy;
   }
 
-  void evaluate_fitness(const fp_type* __restrict__ ligand_x,
-                        const fp_type* __restrict__ ligand_y,
-                        const fp_type* __restrict__ ligand_z,
-                        const fp_type* __restrict__ ligand_vol,
-                        const fp_type* __restrict__ ligand_solpar,
-                        const fp_type* __restrict__ ligand_charge,
-                        const int* __restrict__ map_ligand_types,
-                        const int num_atoms,
-                        const int num_rotamers,
-                        const int* __restrict__ frag_masks,
-                        const int* __restrict__ frag_start_indexes,
-                        const int* __restrict__ frag_stop_indexes,
-                        const int num_nonbond,
-                        const int* __restrict__ non_bond_list_a1,
-                        const int* __restrict__ non_bond_list_a2,
-                        const fp_type* __restrict__ cA_list,
-                        const fp_type* __restrict__ cB_list,
-                        const int* __restrict__ xB_list,
-                        const fp_type* const __restrict__* const __restrict__ grid_maps,
-                        const fp_type* __restrict__ electro_map,
-                        const fp_type* __restrict__ desolv_map,
-                        const int num_generations,
-                        const int population_size,
-                        const int tournament_length,
-                        const fp_type mutation_prob,
-                        const fp_type* __restrict__ minimum,
-                        const fp_type* __restrict__ maximum,
-                        const fp_type* __restrict__ center,
-                        const int map_index_x,
-                        const int map_index_xy,
-                        individual* __restrict__ population_buffer1,
-                        individual* __restrict__ population_buffer2,
-                        const int seed) {
-    std::uniform_real_distribution<fp_type> dist{fp_type{0.0}, fp_type{1.0}};
-    std::mt19937 generator(seed);
-
-    auto* population      = population_buffer1;
-    auto* next_population = population_buffer2;
-    auto altered_x        = std::make_unique<std::array<fp_type, max_static_atoms()>>();
-    auto altered_y        = std::make_unique<std::array<fp_type, max_static_atoms()>>();
-    auto altered_z        = std::make_unique<std::array<fp_type, max_static_atoms()>>();
-
-// Randomly initialize the population
-// TODO enable vectorization
-#pragma clang loop interleave(enable) unroll(enable)
-    for (int element_index = 0; element_index < population_size; ++element_index) {
-      auto& element = population[element_index];
-#pragma clang loop interleave(enable) unroll(enable)
-      for (int i{0}; i < 3; ++i) { // initialize the rigid translation
-        element.genes[i] = get_init_change_distribution(generator, dist) * coordinate_step;
-      }
-#pragma clang loop interleave(enable) unroll(enable)
-      for (int i{3}; i < 6 + num_rotamers; ++i) { // initialize the rotations
-        element.genes[i] = get_init_change_distribution(generator, dist) * angle_step;
-      }
-    }
-
-    for (int generation = 0; generation < num_generations; ++generation) {
-      FJAPP_MARKER_START("GA");
-      LIKWID_MARKER_START("GA");
-// Evaluate the fitness of the population
-#pragma clang loop interleave(enable) unroll(enable)
-#pragma fj loop prefetch
-#pragma statement scache_isolate_assign ligand_x, ligand_y, ligand_z
-      for (int element_index = 0; element_index < population_size; ++element_index) {
-        auto& element = population[element_index];
-
-        std::memcpy(altered_x.get()->data(), ligand_x, num_atoms * sizeof(fp_type));
-        std::memcpy(altered_y.get()->data(), ligand_y, num_atoms * sizeof(fp_type));
-        std::memcpy(altered_z.get()->data(), ligand_z, num_atoms * sizeof(fp_type));
-
-        // TODO check it it makes sense -> print the MOL2
-        // apply the transformation encoded in the element genes to the original ligand
-        apply(altered_x.get()->data(),
-              altered_y.get()->data(),
-              altered_z.get()->data(),
-              element.genes,
-              num_atoms,
-              num_rotamers,
-              frag_masks,
-              frag_start_indexes,
-              frag_stop_indexes);
-
-        // compute the energy of the system
-        const auto energy = calc_energy(altered_x.get()->data(),
-                                        altered_y.get()->data(),
-                                        altered_z.get()->data(),
-                                        ligand_vol,
-                                        ligand_solpar,
-                                        ligand_charge,
-                                        map_ligand_types,
-                                        num_atoms,
-                                        num_rotamers,
-                                        num_nonbond,
-                                        non_bond_list_a1,
-                                        non_bond_list_a2,
-                                        cA_list,
-                                        cB_list,
-                                        xB_list,
-                                        minimum,
-                                        maximum,
-                                        center,
-                                        map_index_x,
-                                        map_index_xy,
-                                        grid_maps,
-                                        electro_map,
-                                        desolv_map);
-        element.score     = energy; // dummy implementation to test the genetic
-      }
-      FJAPP_MARKER_STOP("GA");
-      LIKWID_MARKER_STOP("GA");
-// Generate the new population
-// TODO enable vectorization
-#pragma clang loop interleave(enable) unroll(enable)
-      for (int element_index = 0; element_index < population_size; ++element_index) {
-        auto& next_individual = next_population[element_index];
-        // select the parent
-        auto best_individual_1 = get_selection_distribution(generator, dist, population_size);
-        auto best_individual_2 = get_selection_distribution(generator, dist, population_size);
-        for (int i = 0; i < tournament_length; ++i) {
-          const auto contendent_1 = get_selection_distribution(generator, dist, population_size);
-          const auto contendent_2 = get_selection_distribution(generator, dist, population_size);
-          if (population[contendent_1].score < population[best_individual_1].score) {
-            best_individual_1 = contendent_1;
-          }
-          if (population[contendent_2].score < population[best_individual_2].score) {
-            best_individual_2 = contendent_2;
-          }
-        }
-        const auto& parent1 = population[best_individual_1].genes;
-        const auto& parent2 = population[best_individual_2].genes;
-
-        // generate the offspring
-        const auto split_index = get_crossover_distribution(generator, dist, num_rotamers);
-        std::copy(std::begin(parent1), std::begin(parent1) + split_index, std::begin(next_individual.genes));
-        std::copy(std::begin(parent2) + split_index,
-                  std::end(parent2),
-                  std::begin(next_individual.genes) + split_index);
-        next_individual.score = fp_type{0};
-
-// mutate the offspring
-#pragma clang loop interleave(enable) unroll(enable)
-        for (int i{0}; i < 3; ++i) {
-          if (get_mutation_coin_distribution(generator, dist) < mutation_prob)
-            next_individual.genes[i] += get_mutation_change_distribution(generator, dist) * coordinate_step;
-        }
-#pragma clang loop interleave(enable) unroll(enable)
-        for (int i{3}; i < 6 + num_rotamers; ++i) {
-          if (get_mutation_coin_distribution(generator, dist) < mutation_prob)
-            next_individual.genes[i] += get_mutation_change_distribution(generator, dist) * angle_step;
-        }
-      }
-
-      // swap the new population with the old one
-      const auto temp = population;
-      population      = next_population;
-      next_population = temp;
-    }
-  }
 } // namespace mudock

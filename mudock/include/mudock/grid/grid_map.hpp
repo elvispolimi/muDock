@@ -135,14 +135,11 @@ namespace mudock {
 
   // TODO check if we should put it together with also other maps
   class grid_atom_mapper {
-#ifdef MUDOCK_USE_GH
     std::vector<fp_type> fused_maps;
     int map_size;
-#endif
     std::unordered_map<autodock_ff, grid_atom_map> grid_maps;
 
   public:
-#ifdef MUDOCK_USE_GH
     grid_atom_mapper(std::vector<grid_atom_map>& maps) {
       assert(!maps.empty());
       map_size = maps[0].index.get_dim();
@@ -155,11 +152,6 @@ namespace mudock {
     auto get_fused_maps() const { return make_span(fused_maps, fused_maps.size()); }
 
     int get_single_map_size() const { return map_size; }
-#else
-    grid_atom_mapper(std::vector<grid_atom_map>& maps) {
-      for (auto& map: maps) { grid_maps.emplace(map.get_atom_type(), std::move(map)); }
-    }
-#endif
     [[nodiscard]] inline const grid_atom_map& get_atom_map(const autodock_ff& type) const {
       return grid_maps.at(type);
     }

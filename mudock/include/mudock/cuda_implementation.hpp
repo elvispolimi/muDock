@@ -1,7 +1,7 @@
 #pragma once
 
 #include <mudock/knobs.hpp>
-#if defined(MUDOCK_USE_CUDA) || defined(MUDOCK_USE_POLY)
+#if defined(MUDOCK_USE_CUDA)
   #include <mudock/cuda_implementation/cuda_manager.hpp>
 #else
   #include <mudock/log.hpp>

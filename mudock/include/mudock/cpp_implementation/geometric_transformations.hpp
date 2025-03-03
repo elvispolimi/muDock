@@ -1,30 +1,31 @@
 #pragma once
 
-#include <mudock/grid/point3D.hpp>
 #include <mudock/molecule.hpp>
+#include <mudock/molecule/fragments.hpp>
 #include <mudock/type_alias.hpp>
-#include <span>
 
 namespace mudock {
-
-  void translate_molecule(std::span<fp_type> x,
-                          std::span<fp_type> y,
-                          std::span<fp_type> z,
+  void translate_molecule(fp_type* __restrict__ x,
+                          fp_type* __restrict__ y,
+                          fp_type* __restrict__ z,
+                          const int num_atoms,
                           const fp_type offset_x,
                           const fp_type offset_y,
                           const fp_type offset_z);
 
-  void rotate_molecule(std::span<fp_type> x,
-                       std::span<fp_type> y,
-                       std::span<fp_type> z,
+  void rotate_molecule(fp_type* __restrict__ x,
+                       fp_type* __restrict__ y,
+                       fp_type* __restrict__ z,
+                       const int num_atoms,
                        const fp_type angle_x,
                        const fp_type angle_y,
                        const fp_type angle_z);
 
-  void rotate_fragment(std::span<fp_type> x,
-                       std::span<fp_type> y,
-                       std::span<fp_type> z,
-                       std::span<const typename fragments<static_containers>::value_type> bitmask,
+  void rotate_fragment(fp_type* __restrict__ x,
+                       fp_type* __restrict__ y,
+                       fp_type* __restrict__ z,
+                       const int num_atoms,
+                       const int* __restrict__ frag_mask,
                        const int start_index,
                        const int stop_index,
                        const fp_type angle);

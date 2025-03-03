@@ -28,6 +28,7 @@ list(APPEND header_files
   "${header_path}/${header_prefix}/cpp_implementation/center_of_mass.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/weed_bonds.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/calc_energy_cpp.hpp"
+  "${header_path}/${header_prefix}/cpp_implementation/evaluate_fitness_cpp.hpp"
   "${header_path}/${header_prefix}/format/concept.hpp"
   "${header_path}/${header_prefix}/format/dot.hpp"
   "${header_path}/${header_prefix}/format/mol2.hpp"
@@ -85,29 +86,20 @@ list(APPEND source_files
   "${source_path}/molecule/graph.cpp"
   "${source_path}/molecule/property_table.cpp"
   "${source_path}/log.cpp"
+  "${source_path}/cpp_implementation/virtual_screen.cpp"
+  "${source_path}/cpp_implementation/mutate.cpp"
+  "${source_path}/cpp_implementation/evaluate_fitness_cpp.cpp"
 )
 
 if(MUDOCK_ENABLE_GH)
-  list(APPEND header_files
-    "${header_path}/${header_prefix}/g_highway_implementation/geometric_transformations.hpp"
-  )
   list(APPEND source_files
   "${source_path}/g_highway_implementation/geometric_transformations.cpp"
-  "${source_path}/g_highway_implementation/virtual_screen.cpp"
-  "${source_path}/g_highway_implementation/mutate.cpp"
+  "${source_path}/g_highway_implementation/calc_energy_cpp.cpp"
   )
-  list(APPEND source_files
-      "${source_path}/g_highway_implementation/calc_energy_cpp.cpp"
-    )
 else()
-  list(APPEND header_files
-    "${header_path}/${header_prefix}/cpp_implementation/geometric_transformations.hpp"
-  )
   list(APPEND source_files
   "${source_path}/cpp_implementation/geometric_transformations.cpp"
-  "${source_path}/cpp_implementation/virtual_screen.cpp"
-  "${source_path}/cpp_implementation/mutate.cpp"
-  "${source_path}/cpp_implementation/calc_energy_cpp.cpp"
+    "${source_path}/cpp_implementation/calc_energy_cpp.cpp"
   )
 endif()
 
