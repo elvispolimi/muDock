@@ -75,7 +75,7 @@ namespace mudock {
                                           const std::span<fp_type>& y,
                                           const std::span<fp_type>& z) {
     const auto origin_index = graph[v].atom_index;
-    std::array<std::size_t, 3> neighbors_index;
+    std::array<int, 3> neighbors_index;
     const auto [begin, end] = boost::out_edges(v, graph);
     std::transform(begin, end, std::begin(neighbors_index), [&](const auto bond) {
       return graph[boost::target(bond, graph)].atom_index;
@@ -96,7 +96,7 @@ namespace mudock {
                                      const std::span<fp_type>& y,
                                      const std::span<fp_type>& z) {
     const auto origin_index = graph[v].atom_index;
-    std::array<std::size_t, 2> neighbors_index;
+    std::array<int, 2> neighbors_index;
     const auto [begin, end] = boost::out_edges(v, graph);
     std::transform(begin, end, std::begin(neighbors_index), [&](const auto bond) {
       return graph[boost::target(bond, graph)].atom_index;
@@ -524,7 +524,7 @@ namespace mudock {
                                                                         autodock_babel_ff::C1,
                                                                         autodock_babel_ff::S3,
                                                                         autodock_babel_ff::Cac}};
-    const auto is_phase5_interesting                                = [&](const std::size_t i) {
+    const auto is_phase5_interesting                                = [&](const int i) {
       return std::any_of(std::begin(phase5_types), std::end(phase5_types), [&](const auto ff_type) {
         return types[i] == ff_type;
       });

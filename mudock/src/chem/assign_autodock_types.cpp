@@ -14,7 +14,7 @@ namespace mudock {
       // IS AN HYDROGEN ATOM -> ONLY ON BOND
       // Element type A -> Should be an aromatic carbon -> babel_type does not exists -> ASSUMPTION no check required
       // AutoDockTools/atomTypeTools.py:378
-      if (elements[*ai] != element::C)
+      if (elements[graph[*ai].atom_index] != element::C)
         return autodock_ff::HD;
     } else {
       return autodock_ff::HD;
@@ -47,8 +47,8 @@ namespace mudock {
                       const molecule_graph_type& graph,
                       const molecule_graph_type::vertex_descriptor v) -> autodock_ff {
     assert(elements[graph[v].atom_index] == element::S);
-    if (babel_type[graph[v].atom_index] == autodock_babel_ff::Sox ||
-        babel_type[graph[v].atom_index] == autodock_babel_ff::Sac) {
+    if (babel_type[graph[v].atom_index] != autodock_babel_ff::Sox ||
+        babel_type[graph[v].atom_index] != autodock_babel_ff::Sac) {
       return autodock_ff::SA;
     }
     return autodock_ff::S;

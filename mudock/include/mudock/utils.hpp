@@ -9,3 +9,12 @@ constexpr void constexpr_for(F&& f) {
     constexpr_for<Start + Inc, End, Inc>(f);
   }
 }
+
+constexpr auto is_debug() {
+  // TODO this should work only with CMAKE
+#ifdef DEBUG_MODE
+  return true;
+#else
+  return false;
+#endif
+}

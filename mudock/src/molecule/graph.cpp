@@ -8,7 +8,7 @@ namespace mudock {
 
     // describe support data structures that we need to compute the fragment mask
     molecule_graph_type g;
-    std::unordered_map<std::size_t, vertex_type> index2vertex;
+    std::unordered_map<int, vertex_type> index2vertex;
     const auto get_vertex = [&index2vertex, &g](const auto index_value) {
       auto vertex_it = index2vertex.find(index_value);
       if (vertex_it == std::end(index2vertex)) { // it's a new vertex

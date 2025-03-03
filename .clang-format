@@ -61,6 +61,5 @@ SpacesInParentheses: 'false'
 SpacesInSquareBrackets: 'false'
 Standard: Auto
 ColumnLimit: 110
-InsertNewlineAtEOF: true
 
 ...

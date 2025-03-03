@@ -1,6 +1,6 @@
-#########################################################################
-#### Declare the application source files
-#########################################################################
+# ########################################################################
+# ### Declare the application source files
+# ########################################################################
 
 # headers
 set(header_path "${CMAKE_CURRENT_SOURCE_DIR}/src")
@@ -15,26 +15,58 @@ list(APPEND source_files
   "${source_path}/main.cpp"
 )
 
-#########################################################################
-#### Declare the compile step
-#########################################################################
+# ########################################################################
+# ### Declare the compile step
+# ########################################################################
 
 # declare the application executable
 add_executable("${CMAKE_PROJECT_NAME}" ${header_files} ${source_files})
 target_include_directories("${CMAKE_PROJECT_NAME}" PRIVATE "${header_path}")
+target_include_directories("${CMAKE_PROJECT_NAME}" PRIVATE ${Boost_INCLUDE_DIRS})
 set_target_properties("${CMAKE_PROJECT_NAME}"
-    PROPERTIES
-      CXX_STANDARD 20
-      CXX_STANDARD_REQUIRED ON
-      CXX_EXTENSIONS OFF
-  )
+  PROPERTIES
+  CXX_STANDARD 20
+  CXX_STANDARD_REQUIRED ON
+  CXX_EXTENSIONS OFF
+  POSITION_INDEPENDENT_CODE FALSE
+)
 
 # add the dependencies
-target_link_libraries("${CMAKE_PROJECT_NAME}" libmudock Boost::program_options)
+if(MUDOCK_ENABLE_SYCL)
+  string(FIND "${ACPP_TARGETS}" "omp" SUBSTRING_INDEX)
+  if (SUBSTRING_INDEX GREATER -1)
+    target_link_libraries("${CMAKE_PROJECT_NAME}" omp)
+  endif()
+  target_link_libraries("${CMAKE_PROJECT_NAME}" libmudock boost_program_options boost_context pthread boost_fiber m stdc++)
+else()
+  target_link_libraries("${CMAKE_PROJECT_NAME}" libmudock boost_program_options boost_context pthread m stdc++)
+endif()
 
-#########################################################################
-#### Declare the install step
-#########################################################################
+if(MUDOCK_ENABLE_GH)
+  target_include_directories("${CMAKE_PROJECT_NAME}" PRIVATE "${MUDOCK_GH_PATH}/include")
+  target_link_directories("${CMAKE_PROJECT_NAME}" PUBLIC "${MUDOCK_GH_PATH}/lib64")
+  target_link_libraries("${CMAKE_PROJECT_NAME}" hwy)
+endif()
+
+if(MUDOCK_ENABLE_OMP)
+  target_compile_options("${CMAKE_PROJECT_NAME}" PRIVATE "-fopenmp-targets=nvptx64")
+  target_link_options("${CMAKE_PROJECT_NAME}" PRIVATE "-fopenmp")
+  target_link_options("${CMAKE_PROJECT_NAME}" PRIVATE "-fopenmp-targets=nvptx64")
+endif()
+
+if(MUDOCK_ENABLE_LIKWID)
+  if(LIKWID_PATH STREQUAL "")
+    message(FATAL "Missing likwid installation path")
+  endif()
+  target_include_directories("${CMAKE_PROJECT_NAME}" PRIVATE "${LIKWID_PATH}/include")
+  target_link_directories("${CMAKE_PROJECT_NAME}" PUBLIC "${LIKWID_PATH}/lib")
+  target_link_libraries("${CMAKE_PROJECT_NAME}" likwid)
+  add_definitions(-DLIKWID_PERFMON)
+ENDIF()
+
+# ########################################################################
+# ### Declare the install step
+# ########################################################################
 
 # define the install step
 install(TARGETS "${CMAKE_PROJECT_NAME}" RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})

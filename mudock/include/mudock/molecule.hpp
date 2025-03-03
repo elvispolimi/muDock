@@ -4,10 +4,12 @@
 #include <cassert>
 #include <concepts>
 #include <cstdint>
+#include <mudock/chem/autodock_types.hpp>
 #include <mudock/chem/elements.hpp>
 #include <mudock/molecule/bond.hpp>
 #include <mudock/molecule/constraints.hpp>
 #include <mudock/molecule/containers.hpp>
+#include <mudock/molecule/fragments.hpp>
 #include <mudock/molecule/graph.hpp>
 #include <mudock/molecule/properties.hpp>
 #include <mudock/molecule/property_table.hpp>
@@ -30,6 +32,7 @@ namespace mudock {
   private:
     // the atoms chemical properties
     atoms_array_type<element> atom_elements;
+    atoms_array_type<autodock_ff> atom_autodock_type;
     atoms_array_type<fp_type> x_coordinates;
     atoms_array_type<fp_type> y_coordinates;
     atoms_array_type<fp_type> z_coordinates;
@@ -40,19 +43,25 @@ namespace mudock {
     atoms_array_type<fp_type> atom_epsii;
     atoms_array_type<fp_type> atom_Rij_hb;
     atoms_array_type<fp_type> atom_epsij_hb;
-    atoms_array_type<std::size_t> atom_num_hbond;
-    std::size_t atoms_size = std::size_t{0};
+    atoms_array_type<fp_type> atom_charge;
+    atoms_array_type<int> atom_num_hbond;
+    int atoms_size = int{0};
 
     // the intra-molecular connections
     bonds_array_type<bond> bond_descriptions;
-    std::size_t bonds_size = std::size_t{0};
+    int bonds_size = int{0};
 
   public:
     // functions to manage the geometry of a molecule
-    void resize(const std::size_t n_atoms, std::size_t n_bonds);
-    void remove_atom(const std::size_t index);
+    void resize(const int n_atoms, int n_bonds);
+    void remove_atom(const int index);
     [[nodiscard]] constexpr auto num_atoms() const { return atoms_size; }
     [[nodiscard]] constexpr auto num_bonds() const { return bonds_size; }
+    constexpr auto num_rotamers() const {
+      return std::count_if(std::begin(bond_descriptions), std::end(bond_descriptions), [](const bond& b) {
+        return b.can_rotate;
+      });
+    }
 
     // a container that we can use to store key-value properties, e.g. its name
     property_map properties;
@@ -62,11 +71,12 @@ namespace mudock {
     [[nodiscard]] inline auto get_bonds() const {
       return std::span(std::cbegin(bond_descriptions), bonds_size);
     }
-    [[nodiscard]] inline auto& bonds(std::size_t index) { return bond_descriptions[index]; }
-    [[nodiscard]] inline const auto& bonds(std::size_t index) const { return bond_descriptions[index]; }
+    [[nodiscard]] inline auto& bonds(int index) { return bond_descriptions[index]; }
+    [[nodiscard]] inline const auto& bonds(int index) const { return bond_descriptions[index]; }
 
     // utility functions to get the span of the whole molecule (read + write)
     [[nodiscard]] inline auto get_elements() { return make_span(atom_elements, atoms_size); }
+    [[nodiscard]] inline auto get_autodock_type() { return make_span(atom_autodock_type, atoms_size); }
     [[nodiscard]] inline auto get_x() { return make_span(x_coordinates, atoms_size); }
     [[nodiscard]] inline auto get_y() { return make_span(y_coordinates, atoms_size); }
     [[nodiscard]] inline auto get_z() { return make_span(z_coordinates, atoms_size); }
@@ -77,10 +87,12 @@ namespace mudock {
     [[nodiscard]] inline auto get_epsii() { return make_span(atom_epsii, atoms_size); }
     [[nodiscard]] inline auto get_Rij_hb() { return make_span(atom_Rij_hb, atoms_size); }
     [[nodiscard]] inline auto get_epsij_hb() { return make_span(atom_epsij_hb, atoms_size); }
+    [[nodiscard]] inline auto get_charge() { return make_span(atom_charge, atoms_size); }
     [[nodiscard]] inline auto get_num_hbond() { return make_span(atom_num_hbond, atoms_size); }
 
     // utility functions to get the span of the whole molecule (read only)
     [[nodiscard]] inline auto get_element() const { return make_span(atom_elements, atoms_size); }
+    [[nodiscard]] inline auto get_autodock_type() const { return make_span(atom_autodock_type, atoms_size); }
     [[nodiscard]] inline auto get_x() const { return make_span(x_coordinates, atoms_size); }
     [[nodiscard]] inline auto get_y() const { return make_span(y_coordinates, atoms_size); }
     [[nodiscard]] inline auto get_z() const { return make_span(z_coordinates, atoms_size); }
@@ -91,39 +103,42 @@ namespace mudock {
     [[nodiscard]] inline auto get_epsii() const { return make_span(atom_epsii, atoms_size); }
     [[nodiscard]] inline auto get_Rij_hb() const { return make_span(atom_Rij_hb, atoms_size); }
     [[nodiscard]] inline auto get_epsij_hb() const { return make_span(atom_epsij_hb, atoms_size); }
+    [[nodiscard]] inline auto get_charge() const { return make_span(atom_charge, atoms_size); }
     [[nodiscard]] inline auto get_num_hbond() const { return make_span(atom_num_hbond, atoms_size); }
 
     // utility functions to get the ref to an atom element (read + write)
-    [[nodiscard]] inline auto& elements(const std::size_t index) { return atom_elements[index]; }
-    [[nodiscard]] inline auto& x(const std::size_t index) { return x_coordinates[index]; }
-    [[nodiscard]] inline auto& y(const std::size_t index) { return y_coordinates[index]; }
-    [[nodiscard]] inline auto& z(const std::size_t index) { return z_coordinates[index]; }
-    [[nodiscard]] inline auto& is_aromatic(const std::size_t index) { return atom_is_aromatic[index]; }
-    [[nodiscard]] inline auto& Rii(const std::size_t index) { return atom_Rii[index]; }
-    [[nodiscard]] inline auto& vol(const std::size_t index) { return atom_vol[index]; }
-    [[nodiscard]] inline auto& solpar(const std::size_t index) { return atom_solpar[index]; }
-    [[nodiscard]] inline auto& epsii(const std::size_t index) { return atom_epsii[index]; }
-    [[nodiscard]] inline auto& Rij_hb(const std::size_t index) { return atom_Rij_hb[index]; }
-    [[nodiscard]] inline auto& epsij_hb(const std::size_t index) { return atom_epsij_hb[index]; }
-    [[nodiscard]] inline auto& num_hbond(const std::size_t index) { return atom_num_hbond[index]; }
+    [[nodiscard]] inline auto& elements(const int index) { return atom_elements[index]; }
+    [[nodiscard]] inline auto& autodock_type(const int index) { return atom_autodock_type[index]; }
+    [[nodiscard]] inline auto& x(const int index) { return x_coordinates[index]; }
+    [[nodiscard]] inline auto& y(const int index) { return y_coordinates[index]; }
+    [[nodiscard]] inline auto& z(const int index) { return z_coordinates[index]; }
+    [[nodiscard]] inline auto& is_aromatic(const int index) { return atom_is_aromatic[index]; }
+    [[nodiscard]] inline auto& Rii(const int index) { return atom_Rii[index]; }
+    [[nodiscard]] inline auto& vol(const int index) { return atom_vol[index]; }
+    [[nodiscard]] inline auto& solpar(const int index) { return atom_solpar[index]; }
+    [[nodiscard]] inline auto& epsii(const int index) { return atom_epsii[index]; }
+    [[nodiscard]] inline auto& Rij_hb(const int index) { return atom_Rij_hb[index]; }
+    [[nodiscard]] inline auto& epsij_hb(const int index) { return atom_epsij_hb[index]; }
+    [[nodiscard]] inline auto& charge(const int index) { return atom_charge[index]; }
+    [[nodiscard]] inline auto& num_hbond(const int index) { return atom_num_hbond[index]; }
 
     // utility functions to get the span of the whole molecule (read only)
-    [[nodiscard]] inline const auto& elements(const std::size_t index) const { return atom_elements[index]; }
-    [[nodiscard]] inline const auto& x(const std::size_t index) const { return x_coordinates[index]; }
-    [[nodiscard]] inline const auto& y(const std::size_t index) const { return y_coordinates[index]; }
-    [[nodiscard]] inline const auto& z(const std::size_t index) const { return z_coordinates[index]; }
-    [[nodiscard]] inline const auto& is_aromatic(const std::size_t index) const {
-      return atom_is_aromatic[index];
+    [[nodiscard]] inline const auto& elements(const int index) const { return atom_elements[index]; }
+    [[nodiscard]] inline const auto& autodock_type(const int index) const {
+      return atom_autodock_type[index];
     }
-    [[nodiscard]] inline const auto& Rii(const std::size_t index) const { return atom_Rii[index]; }
-    [[nodiscard]] inline const auto& vol(const std::size_t index) const { return atom_vol[index]; }
-    [[nodiscard]] inline const auto& solpar(const std::size_t index) const { return atom_solpar[index]; }
-    [[nodiscard]] inline const auto& epsii(const std::size_t index) const { return atom_epsii[index]; }
-    [[nodiscard]] inline const auto& Rij_hb(const std::size_t index) const { return atom_Rij_hb[index]; }
-    [[nodiscard]] inline const auto& epsij_hb(const std::size_t index) const { return atom_epsij_hb[index]; }
-    [[nodiscard]] inline const auto& num_hbond(const std::size_t index) const {
-      return atom_num_hbond[index];
-    }
+    [[nodiscard]] inline const auto& x(const int index) const { return x_coordinates[index]; }
+    [[nodiscard]] inline const auto& y(const int index) const { return y_coordinates[index]; }
+    [[nodiscard]] inline const auto& z(const int index) const { return z_coordinates[index]; }
+    [[nodiscard]] inline const auto& is_aromatic(const int index) const { return atom_is_aromatic[index]; }
+    [[nodiscard]] inline const auto& Rii(const int index) const { return atom_Rii[index]; }
+    [[nodiscard]] inline const auto& vol(const int index) const { return atom_vol[index]; }
+    [[nodiscard]] inline const auto& solpar(const int index) const { return atom_solpar[index]; }
+    [[nodiscard]] inline const auto& epsii(const int index) const { return atom_epsii[index]; }
+    [[nodiscard]] inline const auto& Rij_hb(const int index) const { return atom_Rij_hb[index]; }
+    [[nodiscard]] inline const auto& epsij_hb(const int index) const { return atom_epsij_hb[index]; }
+    [[nodiscard]] inline auto& charge(const int index) const { return atom_charge[index]; }
+    [[nodiscard]] inline const auto& num_hbond(const int index) const { return atom_num_hbond[index]; }
   };
 
   //===------------------------------------------------------------------------------------------------------
@@ -145,8 +160,9 @@ namespace mudock {
 
   template<class container_aliases>
     requires is_container_specification<container_aliases>
-  void molecule<container_aliases>::resize(const std::size_t n_atoms, std::size_t n_bonds) {
+  void molecule<container_aliases>::resize(const int n_atoms, int n_bonds) {
     mudock::resize(atom_elements, n_atoms);
+    mudock::resize(atom_autodock_type, n_atoms);
     mudock::resize(x_coordinates, n_atoms);
     mudock::resize(y_coordinates, n_atoms);
     mudock::resize(z_coordinates, n_atoms);
@@ -157,6 +173,7 @@ namespace mudock {
     mudock::resize(atom_epsii, n_atoms);
     mudock::resize(atom_Rij_hb, n_atoms);
     mudock::resize(atom_epsij_hb, n_atoms);
+    mudock::resize(atom_charge, n_atoms);
     mudock::resize(atom_num_hbond, n_atoms);
     mudock::resize(bond_descriptions, n_bonds);
     atoms_size = n_atoms;
@@ -164,9 +181,10 @@ namespace mudock {
   }
   template<class container_aliases>
     requires is_container_specification<container_aliases>
-  void molecule<container_aliases>::remove_atom(const std::size_t index) {
+  void molecule<container_aliases>::remove_atom(const int index) {
     // remove the target atom from all the containers
     mudock::remove_atom(atom_elements, index);
+    mudock::remove_atom(atom_autodock_type, index);
     mudock::remove_atom(x_coordinates, index);
     mudock::remove_atom(y_coordinates, index);
     mudock::remove_atom(z_coordinates, index);
@@ -177,8 +195,8 @@ namespace mudock {
     mudock::remove_atom(atom_epsii, index);
     mudock::remove_atom(atom_Rij_hb, index);
     mudock::remove_atom(atom_epsij_hb, index);
+    mudock::remove_atom(atom_charge, index);
     mudock::remove_atom(atom_num_hbond, index);
-    mudock::remove_atom(bond_descriptions, index);
     atoms_size--;
 
     // now we need to update the bonds as well
@@ -198,8 +216,8 @@ namespace mudock {
         }
       }
     }
-    const auto new_bond_size = std::size_t{end_loop - std::begin(bond_descriptions)};
-    resize(bond_descriptions, new_bond_size);
+    const auto new_bond_size = int{end_loop - std::begin(bond_descriptions)};
+    mudock::resize(bond_descriptions, new_bond_size);
     bonds_size = new_bond_size;
   }
 

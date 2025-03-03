@@ -1,0 +1,46 @@
+#include <cstdlib>
+#include <mudock/cpp_implementation/cpp_worker.hpp>
+#include <mudock/likwid_utils.hpp>
+#include <mudock/log.hpp>
+#include <stdexcept>
+
+namespace mudock {
+  cpp_worker::cpp_worker(const knobs knobs,
+                         std::shared_ptr<const grid_atom_mapper>& grid_atom_maps,
+                         std::shared_ptr<const grid_map>& electro_map,
+                         std::shared_ptr<const grid_map>& desolv_map,
+                         std::shared_ptr<safe_stack<static_molecule>>& input_molecules,
+                         std::shared_ptr<safe_stack<static_molecule>>& output_molecules,
+                         const std::size_t cpu_id)
+      : input_stack(input_molecules),
+        output_stack(output_molecules),
+        virtual_screen(grid_atom_maps, electro_map, desolv_map, knobs) {
+    cpu_set_t cpuset;
+    CPU_ZERO(&cpuset);
+    CPU_SET(cpu_id, &cpuset); // Set affinity to the target CPU
+    pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
+    info("Worker CPP on duty! Set affinity to core ", cpu_id);
+  }
+
+  void cpp_worker::main() {
+    LIKWID_MARKER_REGISTER("GA");
+
+    auto new_ligand = input_stack->dequeue();
+    while (new_ligand) {
+      virtual_screen(*new_ligand);
+      try {
+        // TODO check, probably wrong due to the previous move
+        output_stack->enqueue(std::move(new_ligand));
+      } catch (const std::runtime_error& e) {
+        error("Unable to vs molecule ",
+              new_ligand->properties.get(property_type::NAME),
+              " due to ",
+              e.what());
+      }
+      // NOTE: Clang says "warning: moving a temporary object prevents copy elision"
+      // new_ligand = std::move(input_stack->dequeue());
+      new_ligand = input_stack->dequeue();
+    }
+  }
+
+} // namespace mudock

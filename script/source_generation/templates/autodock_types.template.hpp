@@ -15,7 +15,7 @@
 namespace mudock {
 
   // this is the list of all the known atoms
-  enum class autodock_ff: std::size_t {{% for element in data %}
+  enum class autodock_ff: int {{% for element in data %}
     {@ element.value @} = {@ element.index @}, // {@ element.name @}{% endfor %}
   };
 
@@ -29,14 +29,14 @@ namespace mudock {
     fp_type solpar    = 0;
     fp_type Rij_hb    = 0;
     fp_type epsij_hb  = 0;
-    std::size_t hbond = 0;
+    int hbond = 0;
   };
   extern const std::array < autodock_ff_description, { @num_elements @ }
   > AUTODOCK_FF_DICTIONARY;
 
   // utility functions to work with them
   inline const autodock_ff_description& get_description(const autodock_ff a) {
-    assert(AUTODOCK_FF_DICTIONARY[static_cast<std::size_t>(a)].value == a);
-    return AUTODOCK_FF_DICTIONARY[static_cast<std::size_t>(a)];
+    assert(AUTODOCK_FF_DICTIONARY[static_cast<int>(a)].value == a);
+    return AUTODOCK_FF_DICTIONARY[static_cast<int>(a)];
   }
 } // namespace mudock
