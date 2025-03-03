@@ -20,9 +20,11 @@ namespace mudock {
                       mehler_solmajer::B /
                           (fp_type{1} + mehler_solmajer::rk * std::exp(mehler_solmajer::lambda_B * distance));
 
-    // if (epsilon < mehler_solmajer::min_epsilon) [[unlikely]] {
-    //   epsilon = fp_type{1.0};
-    // }
-    return std::max(epsilon, fp_type{1.0});
+    // TODO check this check
+    //if (epsilon < mehler_solmajer::min_epsilon) [[unlikely]] {
+    //  epsilon = fp_type{1.0};
+    //}
+    // return std::max(epsilon, fp_type{1.0});
+    return epsilon;
   }
 } // namespace mudock

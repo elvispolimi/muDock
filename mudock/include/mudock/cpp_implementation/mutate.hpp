@@ -1,13 +1,16 @@
 #pragma once
 
-#include "chromosome.hpp"
-
-#include <span>
+#include <mudock/cpp_implementation/chromosome.hpp>
+#include <mudock/type_alias.hpp>
 
 namespace mudock {
-  void apply(std::span<fp_type> x,
-             std::span<fp_type> y,
-             std::span<fp_type> z,
+  void apply(fp_type* __restrict__ x,
+             fp_type* __restrict__ y,
+             fp_type* __restrict__ z,
              const chromosome& c,
-             const fragments<static_containers>& fragments);
+             const int num_atoms,
+             const int num_rotamers,
+             const int* __restrict__ frag_masks,
+             const int* __restrict__ frag_start_indexes,
+             const int* __restrict__ frag_stop_indexes);
 }

@@ -6,8 +6,6 @@
 #include <stdint.h>
 
 namespace mudock {
-  // TODO template parameters on num_atoms?
-  // Buckets?
   void evaluate_fitness(const fp_type* __restrict__ ligand_x,
                         const fp_type* __restrict__ ligand_y,
                         const fp_type* __restrict__ ligand_z,

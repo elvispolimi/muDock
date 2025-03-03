@@ -2,11 +2,7 @@
 #include <mudock/cpp_implementation/chromosome.hpp>
 #include <mudock/cuda_implementation/cuda_check_error_macro.cuh>
 #include <mudock/cuda_implementation/cuda_object.cuh>
-#ifdef MUDOCK_ENABLE_POLY
-  #include <polygeist/cuda_random.cuh>
-#else
-  #include <mudock/cuda_implementation/cuda_random.cuh>
-#endif
+#include <mudock/cuda_implementation/cuda_random.cuh>
 #include <mudock/type_alias.hpp>
 
 namespace mudock {
@@ -63,11 +59,7 @@ namespace mudock {
   template class cuda_object<int>;
   template class cuda_object<fp_type>;
   template class cuda_object<fp_type*>;
-#ifdef MUDOCK_ENABLE_POLY
-  template class cuda_object<XORWOWState>;
-#else
   template class cuda_object<curandState>;
   template class cuda_object<cudaTextureObject_t>;
-#endif
   template class cuda_object<chromosome>;
 } // namespace mudock

@@ -5,35 +5,41 @@
 
 namespace mudock {
 
-  void translate_molecule(std::span<fp_type> x,
-                          std::span<fp_type> y,
-                          std::span<fp_type> z,
-                          const fp_type offset_x,
-                          const fp_type offset_y,
-                          const fp_type offset_z) {
-    const auto num_atoms = x.size();
-    assert(y.size() == num_atoms);
-    assert(z.size() == num_atoms);
-    for (std::size_t i = 0; i < num_atoms; ++i) {
+  inline void translate_molecule(fp_type* __restrict__ x,
+                                 fp_type* __restrict__ y,
+                                 fp_type* __restrict__ z,
+                                 const int num_atoms,
+                                 const fp_type offset_x,
+                                 const fp_type offset_y,
+                                 const fp_type offset_z) {
+#pragma GCC ivdep
+#pragma clang loop vectorize(enable) interleave(enable) unroll(enable)
+    for (int i = 0; i < num_atoms; ++i) {
       x[i] += offset_x;
       y[i] += offset_y;
       z[i] += offset_z;
     }
   }
 
-  void rotate_molecule(std::span<fp_type> x,
-                       std::span<fp_type> y,
-                       std::span<fp_type> z,
-                       const fp_type angle_x,
-                       const fp_type angle_y,
-                       const fp_type angle_z) {
-    // get the molecule number of atoms
-    const auto num_atoms = x.size();
-    assert(y.size() == num_atoms);
-    assert(z.size() == num_atoms);
-
+  inline void rotate_molecule(fp_type* __restrict__ x,
+                              fp_type* __restrict__ y,
+                              fp_type* __restrict__ z,
+                              const int num_atoms,
+                              const fp_type angle_x,
+                              const fp_type angle_y,
+                              const fp_type angle_z) {
     // compute the molecule center of mass
-    const auto c = compute_center_of_mass(x, y, z);
+    point3D c{0, 0, 0};
+#pragma GCC ivdep
+#pragma clang loop vectorize(enable) interleave(enable) unroll(enable)
+    for (int i = 0; i < num_atoms; i++) {
+      c.x += x[i];
+      c.y += y[i];
+      c.z += z[i];
+    }
+    c.x /= num_atoms;
+    c.y /= num_atoms;
+    c.z /= num_atoms;
 
     // compute the angles sine and cosine
     const auto rad_x = deg_to_rad(angle_x), rad_y = deg_to_rad(angle_y), rad_z = deg_to_rad(angle_z);
@@ -52,8 +58,10 @@ namespace mudock {
     const auto m21 = sx * cy;
     const auto m22 = cx * cy;
 
-    // apply the rotation matrix
-    for (std::size_t i = 0; i < num_atoms; ++i) {
+// apply the rotation matrix
+#pragma GCC ivdep
+#pragma clang loop vectorize(enable) interleave(enable) unroll(enable)
+    for (int i = 0; i < num_atoms; ++i) {
       const auto translated_x = x[i] - c.x, translated_y = y[i] - c.y, translated_z = z[i] - c.z;
       x[i] = translated_x * m00 + translated_y * m01 + translated_z * m02 + c.x;
       y[i] = translated_x * m10 + translated_y * m11 + translated_z * m12 + c.y;
@@ -61,20 +69,14 @@ namespace mudock {
     }
   }
 
-  void rotate_fragment(std::span<fp_type> x,
-                       std::span<fp_type> y,
-                       std::span<fp_type> z,
-                       std::span<const typename fragments<static_containers>::value_type> bitmask,
-                       const int start_index,
-                       const int stop_index,
-                       const fp_type angle) {
-    // get the molecule number of atoms
-    const int num_atoms = x.size();
-    assert(static_cast<int>(y.size()) == num_atoms);
-    assert(static_cast<int>(z.size()) == num_atoms);
-    assert(start_index < num_atoms);
-    assert(stop_index < num_atoms);
-
+  inline void rotate_fragment(fp_type* __restrict__ x,
+                              fp_type* __restrict__ y,
+                              fp_type* __restrict__ z,
+                              const int num_atoms,
+                              const int* __restrict__ frag_mask,
+                              const int start_index,
+                              const int stop_index,
+                              const fp_type angle) {
     // compute the axis vector (and some properties)
     const auto origx = x[start_index], origy = y[start_index], origz = z[start_index];
     const auto destx = x[stop_index], desty = y[stop_index], destz = z[stop_index];
@@ -91,28 +93,39 @@ namespace mudock {
     const auto one_minus_c = fp_type{1} - c;
     const auto ls          = l * s;
 
+    // Precompute common sub-expressions to reduce redundant calculations
+    const auto inv_l2 = fp_type{1} / l2;
+    const auto us_vc  = u * v * one_minus_c;
+    const auto uw_vc  = u * w * one_minus_c;
+    const auto vw_vc  = v * w * one_minus_c;
+
     // compute the rotation matrix (rodrigues' rotation formula)
-    const auto m00 = (u2 + (v2 + w2) * c) / l2;
-    const auto m01 = (u * v * one_minus_c - w * l * s) / l2;
-    const auto m02 = (u * w * one_minus_c + v * l * s) / l2;
+    const auto m00 = (u2 + (v2 + w2) * c) * inv_l2;
+    const auto m01 = (us_vc - w * l * s) * inv_l2;
+    const auto m02 = (uw_vc + v * l * s) * inv_l2;
     const auto m03 =
-        ((origx * (v2 + w2) - u * (origy * v + origz * w)) * one_minus_c + (origy * w - origz * v) * ls) / l2;
+        ((origx * (v2 + w2) - u * (origy * v + origz * w)) * one_minus_c + (origy * w - origz * v) * ls) *
+        inv_l2;
 
-    const auto m10 = (u * v * one_minus_c + w * ls) / l2;
-    const auto m11 = (v2 + (u2 + w2) * c) / l2;
-    const auto m12 = (v * w * one_minus_c - u * ls) / l2;
+    const auto m10 = (us_vc + w * ls) * inv_l2;
+    const auto m11 = (v2 + (u2 + w2) * c) * inv_l2;
+    const auto m12 = (vw_vc - u * ls) * inv_l2;
     const auto m13 =
-        ((origy * (u2 + w2) - v * (origx * u + origz * w)) * one_minus_c + (origz * u - origx * w) * ls) / l2;
+        ((origy * (u2 + w2) - v * (origx * u + origz * w)) * one_minus_c + (origz * u - origx * w) * ls) *
+        inv_l2;
 
-    const auto m20 = (u * w * one_minus_c - v * ls) / l2;
-    const auto m21 = (v * w * one_minus_c + u * ls) / l2;
-    const auto m22 = (w2 + (u2 + v2) * c) / l2;
+    const auto m20 = (uw_vc - v * ls) * inv_l2;
+    const auto m21 = (vw_vc + u * ls) * inv_l2;
+    const auto m22 = (w2 + (u2 + v2) * c) * inv_l2;
     const auto m23 =
-        ((origz * (u2 + v2) - w * (origx * u + origy * v)) * one_minus_c + (origx * v - origy * u) * ls) / l2;
+        ((origz * (u2 + v2) - w * (origx * u + origy * v)) * one_minus_c + (origx * v - origy * u) * ls) *
+        inv_l2;
 
-    // apply the rotation matrix
+// apply the rotation matrix
+#pragma GCC ivdep
+#pragma clang loop vectorize(enable) interleave(enable) unroll(enable)
     for (int i = 0; i < num_atoms; ++i) {
-      if (bitmask[i] != 0) {
+      if (frag_mask[i] != 0) {
         const auto prev_x = x[i], prev_y = y[i], prev_z = z[i];
         x[i] = prev_x * m00 + prev_y * m01 + prev_z * m02 + m03;
         y[i] = prev_x * m10 + prev_y * m11 + prev_z * m12 + m13;

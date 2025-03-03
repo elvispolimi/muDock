@@ -3,13 +3,13 @@
 #include <mudock/cpp_implementation/calc_energy_cpp.hpp>
 #include <mudock/cpp_implementation/center_of_mass.hpp>
 #include <mudock/cpp_implementation/chromosome.hpp>
+#include <mudock/cpp_implementation/evaluate_fitness_cpp.hpp>
 #include <mudock/cpp_implementation/geometric_transformations.hpp>
 #include <mudock/cpp_implementation/mutate.hpp>
 #include <mudock/cpp_implementation/virtual_screen.hpp>
 #include <mudock/cpp_implementation/weed_bonds.hpp>
 #include <mudock/grid.hpp>
 #include <mudock/molecule.hpp>
-#include <mudock/scorep_utils.hpp>
 #include <mudock/utils.hpp>
 
 namespace mudock {
@@ -25,16 +25,16 @@ namespace mudock {
         configuration(knobs) {}
 
   void virtual_screen_cpp::operator()(static_molecule& ligand) {
-    SCOREP_MARKER_START(ga, "GA");
     const auto seed =
         static_cast<size_t>(std::chrono::high_resolution_clock::now().time_since_epoch().count());
     // Place the molecule to the center of the target protein
     const int num_atoms = ligand.num_atoms();
     const auto x = ligand.get_x(), y = ligand.get_y(), z = ligand.get_z();
     const auto ligand_center_of_mass = compute_center_of_mass(x, y, z);
-    translate_molecule(x,
-                       y,
-                       z,
+    translate_molecule(x.data(),
+                       y.data(),
+                       z.data(),
+                       num_atoms,
                        electro_map->center.x - ligand_center_of_mass.x,
                        electro_map->center.y - ligand_center_of_mass.y,
                        electro_map->center.z - ligand_center_of_mass.z);
@@ -51,7 +51,6 @@ namespace mudock {
     nonbonds(nbmatrix, ligand.get_bonds(), num_atoms);
     std::vector<int> non_bond_list_a1, non_bond_list_a2;
     weed_bonds(nbmatrix, non_bond_list_a1, non_bond_list_a2, num_atoms, *ligand_fragments.get());
-    // weed_bonds(nbmatrix, num_atoms, *ligand_fragments.get());
 
     const auto non_bond_size = non_bond_list_a1.size();
     std::vector<fp_type> cA_v, cB_v;
@@ -59,7 +58,7 @@ namespace mudock {
     cA_v.resize(non_bond_size);
     cB_v.resize(non_bond_size);
     xB_v.resize(non_bond_size);
-    for(int index=0; index<non_bond_size; ++index){
+    for (size_t index = 0; index < non_bond_size; ++index) {
       const int& a1 = non_bond_list_a1[index];
       const int& a2 = non_bond_list_a2[index];
 
@@ -76,7 +75,7 @@ namespace mudock {
 
       // we need to determine the correct xA and xB exponents
       const int xA = xA_default; // for both LJ, 12-6 and HB, 12-10, xA is 12
-      int xB       = xB_default;  // assume we have LJ, 12-6
+      int xB       = xB_default; // assume we have LJ, 12-6
 
       fp_type Rij{(Rii_i + Rii_j) * fp_type{0.5}}, epsij{std::sqrt(epsii_i * epsii_j)};
       if ((hbond_i == 1 || hbond_i == 2) && hbond_j > 2) {
@@ -96,30 +95,25 @@ namespace mudock {
       fp_type cB{0};
       if (xA != xB) {
         const fp_type tmp = epsij / (xA - xB);
-        cA = tmp * std::pow(Rij, static_cast<fp_type>(xA)) * xB;
-        cB = tmp * std::pow(Rij, static_cast<fp_type>(xB)) * xA;
+        cA                = tmp * std::pow(Rij, static_cast<fp_type>(xA)) * xB;
+        cB                = tmp * std::pow(Rij, static_cast<fp_type>(xB)) * xA;
       }
       cA_v[index] = cA;
       cB_v[index] = cB;
       xB_v[index] = xB;
     }
 
-    const fp_type minimum[3] = {electro_map.get()->minimum_coord.x,
-                                electro_map.get()->minimum_coord.y,
-                                electro_map.get()->minimum_coord.z};
-    const fp_type maximum[3] = {electro_map.get()->maximum_coord.x,
-                                electro_map.get()->maximum_coord.y,
-                                electro_map.get()->maximum_coord.z};
-    const fp_type center[3]  = {electro_map.get()->center.x,
-                                electro_map.get()->center.y,
-                                electro_map.get()->center.z};
-
-    fp_type const* grid_maps[num_ligand_map_types()];
-    constexpr_for<0, num_ligand_map_types(), 1>([&](const int type) {
-      grid_maps[type] = grid_atom_maps.get()
-                            ->get_atom_map(autodock_type_from_map(static_cast<ligand_map_types>(type)))
-                            .data();
-    });
+    const fp_type minimum[3]        = {electro_map.get()->minimum_coord.x,
+                                       electro_map.get()->minimum_coord.y,
+                                       electro_map.get()->minimum_coord.z};
+    const fp_type maximum[3]        = {electro_map.get()->maximum_coord.x,
+                                       electro_map.get()->maximum_coord.y,
+                                       electro_map.get()->maximum_coord.z};
+    const fp_type center[3]         = {electro_map.get()->center.x,
+                                       electro_map.get()->center.y,
+                                       electro_map.get()->center.z};
+    const int atom_map_size         = grid_atom_maps.get()->get_single_map_size();
+    const fp_type* atom_map_pointer = grid_atom_maps.get()->get_fused_maps().data();
 
     std::vector<int> frag_masks;
     std::vector<int> frag_start_indexes;
@@ -136,11 +130,11 @@ namespace mudock {
       frag_stop_indexes.data()[rot]        = stop_index;
     }
 
-    std::vector<int> map_ligand_types;
-    map_ligand_types.resize(num_atoms);
+    std::vector<int> map_ligand_offsets;
+    map_ligand_offsets.resize(num_atoms);
     for (int i = 0; i < num_atoms; i++)
-      map_ligand_types[i] = static_cast<int>(map_from_autodock_type(ligand.autodock_type(i)));
-
+      map_ligand_offsets[i] =
+          static_cast<int>(map_from_autodock_type(ligand.autodock_type(i))) * atom_map_size;
     // Simulate the population evolution for the given amount of time
     evaluate_fitness(x.data(),
                      y.data(),
@@ -148,12 +142,7 @@ namespace mudock {
                      ligand.get_vol().data(),
                      ligand.get_solpar().data(),
                      ligand.get_charge().data(),
-                    //  ligand.get_num_hbond().data(),
-                    //  ligand.get_Rij_hb().data(),
-                    //  ligand.get_Rii().data(),
-                    //  ligand.get_epsij_hb().data(),
-                    //  ligand.get_epsii().data(),
-                     map_ligand_types.data(),
+                     map_ligand_offsets.data(),
                      num_atoms,
                      ligand_fragments.get()->get_num_rotatable_bonds(),
                      frag_masks.data(),
@@ -165,7 +154,7 @@ namespace mudock {
                      cA_v.data(),
                      cB_v.data(),
                      xB_v.data(),
-                     grid_maps,
+                     atom_map_pointer,
                      electro_map.get()->data(),
                      desolv_map.get()->data(),
                      configuration.num_generations,
@@ -189,9 +178,16 @@ namespace mudock {
         std::min_element(std::begin(last_population),
                          std::end(last_population),
                          [](const auto a, const auto b) { return a.score < b.score; });
-    apply(x, y, z, best_individual_it->genes, *ligand_fragments.get());
+    apply(x.data(),
+          y.data(),
+          z.data(),
+          best_individual_it->genes,
+          num_atoms,
+          num_rotamers,
+          frag_masks.data(),
+          frag_start_indexes.data(),
+          frag_stop_indexes.data());
     ligand.properties.assign(property_type::SCORE, std::to_string(best_individual_it->score));
-    SCOREP_MARKER_STOP(ga);
   }
 
 } // namespace mudock
