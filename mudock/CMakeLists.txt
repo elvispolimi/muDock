@@ -96,11 +96,9 @@ if(MUDOCK_ENABLE_GH)
   "${source_path}/g_highway_implementation/virtual_screen.cpp"
   "${source_path}/g_highway_implementation/mutate.cpp"
   )
-  if(NOT MUDOCK_EXCLUDE_CPU_KERNEL)
-    list(APPEND source_files
+  list(APPEND source_files
       "${source_path}/g_highway_implementation/calc_energy_cpp.cpp"
     )
-  endif()
 else()
   list(APPEND header_files
     "${header_path}/${header_prefix}/cpp_implementation/geometric_transformations.hpp"
@@ -109,12 +107,7 @@ else()
   "${source_path}/cpp_implementation/geometric_transformations.cpp"
   "${source_path}/cpp_implementation/virtual_screen.cpp"
   "${source_path}/cpp_implementation/mutate.cpp"
-  )
-endif()
-
-if(NOT MUDOCK_EXCLUDE_CPU_KERNEL AND NOT MUDOCK_ENABLE_GH)
-  list(APPEND source_files
-    "${source_path}/cpp_implementation/calc_energy_cpp.cpp"
+  "${source_path}/cpp_implementation/calc_energy_cpp.cpp"
   )
 endif()
 
@@ -144,25 +137,6 @@ if(MUDOCK_ENABLE_CUDA)
     "${source_path}/cuda_implementation/virtual_screen.cu"
     "${source_path}/cuda_implementation/device.cu"
     "${source_path}/cuda_implementation/constant_memory.cu"
-  )
-endif()
-
-if(MUDOCK_ENABLE_POLY)
-  set(poly_header_path "${CMAKE_CURRENT_SOURCE_DIR}/../polygeist/include")
-  set(poly_source_path "${CMAKE_CURRENT_SOURCE_DIR}/../polygeist/src")
-  list(APPEND header_files
-    "${header_path}/${header_prefix}/cuda_implementation/cuda_batch_sizer.cuh"
-    "${header_path}/${header_prefix}/cuda_implementation/cuda_check_error_macro.cuh"
-    "${header_path}/${header_prefix}/cuda_implementation/cuda_manager.hpp"
-    "${header_path}/${header_prefix}/cuda_implementation/cuda_object.cuh"
-    "${header_path}/${header_prefix}/cuda_implementation/cuda_worker.hpp"
-    "${header_path}/${header_prefix}/cuda_implementation/cuda_wrapper.cuh"
-    "${poly_header_path}/polygeist/cuda_random.cuh"
-    "${poly_header_path}/polygeist/virtual_screen.cuh"
-  )
-  list(APPEND source_files
-    "${source_path}/cuda_implementation/cuda_manager.cpp"
-    "${source_path}/cuda_implementation/cuda_worker.cpp"
   )
 endif()
 
@@ -250,12 +224,6 @@ add_library(libmudock STATIC ${source_files} ${header_files})
 add_library(mudock::libmudock ALIAS libmudock)
 set_target_properties(libmudock PROPERTIES PUBLIC_HEADER "${headers}")
 target_include_directories(libmudock PUBLIC "${header_path}")
-if(MUDOCK_ENABLE_POLY)
-  target_include_directories(libmudock PUBLIC "${poly_header_path}")
-endif()
-# Include Boost and RDKit directories for the target
-target_include_directories(libmudock PRIVATE ${Boost_INCLUDE_DIRS})
-target_include_directories(libmudock PRIVATE ${RDKit_INCLUDE_DIRS})
 set_target_properties(libmudock PROPERTIES POSITION_INDEPENDENT_CODE ON)
 set_target_properties(libmudock PROPERTIES PREFIX "" OUTPUT_NAME "libmudock")
 set_target_properties(libmudock
@@ -266,23 +234,13 @@ set_target_properties(libmudock
   CUDA_SEPARABLE_COMPILATION ON
   POSITION_INDEPENDENT_CODE ON
 )
-target_link_libraries(libmudock PUBLIC Microsoft.GSL::GSL)
+target_link_libraries(libmudock PUBLIC Microsoft.GSL::GSL Boost::graph)
 target_compile_options(libmudock PUBLIC $<$<AND:$<CONFIG:RELEASE>,$<COMPILE_LANGUAGE:CXX>>:${release_flags}>)
 add_rdkit_dep(libmudock)
 
 if(MUDOCK_ENABLE_GH)
-  if(MUDOCK_GH_PATH STREQUAL "")
-    message(FATAL_ERROR "Missing Google Highway include path")
-  endif()
   target_compile_definitions(libmudock PUBLIC MUDOCK_USE_GH)
-  target_include_directories(libmudock PRIVATE ${MUDOCK_GH_PATH}/include)
-endif()
-
-# check if we need to activate the compilation flag that signals Polygeist transpilation
-if(MUDOCK_ENABLE_POLY)
-  target_compile_definitions(libmudock PUBLIC MUDOCK_USE_POLY)
-  target_link_direcctories(libmudock PUBLIC ${MUDOCK_POLY_LIB_PATH})
-  target_link_libraries(libmudock PRIVATE mudock_poly omp)
+  target_link_libraries(libmudock PUBLIC hwy::hwy)
 endif()
 
 # check if we need to activate the compilation flag that signals HIP
@@ -381,19 +339,8 @@ endif()
 
 # Profiling
 if(MUDOCK_ENABLE_LIKWID)
-  if(LIKWID_PATH STREQUAL "")
-    message(FATAL_ERROR "Missing likwid installation path")
-  endif()
-  target_include_directories(libmudock PRIVATE "${LIKWID_PATH}/include")
-  target_link_directories(libmudock PUBLIC "${LIKWID_PATH}/lib")
-  target_link_libraries(libmudock PUBLIC likwid)
+  target_include_directories(libmudock PRIVATE ${LIKWID_INCLUDE_DIR})
   add_definitions(-DLIKWID_PERFMON)
-endif()
-if(MUDOCK_ENABLE_FJAPP)
-  target_compile_definitions(libmudock PUBLIC MUDOCK_USE_FJAPP)
-endif()
-if(MUDOCK_ENABLE_SCOREP)
-  target_compile_definitions(libmudock PUBLIC MUDOCK_USE_SCOREP)
 endif()
 
 # ########################################################################

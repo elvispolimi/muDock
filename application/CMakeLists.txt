@@ -22,7 +22,6 @@ list(APPEND source_files
 # declare the application executable
 add_executable("${CMAKE_PROJECT_NAME}" ${header_files} ${source_files})
 target_include_directories("${CMAKE_PROJECT_NAME}" PRIVATE "${header_path}")
-target_include_directories("${CMAKE_PROJECT_NAME}" PRIVATE ${Boost_INCLUDE_DIRS})
 set_target_properties("${CMAKE_PROJECT_NAME}"
   PROPERTIES
   CXX_STANDARD 20
@@ -37,15 +36,13 @@ if(MUDOCK_ENABLE_SYCL)
   if (SUBSTRING_INDEX GREATER -1)
     target_link_libraries("${CMAKE_PROJECT_NAME}" omp)
   endif()
-  target_link_libraries("${CMAKE_PROJECT_NAME}" libmudock boost_program_options boost_context pthread boost_fiber m stdc++)
+  target_link_libraries("${CMAKE_PROJECT_NAME}" libmudock Boost::program_options Boost::context pthread Boost::fiber m stdc++)
 else()
-  target_link_libraries("${CMAKE_PROJECT_NAME}" libmudock boost_program_options boost_context pthread m stdc++)
+  target_link_libraries("${CMAKE_PROJECT_NAME}" libmudock Boost::program_options Boost::context pthread m stdc++)
 endif()
 
 if(MUDOCK_ENABLE_GH)
-  target_include_directories("${CMAKE_PROJECT_NAME}" PRIVATE "${MUDOCK_GH_PATH}/include")
-  target_link_directories("${CMAKE_PROJECT_NAME}" PUBLIC "${MUDOCK_GH_PATH}/lib64")
-  target_link_libraries("${CMAKE_PROJECT_NAME}" hwy)
+  target_link_libraries("${CMAKE_PROJECT_NAME}" hwy::hwy)
 endif()
 
 if(MUDOCK_ENABLE_OMP)
@@ -55,12 +52,8 @@ if(MUDOCK_ENABLE_OMP)
 endif()
 
 if(MUDOCK_ENABLE_LIKWID)
-  if(LIKWID_PATH STREQUAL "")
-    message(FATAL "Missing likwid installation path")
-  endif()
-  target_include_directories("${CMAKE_PROJECT_NAME}" PRIVATE "${LIKWID_PATH}/include")
-  target_link_directories("${CMAKE_PROJECT_NAME}" PUBLIC "${LIKWID_PATH}/lib")
-  target_link_libraries("${CMAKE_PROJECT_NAME}" likwid)
+  target_include_directories("${CMAKE_PROJECT_NAME}" PRIVATE ${LIKWID_INCLUDE_DIR})
+  target_link_libraries("${CMAKE_PROJECT_NAME}" likwid::likwid)
   add_definitions(-DLIKWID_PERFMON)
 ENDIF()
 
