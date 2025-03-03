@@ -39,6 +39,6 @@ context = {"data": data["ff_type"], "num_elements": len(data["ff_type"])}
 template = env.get_template("autodock_types.template.hpp")
 with open(header_source_filepath, "w") as outfile:
     outfile.write(template.render(context))
-    template = env.get_template("autodock_types.template.cpp")
+template = env.get_template("autodock_types.template.cpp")
 with open(source_source_filepath, "w") as outfile:
     outfile.write(template.render(context))

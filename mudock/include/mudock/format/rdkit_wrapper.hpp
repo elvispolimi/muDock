@@ -1,20 +1,15 @@
 #pragma once
 
+#include <GraphMol/PartialCharges/GasteigerCharges.h>
 #include <GraphMol/RWMol.h>
 #include <GraphMol/SmilesParse/SmilesParse.h>
 #include <GraphMol/Substruct/SubstructMatch.h>
-#include <array>
 #include <cassert>
-#include <concepts>
-#include <cstdint>
-#include <map>
+#include <cmath>
 #include <memory>
 #include <mudock/chem.hpp>
 #include <mudock/molecule.hpp>
 #include <mudock/type_alias.hpp>
-#include <stdexcept>
-#include <string_view>
-#include <unordered_map>
 
 namespace mudock {
 
@@ -54,26 +49,35 @@ namespace mudock {
     }
     dest.resize(source->getNumAtoms(), source->getNumBonds(true));
 
+    // compute the Marsilli-Gasteiger partial charges for the molecule
+    computeGasteigerCharges(*source);
+
     // fill the atom information (we assume a single conformation)
     // NOTE: we need to store the mapping between our atom index and the rdkit one
-    std::unordered_map<unsigned int, std::size_t> index_translator;
+    std::unordered_map<unsigned int, int> index_translator;
     assert(source->getNumConformers() == 1);
     const auto conformation = source->getConformer(0);
-    auto mudock_atom_index  = std::size_t{0};
+    auto mudock_atom_index  = int{0};
     for (const auto& atom: source->atoms()) {
       const auto atom_id      = atom->getIdx();
       const auto [x, y, z]    = conformation.getAtomPos(atom_id);
       const auto atom_element = parse_element_symbol(atom->getSymbol());
       // Get which atoms are aromatic
       // TODO check the cast between bool and uinfast8_t
-      assert(atom_element.has_value());
-      dest.elements(mudock_atom_index)    = atom_element.value();
+      dest.elements(mudock_atom_index)    = atom_element;
       dest.is_aromatic(mudock_atom_index) = atom->getIsAromatic();
       dest.x(mudock_atom_index)           = static_cast<fp_type>(x);
       dest.y(mudock_atom_index)           = static_cast<fp_type>(y);
       dest.z(mudock_atom_index)           = static_cast<fp_type>(z);
+      dest.charge(mudock_atom_index)      = fp_type{0};
+      std::string charge = atom->getProp<std::string>(RDKit::common_properties::_GasteigerCharge);
+      if (charge == "inf")
+        // https://github.com/rdkit/rdkit/blob/master/rdkit/Chem/MolSurf.py line 213
+        dest.charge(mudock_atom_index) = 0.0;
+      else
+        dest.charge(mudock_atom_index) = std::stof(charge);
       index_translator.emplace(atom_id, mudock_atom_index);
-      mudock_atom_index += std::size_t{1};
+      mudock_atom_index += int{1};
     }
 
     // define the SMARTS pattern of the rotatable bonds
@@ -99,23 +103,23 @@ namespace mudock {
                           useChirality,
                           useQueryQueryMatches,
                           maxMatches);
-    assert(matched_bonds.size() < static_cast<std::size_t>(maxMatches) && "Too many rotatable bonds");
+    assert(matched_bonds.size() < static_cast<int>(maxMatches) && "Too many rotatable bonds");
 
     // fill the bond information
-    auto mudock_bond_index = std::size_t{0};
+    auto mudock_bond_index = int{0};
     for (const auto& rdkit_bond: source->bonds()) {
-      const auto atom_id_source = rdkit_bond->getBeginAtomIdx();
-      const auto atom_id_dest   = rdkit_bond->getEndAtomIdx();
-      auto& bond                = dest.bonds(mudock_bond_index);
-      bond.source               = index_translator.at(atom_id_source);
-      bond.dest                 = index_translator.at(atom_id_dest);
-      bond.type                 = parse_rdkit_bond_type(rdkit_bond->getBondType());
+      const int atom_id_source = rdkit_bond->getBeginAtomIdx();
+      const int atom_id_dest   = rdkit_bond->getEndAtomIdx();
+      auto& bond               = dest.bonds(mudock_bond_index);
+      bond.source              = index_translator.at(atom_id_source);
+      bond.dest                = index_translator.at(atom_id_dest);
+      bond.type                = parse_rdkit_bond_type(rdkit_bond->getBondType());
 
       // check if it can rotate
       for (const auto& rotatable_bond: matched_bonds) {
-        assert(rotatable_bond.size() == std::size_t{2}); // make sure that we have a single bond
-        const auto atom_id_1 = index_translator.at(rotatable_bond[0].second);
-        const auto atom_id_2 = index_translator.at(rotatable_bond[1].second);
+        assert(rotatable_bond.size() == int{2}); // make sure that we have a single bond
+        const int atom_id_1 = index_translator.at(rotatable_bond[0].second);
+        const int atom_id_2 = index_translator.at(rotatable_bond[1].second);
         if ((atom_id_source == atom_id_1 && atom_id_dest == atom_id_2) ||
             (atom_id_source == atom_id_2 && atom_id_dest == atom_id_1)) {
           bond.can_rotate = true;
@@ -127,7 +131,7 @@ namespace mudock {
 
     // store the molecule name
     auto name = std::string{"N/A"};
-    source->getPropIfPresent<std::string>("_Name", name);
+    source->getPropIfPresent<std::string>(RDKit::common_properties::_Name, name);
     dest.properties.assign(property_type::NAME, name);
   }
 

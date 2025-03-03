@@ -1,0 +1,27 @@
+#include <cuda_runtime.h>
+#include <mudock/cuda_implementation/cuda_check_error_macro.cuh>
+#include <mudock/grid.hpp>
+#include <mudock/type_alias.hpp>
+
+namespace mudock {
+  __device__ __constant__ fp_type map_min_const[3];
+  __device__ __constant__ fp_type map_max_const[3];
+  __device__ __constant__ fp_type map_center_const[3];
+
+  void setup_constant_memory(const point3D& minimum_coord,
+                                    const point3D& maximum_coord,
+                                    const point3D& center) {
+    const fp_type l_map_min[3]{minimum_coord.x, minimum_coord.y, minimum_coord.z};
+    const fp_type l_map_max[3]{maximum_coord.x, maximum_coord.y, maximum_coord.z};
+    const fp_type l_map_center[3]{center.x, center.y, center.z};
+
+    MUDOCK_CHECK(
+        cudaMemcpyToSymbol(map_min_const, &l_map_min, 3 * sizeof(fp_type), 0, cudaMemcpyHostToDevice));
+    MUDOCK_CHECK(
+        cudaMemcpyToSymbol(map_max_const, &l_map_max, 3 * sizeof(fp_type), 0, cudaMemcpyHostToDevice));
+    MUDOCK_CHECK(
+        cudaMemcpyToSymbol(map_center_const, &l_map_center, 3 * sizeof(fp_type), 0, cudaMemcpyHostToDevice));
+    cudaDeviceSynchronize();
+  }
+
+} // namespace mudock
