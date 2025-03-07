@@ -5,7 +5,7 @@
 
 namespace mudock {
 
-  inline void translate_molecule(fp_type* __restrict__ x,
+  void translate_molecule(fp_type* __restrict__ x,
                                  fp_type* __restrict__ y,
                                  fp_type* __restrict__ z,
                                  const int num_atoms,
@@ -21,7 +21,7 @@ namespace mudock {
     }
   }
 
-  inline void rotate_molecule(fp_type* __restrict__ x,
+  void rotate_molecule(fp_type* __restrict__ x,
                               fp_type* __restrict__ y,
                               fp_type* __restrict__ z,
                               const int num_atoms,
@@ -69,7 +69,7 @@ namespace mudock {
     }
   }
 
-  inline void rotate_fragment(fp_type* __restrict__ x,
+  void rotate_fragment(fp_type* __restrict__ x,
                               fp_type* __restrict__ y,
                               fp_type* __restrict__ z,
                               const int num_atoms,
