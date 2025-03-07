@@ -26,7 +26,7 @@ namespace mudock {
     return value;
   }
 
-  inline fp_type calc_energy(const fp_type* __restrict__ ligand_x,
+  fp_type calc_energy(const fp_type* __restrict__ ligand_x,
                              const fp_type* __restrict__ ligand_y,
                              const fp_type* __restrict__ ligand_z,
                              const fp_type* __restrict__ ligand_vol,
