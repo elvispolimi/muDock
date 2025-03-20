@@ -1,11 +1,13 @@
-# ########################################################################
+# ##############################################################################
 # ### Declare the application source files
-# ########################################################################
+# ##############################################################################
 
 # headers
 set(header_path "${CMAKE_CURRENT_SOURCE_DIR}/include")
 set(header_prefix "mudock")
-list(APPEND header_files
+list(
+  APPEND
+  header_files
   "${header_path}/${header_prefix}/chem/apply_autodock_force_field.hpp"
   "${header_path}/${header_prefix}/chem/assign_autodock_babel_types.hpp"
   "${header_path}/${header_prefix}/chem/assign_autodock_types.hpp"
@@ -33,6 +35,7 @@ list(APPEND header_files
   "${header_path}/${header_prefix}/format/dot.hpp"
   "${header_path}/${header_prefix}/format/mol2.hpp"
   "${header_path}/${header_prefix}/format/pdb.hpp"
+  "${header_path}/${header_prefix}/format/pdbqt.hpp"
   "${header_path}/${header_prefix}/format/rdkit_wrapper.hpp"
   "${header_path}/${header_prefix}/grid/mdindex.hpp"
   "${header_path}/${header_prefix}/grid/grid_map.hpp"
@@ -59,17 +62,19 @@ list(APPEND header_files
   "${header_path}/${header_prefix}/mudock.hpp"
   "${header_path}/${header_prefix}/splitter.hpp"
   "${header_path}/${header_prefix}/type_alias.hpp"
-  "${header_path}/${header_prefix}/utils.hpp"
-)
+  "${header_path}/${header_prefix}/utils.hpp")
 
 # sources
 set(source_path "${CMAKE_CURRENT_SOURCE_DIR}/src")
-list(APPEND source_files
+list(
+  APPEND
+  source_files
   "${source_path}/chem/assign_autodock_babel_types.cpp"
   "${source_path}/chem/assign_autodock_types.cpp"
   "${source_path}/chem/autodock_babel_types.cpp"
   "${source_path}/chem/autodock_types.cpp"
   "${source_path}/chem/bond_types.cpp"
+  "${source_path}/chem/ligand_maps.cpp"
   "${source_path}/chem/elements.cpp"
   "${source_path}/compute/parse_ids.cpp"
   "${source_path}/compute/reorder_buffer.cpp"
@@ -88,24 +93,23 @@ list(APPEND source_files
   "${source_path}/log.cpp"
   "${source_path}/cpp_implementation/virtual_screen.cpp"
   "${source_path}/cpp_implementation/mutate.cpp"
-  "${source_path}/cpp_implementation/evaluate_fitness_cpp.cpp"
-)
+  "${source_path}/cpp_implementation/evaluate_fitness_cpp.cpp")
 
 if(MUDOCK_ENABLE_GH)
   list(APPEND source_files
-  "${source_path}/g_highway_implementation/geometric_transformations.cpp"
-  "${source_path}/g_highway_implementation/calc_energy_cpp.cpp"
-  )
+       "${source_path}/g_highway_implementation/geometric_transformations.cpp"
+       "${source_path}/g_highway_implementation/calc_energy_cpp.cpp")
 else()
   list(APPEND source_files
-  "${source_path}/cpp_implementation/geometric_transformations.cpp"
-    "${source_path}/cpp_implementation/calc_energy_cpp.cpp"
-  )
+       "${source_path}/cpp_implementation/geometric_transformations.cpp"
+       "${source_path}/cpp_implementation/calc_energy_cpp.cpp")
 endif()
 
 # declare the CUDA sources
 if(MUDOCK_ENABLE_CUDA)
-  list(APPEND header_files
+  list(
+    APPEND
+    header_files
     "${header_path}/${header_prefix}/cuda_implementation/calc_energy.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/cuda_batch_sizer.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/cuda_check_error_macro.cuh"
@@ -118,9 +122,10 @@ if(MUDOCK_ENABLE_CUDA)
     "${header_path}/${header_prefix}/cuda_implementation/geometric_transformations.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/mutate.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/virtual_screen.cuh"
-    "${header_path}/${header_prefix}/cuda_implementation/device.cuh"
-  )
-  list(APPEND source_files
+    "${header_path}/${header_prefix}/cuda_implementation/device.cuh")
+  list(
+    APPEND
+    source_files
     "${source_path}/cuda_implementation/cuda_object.cu"
     "${source_path}/cuda_implementation/cuda_batch_sizer.cu"
     "${source_path}/cuda_implementation/cuda_manager.cpp"
@@ -128,13 +133,14 @@ if(MUDOCK_ENABLE_CUDA)
     "${source_path}/cuda_implementation/cuda_random.cu"
     "${source_path}/cuda_implementation/virtual_screen.cu"
     "${source_path}/cuda_implementation/device.cu"
-    "${source_path}/cuda_implementation/constant_memory.cu"
-  )
+    "${source_path}/cuda_implementation/constant_memory.cu")
 endif()
 
 # declare the HIP sources
 if(MUDOCK_ENABLE_HIP)
-  list(APPEND header_files
+  list(
+    APPEND
+    header_files
     "${header_path}/${header_prefix}/hip_implementation/hip_batch_sizer.hpp"
     "${header_path}/${header_prefix}/hip_implementation/hip_check_error_macro.hpp"
     "${header_path}/${header_prefix}/hip_implementation/hip_manager.hpp"
@@ -146,21 +152,23 @@ if(MUDOCK_ENABLE_HIP)
     "${header_path}/${header_prefix}/hip_implementation/evaluate_fitness.hpp"
     "${header_path}/${header_prefix}/hip_implementation/geometric_transformations.hpp"
     "${header_path}/${header_prefix}/hip_implementation/mutate.hpp"
-    "${header_path}/${header_prefix}/hip_implementation/virtual_screen.hpp"
-  )
-  list(APPEND source_files
+    "${header_path}/${header_prefix}/hip_implementation/virtual_screen.hpp")
+  list(
+    APPEND
+    source_files
     "${source_path}/hip_implementation/hip_batch_sizer.cpp"
     "${source_path}/hip_implementation/hip_manager.cpp"
     "${source_path}/hip_implementation/hip_worker.cpp"
     "${source_path}/hip_implementation/hip_random.cpp"
     "${source_path}/hip_implementation/evaluate_fitness.cpp"
-    "${source_path}/hip_implementation/virtual_screen.cpp"
-  )
+    "${source_path}/hip_implementation/virtual_screen.cpp")
 endif()
 
 # declare the SYCL sources
 if(MUDOCK_ENABLE_SYCL)
-  list(APPEND header_files
+  list(
+    APPEND
+    header_files
     "${header_path}/${header_prefix}/sycl_implementation/sycl_manager.hpp"
     "${header_path}/${header_prefix}/sycl_implementation/calc_energy.hpp"
     "${header_path}/${header_prefix}/sycl_implementation/mutate.hpp"
@@ -171,20 +179,22 @@ if(MUDOCK_ENABLE_SYCL)
     "${header_path}/${header_prefix}/sycl_implementation/sycl_worker.hpp"
     "${header_path}/${header_prefix}/sycl_implementation/sycl_batch_sizer.hpp"
     "${header_path}/${header_prefix}/sycl_implementation/virtual_screen.hpp"
-    "${header_path}/${header_prefix}/sycl_implementation/evaluate_fitness.hpp"
-  )
-  list(APPEND source_files
+    "${header_path}/${header_prefix}/sycl_implementation/evaluate_fitness.hpp")
+  list(
+    APPEND
+    source_files
     "${source_path}/sycl_implementation/sycl_manager.cpp"
     "${source_path}/sycl_implementation/sycl_random.cpp"
     "${source_path}/sycl_implementation/sycl_worker.cpp"
     "${source_path}/sycl_implementation/sycl_batch_sizer.cpp"
-    "${source_path}/sycl_implementation/virtual_screen.cpp"
-  )
+    "${source_path}/sycl_implementation/virtual_screen.cpp")
 endif()
 
 # declare the OpenMP sources
 if(MUDOCK_ENABLE_OMP)
-  list(APPEND header_files
+  list(
+    APPEND
+    header_files
     "${header_path}/${header_prefix}/omp_implementation/omp_manager.hpp"
     "${header_path}/${header_prefix}/omp_implementation/calc_energy.hpp"
     "${header_path}/${header_prefix}/omp_implementation/mutate.hpp"
@@ -195,39 +205,43 @@ if(MUDOCK_ENABLE_OMP)
     "${header_path}/${header_prefix}/omp_implementation/omp_worker.hpp"
     "${header_path}/${header_prefix}/omp_implementation/omp_batch_sizer.hpp"
     "${header_path}/${header_prefix}/omp_implementation/virtual_screen.hpp"
-    "${header_path}/${header_prefix}/omp_implementation/evaluate_fitness.hpp"
-  )
-  list(APPEND source_files
+    "${header_path}/${header_prefix}/omp_implementation/evaluate_fitness.hpp")
+  list(
+    APPEND
+    source_files
     "${source_path}/omp_implementation/omp_manager.cpp"
     "${source_path}/omp_implementation/omp_random.cpp"
     "${source_path}/omp_implementation/omp_worker.cpp"
     "${source_path}/omp_implementation/omp_batch_sizer.cpp"
     "${source_path}/omp_implementation/virtual_screen.cpp"
-    "${source_path}/omp_implementation/evaluate_fitness.cpp"
-  )
+    "${source_path}/omp_implementation/evaluate_fitness.cpp")
 endif()
 
-# ########################################################################
+# ##############################################################################
 # ### Declare the compile step
-# ########################################################################
+# ##############################################################################
 
 # declare the mudock library
 add_library(libmudock STATIC ${source_files} ${header_files})
 add_library(mudock::libmudock ALIAS libmudock)
 set_target_properties(libmudock PROPERTIES PUBLIC_HEADER "${headers}")
 target_include_directories(libmudock PUBLIC "${header_path}")
+# TODO check this PUBLIC include
+target_include_directories(libmudock PUBLIC ${OpenBabel3_INCLUDE_DIRS})
 set_target_properties(libmudock PROPERTIES POSITION_INDEPENDENT_CODE ON)
 set_target_properties(libmudock PROPERTIES PREFIX "" OUTPUT_NAME "libmudock")
-set_target_properties(libmudock
-  PROPERTIES
-  CXX_STANDARD 20
-  CXX_STANDARD_REQUIRED ON
-  CXX_EXTENSIONS OFF
-  CUDA_SEPARABLE_COMPILATION ON
-  POSITION_INDEPENDENT_CODE ON
-)
-target_link_libraries(libmudock PUBLIC Microsoft.GSL::GSL Boost::graph)
-target_compile_options(libmudock PUBLIC $<$<AND:$<CONFIG:RELEASE>,$<COMPILE_LANGUAGE:CXX>>:${release_flags}>)
+set_target_properties(
+  libmudock
+  PROPERTIES CXX_STANDARD 20
+             CXX_STANDARD_REQUIRED ON
+             CXX_EXTENSIONS OFF
+             CUDA_SEPARABLE_COMPILATION ON
+             POSITION_INDEPENDENT_CODE ON)
+target_link_libraries(libmudock PUBLIC Microsoft.GSL::GSL Boost::graph
+                                       ${OpenBabel3_LIBRARIES})
+target_compile_options(
+  libmudock
+  PUBLIC $<$<AND:$<CONFIG:RELEASE>,$<COMPILE_LANGUAGE:CXX>>:${release_flags}>)
 add_rdkit_dep(libmudock)
 
 if(MUDOCK_ENABLE_GH)
@@ -239,32 +253,41 @@ endif()
 if(MUDOCK_ENABLE_HIP)
   target_compile_definitions(libmudock PUBLIC MUDOCK_USE_HIP)
   target_link_libraries(libmudock PUBLIC hiprand)
-  target_compile_options(libmudock PUBLIC $<$<AND:$<CONFIG:RELWITHDEBINFO>,$<COMPILE_LANGUAGE:CXX>>:--expt-relaxed-constexpr>)
-  target_compile_options(libmudock PUBLIC $<$<AND:$<CONFIG:DEBUG>,$<COMPILE_LANGUAGE:CXX>>:-G -g -Xptxas -v --expt-relaxed-constexpr>)
-  target_compile_options(libmudock PUBLIC $<$<AND:$<CONFIG:RELEASE>,$<COMPILE_LANGUAGE:CXX>>:-O3 -use_fast_math --expt-relaxed-constexpr>)
+  target_compile_options(
+    libmudock
+    PUBLIC
+      $<$<AND:$<CONFIG:RELWITHDEBINFO>,$<COMPILE_LANGUAGE:CXX>>:--expt-relaxed-constexpr>
+  )
+  target_compile_options(
+    libmudock PUBLIC $<$<AND:$<CONFIG:DEBUG>,$<COMPILE_LANGUAGE:CXX>>:-G -g
+                     -Xptxas -v --expt-relaxed-constexpr>)
+  target_compile_options(
+    libmudock PUBLIC $<$<AND:$<CONFIG:RELEASE>,$<COMPILE_LANGUAGE:CXX>>:-O3
+                     -use_fast_math --expt-relaxed-constexpr>)
 endif()
 
 # check if we need to activate the compilation flag that signals CUDA
 if(MUDOCK_ENABLE_CUDA)
   target_compile_definitions(libmudock PUBLIC MUDOCK_USE_CUDA)
   if(CMAKE_BUILD_TYPE STREQUAL "Release")
-    set_target_properties(libmudock
-      PROPERTIES
-      CUDA_STANDARD 20
-      CUDA_STANDARD_REQUIRED ON
-      CUDA_EXTENSIONS OFF
-      INTERPROCEDURAL_OPTIMIZATION ON)
+    set_target_properties(
+      libmudock
+      PROPERTIES CUDA_STANDARD 20
+                 CUDA_STANDARD_REQUIRED ON
+                 CUDA_EXTENSIONS OFF
+                 INTERPROCEDURAL_OPTIMIZATION ON)
   else()
-    set_target_properties(libmudock
-      PROPERTIES
-      CUDA_STANDARD 20
-      CUDA_STANDARD_REQUIRED ON
-      CUDA_EXTENSIONS OFF)
+    set_target_properties(
+      libmudock
+      PROPERTIES CUDA_STANDARD 20
+                 CUDA_STANDARD_REQUIRED ON
+                 CUDA_EXTENSIONS OFF)
   endif()
   set(CMAKE_CUDA_ARCHITECTURES OFF)
   set(CMAKE_CUDA_FLAGS "--expt-relaxed-constexpr")
   set(CMAKE_CUDA_FLAGS_RELEASE "-O3 -use_fast_math --expt-relaxed-constexpr")
-  set(CMAKE_CUDA_FLAGS_RELWITHDEBINFO "-G -g -Xptxas -v --expt-relaxed-constexpr")
+  set(CMAKE_CUDA_FLAGS_RELWITHDEBINFO
+      "-G -g -Xptxas -v --expt-relaxed-constexpr")
   set(CMAKE_CUDA_FLAGS_DEBUG "-G -g -Xptxas -v --expt-relaxed-constexpr")
 endif()
 
@@ -275,29 +298,31 @@ if(MUDOCK_ENABLE_OMP)
 
   # Enable offloading to AMD GPUs using Clang
   if(NOT OMP_TARGET EQUAL "cpu")
-    if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
+    if("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
       if(GPU_PLATFORM STREQUAL "cuda")
         target_compile_options(libmudock PRIVATE "-fopenmp")
         target_compile_options(libmudock PRIVATE "-fopenmp-targets=nvptx64")
         # target_compile_options(libmudock PRIVATE "-Xopenmp-target=nvptx64")
       elseif(GPU_PLATFORM STREQUAL "amd")
         target_compile_options(libmudock PRIVATE "-fopenmp")
-        target_compile_options(libmudock PRIVATE "-fopenmp-targets=amdgcn-amd-amdhsa")
-        # target_compile_options(libmudock PRIVATE "-Xopenmp-target=amdgcn-amd-amdhsa")
+        target_compile_options(libmudock
+                               PRIVATE "-fopenmp-targets=amdgcn-amd-amdhsa")
+        # target_compile_options(libmudock PRIVATE
+        # "-Xopenmp-target=amdgcn-amd-amdhsa")
       endif()
-      target_compile_options(libmudock PRIVATE "--offload-arch=${GPU_ARCHITECTURE}")
-    elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
+      target_compile_options(libmudock
+                             PRIVATE "--offload-arch=${GPU_ARCHITECTURE}")
+    elseif("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
       # TODO test with GCC, check also if GCC supports this
       message(FATAL_ERROR "muDock does not support GCC and OpenMP offloading")
-      # if(GPU_PLATFORM STREQUAL "cuda")
-      #   target_compile_options(libmudock PRIVATE "-fopenmp")
-      #   target_compile_options(libmudock PRIVATE "-foffload=nvptx-none")
-      #   target_compile_options(libmudock PRIVATE "-foffload-options=nvptx-none=-march=${GPU_ARCHITECTURE}")
-      # elseif(GPU_PLATFORM STREQUAL "amd")
-      #   target_compile_options(libmudock PRIVATE "-fopenmp")
-      #   target_compile_options(libmudock PRIVATE "-foffload=amdgcn-amdhsa")
-      #   target_compile_options(libmudock PRIVATE "-foffload-options=amdgcn-amdhsa=-march=${GPU_ARCHITECTURE}")
-      # endif()
+      # if(GPU_PLATFORM STREQUAL "cuda") target_compile_options(libmudock
+      # PRIVATE "-fopenmp") target_compile_options(libmudock PRIVATE
+      # "-foffload=nvptx-none") target_compile_options(libmudock PRIVATE
+      # "-foffload-options=nvptx-none=-march=${GPU_ARCHITECTURE}")
+      # elseif(GPU_PLATFORM STREQUAL "amd") target_compile_options(libmudock
+      # PRIVATE "-fopenmp") target_compile_options(libmudock PRIVATE
+      # "-foffload=amdgcn-amdhsa") target_compile_options(libmudock PRIVATE
+      # "-foffload-options=amdgcn-amdhsa=-march=${GPU_ARCHITECTURE}") endif()
     else()
       message(FATAL_ERROR "Not support OpenMP compiler")
     endif()
@@ -315,17 +340,16 @@ if(MUDOCK_ENABLE_SYCL)
     target_link_libraries(libmudock PUBLIC cudart)
   endif()
 
-  # TODO only with AdaptiveCpp
-  # Manually adding acpp library
-  # NOTE: the compiler should be a clang version with sycl
-  # target_link_libraries(libmudock PUBLIC acpp-rt)
-  # list(APPEND SYCL_FLAGS "-fsycl" "-fsycl-targets=${ACPP_TARGETS}")
-  # target_compile_options(libmudock PUBLIC $<$<COMPILE_LANGUAGE:CXX>:${SYCL_FLAGS}>)
-  # target_link_options(libmudock PUBLIC $<$<COMPILE_LANGUAGE:CXX>:${SYCL_FLAGS}>)
+  # TODO only with AdaptiveCpp Manually adding acpp library NOTE: the compiler
+  # should be a clang version with sycl target_link_libraries(libmudock PUBLIC
+  # acpp-rt) list(APPEND SYCL_FLAGS "-fsycl" "-fsycl-targets=${ACPP_TARGETS}")
+  # target_compile_options(libmudock PUBLIC
+  # $<$<COMPILE_LANGUAGE:CXX>:${SYCL_FLAGS}>) target_link_options(libmudock
+  # PUBLIC $<$<COMPILE_LANGUAGE:CXX>:${SYCL_FLAGS}>)
 
-  # Automatic configuration
-  # NOTE: the compiler will be set by default to the AdaptiveCpp one
-  # NOTE: AdaptiveCpp Single pass compiler optimizations are not required
+  # Automatic configuration NOTE: the compiler will be set by default to the
+  # AdaptiveCpp one NOTE: AdaptiveCpp Single pass compiler optimizations are not
+  # required
   add_sycl_to_target(TARGET libmudock SOURCES)
 endif()
 
@@ -335,8 +359,8 @@ if(MUDOCK_ENABLE_LIKWID)
   add_definitions(-DLIKWID_PERFMON)
 endif()
 
-# ########################################################################
+# ##############################################################################
 # ### Declare the install step
-# ########################################################################
+# ##############################################################################
 
 # at the moment we don't deploy the library
