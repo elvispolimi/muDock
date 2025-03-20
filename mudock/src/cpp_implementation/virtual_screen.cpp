@@ -40,7 +40,7 @@ namespace mudock {
                        electro_map->center.z - ligand_center_of_mass.z);
 
     // Find out the rotatable bonds in the ligand
-    auto graph = make_graph(ligand.get_bonds());
+    auto graph = make_graph(ligand.get_bonds(), ligand.num_atoms());
     const auto ligand_fragments =
         std::make_unique<fragments<static_containers>>(graph, ligand.get_bonds(), ligand.num_atoms());
 

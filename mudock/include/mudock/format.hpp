@@ -4,3 +4,4 @@
 #include <mudock/format/dot.hpp>
 #include <mudock/format/mol2.hpp>
 #include <mudock/format/pdb.hpp>
+#include <mudock/format/pdbqt.hpp>
