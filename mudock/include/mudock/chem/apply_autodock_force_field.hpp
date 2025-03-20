@@ -21,7 +21,7 @@ namespace mudock {
     mudock::resize(mol_autodock_types, num_atoms);
 
     // create the graph of the molecule
-    const auto graph = make_graph(molecule.get_bonds());
+    const auto graph = make_graph(molecule.get_bonds(), molecule.num_atoms());
 
     // assign the autodock babel type
     auto babel_type_span = make_span(mol_autodock_babel_types, num_atoms);

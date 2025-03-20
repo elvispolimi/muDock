@@ -1,7 +1,6 @@
 #pragma once
 
 #include <boost/graph/adjacency_list.hpp>
-#include <cstdint>
 #include <mudock/molecule/bond.hpp>
 #include <span>
 
@@ -18,6 +17,7 @@ namespace mudock {
       adjacency_list<boost::setS, boost::vecS, boost::undirectedS, molecule_vertex_type, molecule_edge_type>;
 
   // utility function that build a graph from the molecules bond
-  [[nodiscard]] molecule_graph_type make_graph(const std::span<const bond>& bonds);
+  [[nodiscard]] molecule_graph_type make_graph(const std::span<const bond>& bonds,
+                                               const std::size_t num_atoms);
 
 } // namespace mudock

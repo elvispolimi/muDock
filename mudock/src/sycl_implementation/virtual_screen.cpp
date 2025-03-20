@@ -162,7 +162,7 @@ namespace mudock {
                   num_atoms * sizeof(fp_type));
       // Fragments
       // Find out the rotatable bonds in the ligand
-      auto graph = make_graph(ligand.get()->get_bonds());
+      auto graph = make_graph(ligand.get()->get_bonds(), ligand.get()->num_atoms());
       // TODO check this assignment
       batch_fragments[index]  = {graph, ligand.get()->get_bonds(), ligand.get()->num_atoms()};
       const auto &l_fragments = batch_fragments[index];
