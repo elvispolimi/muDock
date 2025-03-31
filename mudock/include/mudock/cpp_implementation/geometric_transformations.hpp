@@ -1,10 +1,12 @@
 #pragma once
 
+#include <mudock/cpp_implementation/vectorization.hpp>
 #include <mudock/molecule.hpp>
 #include <mudock/molecule/fragments.hpp>
 #include <mudock/type_alias.hpp>
 
 namespace mudock {
+  template<cpu_vectorization vect>
   void translate_molecule(fp_type* __restrict__ x,
                           fp_type* __restrict__ y,
                           fp_type* __restrict__ z,
@@ -13,6 +15,7 @@ namespace mudock {
                           const fp_type offset_y,
                           const fp_type offset_z);
 
+  template<cpu_vectorization vect>
   void rotate_molecule(fp_type* __restrict__ x,
                        fp_type* __restrict__ y,
                        fp_type* __restrict__ z,
@@ -21,6 +24,7 @@ namespace mudock {
                        const fp_type angle_y,
                        const fp_type angle_z);
 
+  template<cpu_vectorization vect>
   void rotate_fragment(fp_type* __restrict__ x,
                        fp_type* __restrict__ y,
                        fp_type* __restrict__ z,

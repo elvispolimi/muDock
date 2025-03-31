@@ -1,18 +1,19 @@
 #include <hwy/highway.h>
-#include <mudock/cpp_implementation/geometric_transformations.hpp>
+#include <mudock/cpp_implementation/geometric_transformations_gh.hpp>
 #include <mudock/grid/pi.hpp>
 
 // TODO #include "hwy/aligned_allocator.h"
 
 namespace mudock {
   // TODO check if this NAMESPACE is needed
-  void translate_molecule(fp_type* __restrict__ x,
-                          fp_type* __restrict__ y,
-                          fp_type* __restrict__ z,
-                          const int num_atoms,
-                          const fp_type offset_x,
-                          const fp_type offset_y,
-                          const fp_type offset_z) {
+  template<>
+  void translate_molecule<cpu_vectorization::GH>(fp_type* __restrict__ x,
+                                                 fp_type* __restrict__ y,
+                                                 fp_type* __restrict__ z,
+                                                 const int num_atoms,
+                                                 const fp_type offset_x,
+                                                 const fp_type offset_y,
+                                                 const fp_type offset_z) {
     // Define SIMD type for fp_type (e.g., float or double)
     const HWY_FULL(fp_type) d;
 
@@ -42,13 +43,14 @@ namespace mudock {
     }
   }
 
-  void rotate_molecule(fp_type* __restrict__ x,
-                       fp_type* __restrict__ y,
-                       fp_type* __restrict__ z,
-                       const int num_atoms,
-                       const fp_type angle_x,
-                       const fp_type angle_y,
-                       const fp_type angle_z) {
+  template<>
+  void rotate_molecule<cpu_vectorization::GH>(fp_type* __restrict__ x,
+                                              fp_type* __restrict__ y,
+                                              fp_type* __restrict__ z,
+                                              const int num_atoms,
+                                              const fp_type angle_x,
+                                              const fp_type angle_y,
+                                              const fp_type angle_z) {
     // Define SIMD type for fp_type (e.g., float or double)
     const HWY_FULL(fp_type) d;
 
@@ -150,14 +152,15 @@ namespace mudock {
     }
   }
 
-  void rotate_fragment(fp_type* __restrict__ x,
-                       fp_type* __restrict__ y,
-                       fp_type* __restrict__ z,
-                       const int num_atoms,
-                       const int* __restrict__ frag_mask,
-                       const int start_index,
-                       const int stop_index,
-                       const fp_type angle) {
+  template<>
+  void rotate_fragment<cpu_vectorization::GH>(fp_type* __restrict__ x,
+                                              fp_type* __restrict__ y,
+                                              fp_type* __restrict__ z,
+                                              const int num_atoms,
+                                              const int* __restrict__ frag_mask,
+                                              const int start_index,
+                                              const int stop_index,
+                                              const fp_type angle) {
     // compute the axis vector (and some properties)
     const auto origx = x[start_index], origy = y[start_index], origz = z[start_index];
     const auto destx = x[stop_index], desty = y[stop_index], destz = z[stop_index];

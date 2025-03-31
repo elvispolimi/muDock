@@ -130,6 +130,13 @@ if(MUDOCK_ENABLE_GH)
   find_package(HWY REQUIRED)
 endif()
 
+# XSimd
+option(MUDOCK_ENABLE_XSIMD "Enable XSimd for CPU vectorization" OFF)
+if(MUDOCK_ENABLE_XSIMD)
+  find_package(xsimd REQUIRED CONFIG)
+  set(XSIMD_INCLUDE_DIR "${xsimd_DIR}/../../../include")
+endif()
+
 # CUDA
 option(MUDOCK_ENABLE_CUDA "Enable the CUDA kernel implementation" OFF)
 
@@ -366,6 +373,11 @@ message(
 message(
   STATUS
     "Enable Google Highway...............: ${MUDOCK_ENABLE_GH} (MUDOCK_ENABLE_GH)"
+)
+
+message(
+  STATUS
+    "Enable XSimd........................: ${MUDOCK_ENABLE_XSIMD} (MUDOCK_ENABLE_XSIMD)"
 )
 
 message(

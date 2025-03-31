@@ -1,0 +1,40 @@
+#include <mudock/cpp_implementation/geometric_transformations_gh.hpp>
+#include <mudock/grid/pi.hpp>
+
+// TODO #include "hwy/aligned_allocator.h"
+
+namespace mudock {
+  template<>
+  void translate_molecule<cpu_vectorization::XSIMD>(fp_type* __restrict__ x,
+                                                    fp_type* __restrict__ y,
+                                                    fp_type* __restrict__ z,
+                                                    const int num_atoms,
+                                                    const fp_type offset_x,
+                                                    const fp_type offset_y,
+                                                    const fp_type offset_z) {
+    throw std::runtime_error("XSIMD Version not yet implemented");
+  }
+
+  template<>
+  void rotate_molecule<cpu_vectorization::XSIMD>(fp_type* __restrict__ x,
+                                                 fp_type* __restrict__ y,
+                                                 fp_type* __restrict__ z,
+                                                 const int num_atoms,
+                                                 const fp_type angle_x,
+                                                 const fp_type angle_y,
+                                                 const fp_type angle_z) {
+    throw std::runtime_error("XSIMD Version not yet implemented");
+  }
+
+  template<>
+  void rotate_fragment<cpu_vectorization::XSIMD>(fp_type* __restrict__ x,
+                                                 fp_type* __restrict__ y,
+                                                 fp_type* __restrict__ z,
+                                                 const int num_atoms,
+                                                 const int* __restrict__ frag_mask,
+                                                 const int start_index,
+                                                 const int stop_index,
+                                                 const fp_type angle) {
+    throw std::runtime_error("XSIMD Version not yet implemented");
+  }
+} // namespace mudock

@@ -59,6 +59,7 @@ list(
   "${header_path}/${header_prefix}/sycl_implementation.hpp"
   "${header_path}/${header_prefix}/format.hpp"
   "${header_path}/${header_prefix}/grid.hpp"
+  "${header_path}/${header_prefix}/cpp_implementation/vectorization.hpp"
   "${header_path}/${header_prefix}/knobs.hpp"
   "${header_path}/${header_prefix}/log.hpp"
   "${header_path}/${header_prefix}/molecule.hpp"
@@ -83,7 +84,6 @@ list(
   "${source_path}/compute/parse_ids.cpp"
   "${source_path}/compute/reorder_buffer.cpp"
   "${source_path}/cpp_implementation/cpp_manager.cpp"
-  "${source_path}/cpp_implementation/cpp_worker.cpp"
   "${source_path}/cpp_implementation/weed_bonds.cpp"
   "${source_path}/format/dot.cpp"
   "${source_path}/format/mol2.cpp"
@@ -96,18 +96,19 @@ list(
   "${source_path}/molecule/graph.cpp"
   "${source_path}/molecule/property_table.cpp"
   "${source_path}/log.cpp"
-  "${source_path}/cpp_implementation/virtual_screen.cpp"
-  "${source_path}/cpp_implementation/mutate.cpp"
-  "${source_path}/cpp_implementation/evaluate_fitness_cpp.cpp")
+  "${source_path}/cpp_implementation/geometric_transformations_cpp.cpp"
+  "${source_path}/cpp_implementation/calc_energy_cpp.cpp")
 
 if(MUDOCK_ENABLE_GH)
   list(APPEND source_files
-       "${source_path}/g_highway_implementation/geometric_transformations.cpp"
-       "${source_path}/g_highway_implementation/calc_energy_cpp.cpp")
-else()
+       "${source_path}/gh_implementation/geometric_transformations_gh.cpp"
+       "${source_path}/gh_implementation/calc_energy_gh.cpp")
+endif()
+
+if(MUDOCK_ENABLE_XSIMD)
   list(APPEND source_files
-       "${source_path}/cpp_implementation/geometric_transformations.cpp"
-       "${source_path}/cpp_implementation/calc_energy_cpp.cpp")
+       "${source_path}/xsimd_implementation/geometric_transformations_xsimd.cpp"
+       "${source_path}/xsimd_implementation/calc_energy_xsimd.cpp")
 endif()
 
 # declare the CUDA sources
@@ -250,7 +251,12 @@ target_compile_options(
 
 if(MUDOCK_ENABLE_GH)
   target_compile_definitions(libmudock PUBLIC MUDOCK_USE_GH)
-  target_link_libraries(libmudock PUBLIC hwy::hwy)
+  target_link_libraries(libmudock PRIVATE hwy::hwy)
+endif()
+
+if(MUDOCK_ENABLE_XSIMD)
+  target_compile_definitions(libmudock PUBLIC MUDOCK_USE_XSIMD)
+  target_include_directories(libmudock PUBLIC "${XSIMD_INCLUDE_DIR}")
 endif()
 
 # check if we need to activate the compilation flag that signals HIP
