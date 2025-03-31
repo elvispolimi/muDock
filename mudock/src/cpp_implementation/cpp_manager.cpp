@@ -1,3 +1,6 @@
+#include "mudock/cpp_implementation/vectorization.hpp"
+#include "mudock/utils.hpp"
+
 #include <mudock/compute.hpp>
 #include <mudock/cpp_implementation/cpp_manager.hpp>
 #include <mudock/cpp_implementation/cpp_worker.hpp>
@@ -5,7 +8,7 @@
 
 namespace mudock {
 
-  static constexpr auto cpp_token = std::string_view{"CPP"};
+  // static constexpr auto cpp_token = std::string_view{"CPP"};
 
   void manage_cpp(const std::vector<std::string>& configurations,
                   threadpool& pool,
@@ -15,51 +18,61 @@ namespace mudock {
                   const knobs knobs,
                   std::shared_ptr<safe_stack<static_molecule>>& input_molecules,
                   std::shared_ptr<safe_stack<static_molecule>>& output_molecules) {
-    // single out the CPP description
-    const auto it =
-        std::find_if(configurations.begin(), configurations.end(), [](const std::string_view& str) {
-          return str.find(cpp_token) != std::string::npos; // Check if the target is a substring
-        });
+    constexpr_for<0, num_vectorization_type(), 1>([&](const auto index) {
+      constexpr cpu_vectorization vect = static_cast<cpu_vectorization>(index());
+      constexpr auto desc              = get_description(vect);
+      if constexpr (desc.is_enabled) {
+        constexpr auto value_token = desc.name;
 
-    // parse the CPP description (if any)
-    if (it != configurations.end()) {
-      auto configuration = *it;
+        // single out the CPP description
+        const auto it = std::find_if(configurations.begin(),
+                                     configurations.end(),
+                                     [value_token](const std::string_view& str) {
+                                       return str.find(value_token) !=
+                                              std::string::npos; // Check if the target is a substring
+                                     });
 
-      configuration = configuration.substr(cpp_token.size());
+        // parse the CPP description (if any)
+        if (it != configurations.end()) {
+          auto configuration = *it;
 
-      // the description should start with a colon
-      if (configuration.front() != ':') [[unlikely]] {
-        throw std::runtime_error(std::string{"CPP description should start with ':' ("} +
-                                 std::string{configuration} + std::string{")"});
+          configuration = configuration.substr(value_token.size());
+
+          // the description should start with a colon
+          if (configuration.front() != ':') [[unlikely]] {
+            throw std::runtime_error(std::string{"CPP description should start with ':' ("} +
+                                     std::string{configuration} + std::string{")"});
+          }
+          configuration = configuration.substr(1);
+
+          // make sure that the device is the CPU
+          const auto colon_index = configuration.find(':');
+          const auto device_name = configuration.substr(0, colon_index);
+          if (device_name != cpu_token) [[unlikely]] {
+            throw std::runtime_error(std::string{"Unsupported device '"} + std::string{device_name} +
+                                     std::string{"' for the CPP implementation"});
+          }
+          configuration = configuration.substr(colon_index);
+
+          // the core counts description should start with a colon
+          if (configuration.front() != ':') [[unlikely]] {
+            throw std::runtime_error(std::string{"Core count description should start with ':' ("} +
+                                     std::string{configuration} + std::string{")"});
+          }
+          configuration = configuration.substr(1);
+
+          // add the workers that we found parsing the configuration
+          for (const auto id: parse_ids(configuration)) {
+            pool.add_worker<mudock::cpp_worker<vect>>(knobs,
+                                                      grid_atom_maps,
+                                                      electro_map,
+                                                      desolv_map,
+                                                      input_molecules,
+                                                      output_molecules,
+                                                      id);
+          }
+        }
       }
-      configuration = configuration.substr(1);
-
-      // make sure that the device is the CPU
-      const auto colon_index = configuration.find(':');
-      const auto device_name = configuration.substr(0, colon_index);
-      if (device_name != cpu_token) [[unlikely]] {
-        throw std::runtime_error(std::string{"Unsupported device '"} + std::string{device_name} +
-                                 std::string{"' for the CPP implementation"});
-      }
-      configuration = configuration.substr(colon_index);
-
-      // the core counts description should start with a colon
-      if (configuration.front() != ':') [[unlikely]] {
-        throw std::runtime_error(std::string{"Core count description should start with ':' ("} +
-                                 std::string{configuration} + std::string{")"});
-      }
-      configuration = configuration.substr(1);
-
-      // add the workers that we found parsing the configuration
-      for (const auto id: parse_ids(configuration)) {
-        pool.add_worker<mudock::cpp_worker>(knobs,
-                                            grid_atom_maps,
-                                            electro_map,
-                                            desolv_map,
-                                            input_molecules,
-                                            output_molecules,
-                                            id);
-      }
-    }
+    });
   }
 } // namespace mudock

@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <random>
 
+// TODO legacy code consider removing it
 namespace mudock {
   static constexpr std::size_t random_number_size{1024};
 

@@ -1,17 +1,18 @@
 #include <cassert>
 #include <mudock/cpp_implementation/center_of_mass.hpp>
-#include <mudock/cpp_implementation/geometric_transformations.hpp>
+#include <mudock/cpp_implementation/geometric_transformations_cpp.hpp>
+#include <mudock/cpp_implementation/vectorization.hpp>
 #include <mudock/grid.hpp>
 
 namespace mudock {
-
-  void translate_molecule(fp_type* __restrict__ x,
-                                 fp_type* __restrict__ y,
-                                 fp_type* __restrict__ z,
-                                 const int num_atoms,
-                                 const fp_type offset_x,
-                                 const fp_type offset_y,
-                                 const fp_type offset_z) {
+  template<>
+  void translate_molecule<cpu_vectorization::AUTO>(fp_type* __restrict__ x,
+                                                   fp_type* __restrict__ y,
+                                                   fp_type* __restrict__ z,
+                                                   const int num_atoms,
+                                                   const fp_type offset_x,
+                                                   const fp_type offset_y,
+                                                   const fp_type offset_z) {
 #pragma GCC ivdep
 #pragma clang loop vectorize(enable) interleave(enable) unroll(enable)
     for (int i = 0; i < num_atoms; ++i) {
@@ -21,13 +22,14 @@ namespace mudock {
     }
   }
 
-  void rotate_molecule(fp_type* __restrict__ x,
-                              fp_type* __restrict__ y,
-                              fp_type* __restrict__ z,
-                              const int num_atoms,
-                              const fp_type angle_x,
-                              const fp_type angle_y,
-                              const fp_type angle_z) {
+  template<>
+  void rotate_molecule<cpu_vectorization::AUTO>(fp_type* __restrict__ x,
+                                                fp_type* __restrict__ y,
+                                                fp_type* __restrict__ z,
+                                                const int num_atoms,
+                                                const fp_type angle_x,
+                                                const fp_type angle_y,
+                                                const fp_type angle_z) {
     // compute the molecule center of mass
     point3D c{0, 0, 0};
 #pragma GCC ivdep
@@ -69,14 +71,15 @@ namespace mudock {
     }
   }
 
-  void rotate_fragment(fp_type* __restrict__ x,
-                              fp_type* __restrict__ y,
-                              fp_type* __restrict__ z,
-                              const int num_atoms,
-                              const int* __restrict__ frag_mask,
-                              const int start_index,
-                              const int stop_index,
-                              const fp_type angle) {
+  template<>
+  void rotate_fragment<cpu_vectorization::AUTO>(fp_type* __restrict__ x,
+                                                fp_type* __restrict__ y,
+                                                fp_type* __restrict__ z,
+                                                const int num_atoms,
+                                                const int* __restrict__ frag_mask,
+                                                const int start_index,
+                                                const int stop_index,
+                                                const fp_type angle) {
     // compute the axis vector (and some properties)
     const auto origx = x[start_index], origy = y[start_index], origz = z[start_index];
     const auto destx = x[stop_index], desty = y[stop_index], destz = z[stop_index];
