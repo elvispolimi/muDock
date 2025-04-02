@@ -1,10 +1,21 @@
+#include <algorithm>
 #include <mudock/chem/autodock_types.hpp>
+#include <stdexcept>
 
 //===------------------------------------------------------------------------------------------------------
 // WARNING: This file has been automatically generated from chem/autodock_types.json
 //===------------------------------------------------------------------------------------------------------
 
 namespace mudock {
+  autodock_ff parse_autodock_type(const std::string_view symbol) {
+    const auto element_it = std::find_if(std::begin(AUTODOCK_FF_DICTIONARY),
+                                         std::end(AUTODOCK_FF_DICTIONARY),
+                                         [&symbol](const auto& e) { return e.name == symbol; });
+    if (element_it != std::end(AUTODOCK_FF_DICTIONARY))
+      return element_it->value;
+    else
+      throw std::runtime_error("Missing autodock type");
+  }
   const std::array<autodock_ff_description, 131> AUTODOCK_FF_DICTIONARY = {{
       {
           autodock_ff::H,
