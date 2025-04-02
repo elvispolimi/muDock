@@ -3,6 +3,9 @@
 #include <mudock/likwid_utils.hpp>
 #include <mudock/log.hpp>
 #include <stdexcept>
+// #include <sys/prctl.h>
+// #include <unistd.h>
+// #include <stdio.h>
 
 namespace mudock {
   cpp_worker::cpp_worker(const knobs knobs,
@@ -20,6 +23,7 @@ namespace mudock {
     CPU_SET(cpu_id, &cpuset); // Set affinity to the target CPU
     pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
     info("Worker CPP on duty! Set affinity to core ", cpu_id);
+    // prctl(PR_SVE_SET_VL,64|PR_SVE_VL_INHERIT);
   }
 
   void cpp_worker::main() {
