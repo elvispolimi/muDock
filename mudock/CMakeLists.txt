@@ -36,7 +36,6 @@ list(
   "${header_path}/${header_prefix}/format/mol2.hpp"
   "${header_path}/${header_prefix}/format/pdb.hpp"
   "${header_path}/${header_prefix}/format/pdbqt.hpp"
-  "${header_path}/${header_prefix}/format/rdkit_wrapper.hpp"
   "${header_path}/${header_prefix}/format/ob_wrapper.hpp"
   "${header_path}/${header_prefix}/grid/mdindex.hpp"
   "${header_path}/${header_prefix}/grid/grid_map.hpp"
@@ -84,7 +83,6 @@ list(
   "${source_path}/cpp_implementation/weed_bonds.cpp"
   "${source_path}/format/dot.cpp"
   "${source_path}/format/mol2.cpp"
-  "${source_path}/format/rdkit_wrapper.cpp"
   "${source_path}/format/ob_wrapper.cpp"
   "${source_path}/grid/grid_atom_map.cpp"
   "${source_path}/grid/grid_electrostatic_map.cpp"
@@ -244,7 +242,6 @@ target_link_libraries(libmudock PUBLIC Microsoft.GSL::GSL Boost::graph
 target_compile_options(
   libmudock
   PUBLIC $<$<AND:$<CONFIG:RELEASE>,$<COMPILE_LANGUAGE:CXX>>:${release_flags}>)
-add_rdkit_dep(libmudock)
 
 if(MUDOCK_ENABLE_GH)
   target_compile_definitions(libmudock PUBLIC MUDOCK_USE_GH)
