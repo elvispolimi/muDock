@@ -98,8 +98,9 @@ namespace mudock {
                                  const fp_type offset_x,
                                  const fp_type offset_y,
                                  const fp_type offset_z) {
-#pragma GCC ivdep
-#pragma clang loop vectorize(enable) interleave(enable) unroll(enable)
+/* #pragma GCC ivdep */
+/* #pragma clang loop vectorize(enable) interleave(enable) unroll(enable) */
+#pragma omp simd
     for (int i = 0; i < num_atoms; ++i) {
       x[i] += offset_x;
       y[i] += offset_y;
@@ -116,8 +117,9 @@ namespace mudock {
                               const fp_type angle_z) {
     // compute the molecule center of mass
     point3D c{0, 0, 0};
-#pragma GCC ivdep
-#pragma clang loop vectorize(enable) interleave(enable) unroll(enable)
+/* #pragma GCC ivdep */
+/* #pragma clang loop vectorize(enable) interleave(enable) unroll(enable) */
+#pragma omp simd
     for (int i = 0; i < num_atoms; i++) {
       c.x += x[i];
       c.y += y[i];
@@ -145,8 +147,9 @@ namespace mudock {
     const auto m22 = cx * cy;
 
 // apply the rotation matrix
-#pragma GCC ivdep
-#pragma clang loop vectorize(enable) interleave(enable) unroll(enable)
+/* #pragma GCC ivdep */
+/* #pragma clang loop vectorize(enable) interleave(enable) unroll(enable) */
+#pragma omp simd
     for (int i = 0; i < num_atoms; ++i) {
       const auto translated_x = x[i] - c.x, translated_y = y[i] - c.y, translated_z = z[i] - c.z;
       x[i] = translated_x * m00 + translated_y * m01 + translated_z * m02 + c.x;
@@ -208,8 +211,9 @@ namespace mudock {
         inv_l2;
 
 // apply the rotation matrix
-#pragma GCC ivdep
-#pragma clang loop vectorize(enable) interleave(enable) unroll(enable)
+/* #pragma GCC ivdep */
+/* #pragma clang loop vectorize(enable) interleave(enable) unroll(enable) */
+#pragma omp simd
     for (int i = 0; i < num_atoms; ++i) {
       if (frag_mask[i] != 0) {
         const auto prev_x = x[i], prev_y = y[i], prev_z = z[i];
@@ -234,7 +238,8 @@ namespace mudock {
     rotate_molecule(x, y, z, num_atoms, c[3], c[4], c[5]);
 
 // change the molecule shape
-#pragma clang loop interleave(enable) unroll(enable)
+/* #pragma clang loop interleave(enable) unroll(enable) */
+#pragma omp simd
     for (int i = 0; i < num_rotamers; ++i) {
       const auto* bitmask    = frag_masks + i * num_atoms;
       const auto start_index = frag_start_indexes[i];
@@ -270,8 +275,9 @@ namespace mudock {
     fp_type emap_total_trilinear  = 0;
     fp_type dmap_total_trilinear  = 0;
 
-#pragma GCC ivdep
-#pragma clang loop vectorize(enable) interleave(enable) unroll(enable)
+/* #pragma GCC ivdep */
+/* #pragma clang loop vectorize(enable) interleave(enable) unroll(enable) */
+    #pragma omp simd
     for (int index = 0; index < num_atoms; ++index) {
       fp_type coord[3]{ligand_x[index], ligand_y[index], ligand_z[index]};
 
@@ -334,12 +340,13 @@ namespace mudock {
 
     fp_type elect_total_eintcal{0}, emap_total_eintcal{0}, dmap_total_eintcal{0};
     if (n_torsions > 0) {
-#pragma GCC ivdep
-#pragma clang loop vectorize(enable) interleave(enable) unroll(enable)
-#pragma fj loop prefetch
-#pragma statement scache_isolate_assign ligand_x, ligand_y, ligand_z, ligand_charge, ligand_num_hbond, \
-    ligand_Rij_hb, ligand_Rii, ligand_epsij_hb, ligand_epsii
+/* #pragma GCC ivdep */
+/* #pragma clang loop vectorize(enable) interleave(enable) unroll(enable) */
+/* #pragma fj loop prefetch */
+/* #pragma statement scache_isolate_assign ligand_x, ligand_y, ligand_z, ligand_charge, ligand_num_hbond, \ */
+/*     ligand_Rij_hb, ligand_Rii, ligand_epsij_hb, ligand_epsii */
       // TODO check reciprocal math here
+      #pragma omp simd
       for (int i = 0; i < num_nonbond; ++i) {
         const int& a1 = non_bond_list_a1[i];
         const int& a2 = non_bond_list_a2[i];
