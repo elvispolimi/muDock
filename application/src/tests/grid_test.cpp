@@ -1,22 +1,31 @@
 #include <boost/program_options.hpp>
 #include <cstdlib>
 #include <filesystem>
+#include <fstream>
+#include <memory>
 #include <mudock/chem/ligand_maps.hpp>
 #include <mudock/format/pdbqt.hpp>
+#include <mudock/grid/grid_map.hpp>
 #include <mudock/log.hpp>
 #include <mudock/mudock.hpp>
 #include <mudock/type_alias.hpp>
+#include <mudock/utils.hpp>
 #include <stdexcept>
 #include <string>
 #include <tests/autogrid.hpp>
 
-// utility function that reads the whole content of a stream
-template<class stream_type>
-inline auto read_from_stream(stream_type&& in) {
-  assert(in.good());
-  return std::string{std::istreambuf_iterator<std::string::value_type>{in},
-                     std::istreambuf_iterator<std::string::value_type>{}};
+template<class T>
+inline T round3dp(const T x) {
+  return ((std::floor((x) * 1000.0 + 0.5)) / 1000.0);
 }
+
+struct fld_tokens {
+  static constexpr auto FILE_TOKEN     = "file=";
+  static constexpr auto VARIABLE_TOKEN = "variable";
+  static constexpr auto LABEL_TOKEN    = "label";
+  static constexpr auto ELETRO_TOKEN   = "Electrostatics";
+  static constexpr auto DESOLV_TOKEN   = "Desolvation";
+};
 
 int main(int argc, char* argv[]) {
   namespace po                       = boost::program_options;
@@ -26,8 +35,11 @@ int main(int argc, char* argv[]) {
   po::options_description arguments_description("Available options");
   arguments_description.add_options()("help", "print this help message");
   arguments_description.add_options()("protein",
-                                      po::value(&protein_path)->default_value(protein_path),
+                                      po::value(&protein_path)->required(),
                                       "Path to the protein file (in PDB)");
+  arguments_description.add_options()("pdbqt",
+                                      po::value(&protein_path)->default_value(protein_path),
+                                      "Path to the protein file (in PDBQT)");
   arguments_description.add_options()("autogrid",
                                       po::value(&fld_path)->default_value(fld_path),
                                       "Path to the .fld file");
@@ -39,99 +51,76 @@ int main(int argc, char* argv[]) {
 
   po::notify(vm);
 
-  mudock::info("Reading and parsing protein ", protein_path, " ...");
+  // mudock::info("Reading and parsing protein ", protein_path, " ...");
   auto protein_ptr = std::make_shared<mudock::dynamic_molecule>();
   auto& protein    = *protein_ptr;
-  // auto pdb                       = mudock::pdb{};
-  // const auto protein_description = read_from_stream(std::ifstream(protein_path));
-  // pdb.parse(protein, protein_description);
 
-  auto pdbqt                     = mudock::pdbqt{};
-  const auto protein_description = read_from_stream(std::ifstream(protein_path));
-  pdbqt.parse(protein, protein_description);
+  parse(protein, protein_path);
 
   mudock::apply_autodock_forcefield(protein);
-  // auto grid_atom_maps    = std::make_shared<const mudock::grid_atom_mapper>(generate_atom_grid_maps(protein));
-  auto electrostatic_map = std::make_shared<const mudock::grid_map>(generate_electrostatic_grid_map(protein));
-  auto desolvation_map   = std::make_shared<const mudock::grid_map>(generate_desolvation_grid_map(protein));
+  const auto grid_atom_maps    = generate_atom_grid_maps(protein);
+  const auto electrostatic_map = generate_electrostatic_grid_map(protein);
+  const auto desolvation_map   = generate_desolvation_grid_map(protein);
 
-  std::ifstream file(fld_path);
-  if (!file.is_open()) {
-    throw std::runtime_error("Unable to open file: " + fld_path.string());
-  }
+  const auto desc = read_from_stream(std::ifstream(fld_path));
+  std::stringstream desc_s{desc};
+
+  std::array<mudock::ligand_map_types, mudock::num_ligand_map_types()> variables;
+  int label       = 0;
+  int label_eletr = 0;
+  int label_desol = 0;
   std::string line;
-
-  std::array<int, mudock::num_ligand_map_types()> variables;
-  int label                = 0;
-  int label_eletr          = 0;
-  int label_desol          = 0;
-  const std::string prefix = "file=";
   // Read the header (first few lines) for the grid information
-  while (std::getline(file, line)) {
+  while (std::getline(desc_s, line)) {
     // Skip empty lines
     if (line.empty())
       continue;
 
-    if (line.find("label") != std::string::npos) {
+    if (line.find(fld_tokens::LABEL_TOKEN) != std::string::npos) {
       size_t equal_pos = line.find('=');
       size_t dash_pos  = line.find('-');
       ++label;
       if (equal_pos != std::string::npos && dash_pos != std::string::npos && equal_pos < dash_pos) {
         const std::string result = line.substr(equal_pos + 1, dash_pos - equal_pos - 1);
-        variables[static_cast<int>(mudock::parse_map_symbol(result))] = label;
+        variables[label - 1]     = mudock::parse_map_symbol(result);
       }
       if (equal_pos != std::string::npos) {
-        if (line.find("Electrostatics") != std::string::npos)
+        if (line.find(fld_tokens::ELETRO_TOKEN) != std::string::npos)
           label_eletr = label;
-        else if (line.find("Desolvation") != std::string::npos)
+        else if (line.find(fld_tokens::DESOLV_TOKEN) != std::string::npos)
           label_desol = label;
-
       } else {
         throw std::runtime_error("Invalid label in fld");
       }
     }
 
-    if (line.find("variable") != std::string::npos && line.find(prefix) != std::string::npos) {
+    if (line.find(fld_tokens::VARIABLE_TOKEN) != std::string::npos &&
+        line.find(fld_tokens::FILE_TOKEN) != std::string::npos) {
       int id;
+
       std::istringstream stream(line);
       std::string token, map_path;
       stream >> token >> id >> map_path >> token;
-      if (id == label_eletr) {
-        if (map_path.find(prefix) == 0) {
-          map_path = map_path.substr(prefix.length());
-        } else {
-          throw std::runtime_error("Wrong eletrostatic map file");
-        }
+      const mudock::grid_map* reference_grid_map = &electrostatic_map;
 
-        GridMap eletro_map = loadGridMap(map_path);
-        // Compare eletrostatic map
-        for (int k = 0; k < eletro_map.z_size; ++k)
-          for (int j = 0; j < eletro_map.y_size; ++j)
-            for (int i = 0; i < eletro_map.z_size; ++i)
-              if (std::abs(electrostatic_map->at(i, j, k) - eletro_map.get(i, j, k)) >
-                  mudock::fp_type{0.005}) {
-                mudock::error(std::format("Difference betweem eletrostatic map at ({},{},{}", i, j, k));
-                throw std::runtime_error("Wrong Eletrostatic Map");
-              }
+      map_path = map_path.substr(std::strlen(fld_tokens::FILE_TOKEN));
+      if (id == label_desol)
+        reference_grid_map = &desolvation_map;
+      else if (id != label_eletr && id >= 0 && id < mudock::num_ligand_map_types()) {
+        reference_grid_map = &grid_atom_maps.get_atom_map(mudock::autodock_type_from_map(variables[id - 1]));
+      } else {
+        throw std::runtime_error("Unknown label/variables map in fld files");
       }
-
-      if (id == label_desol) {
-        if (map_path.find(prefix) == 0) {
-          map_path = map_path.substr(prefix.length());
-        } else {
-          throw std::runtime_error("Wrong desolvation map file");
-        }
-
-        GridMap desolv_map = loadGridMap(map_path);
-        // Compare eletrostatic map
-        for (int k = 0; k < desolv_map.z_size; ++k)
-          for (int j = 0; j < desolv_map.y_size; ++j)
-            for (int i = 0; i < desolv_map.z_size; ++i)
-              if (std::abs(desolvation_map->at(i, j, k) - desolv_map.get(i, j, k)) > mudock::fp_type{0.005}) {
-                mudock::error(std::format("Difference betweem desolvation map at ({},{},{}", i, j, k));
-                throw std::runtime_error("Wrong");
-              }
-      }
+      mudock::grid_map autogrid_map = load_autogrid_map(map_path);
+      // Compare eletrostatic map
+      for (int k = 0; k < reference_grid_map->index.size_z(); ++k)
+        for (int j = 0; j < reference_grid_map->index.size_y(); ++j)
+          for (int i = 0; i < reference_grid_map->index.size_x(); ++i)
+            if (std::abs(static_cast<float>(round3dp(reference_grid_map->at(i, j, k))) -
+                         static_cast<float>(autogrid_map.at(i, j, k))) > float{0.001}) {
+              mudock::error(std::format("Difference betweem maps {} at ({},{},{})", map_path, i, j, k));
+              throw std::runtime_error("Error in Map");
+            }
     }
   }
 

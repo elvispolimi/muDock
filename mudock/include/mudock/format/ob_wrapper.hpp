@@ -1,9 +1,9 @@
 #pragma once
 
-#include "openbabel/mol.h"
-
+#include <array>
 #include <cassert>
 #include <cmath>
+#include <filesystem>
 #include <memory>
 #include <mudock/chem.hpp>
 #include <mudock/log.hpp>
@@ -12,8 +12,12 @@
 #include <openbabel/atom.h>
 #include <openbabel/bond.h>
 #include <openbabel/data.h>
+#include <openbabel/generic.h>
 #include <openbabel/mol.h>
 #include <openbabel/obconversion.h>
+#include <stdexcept>
+#include <string_view>
+#include <sys/types.h>
 
 namespace mudock {
 
@@ -24,12 +28,48 @@ namespace mudock {
   // define a type alias to prevent memory leaks
   using ob_mol_wrapper = std::unique_ptr<OpenBabel::OBMol>;
 
+  enum class supported_format : int { MOL2 = 0, PDBQT, PDB };
+
+  struct format_description {
+    supported_format format;
+    std::string_view extension;
+  };
+
+  static constexpr std::array<format_description, 3> FORMAT_EXTENSIONS = {
+      {{supported_format::MOL2, "mol2"}, {supported_format::PDBQT, "pdbqt"}, {supported_format::PDB, "pdb"}}};
+
+  [[nodiscard]] supported_format parse_supported_format(const std::string_view extension);
+  [[nodiscard]] std::string_view parse_supported_format(const supported_format format);
+
+  [[nodiscard]] ob_mol_wrapper parser(const std::filesystem::path file_path);
+  void writer(const ob_mol_wrapper& mol, const std::filesystem::path out_path);
+
   //===------------------------------------------------------------------------------------------------------
   // Utility functions to parse convert simple data from OpenBabel to our simple data structure
   //===------------------------------------------------------------------------------------------------------
 
   // the list of functions that we use to parse a molecule
-  [[nodiscard]] ob_mol_wrapper parse_pdbqt(const std::string_view description);
+  template<supported_format format>
+  [[nodiscard]] ob_mol_wrapper format_parser(const std::string_view description);
+
+  template<>
+  ob_mol_wrapper format_parser<supported_format::PDBQT>(const std::string_view description);
+  template<>
+  ob_mol_wrapper format_parser<supported_format::MOL2>(const std::string_view description);
+  template<>
+  ob_mol_wrapper format_parser<supported_format::PDB>(const std::string_view description);
+
+  template<supported_format format>
+  void format_writer(const ob_mol_wrapper& mol, const std::filesystem::path out_path);
+
+  template<>
+  void format_writer<supported_format::PDBQT>(const ob_mol_wrapper& mol,
+                                              const std::filesystem::path out_path);
+  template<>
+  void format_writer<supported_format::MOL2>(const ob_mol_wrapper& mol, const std::filesystem::path out_path);
+  template<>
+  void format_writer<supported_format::PDB>(const ob_mol_wrapper& mol, const std::filesystem::path out_path);
+
   [[nodiscard]] bond_type parse_ob_bond_type(const OpenBabel::OBBond& bond_type);
 
   //===------------------------------------------------------------------------------------------------------
@@ -44,7 +84,6 @@ namespace mudock {
     // set the molecule geometry
     // NOTE: for static molecules we need to enforce the constraint on the maximum number
     //       ot atoms or bonds by throwing an exception
-    // NOTE: this is set to true due to some mismatch between how rdkit counts heavy bonds, and the actual number of bonds
     if constexpr (std::same_as<std::remove_cvref_t<molecule_type>, static_molecule>) {
       if (num_atoms > max_static_atoms() || num_bonds > max_static_bonds()) {
         throw std::runtime_error("Number of atoms or bonds exceeding static storage");
@@ -62,10 +101,13 @@ namespace mudock {
     for (auto atom_it = source->BeginAtoms(); atom_it < source->EndAtoms(); ++atom_it) {
       const auto atom         = *atom_it;
       const auto atom_id      = atom->GetId();
-      const auto atom_element = parse_element_symbol(ttab.Translate(atom->GetType()));
+      const auto atom_type    = atom->GetType();
+      const auto atom_element = parse_element_symbol(ttab.Translate(atom_type));
       // Get which atoms are aromatic
       // TODO check the cast between bool and uinfast8_t
-      dest.elements(mudock_atom_index)    = atom_element;
+      dest.elements(mudock_atom_index) = atom_element;
+      // TODO apparently is not working on PDBQT files, manually sets aromaticity
+      // Ask Gadio how can I compute aromaticity!!
       dest.is_aromatic(mudock_atom_index) = atom->IsAromatic();
       dest.x(mudock_atom_index)           = static_cast<fp_type>(atom->GetX());
       dest.y(mudock_atom_index)           = static_cast<fp_type>(atom->GetY());
@@ -76,7 +118,7 @@ namespace mudock {
       max_atom_index = std::max(max_atom_index, atom_id);
     }
     // Verify that there are no gaps in molecule indexes
-    assert((max_atom_index + 1) == num_atoms == mudock_atom_index);
+    assert(((max_atom_index + 1) == num_atoms) && (num_atoms == mudock_atom_index));
 
     // fill the bond information
     auto mudock_bond_index = int{0};
@@ -98,4 +140,22 @@ namespace mudock {
     dest.properties.assign(property_type::NAME, name);
   }
 
+  template<class molecule_type>
+    requires is_molecule<molecule_type>
+  void convert(const ob_mol_wrapper& dest, molecule_type&& source) {
+    // TODO
+    throw std::runtime_error("Converted not implemented yet!");
+  }
+
+  template<class molecule_type>
+    requires is_molecule<molecule_type>
+  void parse(molecule_type&& molecule, const std::filesystem::path input_path) {
+    convert(molecule, parser(input_path));
+  }
+
+  template<supported_format format, class molecule_type>
+    requires is_molecule<molecule_type>
+  void parse(molecule_type&& molecule, const std::string_view description) {
+    convert(molecule, format_parser<format>(description));
+  }
 } // namespace mudock

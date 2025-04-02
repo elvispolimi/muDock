@@ -11,9 +11,11 @@
 #include <mudock/log.hpp>
 #include <mudock/molecule.hpp>
 #include <mudock/type_alias.hpp>
-#include <span>
 #include <vector>
 
+// TODO rework indexes as to be odd
+// You can then remove all complex logic
+// And make it more aligned to autogrid
 namespace mudock {
   // Utility for grid map creation
 
@@ -84,6 +86,15 @@ namespace mudock {
           center{(maximum.x - minimum.x) / 2 + minimum.x,
                  (maximum.y - minimum.y) / 2 + minimum.y,
                  (maximum.z - minimum.z) / 2 + minimum.z},
+          minimum_coord({minimum.x + grid_spacing, minimum.y + grid_spacing, minimum.z + grid_spacing}),
+          maximum_coord({maximum.x - grid_spacing, maximum.y - grid_spacing, maximum.z - grid_spacing}) {}
+    grid_map(const index3D _sizes, const point3D _center)
+        : grid(_sizes),
+          minimum(-(_sizes.size_x() / fp_type{2}) * grid_spacing,
+                  -(_sizes.size_y() / fp_type{2}) * grid_spacing,
+                  -(_sizes.size_z() / fp_type{2}) * grid_spacing),
+          maximum(difference(minimum, {1})),
+          center{_center},
           minimum_coord({minimum.x + grid_spacing, minimum.y + grid_spacing, minimum.z + grid_spacing}),
           maximum_coord({maximum.x - grid_spacing, maximum.y - grid_spacing, maximum.z - grid_spacing}) {}
     ~grid_map()                           = default;
