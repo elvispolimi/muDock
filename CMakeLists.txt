@@ -264,6 +264,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Third-party libraries that must be manually installed
 find_package(Boost CONFIG REQUIRED COMPONENTS program_options graph fiber)
 find_package(OpenBabel3 REQUIRED)
+set(CMAKE_ENABLE_EXPORTS ON)
 
 # Third-party libraries that we download and compile
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/prerequisite.cmake")
