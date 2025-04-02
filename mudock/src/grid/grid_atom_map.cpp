@@ -473,6 +473,8 @@ namespace mudock {
           /* END NEW2: Find Min Hbond */
 
           for (int index = 0; index < receptor.num_atoms(); ++index) {
+            if (index_x == 48 && index_y == 54 && index_z == 10 && index == 430)
+              printf("%d\n", index);
             const auto receptor_type       = receptor_autodock_types[index];
             const auto& receptor_type_desc = get_description(receptor_type);
             const auto receptor_hbond      = receptor.num_hbond(index);
@@ -671,6 +673,9 @@ namespace mudock {
                   scratch.grid_type_desc.solpar * get_description(receptor_type).vol * sol_fn[indx_r] +
                   (receptor_type_desc.solpar + solpar_q * std::fabs(receptor.charge(index))) *
                       scratch.grid_type_desc.vol * sol_fn[indx_r];
+              if (index_x == 40 && index_y == 55 && index_z == 13 &&
+                  scratch.grid_type_desc.value == autodock_ff::HD)
+                printf("%d %f\n", index, scratch.energy);
             }
           } /* ia loop, over all receptor atoms... */
 

@@ -109,6 +109,19 @@ target_link_options(converter PRIVATE -Wl,-z,now)
 # ##############################################################################
 # ### Declare the install step
 # ##############################################################################
+add_executable(converter "${CMAKE_CURRENT_SOURCE_DIR}/src/converter.cpp")
+set_target_properties(
+  converter
+  PROPERTIES CXX_STANDARD 20
+             CXX_STANDARD_REQUIRED ON
+             CXX_EXTENSIONS OFF)
+target_link_libraries(converter PRIVATE libmudock Boost::program_options)
+target_compile_options(converter PRIVATE -fno-plt)
+target_link_options(converter PRIVATE -Wl,-z,now)
+
+# ##############################################################################
+# ### Declare the install step
+# ##############################################################################
 
 # define the install step
 install(TARGETS "${CMAKE_PROJECT_NAME}"
