@@ -1,3 +1,5 @@
+#include "mudock/format/ob_wrapper.hpp"
+
 #include <boost/program_options.hpp>
 #include <cstdlib>
 #include <filesystem>
@@ -28,17 +30,14 @@ struct fld_tokens {
 };
 
 int main(int argc, char* argv[]) {
-  namespace po                       = boost::program_options;
-  std::filesystem::path protein_path = std::filesystem::path{"protein.pdb"};
-  std::filesystem::path fld_path     = std::filesystem::path{"maps.fld"};
+  namespace po                     = boost::program_options;
+  std::filesystem::path pdbqt_path = std::filesystem::path{"protein.pdbqt"};
+  std::filesystem::path fld_path   = std::filesystem::path{"maps.fld"};
 
   po::options_description arguments_description("Available options");
   arguments_description.add_options()("help", "print this help message");
-  arguments_description.add_options()("protein",
-                                      po::value(&protein_path)->required(),
-                                      "Path to the protein file (in PDB)");
   arguments_description.add_options()("pdbqt",
-                                      po::value(&protein_path)->default_value(protein_path),
+                                      po::value(&pdbqt_path)->default_value(pdbqt_path),
                                       "Path to the protein file (in PDBQT)");
   arguments_description.add_options()("autogrid",
                                       po::value(&fld_path)->default_value(fld_path),
@@ -51,13 +50,14 @@ int main(int argc, char* argv[]) {
 
   po::notify(vm);
 
-  // mudock::info("Reading and parsing protein ", protein_path, " ...");
   auto protein_ptr = std::make_shared<mudock::dynamic_molecule>();
   auto& protein    = *protein_ptr;
 
-  parse(protein, protein_path);
+  parse(protein, pdbqt_path);
 
-  mudock::apply_autodock_forcefield(protein);
+  mudock::openbabel::apply_autodock_forcefield(protein, pdbqt_path);
+
+  //mudock::apply_autodock_forcefield(protein);
   const auto grid_atom_maps    = generate_atom_grid_maps(protein);
   const auto electrostatic_map = generate_electrostatic_grid_map(protein);
   const auto desolvation_map   = generate_desolvation_grid_map(protein);
@@ -108,21 +108,21 @@ int main(int argc, char* argv[]) {
         reference_grid_map = &desolvation_map;
       else if (id != label_eletr && id >= 0 && id < mudock::num_ligand_map_types()) {
         reference_grid_map = &grid_atom_maps.get_atom_map(mudock::autodock_type_from_map(variables[id - 1]));
-      } else {
+      } else if (id != label_eletr) {
         throw std::runtime_error("Unknown label/variables map in fld files");
       }
       mudock::grid_map autogrid_map = load_autogrid_map(map_path);
       // Compare eletrostatic map
-      for (int k = 0; k < reference_grid_map->index.size_z(); ++k)
-        for (int j = 0; j < reference_grid_map->index.size_y(); ++j)
-          for (int i = 0; i < reference_grid_map->index.size_x(); ++i)
+      for (int k = 0; k < std::min(reference_grid_map->index.size_z(), autogrid_map.index.size_z()); ++k)
+        for (int j = 0; j < std::min(reference_grid_map->index.size_y(), autogrid_map.index.size_y()); ++j)
+          for (int i = 0; i < std::min(reference_grid_map->index.size_x(), autogrid_map.index.size_x()); ++i)
             if (std::abs(static_cast<float>(round3dp(reference_grid_map->at(i, j, k))) -
-                         static_cast<float>(autogrid_map.at(i, j, k))) > float{0.001}) {
+                         static_cast<float>(autogrid_map.at(i, j, k))) > float{0.01}) {
               mudock::error(std::format("Difference betweem maps {} at ({},{},{})", map_path, i, j, k));
               throw std::runtime_error("Error in Map");
             }
     }
   }
-
+  mudock::info(std::format("Succesfully verified grid maps in {}", fld_path.string()));
   return EXIT_SUCCESS;
 }

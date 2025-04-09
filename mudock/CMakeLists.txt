@@ -34,7 +34,6 @@ list(
   "${header_path}/${header_prefix}/format/concept.hpp"
   "${header_path}/${header_prefix}/format/dot.hpp"
   "${header_path}/${header_prefix}/format/mol2.hpp"
-  "${header_path}/${header_prefix}/format/pdb.hpp"
   "${header_path}/${header_prefix}/format/pdbqt.hpp"
   "${header_path}/${header_prefix}/format/ob_wrapper.hpp"
   "${header_path}/${header_prefix}/grid/mdindex.hpp"

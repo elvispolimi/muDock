@@ -1,10 +1,8 @@
 #pragma once
 
-#include "mudock/molecule/graph.hpp"
-#include "mudock/type_alias.hpp"
-
 #include <mudock/chem.hpp>
 #include <mudock/molecule.hpp>
+#include <mudock/molecule/graph.hpp>
 #include <ostream>
 
 namespace mudock {

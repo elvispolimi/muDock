@@ -6,9 +6,13 @@
 #include <filesystem>
 #include <memory>
 #include <mudock/chem.hpp>
+#include <mudock/chem/autodock_types.hpp>
+#include <mudock/chem/elements.hpp>
+#include <mudock/format/pdbqt.hpp>
 #include <mudock/log.hpp>
 #include <mudock/molecule.hpp>
 #include <mudock/type_alias.hpp>
+#include <mudock/utils.hpp>
 #include <openbabel/atom.h>
 #include <openbabel/bond.h>
 #include <openbabel/data.h>
@@ -16,6 +20,7 @@
 #include <openbabel/mol.h>
 #include <openbabel/obconversion.h>
 #include <stdexcept>
+#include <string>
 #include <string_view>
 #include <sys/types.h>
 
@@ -25,7 +30,6 @@ namespace mudock {
   // Useful type alias to work with OpenBabel data structures
   //===------------------------------------------------------------------------------------------------------
 
-  // define a type alias to prevent memory leaks
   using ob_mol_wrapper = std::unique_ptr<OpenBabel::OBMol>;
 
   enum class supported_format : int { MOL2 = 0, PDBQT, PDB };
@@ -39,6 +43,12 @@ namespace mudock {
       {{supported_format::MOL2, "mol2"}, {supported_format::PDBQT, "pdbqt"}, {supported_format::PDB, "pdb"}}};
 
   [[nodiscard]] supported_format parse_supported_format(const std::string_view extension);
+  [[nodiscard]] inline supported_format parse_supported_format(const std::filesystem::path path) {
+    assert(path.has_extension());
+    const auto extension = path.extension();
+    assert(!extension.empty());
+    return parse_supported_format(std::string_view(extension.string().substr(1)));
+  }
   [[nodiscard]] std::string_view parse_supported_format(const supported_format format);
 
   [[nodiscard]] ob_mol_wrapper parser(const std::filesystem::path file_path);
@@ -158,4 +168,51 @@ namespace mudock {
   void parse(molecule_type&& molecule, const std::string_view description) {
     convert(molecule, format_parser<format>(description));
   }
+
+  namespace openbabel {
+    // The following function relies on the same order of atom loading and file
+    template<class molecule_type>
+      requires is_molecule<molecule_type>
+    void apply_autodock_forcefield(molecule_type&& molecule, const std::filesystem::path input_path) {
+      const auto format = parse_supported_format(input_path);
+      assert(format == supported_format::PDBQT);
+
+      const auto desc = read_from_stream(std::ifstream(input_path));
+      std::stringstream desc_s{desc};
+
+      const std::size_t num_atoms = molecule.num_atoms();
+
+      std::size_t index = 0;
+      std::string line;
+      while (std::getline(desc_s, line)) {
+        if (line.find(pdbqt::PDBQT_ATOM_TOKEN) != std::string::npos ||
+            line.find(pdbqt::PDBQT_HETATOM_TOKEN) != std::string::npos) {
+          assert(index < num_atoms);
+          // FIXMED Really bad, at the moment we rely on OpenBabel PDBQT structure
+          // What if PDBQT is standardized..
+          if (line.size() < 79)
+            line += " ";
+          std::string adt_value = line.substr(77, 2);
+          assert(adt_value.size() == 2);
+          if (adt_value[1] == ' ')
+            adt_value.pop_back();
+          // FIX ME add check that the order of atoms is the same
+
+          const auto adt                = parse_autodock_type(adt_value);
+          molecule.autodock_type(index) = adt;
+          const auto& ff_entry          = get_description(adt);
+          molecule.autodock_type(index) = ff_entry.value;
+          molecule.Rii(index)           = ff_entry.Rii;
+          molecule.epsii(index)         = ff_entry.epsii * autodock_parameters::coeff_vdW;
+          molecule.vol(index)           = ff_entry.vol;
+          molecule.solpar(index)        = ff_entry.solpar;
+          molecule.Rij_hb(index)        = ff_entry.Rij_hb;
+          molecule.epsij_hb(index)      = ff_entry.epsij_hb * autodock_parameters::coeff_hbond;
+          molecule.num_hbond(index)     = ff_entry.hbond;
+          ++index;
+        }
+      }
+    }
+
+  } // namespace openbabel
 } // namespace mudock

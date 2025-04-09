@@ -38,10 +38,7 @@ namespace mudock {
   }
 
   ob_mol_wrapper parser(const std::filesystem::path file_path) {
-    assert(file_path.has_extension());
-    const auto extension = file_path.extension();
-    assert(!extension.empty());
-    const auto format = parse_supported_format(extension.string().substr(1));
+    const auto format = parse_supported_format(file_path);
 
     ob_mol_wrapper mol;
     const auto description = read_from_stream(std::ifstream(file_path));
@@ -54,10 +51,7 @@ namespace mudock {
   }
 
   void writer(const ob_mol_wrapper& mol, const std::filesystem::path out_path) {
-    assert(out_path.has_extension());
-    const auto extension = out_path.extension();
-    assert(!extension.empty());
-    const auto format = parse_supported_format(extension.string().substr(1));
+    const auto format = parse_supported_format(out_path);
 
     constexpr_switch<0, FORMAT_EXTENSIONS.size(), 1>(
         [&](const auto format_index) {
@@ -102,10 +96,7 @@ namespace mudock {
   }
 
   void format_writer(const ob_mol_wrapper& mol, const std::filesystem::path out_path) {
-    assert(out_path.has_extension());
-    const auto extension = out_path.extension();
-    assert(!extension.empty());
-    const auto format = parse_supported_format(extension.string().substr(1));
+    const auto format = parse_supported_format(out_path);
 
     constexpr_switch<0, FORMAT_EXTENSIONS.size(), 1>(
         [&](const auto format_index) {
