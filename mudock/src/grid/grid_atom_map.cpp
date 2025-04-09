@@ -202,14 +202,14 @@ namespace mudock {
     std::vector<int> rexp(receptor.num_atoms());
     // TODO all scale with inv_rd should become a method of point3D for normalizing? Vector stuff?
     for (int index = 0; index < receptor.num_atoms(); ++index) {
-      const auto receptor_type = receptor_autodock_types[index];
       /*
       * If 'ia' is a hydrogen atom, it could be a
       * RECEPTOR hydrogen-BOND DONOR,
       */
       // TODO we should create an enum for hbond types
-      const auto temp          = index - range_near_atom_receptor;
-      const auto from_neighbor = temp <= index ? temp : int{0};
+      const auto temp = index - range_near_atom_receptor;
+      // const auto from_neighbor = temp <= index ? temp : int{0};
+      const auto from_neighbor = std::max(temp, int{0});
       const auto to_neighbor   = std::min(index + range_near_atom_receptor, receptor.num_atoms());
       if (receptor.num_hbond(index) == 2) {
         for (int other_index = from_neighbor; other_index < to_neighbor; ++other_index)
@@ -217,6 +217,7 @@ namespace mudock {
             /*
             * =>  NH-> or OH->
             */
+
             const point3D diff = difference(
                 point3D{receptor.x(index), receptor.y(index), receptor.z(index)},
                 point3D{receptor.x(other_index), receptor.y(other_index), receptor.z(other_index)});
@@ -236,14 +237,14 @@ namespace mudock {
               /*
               * N-H: Set exponent rexp to 2 for m/m H-atom,
               */
-              if (receptor_type != autodock_ff::OA && receptor_autodock_types[other_index] != autodock_ff::SA)
+              const auto other_type = receptor_autodock_types[other_index];
+              if (other_type != autodock_ff::OA && other_type != autodock_ff::SA)
                 rexp[index] = 2;
               /*
               * O-H: Set exponent rexp to 4 for m/m H-atom,
               * and flag disordered hydroxyls
               */
-              if (receptor_type == autodock_ff::OA ||
-                  receptor_autodock_types[other_index] == autodock_ff::SA) {
+              if (other_type == autodock_ff::OA || other_type == autodock_ff::SA) {
                 rexp[index] = 4;
                 // TODO what is disorder_h
                 // if (disorder_h == TRUE)
@@ -266,6 +267,9 @@ namespace mudock {
          * determine number of atoms bonded to the oxygen
          */
         // TODO check these index_1 and _2, seems odd to me
+        if (index == 9)
+          printf("%d\n", index);
+
         int nbond = 0, index_1 = 0, index_2 = 0;
         for (int other_index = from_neighbor; other_index < to_neighbor; ++other_index)
           if (index != other_index) {
@@ -468,8 +472,6 @@ namespace mudock {
           /* END NEW2: Find Min Hbond */
 
           for (int index = 0; index < receptor.num_atoms(); ++index) {
-            if (index_x == 48 && index_y == 54 && index_z == 10 && index == 430)
-              printf("%d\n", index);
             const auto receptor_type       = receptor_autodock_types[index];
             const auto& receptor_type_desc = get_description(receptor_type);
             const auto receptor_hbond      = receptor.num_hbond(index);
@@ -497,7 +499,7 @@ namespace mudock {
             /* END NEW2 Hramp ramps in Hbond acceptor probes */
 
             if (receptor_hbond == 2) { /*D1*/
-              /*
+                                       /*
               *  ia-th receptor atom = Hydrogen ( 4 = H )
               *  => receptor H-bond donor, OH or NH.
               *  calculate racc for H-bond ACCEPTOR PROBES at this grid pt.
@@ -508,6 +510,7 @@ namespace mudock {
               *  d[] = Unit vector from current grid pt to ia_th m/m atom.
               *  cos_theta = d dot rvector == cos(angle) subtended.
               */
+
               fp_type cos_theta = -sum_components(product(dist, rvector[index]));
               if (cos_theta <= 0) {
                 /*
@@ -571,7 +574,7 @@ namespace mudock {
               /* endif (atom_type[ia] == nitrogen) */
               /* end NEW Directional N acceptor */
             } else if (receptor_hbond == 5) { /*A2*/
-              /*
+                                              /*
               **  ia-th receptor atom = Oxygen
               **  => receptor H-bond acceptor, oxygen.
               */
@@ -647,10 +650,10 @@ namespace mudock {
                 } else if ((grid_type_desc.hbond == 1 || grid_type_desc.hbond == 2) &&
                            (receptor_hbond > 2)) { /*DS,D1 vs AS,A1,A2*/
                   /*  PROBE is H-BOND DONOR, */
-                  fp_type temp_hbond_enrg = vdw_hb_value * (rdon + (fp_type{1} - rdon) * rsph);
-                  scratch.hbondmin        = std::min(scratch.hbondmin, temp_hbond_enrg);
-                  scratch.hbondmax        = std::max(scratch.hbondmax, temp_hbond_enrg);
-                  scratch.hbondflag       = true;
+                  const fp_type temp_hbond_enrg = vdw_hb_value * (rdon + (fp_type{1} - rdon) * rsph);
+                  scratch.hbondmin              = std::min(scratch.hbondmin, temp_hbond_enrg);
+                  scratch.hbondmax              = std::max(scratch.hbondmax, temp_hbond_enrg);
+                  scratch.hbondflag             = true;
                 } else { /*end of is_hbonder*/
                   /*  hbonder PROBE-ia cannot form a H-bond..., */
                   scratch.energy += vdw_hb_value;
@@ -667,9 +670,9 @@ namespace mudock {
                   scratch.grid_type_desc.solpar * get_description(receptor_type).vol * sol_fn[indx_r] +
                   (receptor_type_desc.solpar + solpar_q * std::fabs(receptor.charge(index))) *
                       scratch.grid_type_desc.vol * sol_fn[indx_r];
-              if (index_x == 40 && index_y == 55 && index_z == 13 &&
-                  scratch.grid_type_desc.value == autodock_ff::HD)
-                printf("%d %f\n", index, scratch.energy);
+              if (index_x == 40 && index_y == 42 && index_z == 7 &&
+                  scratch.grid_type_desc.value == autodock_ff::A)
+                printf("%d %f %f %f\n", index, scratch.energy, scratch.hbondmin, scratch.hbondmax);
             }
           } /* ia loop, over all receptor atoms... */
 
