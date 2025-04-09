@@ -670,9 +670,6 @@ namespace mudock {
                   scratch.grid_type_desc.solpar * get_description(receptor_type).vol * sol_fn[indx_r] +
                   (receptor_type_desc.solpar + solpar_q * std::fabs(receptor.charge(index))) *
                       scratch.grid_type_desc.vol * sol_fn[indx_r];
-              if (index_x == 40 && index_y == 42 && index_z == 7 &&
-                  scratch.grid_type_desc.value == autodock_ff::A)
-                printf("%d %f %f %f\n", index, scratch.energy, scratch.hbondmin, scratch.hbondmax);
             }
           } /* ia loop, over all receptor atoms... */
 
