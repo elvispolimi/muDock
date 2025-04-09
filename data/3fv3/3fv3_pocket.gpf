@@ -1,0 +1,25 @@
+npts 87 104 114# num.grid points in xyz
+gridfld /home/gaccordi/repo/muDock/data/3fv3/3fv3_pocket.maps.fld # grid_data_file
+spacing 0.5                        # spacing(A)
+receptor_types A C NA OA N HD        # receptor atom types
+ligand_types A C H HD N NA OA SA Cl F S Br P I             # ligand atom types
+receptor /home/gaccordi/repo/muDock/data/3fv3/3fv3_pocket.pdbqt # macromolecule
+gridcenter 20 24.5 57                    # xyz-coordinates or auto
+smooth 0.5                           # store minimum energy w/in rad(A)
+map /home/gaccordi/repo/muDock/data/3fv3/3fv3_pocket.A.map # atom-specific affinity map
+map /home/gaccordi/repo/muDock/data/3fv3/3fv3_pocket.C.map # atom-specific affinity map
+map /home/gaccordi/repo/muDock/data/3fv3/3fv3_pocket.H.map # atom-specific affinity map
+map /home/gaccordi/repo/muDock/data/3fv3/3fv3_pocket.HD.map # atom-specific affinity map
+map /home/gaccordi/repo/muDock/data/3fv3/3fv3_pocket.N.map # atom-specific affinity map
+map /home/gaccordi/repo/muDock/data/3fv3/3fv3_pocket.NA.map # atom-specific affinity map
+map /home/gaccordi/repo/muDock/data/3fv3/3fv3_pocket.OA.map # atom-specific affinity map
+map /home/gaccordi/repo/muDock/data/3fv3/3fv3_pocket.SA.map # atom-specific affinity map
+map /home/gaccordi/repo/muDock/data/3fv3/3fv3_pocket.Cl.map # atom-specific affinity map
+map /home/gaccordi/repo/muDock/data/3fv3/3fv3_pocket.F.map # atom-specific affinity map
+map /home/gaccordi/repo/muDock/data/3fv3/3fv3_pocket.S.map # atom-specific affinity map
+map /home/gaccordi/repo/muDock/data/3fv3/3fv3_pocket.Br.map # atom-specific affinity map
+map /home/gaccordi/repo/muDock/data/3fv3/3fv3_pocket.P.map # atom-specific affinity map
+map /home/gaccordi/repo/muDock/data/3fv3/3fv3_pocket.I.map # atom-specific affinity map
+elecmap /home/gaccordi/repo/muDock/data/3fv3/3fv3_pocket.e.map # electrostatic potential map
+dsolvmap /home/gaccordi/repo/muDock/data/3fv3/3fv3_pocket.d.map              # desolvation potential map
+dielectric -0.1465                   # <0, AD4 distance-dep.diel;>0, constant
