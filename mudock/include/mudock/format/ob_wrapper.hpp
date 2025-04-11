@@ -112,6 +112,54 @@ namespace mudock {
     // Verify that there are no gaps in molecule indexes
     assert(((max_atom_index + 1) == num_atoms) && (num_atoms == mudock_atom_index));
 
+    // FIXME
+    auto IsImide = [](OpenBabel::OBBond* querybond) {
+      if (querybond->GetBondOrder() != 2)
+        return (false);
+
+      OpenBabel::OBAtom* bgn = querybond->GetBeginAtom();
+      OpenBabel::OBAtom* end = querybond->GetEndAtom();
+      if ((bgn->GetAtomicNum() == 6 && end->GetAtomicNum() == 7) ||
+          (bgn->GetAtomicNum() == 7 && end->GetAtomicNum() == 6))
+        return (true);
+
+      return (false);
+    };
+
+    auto IsAmidine = [IsImide](OpenBabel::OBBond* querybond) {
+      OpenBabel::OBAtom *c, *n;
+      c = n = nullptr;
+
+      // Look for C-N bond
+      OpenBabel::OBAtom* bgn = querybond->GetBeginAtom();
+      OpenBabel::OBAtom* end = querybond->GetEndAtom();
+      if (bgn->GetAtomicNum() == 6 && end->GetAtomicNum() == 7) {
+        c = bgn;
+        n = end;
+      }
+      if (bgn->GetAtomicNum() == 7 && end->GetAtomicNum() == 6) {
+        c = end;
+        n = bgn;
+      }
+      if (!c || !n)
+        return (false);
+      if (querybond->GetBondOrder() != 1)
+        return (false);
+      if (n->GetTotalDegree() != 3)
+        return false; // must be a degree 3 nitrogen
+
+      // Make sure C is attached to =N
+      OpenBabel::OBBond* bond;
+      std::vector<OpenBabel::OBBond*>::iterator i;
+      for (bond = c->BeginBond(i); bond; bond = c->NextBond(i)) {
+        if (IsImide(bond))
+          return (true);
+      }
+
+      // Return
+      return (false);
+    };
+
     // fill the bond information
     auto mudock_bond_index = int{0};
     for (auto bond_it = source->BeginBonds(); bond_it < source->EndBonds(); ++bond_it) {
