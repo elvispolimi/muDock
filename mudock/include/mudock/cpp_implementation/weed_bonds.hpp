@@ -44,4 +44,18 @@ namespace mudock {
                   std::vector<int>& non_bond_list_a2,
                   const int num_atoms,
                   const fragments<static_containers>& ligand_fragments);
+
+  void non_bond_list(const static_molecule& ligand,
+                     const fragments<static_containers>& ligand_fragments,
+                     std::vector<int>& non_bond_list_a1,
+                     std::vector<int>& non_bond_list_a2);
+
+  void precompute_lennard_jones(const size_t non_bond_size,
+                                std::vector<fp_type>& cA_v,
+                                std::vector<fp_type>& cB_v,
+                                std::vector<int>& xB_v,
+                                const static_molecule& ligand,
+                                const std::vector<int>& non_bond_list_a1,
+                                const std::vector<int>& non_bond_list_a2);
+
 } // namespace mudock

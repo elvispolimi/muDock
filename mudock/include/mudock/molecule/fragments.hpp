@@ -114,4 +114,11 @@ namespace mudock {
     return (mask[atom_id1] == 2 && mask[atom_id2] == 3) || (mask[atom_id2] == 2 && mask[atom_id1] == 3);
   }
 
+  void get_linearized_fragments_mask(const size_t num_atoms,
+                                     const size_t num_rotamers,
+                                     std::vector<int> frag_masks,
+                                     std::vector<int> frag_start_indexes,
+                                     std::vector<int> frag_stop_indexes,
+                                     const fragments<static_containers>& ligand_fragments);
+
 } // namespace mudock

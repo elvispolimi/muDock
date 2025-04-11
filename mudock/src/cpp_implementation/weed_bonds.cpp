@@ -1,4 +1,8 @@
+#include "mudock/molecule.hpp"
+#include "mudock/molecule/fragments.hpp"
+
 #include <mudock/cpp_implementation/weed_bonds.hpp>
+#include <vector>
 
 namespace mudock {
   // nonbonds.cc for nbmatrix required by weed_bonds
@@ -61,7 +65,8 @@ namespace mudock {
             outer_4 = outer_2;
           } else
             continue;
-
+          if ((outer_3 == 0 && outer_4 == 6) || (outer_3 == 6 && outer_4 == 0))
+            printf("here");
           nbmatrix.at(outer_4, outer_3) = 0;
           nbmatrix.at(outer_3, outer_4) = 0;
         }
@@ -170,5 +175,71 @@ namespace mudock {
         }
       } // j
     } // i
+  }
+
+  void non_bond_list(const static_molecule& ligand,
+                     const fragments<static_containers>& ligand_fragments,
+                     std::vector<int>& non_bond_list_a1,
+                     std::vector<int>& non_bond_list_a2) {
+    const auto num_atoms = ligand.num_atoms();
+    grid<uint_fast8_t, index2D> nbmatrix{{num_atoms, num_atoms}};
+    nonbonds(nbmatrix, ligand.get_bonds(), num_atoms);
+    weed_bonds(nbmatrix, non_bond_list_a1, non_bond_list_a2, num_atoms, ligand_fragments);
+  }
+
+  void precompute_lennard_jones(const size_t non_bond_size,
+                                std::vector<fp_type>& cA_v,
+                                std::vector<fp_type>& cB_v,
+                                std::vector<int>& xB_v,
+                                const static_molecule& ligand,
+                                const std::vector<int>& non_bond_list_a1,
+                                const std::vector<int>& non_bond_list_a2) {
+    cA_v.resize(non_bond_size);
+    cB_v.resize(non_bond_size);
+    xB_v.resize(non_bond_size);
+    for (size_t index = 0; index < non_bond_size; ++index) {
+      const int& a1 = non_bond_list_a1[index];
+      const int& a2 = non_bond_list_a2[index];
+
+      const auto& hbond_i    = ligand.num_hbond(a1);
+      const auto& hbond_j    = ligand.num_hbond(a2);
+      const auto& Rij_hb_i   = ligand.Rij_hb(a1);
+      const auto& Rij_hb_j   = ligand.Rij_hb(a2);
+      const auto& Rii_i      = ligand.Rii(a1);
+      const auto& Rii_j      = ligand.Rii(a2);
+      const auto& epsij_hb_i = ligand.epsij_hb(a1);
+      const auto& epsij_hb_j = ligand.epsij_hb(a2);
+      const auto& epsii_i    = ligand.epsii(a1);
+      const auto& epsii_j    = ligand.epsii(a2);
+
+      // we need to determine the correct xA and xB exponents
+      const int xA = xA_default; // for both LJ, 12-6 and HB, 12-10, xA is 12
+      int xB       = xB_default; // assume we have LJ, 12-6
+
+      fp_type Rij{(Rii_i + Rii_j) * fp_type{0.5}}, epsij{std::sqrt(epsii_i * epsii_j)};
+      if ((hbond_i == 1 || hbond_i == 2) && hbond_j > 2) {
+        // i is a donor and j is an acceptor.
+        // i is a hydrogen, j is a heteroatom
+        Rij   = Rij_hb_j;
+        epsij = epsij_hb_j;
+        xB    = 10;
+      } else if ((hbond_i > 2) && (hbond_j == 1 || hbond_j == 2)) {
+        // i is an acceptor and j is a donor.
+        // i is a heteroatom, j is a hydrogen
+        Rij   = Rij_hb_i;
+        epsij = epsij_hb_i;
+        xB    = 10;
+      }
+      fp_type cA{0};
+      fp_type cB{0};
+      if (xA != xB) {
+        const fp_type tmp = epsij / (xA - xB);
+        cA                = tmp * std::pow(Rij, static_cast<fp_type>(xA)) * xB;
+        cB                = tmp * std::pow(Rij, static_cast<fp_type>(xB)) * xA;
+      }
+      cA_v[index] = cA;
+      cB_v[index] = cB;
+      xB_v[index] = xB;
+    }
   }
 } // namespace mudock

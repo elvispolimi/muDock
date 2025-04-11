@@ -32,7 +32,6 @@ int main(int argc, char* argv[]) {
 
   // parse the input ligands and put them in a stack that we can compute
   mudock::info("Parsing ", ligands_description.size(), " ligand(s) ...");
-  mudock::mol2 mol2;
   auto input_queue = std::make_shared<mudock::safe_stack<mudock::static_molecule>>();
   for (const auto& description: ligands_description) {
     try {
