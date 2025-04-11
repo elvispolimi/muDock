@@ -190,4 +190,22 @@ namespace mudock {
                       graph);
   }
 
+  void get_linearized_fragments_mask(const size_t num_atoms,
+                                     const size_t num_rotamers,
+                                     std::vector<int> frag_masks,
+                                     std::vector<int> frag_start_indexes,
+                                     std::vector<int> frag_stop_indexes,
+                                     const fragments<static_containers> &ligand_fragments) {
+    frag_masks.resize(num_atoms * num_rotamers);
+    frag_start_indexes.resize(num_rotamers);
+    frag_stop_indexes.resize(num_rotamers);
+    for (size_t rot = 0; rot < num_rotamers; ++rot) {
+      std::memcpy((frag_masks.data() + num_atoms * rot),
+                  ligand_fragments.get_mask(rot).data(),
+                  num_atoms * sizeof(int));
+      const auto [start_index, stop_index] = ligand_fragments.get_rotatable_atoms(rot);
+      frag_start_indexes.data()[rot]       = start_index;
+      frag_stop_indexes.data()[rot]        = stop_index;
+    }
+  }
 } // namespace mudock

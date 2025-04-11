@@ -90,10 +90,12 @@ namespace mudock {
           maximum_coord({maximum.x - grid_spacing, maximum.y - grid_spacing, maximum.z - grid_spacing}) {}
     grid_map(const index3D _sizes, const point3D _center)
         : grid(_sizes),
-          minimum(-(_sizes.size_x() / fp_type{2}) * grid_spacing,
-                  -(_sizes.size_y() / fp_type{2}) * grid_spacing,
-                  -(_sizes.size_z() / fp_type{2}) * grid_spacing),
-          maximum(difference(minimum, {1})),
+          minimum(-std::ceil(_sizes.size_x() / 2) * grid_spacing + _center.x,
+                  -std::ceil(_sizes.size_y() / 2) * grid_spacing + _center.y,
+                  -std::ceil(_sizes.size_z() / 2) * grid_spacing + _center.z),
+          maximum(std::ceil(_sizes.size_x() / 2) * grid_spacing + _center.x,
+                  std::ceil(_sizes.size_y() / 2) * grid_spacing + _center.y,
+                  std::ceil(_sizes.size_z() / 2) * grid_spacing + _center.z),
           center{_center},
           minimum_coord({minimum.x + grid_spacing, minimum.y + grid_spacing, minimum.z + grid_spacing}),
           maximum_coord({maximum.x - grid_spacing, maximum.y - grid_spacing, maximum.z - grid_spacing}) {}
@@ -133,6 +135,8 @@ namespace mudock {
   public:
     grid_atom_map(const autodock_ff& type, const dynamic_molecule& receptor)
         : grid_map(receptor), atom_type(type) {}
+    grid_atom_map(const autodock_ff& type, const grid_map& other_grid)
+        : grid_map(other_grid), atom_type(type) {}
     ~grid_atom_map()                               = default;
     grid_atom_map(grid_atom_map&& other)           = default;
     grid_atom_map(const grid_atom_map& other)      = default;

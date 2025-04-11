@@ -5,9 +5,9 @@
 
 namespace mudock {
   // TODO check from tests which one are needed
-  enum class ligand_map_types : int { A = 0, C, H, HD, N, NA, OA, SA, Cl, F, S, Br, P, I, Si };
+  enum class ligand_map_types : int { A = 0, C, H, HD, N, NA, OA, SA, Cl, F, S, Br, P, I };
 
-  static constexpr int num_ligand_map_types() { return 15; }
+  static constexpr int num_ligand_map_types() { return 14; }
 
   inline ligand_map_types map_from_autodock_type(const autodock_ff& autodock_type) {
     switch (autodock_type) {
@@ -25,7 +25,6 @@ namespace mudock {
       case autodock_ff::Br: return ligand_map_types::Br;
       case autodock_ff::P: return ligand_map_types::P;
       case autodock_ff::I: return ligand_map_types::I;
-      case autodock_ff::Si: return ligand_map_types::Si;
       default: throw std::runtime_error("Missing map texture");
     }
   }
@@ -46,7 +45,6 @@ namespace mudock {
       case ligand_map_types::Br: return autodock_ff::Br;
       case ligand_map_types::P: return autodock_ff::P;
       case ligand_map_types::I: return autodock_ff::I;
-      case ligand_map_types::Si: return autodock_ff::Si;
       default: throw std::runtime_error("Missing autodock type from texture!");
     }
   }
@@ -55,7 +53,7 @@ namespace mudock {
     ligand_map_types value;
     std::string_view name;
   };
-  extern const std::array<map_description, 15> MAP_DICTIONARY;
+  extern const std::array<map_description, num_ligand_map_types()> MAP_DICTIONARY;
 
   inline const map_description& get_description(const ligand_map_types e) {
     assert(MAP_DICTIONARY[static_cast<int>(e)].value == e);

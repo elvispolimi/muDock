@@ -24,6 +24,8 @@ set_target_properties(
              CXX_STANDARD_REQUIRED ON
              CXX_EXTENSIONS OFF
              POSITION_INDEPENDENT_CODE FALSE)
+target_compile_options("${CMAKE_PROJECT_NAME}" PRIVATE -fno-plt)
+target_link_options("${CMAKE_PROJECT_NAME}" PRIVATE -Wl,-z,now)
 
 # add the dependencies
 if(MUDOCK_ENABLE_SYCL)
@@ -81,11 +83,19 @@ if(MUDOCK_ENABLE_TEST)
                CXX_STANDARD_REQUIRED ON
                CXX_EXTENSIONS OFF)
   target_link_libraries(test_grid PRIVATE libmudock Boost::program_options)
+
+  add_executable(test_score
+                 "${CMAKE_CURRENT_SOURCE_DIR}/src/tests/score_test.cpp")
+  target_include_directories(test_score
+                             PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/")
+  set_target_properties(
+    test_score
+    PROPERTIES CXX_STANDARD 20
+               CXX_STANDARD_REQUIRED ON
+               CXX_EXTENSIONS OFF)
+  target_link_libraries(test_score PRIVATE libmudock Boost::program_options)
 endif()
 
-# ##############################################################################
-# ### Declare the install step
-# ##############################################################################
 add_executable(converter "${CMAKE_CURRENT_SOURCE_DIR}/src/converter.cpp")
 set_target_properties(
   converter

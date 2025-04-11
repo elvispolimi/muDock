@@ -14,19 +14,18 @@ namespace mudock {
       throw std::runtime_error("Missing map type");
   }
 
-  const std::array<map_description, 15> MAP_DICTIONARY = {{{ligand_map_types::A, "A"},
-                                                           {ligand_map_types::C, "C"},
-                                                           {ligand_map_types::H, "H"},
-                                                           {ligand_map_types::HD, "HD"},
-                                                           {ligand_map_types::N, "N"},
-                                                           {ligand_map_types::NA, "NA"},
-                                                           {ligand_map_types::OA, "OA"},
-                                                           {ligand_map_types::SA, "SA"},
-                                                           {ligand_map_types::Cl, "Cl"},
-                                                           {ligand_map_types::F, "F"},
-                                                           {ligand_map_types::S, "S"},
-                                                           {ligand_map_types::Br, "Br"},
-                                                           {ligand_map_types::P, "P"},
-                                                           {ligand_map_types::I, "I"},
-                                                           {ligand_map_types::Si, "Si"}}};
+  const std::array<map_description, num_ligand_map_types()> MAP_DICTIONARY = {{{ligand_map_types::A, "A"},
+                                                                               {ligand_map_types::C, "C"},
+                                                                               {ligand_map_types::H, "H"},
+                                                                               {ligand_map_types::HD, "HD"},
+                                                                               {ligand_map_types::N, "N"},
+                                                                               {ligand_map_types::NA, "NA"},
+                                                                               {ligand_map_types::OA, "OA"},
+                                                                               {ligand_map_types::SA, "SA"},
+                                                                               {ligand_map_types::Cl, "Cl"},
+                                                                               {ligand_map_types::F, "F"},
+                                                                               {ligand_map_types::S, "S"},
+                                                                               {ligand_map_types::Br, "Br"},
+                                                                               {ligand_map_types::P, "P"},
+                                                                               {ligand_map_types::I, "I"}}};
 } // namespace mudock
