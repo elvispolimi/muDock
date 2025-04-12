@@ -2,10 +2,7 @@
 #include <mudock/cpp_implementation/geometric_transformations_gh.hpp>
 #include <mudock/grid/pi.hpp>
 
-// TODO #include "hwy/aligned_allocator.h"
-
 namespace mudock {
-  // TODO check if this NAMESPACE is needed
   template<>
   void translate_molecule<cpu_vectorization::GH>(fp_type* __restrict__ x,
                                                  fp_type* __restrict__ y,
@@ -22,8 +19,7 @@ namespace mudock {
     const auto v_offset_y = Set(d, offset_y);
     const auto v_offset_z = Set(d, offset_z);
 
-// Process in SIMD lanes
-#pragma clang loop interleave(enable) unroll(enable)
+    // Process in SIMD lanes
     for (int i = 0; i <= num_atoms; i += Lanes(d)) {
       const auto remaining = num_atoms - i;
       // Load elements from x, y, and z arrays
@@ -114,9 +110,8 @@ namespace mudock {
     const auto v_m20 = Set(d, m20);
     const auto v_m21 = Set(d, m21);
     const auto v_m22 = Set(d, m22);
-// Process in SIMD lanes
-// TODO check the equal comparison
-#pragma clang loop interleave(enable) unroll(enable)
+    // Process in SIMD lanes
+    // TODO check the equal comparison
     for (int i = 0; i <= num_atoms; i += Lanes(d)) {
       const auto remaining = num_atoms - i;
       // Load elements from x, y, and z arrays
@@ -128,22 +123,24 @@ namespace mudock {
       translate_y = hwy::HWY_NAMESPACE::Sub(translate_y, v_c_y);
       translate_z = hwy::HWY_NAMESPACE::Sub(translate_z, v_c_z);
 
-      // TODO Fuse multiply add?
-      const auto v_t_x = hwy::HWY_NAMESPACE::Add(
-          hwy::HWY_NAMESPACE::Add(hwy::HWY_NAMESPACE::Add(hwy::HWY_NAMESPACE::Mul(translate_x, v_m00),
-                                                          hwy::HWY_NAMESPACE::Mul(translate_y, v_m01)),
-                                  hwy::HWY_NAMESPACE::Mul(translate_z, v_m02)),
-          v_c_x);
-      const auto v_t_y = hwy::HWY_NAMESPACE::Add(
-          hwy::HWY_NAMESPACE::Add(hwy::HWY_NAMESPACE::Add(hwy::HWY_NAMESPACE::Mul(translate_x, v_m10),
-                                                          hwy::HWY_NAMESPACE::Mul(translate_y, v_m11)),
-                                  hwy::HWY_NAMESPACE::Mul(translate_z, v_m12)),
-          v_c_y);
-      const auto v_t_z = hwy::HWY_NAMESPACE::Add(
-          hwy::HWY_NAMESPACE::Add(hwy::HWY_NAMESPACE::Add(hwy::HWY_NAMESPACE::Mul(translate_x, v_m20),
-                                                          hwy::HWY_NAMESPACE::Mul(translate_y, v_m21)),
-                                  hwy::HWY_NAMESPACE::Mul(translate_z, v_m22)),
-          v_c_z);
+      const auto v_t_x = hwy::HWY_NAMESPACE::MulAdd(
+          translate_x,
+          v_m00,
+          hwy::HWY_NAMESPACE::MulAdd(translate_y,
+                                     v_m01,
+                                     hwy::HWY_NAMESPACE::MulAdd(translate_z, v_m02, v_c_x)));
+      const auto v_t_y = hwy::HWY_NAMESPACE::MulAdd(
+          translate_x,
+          v_m10,
+          hwy::HWY_NAMESPACE::MulAdd(translate_y,
+                                     v_m11,
+                                     hwy::HWY_NAMESPACE::MulAdd(translate_z, v_m12, v_c_y)));
+      const auto v_t_z = hwy::HWY_NAMESPACE::MulAdd(
+          translate_x,
+          v_m20,
+          hwy::HWY_NAMESPACE::MulAdd(translate_y,
+                                     v_m21,
+                                     hwy::HWY_NAMESPACE::MulAdd(translate_z, v_m22, v_c_z)));
 
       // Store results back into the arrays
       StoreN(v_t_x, d, x + i, remaining);
@@ -221,8 +218,7 @@ namespace mudock {
     const auto v_m21 = Set(d, m21);
     const auto v_m22 = Set(d, m22);
     const auto v_m23 = Set(d, m23);
-// Process in SIMD lanes
-#pragma clang loop interleave(enable) unroll(enable)
+    // Process in SIMD lanes
     for (int i = 0; i <= num_atoms; i += Lanes(d)) {
       // for (int i = 0; i < num_atoms; ++i) {
       const auto remaining = num_atoms - i;
@@ -231,29 +227,23 @@ namespace mudock {
       auto v_y = LoadN(d, y + i, remaining);
       auto v_z = LoadN(d, z + i, remaining);
 
-      // const auto v_frag_mask = LoadN(d, frag_mask + i, remaining);
-      // const auto m           = LoadMaskBitsMaskFromVec(v_frag_mask);
-      // const auto m = hwy::HWY_NAMESPACE::LoadMaskBits(d, frag_mask + i);
       const auto int_mask_vec = LoadN(d_mask, frag_mask + i, remaining);
       // Convert integer mask (0 or 1) to a Highway boolean mask
       const auto m_int = hwy::HWY_NAMESPACE::MaskFromVec(int_mask_vec);
       const auto m     = hwy::HWY_NAMESPACE::RebindMask(d, m_int);
 
-      const auto v_t_x = hwy::HWY_NAMESPACE::Add(
-          hwy::HWY_NAMESPACE::Add(hwy::HWY_NAMESPACE::Add(hwy::HWY_NAMESPACE::Mul(v_x, v_m00),
-                                                          hwy::HWY_NAMESPACE::Mul(v_y, v_m01)),
-                                  hwy::HWY_NAMESPACE::Mul(v_z, v_m02)),
-          v_m03);
-      const auto v_t_y = hwy::HWY_NAMESPACE::Add(
-          hwy::HWY_NAMESPACE::Add(hwy::HWY_NAMESPACE::Add(hwy::HWY_NAMESPACE::Mul(v_x, v_m10),
-                                                          hwy::HWY_NAMESPACE::Mul(v_y, v_m11)),
-                                  hwy::HWY_NAMESPACE::Mul(v_z, v_m12)),
-          v_m13);
-      const auto v_t_z = hwy::HWY_NAMESPACE::Add(
-          hwy::HWY_NAMESPACE::Add(hwy::HWY_NAMESPACE::Add(hwy::HWY_NAMESPACE::Mul(v_x, v_m20),
-                                                          hwy::HWY_NAMESPACE::Mul(v_y, v_m21)),
-                                  hwy::HWY_NAMESPACE::Mul(v_z, v_m22)),
-          v_m23);
+      const auto v_t_x = hwy::HWY_NAMESPACE::MulAdd(
+          v_x,
+          v_m00,
+          hwy::HWY_NAMESPACE::MulAdd(v_y, v_m01, hwy::HWY_NAMESPACE::MulAdd(v_z, v_m02, v_m03)));
+      const auto v_t_y = hwy::HWY_NAMESPACE::MulAdd(
+          v_x,
+          v_m10,
+          hwy::HWY_NAMESPACE::MulAdd(v_y, v_m11, hwy::HWY_NAMESPACE::MulAdd(v_z, v_m12, v_m13)));
+      const auto v_t_z = hwy::HWY_NAMESPACE::MulAdd(
+          v_x,
+          v_m20,
+          hwy::HWY_NAMESPACE::MulAdd(v_y, v_m21, hwy::HWY_NAMESPACE::MulAdd(v_z, v_m22, v_m23)));
 
       // Store results back into the arrays
       hwy::HWY_NAMESPACE::BlendedStore(v_t_x, m, d, x + i);
