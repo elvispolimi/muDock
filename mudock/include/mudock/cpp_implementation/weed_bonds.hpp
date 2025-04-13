@@ -47,7 +47,6 @@ namespace mudock {
                   const fragments<static_containers>& ligand_fragments);
 
   void non_bond_list(const static_molecule& ligand,
-                     const fragments<static_containers>& ligand_fragments,
                      std::vector<int>& non_bond_list_a1,
                      std::vector<int>& non_bond_list_a2);
 

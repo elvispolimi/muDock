@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cmath>
 #include <mudock/grid/pi.hpp>
 #include <mudock/type_alias.hpp>
@@ -22,6 +23,8 @@ namespace mudock {
     point3D(const point3D& other)       = default;
     point3D& operator=(point3D&& other) = default;
     point3D& operator=(const point3D&)  = default;
+
+    inline std::array<fp_type, 3> get_array() const { return {x, y, z}; }
   };
 
   template<class point_type>

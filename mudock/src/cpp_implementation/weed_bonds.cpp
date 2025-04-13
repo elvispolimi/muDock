@@ -176,13 +176,19 @@ namespace mudock {
   }
 
   void non_bond_list(const static_molecule& ligand,
-                     const fragments<static_containers>& ligand_fragments,
                      std::vector<int>& non_bond_list_a1,
                      std::vector<int>& non_bond_list_a2) {
     const auto num_atoms = ligand.num_atoms();
+
+    auto graph = make_graph(ligand.get_bonds(), ligand.num_atoms());
+    const auto ligand_fragments =
+        std::make_unique<mudock::fragments<mudock::static_containers>>(graph,
+                                                                       ligand.get_bonds(),
+                                                                       ligand.num_atoms());
+
     grid<uint_fast8_t, index2D> nbmatrix{{num_atoms, num_atoms}};
     nonbonds(nbmatrix, ligand.get_bonds(), num_atoms);
-    weed_bonds(nbmatrix, non_bond_list_a1, non_bond_list_a2, num_atoms, ligand_fragments);
+    weed_bonds(nbmatrix, non_bond_list_a1, non_bond_list_a2, num_atoms, *ligand_fragments);
   }
 
   void precompute_lennard_jones(const size_t non_bond_size,
