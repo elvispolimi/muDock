@@ -1,0 +1,1753 @@
+          AutoDock 4.2 Release 4.2.6   
+         (C) 1989-2012 The Scripps Research Institute
+        AutoDock comes with ABSOLUTELY NO WARRANTY.
+        AutoDock is free software, and you are welcome
+        to redistribute it under certain conditions;
+        for details type 'autodock4 -C'
+
+                     main.cc  $Revision: 1.213 $
+
+                   Compiled on Apr 10 2025 at 17:19:16
+
+
+This file was created at:			9:45 30" p.m., 04/12/2025
+                   on host:		"fedora"
+Current Working Directory = "/home/gaccordi/repo/autodock4/autodock/build"
+
+      ________________________________________________________________
+
+                   SETTING UP DEFAULT PARAMETER LIBRARY
+      ________________________________________________________________
+
+
+Random number generator was seeded with values 2027544, 1744487130.
+Docking parameter file (DPF) used for this docking:		/home/gaccordi/repo/muDock/data/3fv3/3fv3_epdb.dpf
+DPF> ## GENERIC SECTION
+
+DPF> autodock_parameter_version 4.2       # used by autodock to validate parameter set
+
+	Autodock parameter version 4.2.
+DPF> outlev ADT                           # diagnostic output level
+
+Output Level = 1  ADT-COMPATIBLE OUTPUT DURING DOCKING.
+DPF> smooth 0
+
+
+Internal energy non-bond potentials will be smoothed over range 0.000 Angstrom
+
+DPF> 
+
+DPF> ## LIGAND-SPECIFIC SECTION
+
+DPF> ligand_types A C H HD N NA OA SA Cl F S Br P I             # ligand atom types
+
+DPF> fld /home/gaccordi/repo/muDock/data/3fv3/3fv3_pocket.maps.fld  # grid_data_file
+
+Opening Grid Map Dimensions file:		/home/gaccordi/repo/muDock/data/3fv3/3fv3_pocket.maps.fld
+Grid Point Spacing =				0.500 Angstroms
+
+Even Number of User-specified Grid Points =	86 x-points
+						104 y-points
+						114 z-points
+
+Coordinates of Central Grid Point of Maps =	(20.000, 24.500, 57.000)
+Macromolecule file used to create Grid Maps =	/home/gaccordi/repo/muDock/data/3fv3/3fv3_pocket.pdbqt
+Grid Parameter file used to create Grid Maps =	/home/gaccordi/repo/muDock/data/3fv3/3fv3_pocket.gpf
+Minimum coordinates in grid = (-1.500, -1.500, 28.500)
+Maximum coordinates in grid = (41.500, 50.500, 85.500)
+
+DPF> map /home/gaccordi/repo/muDock/data/3fv3/3fv3_pocket.A.map # atom-specific affinity map
+
+DPF> map /home/gaccordi/repo/muDock/data/3fv3/3fv3_pocket.C.map # atom-specific affinity map
+
+DPF> map /home/gaccordi/repo/muDock/data/3fv3/3fv3_pocket.H.map # atom-specific affinity map
+
+DPF> map /home/gaccordi/repo/muDock/data/3fv3/3fv3_pocket.HD.map # atom-specific affinity map
+
+DPF> map /home/gaccordi/repo/muDock/data/3fv3/3fv3_pocket.N.map # atom-specific affinity map
+
+DPF> map /home/gaccordi/repo/muDock/data/3fv3/3fv3_pocket.NA.map # atom-specific affinity map
+
+DPF> map /home/gaccordi/repo/muDock/data/3fv3/3fv3_pocket.OA.map # atom-specific affinity map
+
+DPF> map /home/gaccordi/repo/muDock/data/3fv3/3fv3_pocket.SA.map # atom-specific affinity map
+
+DPF> map /home/gaccordi/repo/muDock/data/3fv3/3fv3_pocket.Cl.map # atom-specific affinity map
+
+DPF> map /home/gaccordi/repo/muDock/data/3fv3/3fv3_pocket.F.map # atom-specific affinity map
+
+DPF> map /home/gaccordi/repo/muDock/data/3fv3/3fv3_pocket.S.map # atom-specific affinity map
+
+DPF> map /home/gaccordi/repo/muDock/data/3fv3/3fv3_pocket.Br.map # atom-specific affinity map
+
+DPF> map /home/gaccordi/repo/muDock/data/3fv3/3fv3_pocket.P.map # atom-specific affinity map
+
+DPF> map /home/gaccordi/repo/muDock/data/3fv3/3fv3_pocket.I.map # atom-specific affinity map
+
+DPF> elecmap /home/gaccordi/repo/muDock/data/3fv3/3fv3_pocket.e.map # electrostatic potential map
+
+DPF> dsolvmap /home/gaccordi/repo/muDock/data/3fv3/3fv3_pocket.d.map              # desolvation potential map
+
+DPF> move /home/gaccordi/repo/muDock/data/3fv3/3fv3_ligand.pdbqt
+
+1,4-interactions will be _ignored_ in the non-bonded internal energy calculation.
+
+Ligand PDBQT file = "/home/gaccordi/repo/muDock/data/3fv3/3fv3_ligand.pdbqt"
+
+INPUT LIGAND PDBQT FILE:
+________________________
+
+INPUT-LIGAND-PDBQT: REMARK  Name = 3fv3_ligand
+INPUT-LIGAND-PDBQT: REMARK  35 active torsions:
+INPUT-LIGAND-PDBQT: REMARK  status: ('A' for Active; 'I' for Inactive)
+INPUT-LIGAND-PDBQT: REMARK    1  A    between atoms: C_1  and  C_2
+INPUT-LIGAND-PDBQT: REMARK    2  A    between atoms: C_1  and  C_5
+INPUT-LIGAND-PDBQT: REMARK    3  A    between atoms: C_2  and  C_3
+INPUT-LIGAND-PDBQT: REMARK    4  A    between atoms: C_2  and  C_4
+INPUT-LIGAND-PDBQT: REMARK    5  A    between atoms: N_7  and  C_8
+INPUT-LIGAND-PDBQT: REMARK    6  A    between atoms: C_8  and  C_9
+INPUT-LIGAND-PDBQT: REMARK    7  A    between atoms: C_8  and  C_11
+INPUT-LIGAND-PDBQT: REMARK    8  A    between atoms: C_11  and  C_12
+INPUT-LIGAND-PDBQT: REMARK    9  A    between atoms: C_11  and  C_13
+INPUT-LIGAND-PDBQT: REMARK   10  A    between atoms: N_14  and  C_15
+INPUT-LIGAND-PDBQT: REMARK   11  A    between atoms: C_15  and  C_16
+INPUT-LIGAND-PDBQT: REMARK   12  A    between atoms: C_15  and  C_18
+INPUT-LIGAND-PDBQT: REMARK   13  A    between atoms: C_18  and  C_19
+INPUT-LIGAND-PDBQT: REMARK   14  A    between atoms: C_18  and  C_20
+INPUT-LIGAND-PDBQT: REMARK   15  A    between atoms: N_21  and  C_22
+INPUT-LIGAND-PDBQT: REMARK   16  A    between atoms: C_22  and  C_23
+INPUT-LIGAND-PDBQT: REMARK   17  A    between atoms: C_22  and  C_27
+INPUT-LIGAND-PDBQT: REMARK   18  A    between atoms: C_23  and  C_24
+INPUT-LIGAND-PDBQT: REMARK   19  A    between atoms: C_24  and  C_25
+INPUT-LIGAND-PDBQT: REMARK   20  A    between atoms: C_24  and  C_26
+INPUT-LIGAND-PDBQT: REMARK   21  A    between atoms: C_27  and  O_28
+INPUT-LIGAND-PDBQT: REMARK   22  A    between atoms: C_27  and  C_29
+INPUT-LIGAND-PDBQT: REMARK   23  A    between atoms: C_29  and  C_30
+INPUT-LIGAND-PDBQT: REMARK   24  A    between atoms: N_32  and  C_33
+INPUT-LIGAND-PDBQT: REMARK   25  A    between atoms: C_33  and  C_34
+INPUT-LIGAND-PDBQT: REMARK   26  A    between atoms: C_33  and  C_36
+INPUT-LIGAND-PDBQT: REMARK   27  A    between atoms: N_37  and  C_38
+INPUT-LIGAND-PDBQT: REMARK   28  A    between atoms: C_38  and  C_39
+INPUT-LIGAND-PDBQT: REMARK   29  A    between atoms: C_38  and  C_43
+INPUT-LIGAND-PDBQT: REMARK   30  A    between atoms: C_39  and  C_40
+INPUT-LIGAND-PDBQT: REMARK   31  A    between atoms: C_40  and  C_41
+INPUT-LIGAND-PDBQT: REMARK   32  A    between atoms: C_40  and  C_42
+INPUT-LIGAND-PDBQT: REMARK   33  A    between atoms: C_43  and  O_44
+INPUT-LIGAND-PDBQT: REMARK   34  A    between atoms: C_43  and  C_45
+INPUT-LIGAND-PDBQT: REMARK   35  A    between atoms: C_45  and  C_46
+INPUT-LIGAND-PDBQT: REMARK                            x       y       z     vdW  Elec       q    Type
+INPUT-LIGAND-PDBQT: REMARK                         _______ _______ _______ _____ _____    ______ ____
+INPUT-LIGAND-PDBQT: ROOT
+INPUT-LIGAND-PDBQT: ATOM      1  C   UNL     1      21.002  21.887  59.820  0.00  0.00    +0.136 C 
+INPUT-LIGAND-PDBQT: ENDROOT
+INPUT-LIGAND-PDBQT: BRANCH   1   4
+INPUT-LIGAND-PDBQT: ATOM      2  C   UNL     1      19.863  23.775  58.720  0.00  0.00    +0.130 C 
+INPUT-LIGAND-PDBQT: ATOM      3  O   UNL     1      18.740  23.435  59.047  0.00  0.00    -0.445 OA
+INPUT-LIGAND-PDBQT: ATOM      4  N   UNL     1      20.983  23.146  59.066  0.00  0.00    -0.305 N 
+INPUT-LIGAND-PDBQT: ATOM      5  H   UNL     1      21.857  23.552  58.799  0.00  0.00    +0.225 HD
+INPUT-LIGAND-PDBQT: BRANCH   2   6
+INPUT-LIGAND-PDBQT: ATOM      6  C   UNL     1      20.003  24.952  57.804  0.00  0.00    +0.240 C 
+INPUT-LIGAND-PDBQT: BRANCH   6   9
+INPUT-LIGAND-PDBQT: ATOM      7  C   UNL     1      20.104  24.853  55.358  0.00  0.00    +0.136 C 
+INPUT-LIGAND-PDBQT: ATOM      8  O   UNL     1      21.057  25.620  55.289  0.00  0.00    -0.444 OA
+INPUT-LIGAND-PDBQT: ATOM      9  N   UNL     1      19.480  24.532  56.490  0.00  0.00    -0.283 N 
+INPUT-LIGAND-PDBQT: ATOM     10  H   UNL     1      18.638  23.994  56.448  0.00  0.00    +0.236 HD
+INPUT-LIGAND-PDBQT: BRANCH   7  11
+INPUT-LIGAND-PDBQT: ATOM     11  C   UNL     1      19.582  24.200  54.097  0.00  0.00    +0.239 C 
+INPUT-LIGAND-PDBQT: BRANCH  11  14
+INPUT-LIGAND-PDBQT: ATOM     12  C   UNL     1      19.157  25.424  52.036  0.00  0.00    +0.105 C 
+INPUT-LIGAND-PDBQT: ATOM     13  O   UNL     1      17.954  25.187  52.104  0.00  0.00    -0.456 OA
+INPUT-LIGAND-PDBQT: ATOM     14  N   UNL     1      20.021  24.972  52.942  0.00  0.00    -0.290 N 
+INPUT-LIGAND-PDBQT: ATOM     15  H   UNL     1      20.995  25.167  52.827  0.00  0.00    +0.234 HD
+INPUT-LIGAND-PDBQT: BRANCH  12  16
+INPUT-LIGAND-PDBQT: ATOM     16  C   UNL     1      19.760  26.234  50.901  0.00  0.00    +0.206 C 
+INPUT-LIGAND-PDBQT: BRANCH  16  17
+INPUT-LIGAND-PDBQT: ATOM     17  C   UNL     1      18.976  27.510  50.644  0.00  0.00    +0.009 C 
+INPUT-LIGAND-PDBQT: ATOM     18  C   UNL     1      19.028  28.453  51.840  0.00  0.00    +0.023 C 
+INPUT-LIGAND-PDBQT: ATOM     19  C   UNL     1      19.512  28.222  49.410  0.00  0.00    +0.023 C 
+INPUT-LIGAND-PDBQT: ENDBRANCH  16  17
+INPUT-LIGAND-PDBQT: ENDBRANCH  12  16
+INPUT-LIGAND-PDBQT: ENDBRANCH  11  14
+INPUT-LIGAND-PDBQT: BRANCH  11  20
+INPUT-LIGAND-PDBQT: ATOM     20  C   UNL     1      20.069  22.738  54.029  0.00  0.00    +0.044 C 
+INPUT-LIGAND-PDBQT: ATOM     21  C   UNL     1      19.384  21.960  52.888  0.00  0.00    +0.034 C 
+INPUT-LIGAND-PDBQT: ATOM     22  C   UNL     1      21.595  22.581  53.889  0.00  0.00    +0.034 C 
+INPUT-LIGAND-PDBQT: ENDBRANCH  11  20
+INPUT-LIGAND-PDBQT: ENDBRANCH   7  11
+INPUT-LIGAND-PDBQT: ENDBRANCH   6   9
+INPUT-LIGAND-PDBQT: BRANCH   6  23
+INPUT-LIGAND-PDBQT: ATOM     23  C   UNL     1      19.246  26.172  58.350  0.00  0.00    +0.044 C 
+INPUT-LIGAND-PDBQT: ATOM     24  C   UNL     1      19.800  26.575  59.728  0.00  0.00    +0.034 C 
+INPUT-LIGAND-PDBQT: ATOM     25  C   UNL     1      19.303  27.388  57.423  0.00  0.00    +0.034 C 
+INPUT-LIGAND-PDBQT: ENDBRANCH   6  23
+INPUT-LIGAND-PDBQT: ENDBRANCH   2   6
+INPUT-LIGAND-PDBQT: ENDBRANCH   1   4
+INPUT-LIGAND-PDBQT: BRANCH   1  26
+INPUT-LIGAND-PDBQT: ATOM     26  C   UNL     1      21.504  20.723  58.920  0.00  0.00    +0.062 C 
+INPUT-LIGAND-PDBQT: BRANCH  26  27
+INPUT-LIGAND-PDBQT: ATOM     27  C   UNL     1      20.740  20.628  57.582  0.00  0.00    -0.018 C 
+INPUT-LIGAND-PDBQT: ATOM     28  C   UNL     1      21.521  19.689  56.632  0.00  0.00    +0.014 C 
+INPUT-LIGAND-PDBQT: ATOM     29  C   UNL     1      19.314  20.135  57.797  0.00  0.00    +0.014 C 
+INPUT-LIGAND-PDBQT: ENDBRANCH  26  27
+INPUT-LIGAND-PDBQT: ENDBRANCH   1  26
+INPUT-LIGAND-PDBQT: BRANCH   1  30
+INPUT-LIGAND-PDBQT: ATOM     30  C   UNL     1      21.938  21.984  61.032  0.00  0.00    +0.166 C 
+INPUT-LIGAND-PDBQT: BRANCH  30  31
+INPUT-LIGAND-PDBQT: ATOM     31  O   UNL     1      23.248  22.349  60.595  0.00  0.00    -0.440 OA
+INPUT-LIGAND-PDBQT: ATOM     32  H   UNL     1      23.826  22.409  61.346  0.00  0.00    +0.240 HD
+INPUT-LIGAND-PDBQT: ENDBRANCH  30  31
+INPUT-LIGAND-PDBQT: BRANCH  30  33
+INPUT-LIGAND-PDBQT: ATOM     33  C   UNL     1      21.499  23.036  62.060  0.00  0.00    +0.264 C 
+INPUT-LIGAND-PDBQT: BRANCH  33  34
+INPUT-LIGAND-PDBQT: ATOM     34  C   UNL     1      20.339  22.523  62.891  0.00  0.00    +0.114 C 
+INPUT-LIGAND-PDBQT: ATOM     35  O   UNL     1      19.192  22.663  62.484  0.00  0.00    -0.454 OA
+INPUT-LIGAND-PDBQT: ATOM     36  N   UNL     1      20.650  21.956  64.075  0.00  0.00    -0.291 N 
+INPUT-LIGAND-PDBQT: ATOM     37  H   UNL     1      21.602  21.711  64.261  0.00  0.00    +0.234 HD
+INPUT-LIGAND-PDBQT: BRANCH  36  38
+INPUT-LIGAND-PDBQT: ATOM     38  C   UNL     1      19.644  21.691  65.086  0.00  0.00    +0.233 C 
+INPUT-LIGAND-PDBQT: ATOM     39  C   UNL     1      19.878  20.311  65.708  0.00  0.00    +0.124 C 
+INPUT-LIGAND-PDBQT: BRANCH  38  40
+INPUT-LIGAND-PDBQT: ATOM     40  C   UNL     1      19.711  22.797  66.098  0.00  0.00    +0.129 C 
+INPUT-LIGAND-PDBQT: ATOM     41  O   UNL     1      20.714  22.934  66.803  0.00  0.00    -0.445 OA
+INPUT-LIGAND-PDBQT: ATOM     42  N   UNL     1      18.676  23.631  66.092  0.00  0.00    -0.306 N 
+INPUT-LIGAND-PDBQT: ATOM     43  H   UNL     1      17.822  23.350  65.654  0.00  0.00    +0.225 HD
+INPUT-LIGAND-PDBQT: BRANCH  42  44
+INPUT-LIGAND-PDBQT: ATOM     44  C   UNL     1      18.763  24.950  66.713  0.00  0.00    +0.134 C 
+INPUT-LIGAND-PDBQT: BRANCH  44  45
+INPUT-LIGAND-PDBQT: ATOM     45  C   UNL     1      18.372  26.045  65.725  0.00  0.00    +0.061 C 
+INPUT-LIGAND-PDBQT: BRANCH  45  46
+INPUT-LIGAND-PDBQT: ATOM     46  C   UNL     1      19.137  26.066  64.391  0.00  0.00    -0.018 C 
+INPUT-LIGAND-PDBQT: ATOM     47  C   UNL     1      18.660  27.298  63.622  0.00  0.00    +0.014 C 
+INPUT-LIGAND-PDBQT: ATOM     48  C   UNL     1      20.655  26.159  64.500  0.00  0.00    +0.014 C 
+INPUT-LIGAND-PDBQT: ENDBRANCH  45  46
+INPUT-LIGAND-PDBQT: ENDBRANCH  44  45
+INPUT-LIGAND-PDBQT: BRANCH  44  49
+INPUT-LIGAND-PDBQT: ATOM     49  C   UNL     1      17.848  24.952  67.950  0.00  0.00    +0.151 C 
+INPUT-LIGAND-PDBQT: BRANCH  49  50
+INPUT-LIGAND-PDBQT: ATOM     50  O   UNL     1      18.264  23.922  68.873  0.00  0.00    -0.443 OA
+INPUT-LIGAND-PDBQT: ATOM     51  H   UNL     1      19.159  24.085  69.145  0.00  0.00    +0.239 HD
+INPUT-LIGAND-PDBQT: ENDBRANCH  49  50
+INPUT-LIGAND-PDBQT: BRANCH  49  52
+INPUT-LIGAND-PDBQT: ATOM     52  C   UNL     1      17.806  26.275  68.712  0.00  0.00    +0.184 C 
+INPUT-LIGAND-PDBQT: BRANCH  52  53
+INPUT-LIGAND-PDBQT: ATOM     53  C   UNL     1      16.810  26.090  69.859  0.00  0.00    +0.019 C 
+INPUT-LIGAND-PDBQT: ATOM     54  O   UNL     1      17.231  26.232  71.031  0.00  0.00    -0.581 OA
+INPUT-LIGAND-PDBQT: ATOM     55  O   UNL     1      15.605  25.780  69.616  0.00  0.00    -0.581 OA
+INPUT-LIGAND-PDBQT: ENDBRANCH  52  53
+INPUT-LIGAND-PDBQT: ENDBRANCH  49  52
+INPUT-LIGAND-PDBQT: ENDBRANCH  44  49
+INPUT-LIGAND-PDBQT: ENDBRANCH  42  44
+INPUT-LIGAND-PDBQT: ENDBRANCH  38  40
+INPUT-LIGAND-PDBQT: ENDBRANCH  36  38
+INPUT-LIGAND-PDBQT: ENDBRANCH  33  34
+INPUT-LIGAND-PDBQT: ENDBRANCH  30  33
+INPUT-LIGAND-PDBQT: ENDBRANCH   1  30
+INPUT-LIGAND-PDBQT: TORSDOF 24
+________________________________________________________________________________
+
+Total charge on ligand                               =	-0.999 e
+REMARK  Name = 3fv3_ligand
+REMARK  35 active torsions:
+REMARK  status: ('A' for Active; 'I' for Inactive)
+REMARK    1  A    between atoms: C_1  and  C_2
+REMARK    2  A    between atoms: C_1  and  C_5
+REMARK    3  A    between atoms: C_2  and  C_3
+REMARK    4  A    between atoms: C_2  and  C_4
+REMARK    5  A    between atoms: N_7  and  C_8
+REMARK    6  A    between atoms: C_8  and  C_9
+REMARK    7  A    between atoms: C_8  and  C_11
+REMARK    8  A    between atoms: C_11  and  C_12
+REMARK    9  A    between atoms: C_11  and  C_13
+REMARK   10  A    between atoms: N_14  and  C_15
+REMARK   11  A    between atoms: C_15  and  C_16
+REMARK   12  A    between atoms: C_15  and  C_18
+REMARK   13  A    between atoms: C_18  and  C_19
+REMARK   14  A    between atoms: C_18  and  C_20
+REMARK   15  A    between atoms: N_21  and  C_22
+REMARK   16  A    between atoms: C_22  and  C_23
+REMARK   17  A    between atoms: C_22  and  C_27
+REMARK   18  A    between atoms: C_23  and  C_24
+REMARK   19  A    between atoms: C_24  and  C_25
+REMARK   20  A    between atoms: C_24  and  C_26
+REMARK   21  A    between atoms: C_27  and  O_28
+REMARK   22  A    between atoms: C_27  and  C_29
+REMARK   23  A    between atoms: C_29  and  C_30
+REMARK   24  A    between atoms: N_32  and  C_33
+REMARK   25  A    between atoms: C_33  and  C_34
+REMARK   26  A    between atoms: C_33  and  C_36
+REMARK   27  A    between atoms: N_37  and  C_38
+REMARK   28  A    between atoms: C_38  and  C_39
+REMARK   29  A    between atoms: C_38  and  C_43
+REMARK   30  A    between atoms: C_39  and  C_40
+REMARK   31  A    between atoms: C_40  and  C_41
+REMARK   32  A    between atoms: C_40  and  C_42
+REMARK   33  A    between atoms: C_43  and  O_44
+REMARK   34  A    between atoms: C_43  and  C_45
+REMARK   35  A    between atoms: C_45  and  C_46
+REMARK                            x       y       z     vdW  Elec       q    Type
+REMARK                         _______ _______ _______ _____ _____    ______ ____
+
+
+Number of Rotatable Bonds in Small Molecule =	24 torsions
+Number of atoms in ligand:  55
+
+Number of non-hydrogen atoms in ligand:  48
+
+Number of vibrational degrees of freedom of ligand:  159
+
+
+Number of torsional degrees of freedom = 24
+Estimated loss of torsional free energy upon binding = +7.1592 kcal/mol
+
+
+DPF> ## EVALUATE LIGAND ENERGY in RECEPTOR SECTION
+
+DPF> epdb                                 # small molecule to be evaluated
+
+Number of "true" ligand atoms:  55
+
+
+
+		Ligand Intramolecular Energy Analysis
+		=====================================
+
+Non-bond  Atom1-Atom2  Distance   Total        Elec     vdW        Hb     Desolv     Sol_fn   Type Dielectric
+________  ___________  ________   ______  _________  ________ ________  ________   ________   ____ __________
+      1       1-7       5.4326   -0.0014    +0.0058   -0.0073   +0.0000   +0.0002    +0.0424   1    27.622
+      2       1-8       5.8710   -0.0159    -0.0157   -0.0030   +0.0000   +0.0028    +0.0350   1    30.562
+      3       1-9       4.5168   -0.0294    -0.0184   -0.0141   +0.0000   +0.0031    +0.0602   1    21.694
+      4       1-10      4.6258   +0.0192    +0.0145   -0.0013   +0.0000   +0.0060    +0.0580   1    22.379
+      5       1-11      6.3340   +0.0052    +0.0071   -0.0031   +0.0000   +0.0012    +0.0281   1    33.726
+      6       1-12      8.7467   +0.0015    +0.0015   +0.0000   +0.0000   -0.0001    +0.0069   1    49.671
+      7       1-13      8.9284   -0.0059    -0.0064   +0.0000   +0.0000   +0.0005    +0.0061   1    50.754
+      8       1-14      7.6017   -0.0057    -0.0057   -0.0007   +0.0000   +0.0008    +0.0142   1    42.355
+      9       1-15      7.7240   +0.0058    +0.0045   -0.0001   +0.0000   +0.0014    +0.0132   1    43.167
+     10       1-16      9.9994   +0.0024    +0.0023   +0.0000   +0.0000   +0.0001    +0.0028   1    56.704
+     11       1-17     10.9509   +0.0000    +0.0001   +0.0000   +0.0000   -0.0001    +0.0013   1    61.218
+     12       1-18     10.5209   +0.0002    +0.0002   +0.0000   +0.0000   -0.0001    +0.0018   1    59.275
+     13       1-19     12.2768   +0.0002    +0.0002   +0.0000   +0.0000   -0.0000    +0.0004   1    66.273
+     14       1-20      5.9271   -0.0040    +0.0015   -0.0045   +0.0000   -0.0010    +0.0341   1    30.958
+     15       1-21      7.1187   -0.0014    +0.0008   -0.0015   +0.0000   -0.0006    +0.0187   1    39.097
+     16       1-22      6.0008   -0.0041    +0.0011   -0.0042   +0.0000   -0.0011    +0.0330   1    31.457
+     17       1-23      4.8586   -0.0123    +0.0024   -0.0131   +0.0000   -0.0016    +0.0532   1    23.865
+     18       1-24      4.8405   -0.0133    +0.0019   -0.0134   +0.0000   -0.0018    +0.0536   1    23.741
+     19       1-25      6.2364   -0.0033    +0.0010   -0.0034   +0.0000   -0.0010    +0.0295   1    33.062
+     20       1-35      3.3129   -0.0686    -0.0592   -0.0166   +0.0000   +0.0073    +0.0866   1    14.704
+     21       1-36      4.2701   -0.0361    -0.0214   -0.0182   +0.0000   +0.0035    +0.0655   1    20.185
+     22       1-37      4.4848   +0.0201    +0.0154   -0.0016   +0.0000   +0.0063    +0.0609   1    21.500
+     23       1-38      5.4418   +0.0042    +0.0098   -0.0073   +0.0000   +0.0017    +0.0422   1    27.679
+     24       1-39      6.1980   +0.0004    +0.0039   -0.0035   +0.0000   -0.0000    +0.0300   1    32.804
+     25       1-40      6.4736   +0.0010    +0.0036   -0.0027   +0.0000   +0.0000    +0.0262   1    34.696
+     26       1-41      7.0669   -0.0098    -0.0103   -0.0010   +0.0000   +0.0016    +0.0193   1    38.753
+     27       1-42      6.9130   -0.0075    -0.0075   -0.0013   +0.0000   +0.0012    +0.0209   1    37.701
+     28       1-43      6.8036   +0.0078    +0.0057   -0.0001   +0.0000   +0.0022    +0.0222   1    36.954
+     29       1-44      7.8682   +0.0016    +0.0025   -0.0009   +0.0000   +0.0000    +0.0121   1    44.116
+     30       1-45      7.6860   -0.0001    +0.0012   -0.0010   +0.0000   -0.0003    +0.0135   1    42.912
+     31       1-46      6.4681   -0.0043    -0.0005   -0.0027   +0.0000   -0.0010    +0.0263   1    34.647
+     32       1-47      7.0156   -0.0022    +0.0003   -0.0017   +0.0000   -0.0008    +0.0198   1    38.405
+     33       1-48      6.3461   -0.0038    +0.0004   -0.0030   +0.0000   -0.0011    +0.0280   1    33.811
+     34       1-49      9.2433   +0.0020    +0.0020   +0.0000   +0.0000   +0.0000    +0.0049   1    52.601
+     35       1-50      9.6744   -0.0050    -0.0053   +0.0000   +0.0000   +0.0003    +0.0036   1    54.998
+     36       1-51      9.7562   +0.0032    +0.0028   +0.0000   +0.0000   +0.0004    +0.0034   1    55.429
+     37       1-52     10.4181   +0.0020    +0.0019   +0.0000   +0.0000   +0.0000    +0.0020   1    58.786
+     38       1-53     11.6627   +0.0001    +0.0002   +0.0000   +0.0000   -0.0000    +0.0007   1    64.105
+     39       1-54     12.6010   -0.0043    -0.0044   +0.0000   +0.0000   +0.0000    +0.0003   1    67.301
+     40       1-55     11.8425   -0.0047    -0.0048   +0.0000   +0.0000   +0.0001    +0.0006   1    64.768
+     41       2-8       4.0745   -0.0502    -0.0348   -0.0209   +0.0000   +0.0055    +0.0697   1    19.016
+     42       2-11      4.6510   +0.0000    +0.0138   -0.0161   +0.0000   +0.0023    +0.0574   1    22.548
+     43       2-12      6.9205   +0.0004    +0.0024   -0.0018   +0.0000   -0.0002    +0.0208   1    37.748
+     44       2-13      7.0292   -0.0096    -0.0102   -0.0010   +0.0000   +0.0016    +0.0197   1    38.496
+     45       2-14      5.9028   -0.0112    -0.0097   -0.0033   +0.0000   +0.0018    +0.0345   1    30.779
+     46       2-15      6.1601   +0.0100    +0.0071   -0.0002   +0.0000   +0.0032    +0.0306   1    32.545
+     47       2-16      8.1972   +0.0036    +0.0033   +0.0000   +0.0000   +0.0003    +0.0099   1    46.244
+     48       2-17      8.9420   -0.0002    +0.0001   +0.0000   +0.0000   -0.0003    +0.0061   1    50.837
+     49       2-18      8.3615   +0.0000    +0.0004   +0.0000   +0.0000   -0.0004    +0.0089   1    47.286
+     50       2-19     10.3235   +0.0001    +0.0002   +0.0000   +0.0000   -0.0001    +0.0022   1    58.327
+     51       2-20      4.8087   -0.0132    +0.0024   -0.0138   +0.0000   -0.0017    +0.0542   1    23.533
+     52       2-21      6.1267   -0.0038    +0.0010   -0.0037   +0.0000   -0.0011    +0.0311   1    32.319
+     53       2-22      5.2692   -0.0088    +0.0015   -0.0086   +0.0000   -0.0016    +0.0453   1    26.537
+     54       2-27      3.4594   +0.0190    -0.0020   +0.0245   +0.0000   -0.0035    +0.0834   1    15.481
+     55       2-28      4.8789   -0.0144    +0.0007   -0.0129   +0.0000   -0.0023    +0.0528   1    23.988
+     56       2-29      3.7951   -0.0233    +0.0013   -0.0214   +0.0000   -0.0033    +0.0759   1    17.369
+     57       2-31      4.1240   -0.0481    -0.0335   -0.0199   +0.0000   +0.0053    +0.0686   1    19.311
+     58       2-32      4.9464   +0.0166    +0.0121   -0.0009   +0.0000   +0.0054    +0.0515   1    24.418
+     59       2-33      3.7919   +0.0067    +0.0243   -0.0214   +0.0000   +0.0037    +0.0759   1    17.369
+     60       2-34      4.3808   -0.0133    +0.0076   -0.0205   +0.0000   -0.0004    +0.0631   1    20.869
+     61       2-35      3.9818   -0.0544    -0.0375   -0.0229   +0.0000   +0.0059    +0.0717   1    18.466
+     62       2-36      5.7100   -0.0125    -0.0105   -0.0040   +0.0000   +0.0020    +0.0376   1    29.484
+     63       2-37      6.1634   +0.0100    +0.0071   -0.0002   +0.0000   +0.0032    +0.0306   1    32.562
+     64       2-38      6.7020   +0.0045    +0.0058   -0.0022   +0.0000   +0.0009    +0.0234   1    36.257
+     65       2-39      7.7995   +0.0013    +0.0022   -0.0009   +0.0000   -0.0000    +0.0127   1    43.658
+     66       2-40      7.4441   +0.0014    +0.0025   -0.0012   +0.0000   -0.0000    +0.0156   1    41.300
+     67       2-41      8.1711   -0.0064    -0.0072   +0.0000   +0.0000   +0.0008    +0.0101   1    46.073
+     68       2-42      7.4683   -0.0059    -0.0060   -0.0008   +0.0000   +0.0009    +0.0154   1    41.455
+     69       2-43      7.2406   +0.0064    +0.0047   -0.0001   +0.0000   +0.0017    +0.0175   1    39.924
+     70       2-44      8.1534   +0.0022    +0.0022   +0.0000   +0.0000   +0.0000    +0.0102   1    45.962
+     71       2-45      7.5131   -0.0003    +0.0012   -0.0011   +0.0000   -0.0004    +0.0150   1    41.762
+     72       2-46      6.1592   -0.0054    -0.0005   -0.0036   +0.0000   -0.0013    +0.0306   1    32.527
+     73       2-47      6.1554   -0.0045    +0.0004   -0.0036   +0.0000   -0.0013    +0.0307   1    32.510
+     74       2-48      6.3023   -0.0040    +0.0004   -0.0032   +0.0000   -0.0012    +0.0286   1    33.523
+     75       2-49      9.5204   +0.0018    +0.0018   +0.0000   +0.0000   +0.0000    +0.0040   1    54.154
+     76       2-50     10.2792   -0.0043    -0.0045   +0.0000   +0.0000   +0.0002    +0.0022   1    58.113
+     77       2-51     10.4533   +0.0026    +0.0024   +0.0000   +0.0000   +0.0002    +0.0020   1    58.950
+     78       2-52     10.5034   +0.0018    +0.0018   +0.0000   +0.0000   +0.0000    +0.0019   1    59.191
+     79       2-53     11.7795   +0.0001    +0.0002   +0.0000   +0.0000   -0.0000    +0.0006   1    64.541
+     80       2-54     12.8267   -0.0040    -0.0040   +0.0000   +0.0000   +0.0000    +0.0002   1    67.970
+     81       2-55     11.8690   -0.0045    -0.0046   +0.0000   +0.0000   +0.0001    +0.0006   1    64.864
+     82       3-7       4.1809   -0.0477    -0.0344   -0.0187   +0.0000   +0.0054    +0.0674   1    19.649
+     83       3-8       4.9260   +0.0765    +0.0771   -0.0048   +0.0000   +0.0042    +0.0519   1    24.296
+     84       3-10      2.6604   -0.2297    -0.1624   +0.0000   -0.0726   +0.0054    +0.1007   1    11.360
+     85       3-11      5.0790   -0.0406    -0.0387   -0.0068   +0.0000   +0.0049    +0.0489   1    25.288
+     86       3-12      7.2996   -0.0070    -0.0074   -0.0008   +0.0000   +0.0013    +0.0169   1    40.330
+     87       3-13      7.2036   +0.0341    +0.0332   -0.0005   +0.0000   +0.0015    +0.0179   1    39.675
+     88       3-14      6.4245   +0.0283    +0.0273   -0.0012   +0.0000   +0.0022    +0.0269   1    34.347
+     89       3-15      6.8391   -0.0180    -0.0191   +0.0000   -0.0000   +0.0011    +0.0218   1    37.189
+     90       3-16      8.6736   -0.0093    -0.0100   +0.0000   +0.0000   +0.0007    +0.0073   1    49.223
+     91       3-17      9.3419   -0.0001    -0.0004   +0.0000   +0.0000   +0.0003    +0.0046   1    53.155
+     92       3-18      8.7866   -0.0007    -0.0011   +0.0000   +0.0000   +0.0004    +0.0067   1    49.908
+     93       3-19     10.7881   -0.0006    -0.0007   +0.0000   +0.0000   +0.0001    +0.0015   1    60.501
+     94       3-20      5.2376   -0.0095    -0.0066   -0.0058   +0.0000   +0.0029    +0.0459   1    26.321
+     95       3-21      6.3658   -0.0034    -0.0033   -0.0019   +0.0000   +0.0017    +0.0277   1    33.945
+     96       3-22      5.9570   -0.0045    -0.0038   -0.0027   +0.0000   +0.0021    +0.0336   1    31.155
+     97       3-24      3.3833   -0.0315    -0.0138   -0.0228   +0.0000   +0.0052    +0.0850   1    15.082
+     98       3-25      4.3105   -0.0203    -0.0080   -0.0163   +0.0000   +0.0040    +0.0646   1    20.429
+     99       3-26      3.8744   -0.0389    -0.0186   -0.0252   +0.0000   +0.0049    +0.0741   1    17.839
+    100       3-27      3.7451   -0.0172    +0.0059   -0.0276   +0.0000   +0.0045    +0.0770   1    17.084
+    101       3-28      5.2534   -0.0051    -0.0021   -0.0057   +0.0000   +0.0026    +0.0456   1    26.439
+    102       3-29      3.5752   -0.0291    -0.0050   -0.0287   +0.0000   +0.0046    +0.0807   1    16.145
+    103       3-30      4.0340   -0.0613    -0.0456   -0.0218   +0.0000   +0.0061    +0.0706   1    18.765
+    104       3-31      4.8885   +0.0770    +0.0778   -0.0050   +0.0000   +0.0042    +0.0526   1    24.050
+    105       3-32      5.6750   -0.0281    -0.0301   +0.0000   -0.0001   +0.0021    +0.0382   1    29.244
+    106       3-33      4.1048   -0.0826    -0.0696   -0.0203   +0.0000   +0.0072    +0.0690   1    19.198
+    107       3-34      4.2620   -0.0397    -0.0276   -0.0171   +0.0000   +0.0050    +0.0656   1    20.141
+    108       3-35      3.5515   +0.1468    +0.1661   -0.0261   +0.0000   +0.0068    +0.0813   1    15.998
+    109       3-36      5.5782   +0.0384    +0.0379   -0.0027   +0.0000   +0.0032    +0.0398   1    28.590
+    110       3-37      6.1927   -0.0224    -0.0240   +0.0000   -0.0000   +0.0016    +0.0301   1    32.770
+    111       3-38      6.3505   -0.0217    -0.0225   -0.0019   +0.0000   +0.0028    +0.0279   1    33.844
+    112       3-39      7.4447   -0.0079    -0.0084   -0.0007   +0.0000   +0.0012    +0.0156   1    41.300
+    113       3-40      7.1461   -0.0090    -0.0095   -0.0009   +0.0000   +0.0015    +0.0184   1    39.291
+    114       3-41      8.0189   +0.0265    +0.0256   +0.0000   +0.0000   +0.0009    +0.0111   1    45.090
+    115       3-42      7.0480   +0.0243    +0.0234   -0.0007   +0.0000   +0.0016    +0.0195   1    38.617
+    116       3-43      6.6710   -0.0182    -0.0194   +0.0000   -0.0000   +0.0012    +0.0237   1    36.049
+    117       3-44      7.8143   -0.0077    -0.0081   -0.0005   +0.0000   +0.0010    +0.0125   1    43.763
+    118       3-45      7.1794   -0.0042    -0.0045   -0.0009   +0.0000   +0.0012    +0.0181   1    39.513
+    119       3-46      5.9698   +0.0013    +0.0020   -0.0027   +0.0000   +0.0020    +0.0334   1    31.244
+    120       3-47      5.9883   -0.0023    -0.0015   -0.0027   +0.0000   +0.0019    +0.0332   1    31.369
+    121       3-48      6.3893   -0.0016    -0.0013   -0.0018   +0.0000   +0.0016    +0.0274   1    34.113
+    122       3-49      9.0753   -0.0062    -0.0067   +0.0000   +0.0000   +0.0005    +0.0055   1    51.624
+    123       3-50      9.8496   +0.0170    +0.0167   +0.0000   +0.0000   +0.0003    +0.0031   1    55.927
+    124       3-51     10.1276   -0.0084    -0.0085   +0.0000   +0.0000   +0.0001    +0.0025   1    57.359
+    125       3-52     10.1168   -0.0064    -0.0066   +0.0000   +0.0000   +0.0002    +0.0025   1    57.305
+    126       3-53     11.2993   -0.0005    -0.0006   +0.0000   +0.0000   +0.0001    +0.0010   1    62.683
+    127       3-54     12.3982   +0.0146    +0.0146   +0.0000   +0.0000   +0.0000    +0.0004   1    66.664
+    128       3-55     11.2708   +0.0172    +0.0171   +0.0000   +0.0000   +0.0001    +0.0010   1    62.564
+    129       4-7       4.1756   -0.0397    -0.0237   -0.0200   +0.0000   +0.0040    +0.0675   1    19.604
+    130       4-8       4.5157   +0.0604    +0.0646   -0.0091   +0.0000   +0.0050    +0.0602   1    21.694
+    131       4-10      3.6155   -0.0546    -0.0568   -0.0033   +0.0000   +0.0056    +0.0799   1    16.363
+    132       4-11      5.2692   -0.0268    -0.0243   -0.0063   +0.0000   +0.0038    +0.0453   1    26.537
+    133       4-12      7.6121   -0.0046    -0.0046   -0.0007   +0.0000   +0.0007    +0.0141   1    42.423
+    134       4-13      7.8619   +0.0194    +0.0187   -0.0004   +0.0000   +0.0010    +0.0122   1    44.064
+    135       4-14      6.4624   +0.0191    +0.0185   -0.0013   +0.0000   +0.0019    +0.0264   1    34.613
+    136       4-15      6.5582   -0.0128    -0.0144   -0.0001   +0.0000   +0.0017    +0.0252   1    35.272
+    137       4-16      8.8147   -0.0061    -0.0066   +0.0000   +0.0000   +0.0005    +0.0066   1    50.079
+    138       4-17      9.6955   -0.0001    -0.0002   +0.0000   +0.0000   +0.0001    +0.0035   1    55.111
+    139       4-18      9.1761   -0.0005    -0.0007   +0.0000   +0.0000   +0.0002    +0.0051   1    52.211
+    140       4-19     11.0076   -0.0004    -0.0005   +0.0000   +0.0000   +0.0000    +0.0012   1    61.464
+    141       4-20      5.1355   -0.0102    -0.0048   -0.0072   +0.0000   +0.0017    +0.0478   1    25.648
+    142       4-21      6.4908   -0.0031    -0.0021   -0.0019   +0.0000   +0.0009    +0.0260   1    34.812
+    143       4-22      5.2436   -0.0084    -0.0035   -0.0064   +0.0000   +0.0016    +0.0458   1    26.360
+    144       4-24      3.6872   -0.0306    -0.0078   -0.0255   +0.0000   +0.0027    +0.0782   1    16.773
+    145       4-25      4.8494   -0.0122    -0.0042   -0.0099   +0.0000   +0.0018    +0.0534   1    23.803
+    146       4-28      4.2620   -0.0188    -0.0023   -0.0184   +0.0000   +0.0019    +0.0656   1    20.141
+    147       4-29      3.6691   -0.0262    -0.0033   -0.0252   +0.0000   +0.0023    +0.0787   1    16.653
+    148       4-32      3.7181   -0.0516    -0.0543   -0.0028   +0.0000   +0.0055    +0.0776   1    16.941
+    149       4-34      3.9285   -0.0431    -0.0228   -0.0243   +0.0000   +0.0039    +0.0730   1    18.142
+    150       4-35      3.8889   +0.0798    +0.0929   -0.0194   +0.0000   +0.0063    +0.0738   1    17.909
+    151       4-36      5.1592   +0.0297    +0.0311   -0.0049   +0.0000   +0.0035    +0.0474   1    25.807
+    152       4-37      5.4250   -0.0197    -0.0223   -0.0003   +0.0000   +0.0029    +0.0425   1    27.564
+    153       4-38      6.3364   -0.0154    -0.0155   -0.0022   +0.0000   +0.0023    +0.0281   1    33.743
+    154       4-39      7.3058   -0.0060    -0.0060   -0.0009   +0.0000   +0.0009    +0.0169   1    40.359
+    155       4-40      7.1546   -0.0065    -0.0065   -0.0011   +0.0000   +0.0011    +0.0183   1    39.350
+    156       4-41      7.7446   +0.0196    +0.0189   -0.0004   +0.0000   +0.0011    +0.0131   1    43.300
+    157       4-42      7.4109   +0.0150    +0.0143   -0.0006   +0.0000   +0.0012    +0.0159   1    41.074
+    158       4-43      7.3099   -0.0098    -0.0109   -0.0001   +0.0000   +0.0011    +0.0168   1    40.388
+    159       4-44      8.1645   -0.0045    -0.0051   +0.0000   +0.0000   +0.0006    +0.0101   1    46.036
+    160       4-45      7.7178   -0.0027    -0.0026   -0.0007   +0.0000   +0.0005    +0.0133   1    43.126
+    161       4-46      6.3474   -0.0001    +0.0012   -0.0021   +0.0000   +0.0008    +0.0279   1    33.828
+    162       4-47      6.5873   -0.0019    -0.0009   -0.0017   +0.0000   +0.0007    +0.0248   1    35.467
+    163       4-48      6.2221   -0.0025    -0.0010   -0.0024   +0.0000   +0.0009    +0.0297   1    32.959
+    164       4-49      9.5925   -0.0039    -0.0041   +0.0000   +0.0000   +0.0002    +0.0038   1    54.549
+    165       4-50     10.2065   +0.0109    +0.0107   +0.0000   +0.0000   +0.0002    +0.0024   1    57.751
+    166       4-51     10.2857   -0.0055    -0.0057   +0.0000   +0.0000   +0.0002    +0.0022   1    58.142
+    167       4-52     10.6268   -0.0040    -0.0041   +0.0000   +0.0000   +0.0001    +0.0017   1    59.764
+    168       4-53     11.9403   -0.0003    -0.0003   +0.0000   +0.0000   +0.0000    +0.0005   1    65.122
+    169       4-54     12.9136   +0.0094    +0.0094   +0.0000   +0.0000   +0.0000    +0.0002   1    68.220
+    170       4-55     12.1311   +0.0104    +0.0104   +0.0000   +0.0000   +0.0001    +0.0005   1    65.785
+    171       5-7       4.0751   +0.0227    +0.0184   -0.0027   +0.0000   +0.0070    +0.0697   1    19.016
+    172       5-8       4.1517   -0.0555    -0.0577   +0.0000   -0.0012   +0.0035    +0.0680   1    19.469
+    173       5-9       3.4557   -0.0542    -0.0556   -0.0042   +0.0000   +0.0056    +0.0834   1    15.481
+    174       5-10      4.0106   +0.0331    +0.0332   -0.0001   +0.0000   +0.0000    +0.0711   1    18.627
+    175       5-11      5.2635   +0.0219    +0.0180   -0.0006   +0.0000   +0.0045    +0.0454   1    26.498
+    176       5-12      7.5188   +0.0049    +0.0035   -0.0001   +0.0000   +0.0015    +0.0149   1    41.804
+    177       5-13      7.9202   -0.0130    -0.0136   +0.0000   -0.0000   +0.0006    +0.0118   1    44.453
+    178       5-14      6.3001   -0.0127    -0.0144   -0.0001   +0.0000   +0.0019    +0.0286   1    33.506
+    179       5-15      6.2463   +0.0119    +0.0119   -0.0000   +0.0000   +0.0000    +0.0294   1    33.131
+    180       5-16      8.6005   +0.0059    +0.0052   +0.0000   +0.0000   +0.0008    +0.0076   1    48.779
+    181       5-17      9.5116   +0.0006    +0.0002   +0.0000   +0.0000   +0.0004    +0.0040   1    54.109
+    182       5-18      8.9694   +0.0011    +0.0005   +0.0000   +0.0000   +0.0006    +0.0059   1    51.003
+    183       5-19     10.7453   +0.0005    +0.0004   +0.0000   +0.0000   +0.0002    +0.0015   1    60.305
+    184       5-20      5.1587   +0.0075    +0.0035   -0.0007   +0.0000   +0.0047    +0.0474   1    25.807
+    185       5-21      6.6023   +0.0038    +0.0015   -0.0002   +0.0000   +0.0025    +0.0246   1    35.565
+    186       5-22      5.0119   +0.0071    +0.0029   -0.0008   +0.0000   +0.0050    +0.0502   1    24.845
+    187       5-23      3.7260   +0.0107    +0.0073   -0.0043   +0.0000   +0.0077    +0.0774   1    16.989
+    188       5-24      3.7726   +0.0091    +0.0055   -0.0040   +0.0000   +0.0076    +0.0764   1    17.250
+    189       5-25      4.8095   +0.0075    +0.0032   -0.0010   +0.0000   +0.0054    +0.0542   1    23.554
+    190       5-27      3.3584   -0.0022    -0.0038   -0.0069   +0.0000   +0.0085    +0.0857   1    14.931
+    191       5-28      4.4420   +0.0061    +0.0016   -0.0016   +0.0000   +0.0062    +0.0618   1    21.240
+    192       5-29      4.3757   +0.0061    +0.0016   -0.0018   +0.0000   +0.0063    +0.0632   1    20.825
+    193       5-31      2.5705   -0.2565    -0.1647   +0.0000   -0.0970   +0.0052    +0.1025   1    10.929
+    194       5-32      3.4162   +0.0481    +0.0484   -0.0003   +0.0000   +0.0000    +0.0843   1    15.257
+    195       5-33      3.3209   +0.0582    +0.0568   -0.0072   +0.0000   +0.0086    +0.0865   1    14.729
+    196       5-34      4.4842   +0.0169    +0.0124   -0.0016   +0.0000   +0.0061    +0.0609   1    21.500
+    197       5-35      4.6338   -0.0433    -0.0459   +0.0000   -0.0004   +0.0030    +0.0577   1    22.442
+    198       5-36      5.6427   -0.0163    -0.0187   -0.0003   +0.0000   +0.0026    +0.0387   1    29.020
+    199       5-37      5.7696   +0.0142    +0.0143   -0.0000   +0.0000   +0.0000    +0.0366   1    29.889
+    200       5-38      6.9200   +0.0113    +0.0094   -0.0001   +0.0000   +0.0021    +0.0208   1    37.748
+    201       5-39      7.8838   +0.0049    +0.0037   -0.0001   +0.0000   +0.0012    +0.0120   1    44.207
+    202       5-40      7.6453   +0.0055    +0.0042   -0.0001   +0.0000   +0.0014    +0.0139   1    42.641
+    203       5-41      8.1088   -0.0121    -0.0126   +0.0000   +0.0000   +0.0005    +0.0105   1    45.678
+    204       5-42      7.9569   -0.0083    -0.0090   -0.0000   +0.0000   +0.0008    +0.0115   1    44.696
+    205       5-43      7.9570   +0.0066    +0.0066   -0.0000   +0.0000   +0.0000    +0.0115   1    44.696
+    206       5-44      8.6115   +0.0041    +0.0033   +0.0000   +0.0000   +0.0008    +0.0076   1    48.846
+    207       5-45      8.1443   +0.0027    +0.0017   +0.0000   +0.0000   +0.0010    +0.0102   1    45.901
+    208       5-46      6.7074   +0.0014    -0.0008   -0.0001   +0.0000   +0.0023    +0.0233   1    36.289
+    209       5-47      6.8931   +0.0026    +0.0006   -0.0001   +0.0000   +0.0021    +0.0212   1    37.562
+    210       5-48      6.3830   +0.0032    +0.0007   -0.0002   +0.0000   +0.0027    +0.0275   1    34.063
+    211       5-49     10.0883   +0.0030    +0.0028   +0.0000   +0.0000   +0.0003    +0.0026   1    57.157
+    212       5-50     10.7020   -0.0072    -0.0072   +0.0000   +0.0000   +0.0001    +0.0016   1    60.113
+    213       5-51     10.7053   +0.0039    +0.0039   +0.0000   +0.0000   +0.0000    +0.0016   1    60.127
+    214       5-52     11.0496   +0.0030    +0.0028   +0.0000   +0.0000   +0.0001    +0.0012   1    61.641
+    215       5-53     12.4192   +0.0003    +0.0002   +0.0000   +0.0000   +0.0000    +0.0003   1    66.732
+    216       5-54     13.3493   -0.0066    -0.0066   +0.0000   +0.0000   +0.0000    +0.0001   1    69.391
+    217       5-55     12.6909   -0.0071    -0.0071   +0.0000   +0.0000   +0.0000    +0.0003   1    67.570
+    218       6-12      5.8488   +0.0029    +0.0066   -0.0048   +0.0000   +0.0011    +0.0354   1    30.417
+    219       6-13      6.0617   -0.0256    -0.0265   -0.0025   +0.0000   +0.0033    +0.0321   1    31.864
+    220       6-14      4.8621   -0.0335    -0.0280   -0.0097   +0.0000   +0.0042    +0.0531   1    23.885
+    221       6-15      5.0795   +0.0247    +0.0204   -0.0008   +0.0000   +0.0050    +0.0489   1    25.288
+    222       6-16      7.0252   +0.0082    +0.0085   -0.0017   +0.0000   +0.0013    +0.0197   1    38.466
+    223       6-17      7.6723   -0.0007    +0.0003   -0.0010   +0.0000   -0.0001    +0.0137   1    42.817
+    224       6-18      6.9840   -0.0007    +0.0010   -0.0017   +0.0000   +0.0000    +0.0202   1    38.177
+    225       6-19      9.0218   +0.0006    +0.0006   +0.0000   +0.0000   +0.0000    +0.0057   1    51.310
+    226       6-20      4.3768   -0.0146    +0.0054   -0.0206   +0.0000   +0.0005    +0.0631   1    20.847
+    227       6-21      5.7881   -0.0028    +0.0022   -0.0051   +0.0000   +0.0002    +0.0363   1    30.017
+    228       6-22      4.8460   -0.0097    +0.0033   -0.0133   +0.0000   +0.0003    +0.0535   1    23.782
+    229       6-26      4.6242   -0.0089    +0.0067   -0.0165   +0.0000   +0.0009    +0.0580   1    22.379
+    230       6-27      4.3920   -0.0226    -0.0022   -0.0204   +0.0000   -0.0001    +0.0628   1    20.935
+    231       6-28      5.6015   -0.0053    +0.0010   -0.0062   +0.0000   -0.0001    +0.0394   1    28.759
+    232       6-29      4.8660   -0.0118    +0.0013   -0.0130   +0.0000   -0.0001    +0.0531   1    23.906
+    233       6-30      4.7930   +0.0055    +0.0166   -0.0140   +0.0000   +0.0029    +0.0545   1    23.450
+    234       6-31      5.0095   -0.0421    -0.0396   -0.0074   +0.0000   +0.0049    +0.0502   1    24.845
+    235       6-32      5.7990   +0.0189    +0.0154   -0.0003   +0.0000   +0.0038    +0.0361   1    30.090
+    236       6-33      4.9013   +0.0171    +0.0250   -0.0126   +0.0000   +0.0047    +0.0524   1    24.132
+    237       6-34      5.6472   +0.0032    +0.0078   -0.0059   +0.0000   +0.0013    +0.0387   1    29.058
+    238       6-35      5.2725   -0.0372    -0.0363   -0.0055   +0.0000   +0.0047    +0.0453   1    26.556
+    239       6-36      6.9800   -0.0119    -0.0122   -0.0012   +0.0000   +0.0016    +0.0202   1    38.162
+    240       6-37      7.3996   +0.0102    +0.0086   -0.0001   +0.0000   +0.0016    +0.0160   1    41.003
+    241       6-38      7.9869   +0.0074    +0.0073   -0.0008   +0.0000   +0.0009    +0.0113   1    44.887
+    242       6-39      9.1667   +0.0031    +0.0029   +0.0000   +0.0000   +0.0002    +0.0052   1    52.152
+    243       6-40      8.5744   +0.0038    +0.0035   +0.0000   +0.0000   +0.0003    +0.0078   1    48.610
+    244       6-41      9.2499   -0.0098    -0.0102   +0.0000   +0.0000   +0.0005    +0.0049   1    52.630
+    245       6-42      8.4969   -0.0077    -0.0084   +0.0000   +0.0000   +0.0007    +0.0082   1    48.133
+    246       6-43      8.3034   +0.0074    +0.0065   +0.0000   +0.0000   +0.0009    +0.0093   1    46.919
+    247       6-44      8.9949   +0.0035    +0.0033   +0.0000   +0.0000   +0.0002    +0.0058   1    51.157
+    248       6-45      8.1607   +0.0020    +0.0018   +0.0000   +0.0000   +0.0001    +0.0101   1    46.012
+    249       6-46      6.7364   -0.0030    -0.0008   -0.0021   +0.0000   -0.0000    +0.0230   1    36.496
+    250       6-47      6.4153   -0.0022    +0.0007   -0.0028   +0.0000   -0.0001    +0.0270   1    34.297
+    251       6-48      6.8351   -0.0014    +0.0006   -0.0020   +0.0000   -0.0001    +0.0218   1    37.158
+    252       6-49     10.3723   +0.0029    +0.0028   +0.0000   +0.0000   +0.0001    +0.0021   1    58.562
+    253       6-50     11.2520   -0.0070    -0.0071   +0.0000   +0.0000   +0.0001    +0.0010   1    62.490
+    254       6-51     11.4054   +0.0038    +0.0037   +0.0000   +0.0000   +0.0001    +0.0009   1    63.109
+    255       6-52     11.2054   +0.0030    +0.0030   +0.0000   +0.0000   +0.0001    +0.0010   1    62.296
+    256       6-53     12.5225   +0.0003    +0.0003   +0.0000   +0.0000   -0.0000    +0.0003   1    67.060
+    257       6-54     13.5748   -0.0068    -0.0069   +0.0000   +0.0000   +0.0000    +0.0001   1    69.949
+    258       6-55     12.6314   -0.0076    -0.0076   +0.0000   +0.0000   +0.0000    +0.0003   1    67.392
+    259       7-13      3.9144   -0.0591    -0.0409   -0.0243   +0.0000   +0.0062    +0.0732   1    18.072
+    260       7-16      4.6787   -0.0017    +0.0123   -0.0157   +0.0000   +0.0017    +0.0568   1    22.717
+    261       7-17      5.5276   -0.0080    +0.0004   -0.0067   +0.0000   -0.0017    +0.0407   1    28.250
+    262       7-18      5.1472   -0.0105    +0.0011   -0.0098   +0.0000   -0.0018    +0.0476   1    25.728
+    263       7-19      6.8614   -0.0022    +0.0006   -0.0019   +0.0000   -0.0008    +0.0215   1    37.345
+    264       7-24      4.7069   -0.0152    +0.0020   -0.0153   +0.0000   -0.0019    +0.0563   1    22.886
+    265       7-25      3.3663   +0.0599    +0.0043   +0.0585   +0.0000   -0.0028    +0.0854   1    14.981
+    266       7-26      5.6307   -0.0045    +0.0024   -0.0060   +0.0000   -0.0009    +0.0389   1    28.946
+    267       7-27      4.8168   -0.0168    -0.0010   -0.0137   +0.0000   -0.0021    +0.0540   1    23.596
+    268       7-28      5.5043   -0.0079    +0.0006   -0.0068   +0.0000   -0.0017    +0.0411   1    28.099
+    269       7-29      5.3696   -0.0090    +0.0006   -0.0078   +0.0000   -0.0018    +0.0435   1    27.198
+    270       7-30      6.6173   +0.0025    +0.0045   -0.0024   +0.0000   +0.0004    +0.0244   1    35.678
+    271       7-31      6.6016   -0.0115    -0.0119   -0.0015   +0.0000   +0.0019    +0.0246   1    35.565
+    272       7-32      7.4621   +0.0065    +0.0049   -0.0001   +0.0000   +0.0016    +0.0154   1    41.413
+    273       7-33      7.0827   +0.0055    +0.0061   -0.0016   +0.0000   +0.0010    +0.0191   1    38.858
+    274       7-34      7.8886   +0.0012    +0.0021   -0.0008   +0.0000   -0.0000    +0.0120   1    44.246
+    275       7-35      7.5105   -0.0086    -0.0092   -0.0007   +0.0000   +0.0013    +0.0150   1    41.748
+    276       7-36      9.2020   -0.0036    -0.0038   +0.0000   +0.0000   +0.0003    +0.0050   1    52.358
+    277       7-37      9.5593   +0.0033    +0.0029   +0.0000   +0.0000   +0.0004    +0.0039   1    54.371
+    278       7-38     10.2393   +0.0026    +0.0025   +0.0000   +0.0000   +0.0001    +0.0023   1    57.918
+    279       7-39     11.3050   +0.0011    +0.0011   +0.0000   +0.0000   -0.0000    +0.0010   1    62.705
+    280       7-40     10.9421   +0.0012    +0.0012   +0.0000   +0.0000   +0.0000    +0.0013   1    61.181
+    281       7-41     11.6208   -0.0037    -0.0038   +0.0000   +0.0000   +0.0001    +0.0007   1    63.947
+    282       7-42     10.8973   -0.0028    -0.0029   +0.0000   +0.0000   +0.0001    +0.0014   1    60.987
+    283       7-43     10.6524   +0.0024    +0.0022   +0.0000   +0.0000   +0.0002    +0.0017   1    59.886
+    284       7-44     11.4343   +0.0012    +0.0012   +0.0000   +0.0000   +0.0000    +0.0009   1    63.222
+    285       7-45     10.5781   +0.0006    +0.0006   +0.0000   +0.0000   -0.0000    +0.0018   1    59.538
+    286       7-46      9.1652   -0.0004    -0.0002   +0.0000   +0.0000   -0.0002    +0.0052   1    52.152
+    287       7-47      8.7382   -0.0001    +0.0002   +0.0000   +0.0000   -0.0003    +0.0070   1    49.616
+    288       7-48      9.2512   -0.0000    +0.0002   +0.0000   +0.0000   -0.0002    +0.0049   1    52.640
+    289       7-49     12.7929   +0.0011    +0.0011   +0.0000   +0.0000   +0.0000    +0.0002   1    67.874
+    290       7-50     13.6714   -0.0029    -0.0029   +0.0000   +0.0000   +0.0000    +0.0001   1    70.181
+    291       7-51     13.8407   +0.0016    +0.0016   +0.0000   +0.0000   +0.0000    +0.0001   1    70.569
+    292       7-52     13.6247   +0.0012    +0.0012   +0.0000   +0.0000   +0.0000    +0.0001   1    70.070
+    293       7-53     14.9218   +0.0001    +0.0001   +0.0000   +0.0000   -0.0000    +0.0000   1    72.683
+    294       7-54     15.9937   -0.0031    -0.0031   +0.0000   +0.0000   +0.0000    +0.0000   1    74.244
+    295       7-55     14.9797   -0.0034    -0.0034   +0.0000   +0.0000   +0.0000    +0.0000   1    72.779
+    296       8-12      3.7723   -0.0549    -0.0335   -0.0271   +0.0000   +0.0057    +0.0764   1    17.250
+    297       8-13      4.4677   +0.0957    +0.0990   -0.0084   +0.0000   +0.0051    +0.0613   1    21.392
+    298       8-15      2.5041   -0.2984    -0.1829   +0.0000   -0.1209   +0.0055    +0.1039   1    10.608
+    299       8-16      4.6167   -0.0475    -0.0414   -0.0115   +0.0000   +0.0054    +0.0581   1    22.336
+    300       8-17      5.4294   -0.0035    -0.0012   -0.0047   +0.0000   +0.0024    +0.0424   1    27.603
+    301       8-18      4.9029   -0.0093    -0.0040   -0.0083   +0.0000   +0.0031    +0.0523   1    24.153
+    302       8-19      6.6121   -0.0021    -0.0020   -0.0015   +0.0000   +0.0014    +0.0245   1    35.646
+    303       8-21      4.6861   -0.0138    -0.0066   -0.0106   +0.0000   +0.0035    +0.0567   1    22.759
+    304       8-22      3.3889   -0.0317    -0.0138   -0.0231   +0.0000   +0.0052    +0.0849   1    15.107
+    305       8-23      3.5992   -0.0393    -0.0156   -0.0288   +0.0000   +0.0050    +0.0803   1    16.266
+    306       8-24      4.7113   -0.0134    -0.0065   -0.0103   +0.0000   +0.0034    +0.0562   1    22.928
+    307       8-25      3.2797   -0.0220    -0.0148   -0.0125   +0.0000   +0.0053    +0.0873   1    14.526
+    308       8-26      6.1127   -0.0068    -0.0065   -0.0024   +0.0000   +0.0021    +0.0313   1    32.214
+    309       8-27      5.5026   +0.0005    +0.0024   -0.0043   +0.0000   +0.0024    +0.0412   1    28.080
+    310       8-28      6.0988   -0.0021    -0.0015   -0.0024   +0.0000   +0.0018    +0.0315   1    32.127
+    311       8-29      6.2780   -0.0017    -0.0014   -0.0020   +0.0000   +0.0017    +0.0289   1    33.353
+    312       8-30      6.8541   -0.0128    -0.0135   -0.0012   +0.0000   +0.0019    +0.0216   1    37.298
+    313       8-31      6.6071   +0.0399    +0.0388   -0.0009   +0.0000   +0.0020    +0.0246   1    35.597
+    314       8-32      7.3936   -0.0156    -0.0164   +0.0000   -0.0000   +0.0009    +0.0160   1    40.961
+    315       8-33      7.2608   -0.0179    -0.0188   -0.0008   +0.0000   +0.0018    +0.0173   1    40.069
+    316       8-34      8.2400   -0.0054    -0.0062   +0.0000   +0.0000   +0.0007    +0.0096   1    46.511
+    317       8-35      7.9994   +0.0268    +0.0262   -0.0003   +0.0000   +0.0009    +0.0112   1    44.964
+    318       8-36      9.5281   +0.0120    +0.0117   +0.0000   +0.0000   +0.0003    +0.0040   1    54.200
+    319       8-37      9.8017   -0.0087    -0.0089   +0.0000   +0.0000   +0.0002    +0.0032   1    55.676
+    320       8-38     10.6496   -0.0074    -0.0076   +0.0000   +0.0000   +0.0002    +0.0017   1    59.872
+    321       8-39     11.7529   -0.0033    -0.0034   +0.0000   +0.0000   +0.0000    +0.0006   1    64.443
+    322       8-40     11.2524   -0.0037    -0.0038   +0.0000   +0.0000   +0.0001    +0.0010   1    62.490
+    323       8-41     11.8281   +0.0121    +0.0121   +0.0000   +0.0000   +0.0000    +0.0006   1    64.716
+    324       8-42     11.2397   +0.0091    +0.0090   +0.0000   +0.0000   +0.0001    +0.0010   1    62.439
+    325       8-43     11.0929   -0.0067    -0.0068   +0.0000   +0.0000   +0.0001    +0.0011   1    61.826
+    326       8-44     11.6713   -0.0037    -0.0037   +0.0000   +0.0000   +0.0001    +0.0007   1    64.140
+    327       8-45     10.7842   -0.0018    -0.0019   +0.0000   +0.0000   +0.0001    +0.0015   1    60.482
+    328       8-46      9.3130   +0.0010    +0.0008   +0.0000   +0.0000   +0.0003    +0.0047   1    52.994
+    329       8-47      8.8318   -0.0003    -0.0007   +0.0000   +0.0000   +0.0004    +0.0065   1    50.186
+    330       8-48      9.2355   -0.0003    -0.0006   +0.0000   +0.0000   +0.0003    +0.0049   1    52.552
+    331       8-49     13.0784   -0.0035    -0.0035   +0.0000   +0.0000   +0.0000    +0.0002   1    68.678
+    332       8-50     13.9717   +0.0093    +0.0093   +0.0000   +0.0000   +0.0000    +0.0001   1    70.857
+    333       8-51     14.0694   -0.0050    -0.0050   +0.0000   +0.0000   +0.0000    +0.0001   1    71.068
+    334       8-52     13.8266   -0.0039    -0.0039   +0.0000   +0.0000   +0.0000    +0.0001   1    70.536
+    335       8-53     15.1836   -0.0004    -0.0004   +0.0000   +0.0000   +0.0000    +0.0000   1    73.108
+    336       8-54     16.2118   +0.0100    +0.0100   +0.0000   +0.0000   +0.0000    +0.0000   1    74.508
+    337       8-55     15.3301   +0.0107    +0.0107   +0.0000   +0.0000   +0.0000    +0.0000   1    73.333
+    338       9-12      4.5539   -0.0249    -0.0139   -0.0136   +0.0000   +0.0026    +0.0594   1    21.931
+    339       9-13      4.6899   +0.0536    +0.0564   -0.0074   +0.0000   +0.0046    +0.0566   1    22.781
+    340       9-15      4.0145   -0.0383    -0.0413   -0.0018   +0.0000   +0.0049    +0.0711   1    18.650
+    341       9-16      5.8491   -0.0163    -0.0153   -0.0035   +0.0000   +0.0024    +0.0354   1    30.417
+    342       9-17      6.5801   -0.0018    -0.0005   -0.0017   +0.0000   +0.0005    +0.0249   1    35.418
+    343       9-18      6.0993   -0.0035    -0.0016   -0.0027   +0.0000   +0.0007    +0.0315   1    32.127
+    344       9-19      7.9840   -0.0011    -0.0008   -0.0006   +0.0000   +0.0003    +0.0113   1    44.862
+    345       9-21      4.4271   -0.0187    -0.0048   -0.0155   +0.0000   +0.0016    +0.0621   1    21.153
+    346       9-22      3.8788   -0.0295    -0.0065   -0.0249   +0.0000   +0.0019    +0.0740   1    17.862
+    347       9-26      4.9508   -0.0139    -0.0068   -0.0088   +0.0000   +0.0017    +0.0514   1    24.459
+    348       9-27      4.2451   -0.0144    +0.0028   -0.0187   +0.0000   +0.0015    +0.0660   1    20.030
+    349       9-28      5.2574   -0.0067    -0.0013   -0.0063   +0.0000   +0.0010    +0.0455   1    26.459
+    350       9-29      4.5901   -0.0136    -0.0018   -0.0130   +0.0000   +0.0012    +0.0587   1    22.166
+    351       9-30      5.7588   -0.0144    -0.0128   -0.0038   +0.0000   +0.0022    +0.0368   1    29.816
+    352       9-31      5.9845   +0.0318    +0.0310   -0.0018   +0.0000   +0.0026    +0.0332   1    31.351
+    353       9-32      6.8539   -0.0110    -0.0124   -0.0001   +0.0000   +0.0015    +0.0216   1    37.298
+    354       9-33      6.1106   -0.0178    -0.0177   -0.0027   +0.0000   +0.0026    +0.0313   1    32.197
+    355       9-34      6.7636   -0.0065    -0.0061   -0.0015   +0.0000   +0.0010    +0.0227   1    36.670
+    356       9-35      6.2852   +0.0296    +0.0286   -0.0013   +0.0000   +0.0023    +0.0288   1    33.404
+    357       9-36      8.0955   +0.0111    +0.0104   +0.0000   +0.0000   +0.0007    +0.0105   1    45.592
+    358       9-37      8.5352   -0.0069    -0.0075   +0.0000   +0.0000   +0.0005    +0.0080   1    48.373
+    359       9-38      9.0548   -0.0062    -0.0066   +0.0000   +0.0000   +0.0004    +0.0056   1    51.503
+    360       9-39     10.1463   -0.0027    -0.0028   +0.0000   +0.0000   +0.0001    +0.0025   1    57.452
+    361       9-40      9.7661   -0.0030    -0.0031   +0.0000   +0.0000   +0.0002    +0.0033   1    55.489
+    362       9-41     10.5088   +0.0096    +0.0095   +0.0000   +0.0000   +0.0001    +0.0019   1    59.212
+    363       9-42      9.6776   +0.0079    +0.0076   +0.0000   +0.0000   +0.0003    +0.0036   1    55.016
+    364       9-43      9.3875   -0.0056    -0.0059   +0.0000   +0.0000   +0.0003    +0.0044   1    53.409
+    365       9-44     10.2566   -0.0029    -0.0030   +0.0000   +0.0000   +0.0001    +0.0023   1    58.000
+    366       9-45      9.4235   -0.0015    -0.0016   +0.0000   +0.0000   +0.0001    +0.0043   1    53.614
+    367       9-46      8.0558   +0.0009    +0.0007   +0.0000   +0.0000   +0.0002    +0.0108   1    45.329
+    368       9-47      7.6934   -0.0010    -0.0006   -0.0007   +0.0000   +0.0003    +0.0135   1    42.965
+    369       9-48      8.2576   -0.0003    -0.0005   +0.0000   +0.0000   +0.0002    +0.0095   1    46.631
+    370       9-49     11.5832   -0.0027    -0.0027   +0.0000   +0.0000   +0.0000    +0.0007   1    63.804
+    371       9-50     12.4575   +0.0071    +0.0070   +0.0000   +0.0000   +0.0000    +0.0003   1    66.856
+    372       9-51     12.6670   -0.0037    -0.0037   +0.0000   +0.0000   +0.0000    +0.0003   1    67.500
+    373       9-52     12.4586   -0.0029    -0.0029   +0.0000   +0.0000   +0.0000    +0.0003   1    66.856
+    374       9-53     13.7218   -0.0003    -0.0003   +0.0000   +0.0000   +0.0000    +0.0001   1    70.298
+    375       9-54     14.8118   +0.0072    +0.0071   +0.0000   +0.0000   +0.0000    +0.0000   1    72.494
+    376       9-55     13.7428   +0.0080    +0.0079   +0.0000   +0.0000   +0.0000    +0.0001   1    70.345
+    377      10-12      4.6669   +0.0156    +0.0110   -0.0012   +0.0000   +0.0059    +0.0571   1    22.633
+    378      10-13      4.5565   -0.0476    -0.0502   +0.0000   -0.0005   +0.0032    +0.0594   1    21.952
+    379      10-14      3.8937   -0.0428    -0.0457   -0.0022   +0.0000   +0.0051    +0.0737   1    17.956
+    380      10-15      4.4769   +0.0268    +0.0268   -0.0001   +0.0000   +0.0000    +0.0610   1    21.457
+    381      10-16      6.0865   +0.0147    +0.0116   -0.0003   +0.0000   +0.0033    +0.0317   1    32.039
+    382      10-17      6.7943   +0.0026    +0.0004   -0.0001   +0.0000   +0.0023    +0.0223   1    36.891
+    383      10-18      6.4241   +0.0038    +0.0011   -0.0002   +0.0000   +0.0028    +0.0269   1    34.347
+    384      10-19      8.2567   +0.0016    +0.0007   +0.0000   +0.0000   +0.0010    +0.0095   1    46.619
+    385      10-20      3.0785   +0.0123    +0.0117   -0.0089   +0.0000   +0.0095    +0.0917   1    13.464
+    386      10-21      4.1674   +0.0093    +0.0046   -0.0024   +0.0000   +0.0070    +0.0677   1    19.559
+    387      10-22      4.1580   +0.0093    +0.0046   -0.0024   +0.0000   +0.0070    +0.0679   1    19.514
+    388      10-24      4.3325   +0.0090    +0.0042   -0.0019   +0.0000   +0.0067    +0.0641   1    20.561
+    389      10-25      3.5933   +0.0096    +0.0064   -0.0051   +0.0000   +0.0083    +0.0803   1    16.242
+    390      10-26      5.0024   +0.0099    +0.0055   -0.0008   +0.0000   +0.0052    +0.0504   1    24.784
+    391      10-27      4.1273   +0.0021    -0.0025   -0.0025   +0.0000   +0.0071    +0.0685   1    19.334
+    392      10-28      5.1845   +0.0053    +0.0011   -0.0007   +0.0000   +0.0049    +0.0469   1    25.986
+    393      10-29      4.1435   +0.0066    +0.0019   -0.0024   +0.0000   +0.0071    +0.0682   1    19.424
+    394      10-30      5.9953   +0.0129    +0.0097   -0.0003   +0.0000   +0.0034    +0.0330   1    31.422
+    395      10-31      6.4153   -0.0206    -0.0221   +0.0000   -0.0000   +0.0014    +0.0271   1    34.281
+    396      10-32      7.3088   +0.0090    +0.0090   -0.0000   +0.0000   +0.0000    +0.0168   1    40.388
+    397      10-33      6.3716   +0.0161    +0.0134   -0.0002   +0.0000   +0.0029    +0.0276   1    33.996
+    398      10-34      6.8242   +0.0071    +0.0050   -0.0001   +0.0000   +0.0023    +0.0219   1    37.095
+    399      10-35      6.2058   -0.0230    -0.0245   +0.0000   -0.0000   +0.0016    +0.0299   1    32.856
+    400      10-36      8.1469   -0.0079    -0.0086   +0.0000   +0.0000   +0.0007    +0.0102   1    45.913
+    401      10-37      8.6626   +0.0061    +0.0061   +0.0000   +0.0000   +0.0000    +0.0073   1    49.156
+    402      10-38      8.9962   +0.0062    +0.0056   +0.0000   +0.0000   +0.0006    +0.0058   1    51.157
+    403      10-39     10.0424   +0.0027    +0.0024   +0.0000   +0.0000   +0.0003    +0.0027   1    56.928
+    404      10-40      9.7830   +0.0030    +0.0026   +0.0000   +0.0000   +0.0003    +0.0033   1    55.574
+    405      10-41     10.6141   -0.0076    -0.0077   +0.0000   +0.0000   +0.0001    +0.0017   1    59.710
+    406      10-42      9.6509   -0.0061    -0.0064   +0.0000   +0.0000   +0.0003    +0.0036   1    54.867
+    407      10-43      9.2645   +0.0051    +0.0051   +0.0000   +0.0000   +0.0000    +0.0048   1    52.717
+    408      10-44     10.3102   +0.0027    +0.0025   +0.0000   +0.0000   +0.0002    +0.0022   1    58.261
+    409      10-45      9.5047   +0.0017    +0.0013   +0.0000   +0.0000   +0.0004    +0.0041   1    54.064
+    410      10-46      8.2240   +0.0005    -0.0005   +0.0000   +0.0000   +0.0010    +0.0097   1    46.414
+    411      10-47      7.8983   +0.0016    +0.0004   -0.0001   +0.0000   +0.0012    +0.0119   1    44.311
+    412      10-48      8.5785   +0.0012    +0.0004   +0.0000   +0.0000   +0.0008    +0.0077   1    48.633
+    413      10-49     11.5688   +0.0023    +0.0023   +0.0000   +0.0000   +0.0001    +0.0008   1    63.747
+    414      10-50     12.4308   -0.0059    -0.0059   +0.0000   +0.0000   +0.0000    +0.0003   1    66.768
+    415      10-51     12.7080   +0.0031    +0.0031   +0.0000   +0.0000   +0.0000    +0.0003   1    67.621
+    416      10-52     12.5020   +0.0025    +0.0024   +0.0000   +0.0000   +0.0000    +0.0003   1    66.993
+    417      10-53     13.6963   +0.0002    +0.0002   +0.0000   +0.0000   +0.0000    +0.0001   1    70.237
+    418      10-54     14.8207   -0.0060    -0.0060   +0.0000   +0.0000   +0.0000    +0.0000   1    72.509
+    419      10-55     13.6303   -0.0067    -0.0067   +0.0000   +0.0000   +0.0000    +0.0001   1    70.083
+    420      11-17      4.8215   -0.0130    +0.0009   -0.0136   +0.0000   -0.0003    +0.0540   1    23.616
+    421      11-18      4.8465   -0.0110    +0.0022   -0.0133   +0.0000   +0.0000    +0.0535   1    23.782
+    422      11-19      6.1765   -0.0023    +0.0013   -0.0035   +0.0000   +0.0000    +0.0304   1    32.649
+    423      11-23      4.7000   -0.0104    +0.0046   -0.0154   +0.0000   +0.0005    +0.0564   1    22.844
+    424      11-24      6.1153   -0.0017    +0.0019   -0.0038   +0.0000   +0.0001    +0.0313   1    32.232
+    425      11-25      4.6156   -0.0127    +0.0037   -0.0167   +0.0000   +0.0003    +0.0582   1    22.315
+    426      11-26      6.2486   +0.0005    +0.0033   -0.0033   +0.0000   +0.0004    +0.0293   1    33.148
+    427      11-27      5.1230   -0.0116    -0.0015   -0.0100   +0.0000   -0.0001    +0.0481   1    25.568
+    428      11-28      5.5259   -0.0058    +0.0010   -0.0067   +0.0000   -0.0001    +0.0407   1    28.250
+    429      11-29      5.5033   -0.0059    +0.0010   -0.0068   +0.0000   -0.0001    +0.0411   1    28.099
+    430      11-30      7.6522   +0.0054    +0.0057   -0.0010   +0.0000   +0.0007    +0.0138   1    42.682
+    431      11-31      7.6870   -0.0142    -0.0149   -0.0006   +0.0000   +0.0013    +0.0135   1    42.912
+    432      11-32      8.5888   +0.0072    +0.0064   +0.0000   +0.0000   +0.0008    +0.0077   1    48.700
+    433      11-33      8.2728   +0.0085    +0.0076   +0.0000   +0.0000   +0.0008    +0.0094   1    46.727
+    434      11-34      8.9844   +0.0030    +0.0028   +0.0000   +0.0000   +0.0002    +0.0059   1    51.095
+    435      11-35      8.5356   -0.0114    -0.0123   +0.0000   +0.0000   +0.0008    +0.0080   1    48.373
+    436      11-36     10.2828   -0.0053    -0.0054   +0.0000   +0.0000   +0.0002    +0.0022   1    58.127
+    437      11-37     10.6575   +0.0043    +0.0041   +0.0000   +0.0000   +0.0002    +0.0017   1    59.906
+    438      11-38     11.2720   +0.0038    +0.0037   +0.0000   +0.0000   +0.0001    +0.0010   1    62.570
+    439      11-39     12.2486   +0.0017    +0.0017   +0.0000   +0.0000   +0.0000    +0.0004   1    66.176
+    440      11-40     12.0834   +0.0018    +0.0018   +0.0000   +0.0000   +0.0000    +0.0005   1    65.622
+    441      11-41     12.8190   -0.0057    -0.0057   +0.0000   +0.0000   +0.0000    +0.0002   1    67.949
+    442      11-42     12.0426   -0.0043    -0.0043   +0.0000   +0.0000   +0.0000    +0.0005   1    65.478
+    443      11-43     11.7211   +0.0034    +0.0033   +0.0000   +0.0000   +0.0001    +0.0007   1    64.325
+    444      11-44     12.6648   +0.0018    +0.0017   +0.0000   +0.0000   +0.0000    +0.0003   1    67.492
+    445      11-45     11.8355   +0.0009    +0.0009   +0.0000   +0.0000   +0.0000    +0.0006   1    64.744
+    446      11-46     10.4712   -0.0003    -0.0003   +0.0000   +0.0000   -0.0000    +0.0019   1    59.036
+    447      11-47     10.0585   +0.0003    +0.0003   +0.0000   +0.0000   -0.0000    +0.0027   1    57.007
+    448      11-48     10.6401   +0.0002    +0.0002   +0.0000   +0.0000   -0.0000    +0.0017   1    59.825
+    449      11-49     13.9813   +0.0017    +0.0017   +0.0000   +0.0000   +0.0000    +0.0001   1    70.879
+    450      11-50     14.8373   -0.0046    -0.0046   +0.0000   +0.0000   +0.0000    +0.0000   1    72.538
+    451      11-51     15.0544   +0.0024    +0.0024   +0.0000   +0.0000   +0.0000    +0.0000   1    72.902
+    452      11-52     14.8680   +0.0019    +0.0019   +0.0000   +0.0000   +0.0000    +0.0000   1    72.590
+    453      11-53     16.1151   +0.0002    +0.0002   +0.0000   +0.0000   -0.0000    +0.0000   1    74.393
+    454      11-54     17.2168   -0.0050    -0.0050   +0.0000   +0.0000   +0.0000    +0.0000   1    75.530
+    455      11-55     16.0982   -0.0054    -0.0054   +0.0000   +0.0000   +0.0000    +0.0000   1    74.372
+    456      12-21      3.5745   -0.0019    +0.0029   -0.0012   +0.0000   -0.0036    +0.0808   1    16.120
+    457      12-22      4.1785   -0.0246    +0.0020   -0.0236   +0.0000   -0.0030    +0.0675   1    19.627
+    458      12-23      6.3588   -0.0031    +0.0010   -0.0030   +0.0000   -0.0011    +0.0278   1    33.895
+    459      12-24      7.8042   -0.0010    +0.0005   -0.0009   +0.0000   -0.0006    +0.0126   1    43.684
+    460      12-25      5.7357   -0.0061    +0.0010   -0.0054   +0.0000   -0.0017    +0.0372   1    29.650
+    461      12-26      8.6601   +0.0005    +0.0007   +0.0000   +0.0000   -0.0003    +0.0073   1    49.134
+    462      12-27      7.5010   -0.0022    -0.0003   -0.0011   +0.0000   -0.0008    +0.0151   1    41.678
+    463      12-28      7.7202   -0.0014    +0.0002   -0.0010   +0.0000   -0.0007    +0.0133   1    43.140
+    464      12-29      7.8222   -0.0013    +0.0002   -0.0009   +0.0000   -0.0007    +0.0125   1    43.803
+    465      12-30     10.0247   +0.0014    +0.0014   +0.0000   +0.0000   +0.0000    +0.0027   1    56.832
+    466      12-31      9.9724   -0.0036    -0.0038   +0.0000   +0.0000   +0.0002    +0.0029   1    56.567
+    467      12-32     10.8428   +0.0019    +0.0018   +0.0000   +0.0000   +0.0001    +0.0014   1    60.746
+    468      12-33     10.5673   +0.0021    +0.0021   +0.0000   +0.0000   +0.0001    +0.0018   1    59.490
+    469      12-34     11.2980   +0.0008    +0.0008   +0.0000   +0.0000   -0.0000    +0.0010   1    62.677
+    470      12-35     10.8067   -0.0033    -0.0034   +0.0000   +0.0000   +0.0001    +0.0015   1    60.585
+    471      12-36     12.6172   -0.0017    -0.0017   +0.0000   +0.0000   +0.0000    +0.0003   1    67.350
+    472      12-37     13.0083   +0.0013    +0.0013   +0.0000   +0.0000   +0.0000    +0.0002   1    68.484
+    473      12-38     13.5822   +0.0012    +0.0012   +0.0000   +0.0000   +0.0000    +0.0001   1    69.968
+    474      12-39     14.6146   +0.0006    +0.0006   +0.0000   +0.0000   -0.0000    +0.0000   1    72.142
+    475      12-40     14.3160   +0.0006    +0.0006   +0.0000   +0.0000   -0.0000    +0.0000   1    71.573
+    476      12-41     15.0562   -0.0020    -0.0020   +0.0000   +0.0000   +0.0000    +0.0000   1    72.905
+    477      12-42     14.1781   -0.0015    -0.0015   +0.0000   +0.0000   +0.0000    +0.0001   1    71.294
+    478      12-43     13.8396   +0.0011    +0.0011   +0.0000   +0.0000   +0.0000    +0.0001   1    70.567
+    479      12-44     14.6899   +0.0006    +0.0006   +0.0000   +0.0000   -0.0000    +0.0000   1    72.279
+    480      12-45     13.7255   +0.0003    +0.0003   +0.0000   +0.0000   -0.0000    +0.0001   1    70.306
+    481      12-46     12.3717   -0.0001    -0.0001   +0.0000   +0.0000   -0.0000    +0.0004   1    66.579
+    482      12-47     11.7471   +0.0001    +0.0001   +0.0000   +0.0000   -0.0000    +0.0006   1    64.419
+    483      12-48     12.5752   +0.0001    +0.0001   +0.0000   +0.0000   -0.0000    +0.0003   1    67.221
+    484      12-49     15.9747   +0.0006    +0.0006   +0.0000   +0.0000   -0.0000    +0.0000   1    74.221
+    485      12-50     16.9274   -0.0017    -0.0017   +0.0000   +0.0000   +0.0000    +0.0000   1    75.266
+    486      12-51     17.1613   +0.0009    +0.0009   +0.0000   +0.0000   +0.0000    +0.0000   1    75.481
+    487      12-52     16.7523   +0.0007    +0.0007   +0.0000   +0.0000   +0.0000    +0.0000   1    75.095
+    488      12-53     17.9892   +0.0001    +0.0001   +0.0000   +0.0000   -0.0000    +0.0000   1    76.134
+    489      12-54     19.1095   -0.0019    -0.0019   +0.0000   +0.0000   +0.0000    +0.0000   1    76.796
+    490      12-55     17.9388   -0.0021    -0.0021   +0.0000   +0.0000   +0.0000    +0.0000   1    76.099
+    491      13-18      3.4482   -0.0301    -0.0092   -0.0262   +0.0000   +0.0053    +0.0836   1    15.431
+    492      13-19      4.3470   -0.0170    -0.0055   -0.0156   +0.0000   +0.0040    +0.0638   1    20.650
+    493      13-20      3.7652   -0.0366    -0.0145   -0.0272   +0.0000   +0.0052    +0.0766   1    17.203
+    494      13-21      3.6157   -0.0358    -0.0122   -0.0288   +0.0000   +0.0052    +0.0799   1    16.363
+    495      13-22      4.8202   -0.0120    -0.0064   -0.0091   +0.0000   +0.0035    +0.0540   1    23.616
+    496      13-23      6.4538   -0.0041    -0.0042   -0.0017   +0.0000   +0.0018    +0.0265   1    34.547
+    497      13-24      7.9662   -0.0018    -0.0020   -0.0005   +0.0000   +0.0007    +0.0114   1    44.747
+    498      13-25      5.9124   -0.0046    -0.0040   -0.0029   +0.0000   +0.0022    +0.0343   1    30.850
+    499      13-26      8.8875   -0.0025    -0.0029   +0.0000   +0.0000   +0.0004    +0.0063   1    50.514
+    500      13-27      7.6521   +0.0014    +0.0012   -0.0006   +0.0000   +0.0009    +0.0138   1    42.682
+    501      13-28      7.9658   -0.0006    -0.0008   -0.0005   +0.0000   +0.0007    +0.0114   1    44.747
+    502      13-29      7.7319   -0.0007    -0.0009   -0.0006   +0.0000   +0.0008    +0.0132   1    43.220
+    503      13-30     10.2879   -0.0057    -0.0059   +0.0000   +0.0000   +0.0002    +0.0022   1    58.150
+    504      13-31     10.4009   +0.0155    +0.0153   +0.0000   +0.0000   +0.0002    +0.0020   1    58.700
+    505      13-32     11.2966   -0.0072    -0.0072   +0.0000   +0.0000   +0.0001    +0.0010   1    62.672
+    506      13-33     10.7850   -0.0085    -0.0086   +0.0000   +0.0000   +0.0002    +0.0015   1    60.488
+    507      13-34     11.3642   -0.0033    -0.0034   +0.0000   +0.0000   +0.0001    +0.0009   1    62.944
+    508      13-35     10.7540   +0.0150    +0.0149   +0.0000   +0.0000   +0.0001    +0.0015   1    60.344
+    509      13-36     12.6891   +0.0072    +0.0072   +0.0000   +0.0000   +0.0000    +0.0003   1    67.566
+    510      13-37     13.1599   -0.0055    -0.0055   +0.0000   +0.0000   +0.0000    +0.0002   1    68.896
+    511      13-38     13.5503   -0.0052    -0.0052   +0.0000   +0.0000   +0.0000    +0.0001   1    69.891
+    512      13-39     14.5790   -0.0025    -0.0025   +0.0000   +0.0000   +0.0000    +0.0000   1    72.077
+    513      13-40     14.3049   -0.0027    -0.0027   +0.0000   +0.0000   +0.0000    +0.0000   1    71.552
+    514      13-41     15.1246   +0.0086    +0.0086   +0.0000   +0.0000   +0.0000    +0.0000   1    73.015
+    515      13-42     14.0928   +0.0065    +0.0065   +0.0000   +0.0000   +0.0000    +0.0001   1    71.117
+    516      13-43     13.6746   -0.0050    -0.0050   +0.0000   +0.0000   +0.0000    +0.0001   1    70.186
+    517      13-44     14.6333   -0.0027    -0.0027   +0.0000   +0.0000   +0.0000    +0.0000   1    72.177
+    518      13-45     13.6544   -0.0013    -0.0014   +0.0000   +0.0000   +0.0000    +0.0001   1    70.140
+    519      13-46     12.3751   +0.0005    +0.0005   +0.0000   +0.0000   +0.0000    +0.0004   1    66.591
+    520      13-47     11.7311   -0.0004    -0.0004   +0.0000   +0.0000   +0.0000    +0.0007   1    64.360
+    521      13-48     12.7240   -0.0003    -0.0003   +0.0000   +0.0000   +0.0000    +0.0003   1    67.669
+    522      13-49     15.8481   -0.0027    -0.0027   +0.0000   +0.0000   +0.0000    +0.0000   1    74.059
+    523      13-50     16.8195   +0.0075    +0.0075   +0.0000   +0.0000   +0.0000    +0.0000   1    75.161
+    524      13-51     17.1191   -0.0039    -0.0039   +0.0000   +0.0000   +0.0000    +0.0000   1    75.443
+    525      13-52     16.6443   -0.0031    -0.0031   +0.0000   +0.0000   +0.0000    +0.0000   1    74.985
+    526      13-53     17.8147   -0.0003    -0.0003   +0.0000   +0.0000   +0.0000    +0.0000   1    76.010
+    527      13-54     18.9696   +0.0085    +0.0085   +0.0000   +0.0000   +0.0000    +0.0000   1    76.726
+    528      13-55     17.6788   +0.0092    +0.0092   +0.0000   +0.0000   +0.0000    +0.0000   1    75.908
+    529      14-18      3.7839   -0.0285    -0.0048   -0.0257   +0.0000   +0.0020    +0.0761   1    17.321
+    530      14-19      4.8267   -0.0114    -0.0027   -0.0101   +0.0000   +0.0014    +0.0538   1    23.658
+    531      14-23      5.5935   -0.0069    -0.0037   -0.0045   +0.0000   +0.0012    +0.0395   1    28.703
+    532      14-24      6.9763   -0.0024    -0.0017   -0.0012   +0.0000   +0.0006    +0.0202   1    38.131
+    533      14-25      5.1412   -0.0093    -0.0035   -0.0072   +0.0000   +0.0014    +0.0477   1    25.688
+    534      14-26      7.4826   -0.0030    -0.0027   -0.0008   +0.0000   +0.0005    +0.0153   1    41.553
+    535      14-27      6.3966   -0.0003    +0.0011   -0.0020   +0.0000   +0.0007    +0.0273   1    34.164
+    536      14-28      6.6164   -0.0019    -0.0008   -0.0017   +0.0000   +0.0006    +0.0244   1    35.662
+    537      14-29      6.8897   -0.0016    -0.0007   -0.0013   +0.0000   +0.0005    +0.0212   1    37.531
+    538      14-30      8.8347   -0.0047    -0.0051   +0.0000   +0.0000   +0.0004    +0.0065   1    50.197
+    539      14-31      8.7099   +0.0144    +0.0138   +0.0000   +0.0000   +0.0006    +0.0071   1    49.442
+    540      14-32      9.5747   -0.0060    -0.0062   +0.0000   +0.0000   +0.0003    +0.0039   1    54.451
+    541      14-33      9.4377   -0.0067    -0.0071   +0.0000   +0.0000   +0.0004    +0.0043   1    53.697
+    542      14-34     10.2509   -0.0025    -0.0026   +0.0000   +0.0000   +0.0001    +0.0023   1    57.970
+    543      14-35      9.8523   +0.0114    +0.0112   +0.0000   +0.0000   +0.0003    +0.0031   1    55.944
+    544      14-36     11.5514   +0.0054    +0.0054   +0.0000   +0.0000   +0.0001    +0.0008   1    63.679
+    545      14-37     11.8850   -0.0041    -0.0041   +0.0000   +0.0000   +0.0000    +0.0006   1    64.925
+    546      14-38     12.5851   -0.0037    -0.0037   +0.0000   +0.0000   +0.0000    +0.0003   1    67.252
+    547      14-39     13.5910   -0.0018    -0.0018   +0.0000   +0.0000   +0.0000    +0.0001   1    69.988
+    548      14-40     13.3382   -0.0019    -0.0019   +0.0000   +0.0000   +0.0000    +0.0001   1    69.365
+    549      14-41     14.0272   +0.0061    +0.0061   +0.0000   +0.0000   +0.0000    +0.0001   1    70.978
+    550      14-42     13.2865   +0.0045    +0.0045   +0.0000   +0.0000   +0.0000    +0.0001   1    69.229
+    551      14-43     13.0024   -0.0034    -0.0034   +0.0000   +0.0000   +0.0000    +0.0002   1    68.467
+    552      14-44     13.8284   -0.0019    -0.0019   +0.0000   +0.0000   +0.0000    +0.0001   1    70.541
+    553      14-45     12.9335   -0.0009    -0.0009   +0.0000   +0.0000   +0.0000    +0.0002   1    68.275
+    554      14-46     11.5351   +0.0004    +0.0003   +0.0000   +0.0000   +0.0000    +0.0008   1    63.616
+    555      14-47     11.0148   -0.0003    -0.0003   +0.0000   +0.0000   +0.0000    +0.0012   1    61.495
+    556      14-48     11.6361   -0.0002    -0.0003   +0.0000   +0.0000   +0.0000    +0.0007   1    64.004
+    557      14-49     15.1645   -0.0018    -0.0018   +0.0000   +0.0000   +0.0000    +0.0000   1    73.077
+    558      14-50     16.0620   +0.0050    +0.0050   +0.0000   +0.0000   +0.0000    +0.0000   1    74.328
+    559      14-51     16.2501   -0.0027    -0.0027   +0.0000   +0.0000   +0.0000    +0.0000   1    74.553
+    560      14-52     15.9780   -0.0021    -0.0021   +0.0000   +0.0000   +0.0000    +0.0000   1    74.224
+    561      14-53     17.2553   -0.0002    -0.0002   +0.0000   +0.0000   +0.0000    +0.0000   1    75.563
+    562      14-54     18.3462   +0.0056    +0.0056   +0.0000   +0.0000   +0.0000    +0.0000   1    76.370
+    563      14-55     17.2678   +0.0060    +0.0060   +0.0000   +0.0000   +0.0000    +0.0000   1    75.574
+    564      15-17      3.7857   +0.0054    +0.0015   -0.0040   +0.0000   +0.0078    +0.0761   1    17.321
+    565      15-18      3.9549   +0.0078    +0.0035   -0.0031   +0.0000   +0.0075    +0.0723   1    18.304
+    566      15-19      4.8175   +0.0068    +0.0022   -0.0010   +0.0000   +0.0056    +0.0540   1    23.596
+    567      15-21      3.5894   +0.0095    +0.0064   -0.0052   +0.0000   +0.0083    +0.0804   1    16.218
+    568      15-22      2.8592   +0.0125    +0.0105   -0.0080   +0.0000   +0.0100    +0.0965   1    12.337
+    569      15-23      5.8798   +0.0059    +0.0027   -0.0003   +0.0000   +0.0036    +0.0348   1    30.634
+    570      15-24      7.1438   +0.0031    +0.0013   -0.0001   +0.0000   +0.0019    +0.0185   1    39.276
+    571      15-25      5.3776   +0.0065    +0.0025   -0.0005   +0.0000   +0.0045    +0.0433   1    27.256
+    572      15-26      7.5586   +0.0036    +0.0021   -0.0001   +0.0000   +0.0015    +0.0146   1    42.067
+    573      15-27      6.5786   +0.0016    -0.0008   -0.0002   +0.0000   +0.0026    +0.0249   1    35.402
+    574      15-28      6.6905   +0.0029    +0.0006   -0.0001   +0.0000   +0.0024    +0.0235   1    36.177
+    575      15-29      7.2696   +0.0022    +0.0005   -0.0001   +0.0000   +0.0018    +0.0172   1    40.127
+    576      15-30      8.8511   +0.0047    +0.0041   +0.0000   +0.0000   +0.0007    +0.0064   1    50.292
+    577      15-31      8.5650   -0.0111    -0.0116   +0.0000   +0.0000   +0.0004    +0.0078   1    48.554
+    578      15-32      9.3912   +0.0052    +0.0052   +0.0000   +0.0000   +0.0000    +0.0044   1    53.437
+    579      15-33      9.4891   +0.0061    +0.0056   +0.0000   +0.0000   +0.0004    +0.0041   1    53.982
+    580      15-34     10.4262   +0.0022    +0.0020   +0.0000   +0.0000   +0.0002    +0.0020   1    58.822
+    581      15-35     10.1380   -0.0084    -0.0085   +0.0000   +0.0000   +0.0001    +0.0025   1    57.406
+    582      15-36     11.7024   -0.0042    -0.0042   +0.0000   +0.0000   +0.0000    +0.0007   1    64.255
+    583      15-37     11.9603   +0.0033    +0.0033   +0.0000   +0.0000   +0.0000    +0.0005   1    65.191
+    584      15-38     12.8137   +0.0029    +0.0029   +0.0000   +0.0000   +0.0000    +0.0002   1    67.935
+    585      15-39     13.8112   +0.0014    +0.0014   +0.0000   +0.0000   +0.0000    +0.0001   1    70.501
+    586      15-40     13.5420   +0.0015    +0.0015   +0.0000   +0.0000   +0.0000    +0.0001   1    69.871
+    587      15-41     14.1561   -0.0048    -0.0048   +0.0000   +0.0000   +0.0000    +0.0001   1    71.249
+    588      15-42     13.5535   -0.0035    -0.0035   +0.0000   +0.0000   +0.0000    +0.0001   1    69.899
+    589      15-43     13.3380   +0.0027    +0.0027   +0.0000   +0.0000   +0.0000    +0.0001   1    69.362
+    590      15-44     14.0659   +0.0015    +0.0015   +0.0000   +0.0000   +0.0000    +0.0001   1    71.061
+    591      15-45     13.1913   +0.0007    +0.0007   +0.0000   +0.0000   +0.0000    +0.0002   1    68.982
+    592      15-46     11.7468   -0.0002    -0.0003   +0.0000   +0.0000   +0.0001    +0.0006   1    64.419
+    593      15-47     11.2484   +0.0003    +0.0002   +0.0000   +0.0000   +0.0001    +0.0010   1    62.473
+    594      15-48     11.7200   +0.0003    +0.0002   +0.0000   +0.0000   +0.0001    +0.0007   1    64.320
+    595      15-49     15.4485   +0.0015    +0.0015   +0.0000   +0.0000   +0.0000    +0.0000   1    73.507
+    596      15-50     16.3243   -0.0040    -0.0040   +0.0000   +0.0000   +0.0000    +0.0000   1    74.638
+    597      15-51     16.4566   +0.0021    +0.0021   +0.0000   +0.0000   +0.0000    +0.0000   1    74.785
+    598      15-52     16.2398   +0.0017    +0.0017   +0.0000   +0.0000   +0.0000    +0.0000   1    74.541
+    599      15-53     17.5629   +0.0002    +0.0002   +0.0000   +0.0000   +0.0000    +0.0000   1    75.818
+    600      15-54     18.6195   -0.0045    -0.0045   +0.0000   +0.0000   +0.0000    +0.0000   1    76.534
+    601      15-55     17.6437   -0.0047    -0.0047   +0.0000   +0.0000   +0.0000    +0.0000   1    75.881
+    602      16-20      4.7013   -0.0116    +0.0039   -0.0153   +0.0000   -0.0002    +0.0564   1    22.865
+    603      16-21      4.7283   -0.0124    +0.0030   -0.0149   +0.0000   -0.0004    +0.0558   1    23.033
+    604      16-22      5.0636   -0.0085    +0.0026   -0.0107   +0.0000   -0.0004    +0.0492   1    25.188
+    605      16-23      7.4670   +0.0001    +0.0014   -0.0012   +0.0000   -0.0001    +0.0154   1    41.455
+    606      16-24      8.8337   +0.0007    +0.0007   +0.0000   +0.0000   -0.0000    +0.0065   1    50.197
+    607      16-25      6.6391   -0.0011    +0.0014   -0.0023   +0.0000   -0.0002    +0.0242   1    35.824
+    608      16-26      9.8852   +0.0011    +0.0011   +0.0000   +0.0000   +0.0000    +0.0031   1    56.110
+    609      16-27      8.7763   -0.0005    -0.0004   +0.0000   +0.0000   -0.0001    +0.0068   1    49.843
+    610      16-28      8.8760   +0.0002    +0.0003   +0.0000   +0.0000   -0.0001    +0.0063   1    50.450
+    611      16-29      9.2169   +0.0002    +0.0003   +0.0000   +0.0000   -0.0001    +0.0050   1    52.446
+    612      16-30     11.2001   +0.0023    +0.0023   +0.0000   +0.0000   +0.0000    +0.0010   1    62.278
+    613      16-31     11.0106   -0.0061    -0.0063   +0.0000   +0.0000   +0.0001    +0.0012   1    61.477
+    614      16-32     11.8432   +0.0031    +0.0030   +0.0000   +0.0000   +0.0001    +0.0006   1    64.773
+    615      16-33     11.7377   +0.0034    +0.0034   +0.0000   +0.0000   +0.0001    +0.0007   1    64.384
+    616      16-34     12.5645   +0.0013    +0.0013   +0.0000   +0.0000   +0.0000    +0.0003   1    67.187
+    617      16-35     12.1343   -0.0054    -0.0055   +0.0000   +0.0000   +0.0000    +0.0005   1    65.794
+    618      16-36     13.8798   -0.0028    -0.0029   +0.0000   +0.0000   +0.0000    +0.0001   1    70.655
+    619      16-37     14.2246   +0.0022    +0.0022   +0.0000   +0.0000   +0.0000    +0.0001   1    71.389
+    620      16-38     14.8952   +0.0021    +0.0021   +0.0000   +0.0000   +0.0000    +0.0000   1    72.637
+    621      16-39     15.9481   +0.0010    +0.0010   +0.0000   +0.0000   +0.0000    +0.0000   1    74.186
+    622      16-40     15.5809   +0.0011    +0.0011   +0.0000   +0.0000   +0.0000    +0.0000   1    73.697
+    623      16-41     16.2688   -0.0035    -0.0035   +0.0000   +0.0000   +0.0000    +0.0000   1    74.574
+    624      16-42     15.4505   -0.0026    -0.0026   +0.0000   +0.0000   +0.0000    +0.0000   1    73.510
+    625      16-43     15.1567   +0.0020    +0.0020   +0.0000   +0.0000   +0.0000    +0.0000   1    73.066
+    626      16-44     15.8953   +0.0011    +0.0011   +0.0000   +0.0000   +0.0000    +0.0000   1    74.120
+    627      16-45     14.8900   +0.0005    +0.0005   +0.0000   +0.0000   +0.0000    +0.0000   1    72.628
+    628      16-46     13.5054   -0.0002    -0.0002   +0.0000   +0.0000   -0.0000    +0.0001   1    69.781
+    629      16-47     12.8127   +0.0002    +0.0002   +0.0000   +0.0000   -0.0000    +0.0002   1    67.931
+    630      16-48     13.6286   +0.0001    +0.0001   +0.0000   +0.0000   -0.0000    +0.0001   1    70.078
+    631      16-49     17.2037   +0.0011    +0.0011   +0.0000   +0.0000   +0.0000    +0.0000   1    75.518
+    632      16-50     18.1818   -0.0031    -0.0031   +0.0000   +0.0000   +0.0000    +0.0000   1    76.265
+    633      16-51     18.3800   +0.0016    +0.0016   +0.0000   +0.0000   +0.0000    +0.0000   1    76.391
+    634      16-52     17.9179   +0.0013    +0.0013   +0.0000   +0.0000   +0.0000    +0.0000   1    76.084
+    635      16-53     19.1867   +0.0001    +0.0001   +0.0000   +0.0000   -0.0000    +0.0000   1    76.834
+    636      16-54     20.2882   -0.0036    -0.0036   +0.0000   +0.0000   +0.0000    +0.0000   1    77.288
+    637      16-55     19.1761   -0.0038    -0.0038   +0.0000   +0.0000   +0.0000    +0.0000   1    76.829
+    638      17-20      5.9519   -0.0069    +0.0001   -0.0044   +0.0000   -0.0026    +0.0337   1    31.119
+    639      17-21      6.0004   -0.0067    +0.0001   -0.0042   +0.0000   -0.0026    +0.0330   1    31.457
+    640      17-22      6.4563   -0.0048    +0.0001   -0.0027   +0.0000   -0.0021    +0.0265   1    34.564
+    641      17-23      7.8260   -0.0018    +0.0001   -0.0009   +0.0000   -0.0010    +0.0125   1    43.829
+    642      17-24      9.1691   -0.0004    +0.0000   +0.0000   +0.0000   -0.0004    +0.0052   1    52.172
+    643      17-25      6.7880   -0.0038    +0.0001   -0.0020   +0.0000   -0.0018    +0.0224   1    36.844
+    644      17-26     10.9976   -0.0000    +0.0000   +0.0000   +0.0000   -0.0001    +0.0012   1    61.422
+    645      17-27      9.9302   -0.0003    -0.0000   +0.0000   +0.0000   -0.0003    +0.0029   1    56.348
+    646      17-28     10.1736   -0.0002    +0.0000   +0.0000   +0.0000   -0.0002    +0.0024   1    57.591
+    647      17-29     10.2796   -0.0002    +0.0000   +0.0000   +0.0000   -0.0002    +0.0022   1    58.113
+    648      17-30     12.1335   +0.0001    +0.0001   +0.0000   +0.0000   -0.0000    +0.0005   1    65.794
+    649      17-31     11.9962   -0.0002    -0.0002   +0.0000   +0.0000   +0.0000    +0.0005   1    65.320
+    650      17-32     12.8092   +0.0001    +0.0001   +0.0000   +0.0000   +0.0000    +0.0002   1    67.920
+    651      17-33     12.5183   +0.0001    +0.0001   +0.0000   +0.0000   +0.0000    +0.0003   1    67.044
+    652      17-34     13.2935   +0.0000    +0.0001   +0.0000   +0.0000   -0.0000    +0.0001   1    69.247
+    653      17-35     12.7955   -0.0002    -0.0002   +0.0000   +0.0000   +0.0000    +0.0002   1    67.881
+    654      17-36     14.6301   -0.0001    -0.0001   +0.0000   +0.0000   +0.0000    +0.0000   1    72.171
+    655      17-37     15.0315   +0.0001    +0.0001   +0.0000   +0.0000   +0.0000    +0.0000   1    72.865
+    656      17-38     15.5846   +0.0001    +0.0001   +0.0000   +0.0000   -0.0000    +0.0000   1    73.703
+    657      17-39     16.7201   +0.0000    +0.0000   +0.0000   +0.0000   -0.0000    +0.0000   1    75.063
+    658      17-40     16.1734   +0.0000    +0.0000   +0.0000   +0.0000   -0.0000    +0.0000   1    74.463
+    659      17-41     16.8841   -0.0001    -0.0001   +0.0000   +0.0000   +0.0000    +0.0000   1    75.225
+    660      17-42     15.9304   -0.0001    -0.0001   +0.0000   +0.0000   +0.0000    +0.0000   1    74.164
+    661      17-43     15.6185   +0.0001    +0.0001   +0.0000   +0.0000   +0.0000    +0.0000   1    73.749
+    662      17-44     16.2730   +0.0000    +0.0000   +0.0000   +0.0000   -0.0000    +0.0000   1    74.579
+    663      17-45     15.1640   +0.0000    +0.0000   +0.0000   +0.0000   -0.0000    +0.0000   1    73.077
+    664      17-46     13.8236   -0.0000    -0.0000   +0.0000   +0.0000   -0.0000    +0.0001   1    70.529
+    665      17-47     12.9836   -0.0000    +0.0000   +0.0000   +0.0000   -0.0000    +0.0002   1    68.417
+    666      17-48     14.0226   +0.0000    +0.0000   +0.0000   +0.0000   -0.0000    +0.0001   1    70.968
+    667      17-49     17.5304   +0.0000    +0.0000   +0.0000   +0.0000   -0.0000    +0.0000   1    75.793
+    668      17-50     18.5924   -0.0001    -0.0001   +0.0000   +0.0000   +0.0000    +0.0000   1    76.518
+    669      17-51     18.8162   +0.0001    +0.0001   +0.0000   +0.0000   +0.0000    +0.0000   1    76.644
+    670      17-52     18.1479   +0.0001    +0.0001   +0.0000   +0.0000   -0.0000    +0.0000   1    76.243
+    671      17-53     19.3888   +0.0000    +0.0000   +0.0000   +0.0000   -0.0000    +0.0000   1    76.929
+    672      17-54     20.5014   -0.0002    -0.0002   +0.0000   +0.0000   +0.0000    +0.0000   1    77.359
+    673      17-55     19.3467   -0.0002    -0.0002   +0.0000   +0.0000   +0.0000    +0.0000   1    76.910
+    674      18-20      6.2078   -0.0053    +0.0002   -0.0034   +0.0000   -0.0021    +0.0299   1    32.873
+    675      18-21      6.5867   -0.0041    +0.0002   -0.0024   +0.0000   -0.0019    +0.0248   1    35.467
+    676      18-22      6.7282   -0.0037    +0.0001   -0.0022   +0.0000   -0.0017    +0.0231   1    36.432
+    677      18-23      6.9015   -0.0032    +0.0002   -0.0019   +0.0000   -0.0015    +0.0211   1    37.624
+    678      18-24      8.1451   -0.0007    +0.0001   +0.0000   +0.0000   -0.0008    +0.0102   1    45.901
+    679      18-25      5.6903   -0.0083    +0.0002   -0.0057   +0.0000   -0.0028    +0.0379   1    29.355
+    680      18-26     10.7708   +0.0000    +0.0001   +0.0000   +0.0000   -0.0001    +0.0015   1    60.423
+    681      18-27      9.8556   -0.0003    -0.0000   +0.0000   +0.0000   -0.0003    +0.0031   1    55.960
+    682      18-28     10.2950   -0.0002    +0.0000   +0.0000   +0.0000   -0.0002    +0.0022   1    58.187
+    683      18-29     10.2351   -0.0002    +0.0000   +0.0000   +0.0000   -0.0002    +0.0023   1    57.895
+    684      18-30     11.6107   +0.0002    +0.0002   +0.0000   +0.0000   -0.0000    +0.0007   1    63.906
+    685      18-31     11.4768   -0.0006    -0.0006   +0.0000   +0.0000   +0.0000    +0.0008   1    63.389
+    686      18-32     12.2440   +0.0004    +0.0003   +0.0000   +0.0000   +0.0000    +0.0004   1    66.164
+    687      18-33     11.8279   +0.0004    +0.0004   +0.0000   +0.0000   +0.0000    +0.0006   1    64.716
+    688      18-34     12.6098   +0.0001    +0.0001   +0.0000   +0.0000   -0.0000    +0.0003   1    67.328
+    689      18-35     12.1180   -0.0006    -0.0006   +0.0000   +0.0000   +0.0000    +0.0005   1    65.741
+    690      18-36     13.9477   -0.0003    -0.0003   +0.0000   +0.0000   +0.0000    +0.0001   1    70.806
+    691      18-37     14.3653   +0.0002    +0.0002   +0.0000   +0.0000   +0.0000    +0.0000   1    71.670
+    692      18-38     14.8849   +0.0002    +0.0002   +0.0000   +0.0000   -0.0000    +0.0000   1    72.619
+    693      18-39     16.1039   +0.0001    +0.0001   +0.0000   +0.0000   -0.0000    +0.0000   1    74.379
+    694      18-40     15.3541   +0.0001    +0.0001   +0.0000   +0.0000   -0.0000    +0.0000   1    73.368
+    695      18-41     16.0372   -0.0004    -0.0004   +0.0000   +0.0000   +0.0000    +0.0000   1    74.298
+    696      18-42     15.0498   -0.0003    -0.0003   +0.0000   +0.0000   +0.0000    +0.0000   1    72.893
+    697      18-43     14.7757   +0.0002    +0.0002   +0.0000   +0.0000   +0.0000    +0.0000   1    72.432
+    698      18-44     15.2823   +0.0001    +0.0001   +0.0000   +0.0000   -0.0000    +0.0000   1    73.260
+    699      18-45     14.1075   +0.0001    +0.0001   +0.0000   +0.0000   -0.0000    +0.0001   1    71.147
+    700      18-46     12.7764   -0.0000    -0.0000   +0.0000   +0.0000   -0.0000    +0.0002   1    67.824
+    701      18-47     11.8442   -0.0000    +0.0000   +0.0000   +0.0000   -0.0000    +0.0006   1    64.778
+    702      18-48     12.9686   +0.0000    +0.0000   +0.0000   +0.0000   -0.0000    +0.0002   1    68.373
+    703      18-49     16.5282   +0.0001    +0.0001   +0.0000   +0.0000   -0.0000    +0.0000   1    74.862
+    704      18-50     17.6419   -0.0004    -0.0004   +0.0000   +0.0000   +0.0000    +0.0000   1    75.880
+    705      18-51     17.8482   +0.0002    +0.0002   +0.0000   +0.0000   +0.0000    +0.0000   1    76.034
+    706      18-52     17.0558   +0.0002    +0.0002   +0.0000   +0.0000   -0.0000    +0.0000   1    75.386
+    707      18-53     18.3081   +0.0000    +0.0000   +0.0000   +0.0000   -0.0000    +0.0000   1    76.346
+    708      18-54     19.4025   -0.0004    -0.0004   +0.0000   +0.0000   +0.0000    +0.0000   1    76.936
+    709      18-55     18.2989   -0.0004    -0.0004   +0.0000   +0.0000   +0.0000    +0.0000   1    76.341
+    710      19-20      7.1916   -0.0026    +0.0002   -0.0015   +0.0000   -0.0013    +0.0180   1    39.601
+    711      19-21      7.1642   -0.0027    +0.0001   -0.0015   +0.0000   -0.0014    +0.0183   1    39.409
+    712      19-22      7.4981   -0.0022    +0.0001   -0.0011   +0.0000   -0.0011    +0.0151   1    41.665
+    713      19-23      9.1759   -0.0003    +0.0001   +0.0000   +0.0000   -0.0004    +0.0051   1    52.211
+    714      19-24     10.4526   -0.0001    +0.0001   +0.0000   +0.0000   -0.0001    +0.0020   1    58.950
+    715      19-25      8.0590   -0.0007    +0.0001   +0.0000   +0.0000   -0.0008    +0.0108   1    45.354
+    716      19-26     12.2737   +0.0001    +0.0001   +0.0000   +0.0000   -0.0000    +0.0004   1    66.261
+    717      19-27     11.2231   -0.0001    -0.0000   +0.0000   +0.0000   -0.0001    +0.0010   1    62.370
+    718      19-28     11.3581   -0.0001    +0.0000   +0.0000   +0.0000   -0.0001    +0.0009   1    62.922
+    719      19-29     11.6525   -0.0000    +0.0000   +0.0000   +0.0000   -0.0001    +0.0007   1    64.064
+    720      19-30     13.4115   +0.0002    +0.0002   +0.0000   +0.0000   -0.0000    +0.0001   1    69.548
+    721      19-31     13.1740   -0.0005    -0.0005   +0.0000   +0.0000   +0.0000    +0.0002   1    68.934
+    722      19-32     13.9596   +0.0003    +0.0003   +0.0000   +0.0000   +0.0000    +0.0001   1    70.831
+    723      19-33     13.8154   +0.0003    +0.0003   +0.0000   +0.0000   +0.0000    +0.0001   1    70.511
+    724      19-34     14.6595   +0.0001    +0.0001   +0.0000   +0.0000   -0.0000    +0.0000   1    72.224
+    725      19-35     14.2104   -0.0005    -0.0005   +0.0000   +0.0000   +0.0000    +0.0001   1    71.360
+    726      19-36     15.9881   -0.0003    -0.0003   +0.0000   +0.0000   +0.0000    +0.0000   1    74.237
+    727      19-37     16.3497   +0.0002    +0.0002   +0.0000   +0.0000   +0.0000    +0.0000   1    74.667
+    728      19-38     16.9826   +0.0002    +0.0002   +0.0000   +0.0000   -0.0000    +0.0000   1    75.318
+    729      19-39     18.1202   +0.0001    +0.0001   +0.0000   +0.0000   -0.0000    +0.0000   1    76.224
+    730      19-40     17.5488   +0.0001    +0.0001   +0.0000   +0.0000   -0.0000    +0.0000   1    75.807
+    731      19-41     18.2188   -0.0003    -0.0003   +0.0000   +0.0000   +0.0000    +0.0000   1    76.289
+    732      19-42     17.3224   -0.0003    -0.0003   +0.0000   +0.0000   +0.0000    +0.0000   1    75.622
+    733      19-43     17.0429   +0.0002    +0.0002   +0.0000   +0.0000   +0.0000    +0.0000   1    75.374
+    734      19-44     17.6256   +0.0001    +0.0001   +0.0000   +0.0000   -0.0000    +0.0000   1    75.867
+    735      19-45     16.4990   +0.0001    +0.0001   +0.0000   +0.0000   -0.0000    +0.0000   1    74.831
+    736      19-46     15.1400   -0.0000    -0.0000   +0.0000   +0.0000   -0.0000    +0.0000   1    73.040
+    737      19-47     14.2675   +0.0000    +0.0000   +0.0000   +0.0000   -0.0000    +0.0001   1    71.475
+    738      19-48     15.2732   +0.0000    +0.0000   +0.0000   +0.0000   -0.0000    +0.0000   1    73.246
+    739      19-49     18.8996   +0.0001    +0.0001   +0.0000   +0.0000   -0.0000    +0.0000   1    76.689
+    740      19-50     19.9714   -0.0003    -0.0003   +0.0000   +0.0000   +0.0000    +0.0000   1    77.173
+    741      19-51     20.1670   +0.0002    +0.0002   +0.0000   +0.0000   +0.0000    +0.0000   1    77.245
+    742      19-52     19.4748   +0.0001    +0.0001   +0.0000   +0.0000   -0.0000    +0.0000   1    76.968
+    743      19-53     20.7366   +0.0000    +0.0000   +0.0000   +0.0000   -0.0000    +0.0000   1    77.433
+    744      19-54     21.8319   -0.0004    -0.0004   +0.0000   +0.0000   +0.0000    +0.0000   1    77.713
+    745      19-55     20.7246   -0.0004    -0.0004   +0.0000   +0.0000   +0.0000    +0.0000   1    77.429
+    746      20-23      5.5804   -0.0083    +0.0006   -0.0063   +0.0000   -0.0025    +0.0398   1    28.609
+    747      20-24      6.8756   -0.0031    +0.0003   -0.0019   +0.0000   -0.0014    +0.0214   1    37.438
+    748      20-25      5.8076   -0.0071    +0.0004   -0.0050   +0.0000   -0.0024    +0.0360   1    30.145
+    749      20-26      5.4810   -0.0085    +0.0008   -0.0070   +0.0000   -0.0024    +0.0415   1    27.946
+    750      20-27      4.1864   -0.0289    -0.0004   -0.0235   +0.0000   -0.0049    +0.0673   1    19.672
+    751      20-28      4.2638   -0.0270    +0.0003   -0.0224   +0.0000   -0.0049    +0.0656   1    20.141
+    752      20-29      4.6415   -0.0203    +0.0003   -0.0163   +0.0000   -0.0043    +0.0576   1    22.485
+    753      20-30      7.2872   -0.0005    +0.0012   -0.0013   +0.0000   -0.0003    +0.0170   1    40.243
+    754      20-31      7.3055   -0.0028    -0.0031   -0.0008   +0.0000   +0.0010    +0.0169   1    40.359
+    755      20-32      8.2318   +0.0023    +0.0013   +0.0000   +0.0000   +0.0010    +0.0097   1    46.462
+    756      20-33      8.1628   +0.0016    +0.0014   +0.0000   +0.0000   +0.0002    +0.0101   1    46.024
+    757      20-34      8.8687   +0.0003    +0.0005   +0.0000   +0.0000   -0.0002    +0.0064   1    50.398
+    758      20-35      8.5007   -0.0017    -0.0023   +0.0000   +0.0000   +0.0005    +0.0081   1    48.156
+    759      20-36     10.0931   -0.0010    -0.0010   +0.0000   +0.0000   +0.0001    +0.0026   1    57.180
+    760      20-37     10.3970   +0.0010    +0.0008   +0.0000   +0.0000   +0.0002    +0.0020   1    58.685
+    761      20-38     11.1146   +0.0007    +0.0007   +0.0000   +0.0000   +0.0000    +0.0011   1    61.921
+    762      20-39     11.9300   +0.0003    +0.0003   +0.0000   +0.0000   -0.0000    +0.0005   1    65.085
+    763      20-40     12.0745   +0.0003    +0.0003   +0.0000   +0.0000   -0.0000    +0.0005   1    65.590
+    764      20-41     12.7918   -0.0010    -0.0011   +0.0000   +0.0000   +0.0000    +0.0002   1    67.871
+    765      20-42     12.1760   -0.0008    -0.0008   +0.0000   +0.0000   +0.0000    +0.0004   1    65.937
+    766      20-43     11.8560   +0.0007    +0.0006   +0.0000   +0.0000   +0.0001    +0.0006   1    64.821
+    767      20-44     12.9415   +0.0003    +0.0003   +0.0000   +0.0000   -0.0000    +0.0002   1    68.299
+    768      20-45     12.2724   +0.0001    +0.0002   +0.0000   +0.0000   -0.0000    +0.0004   1    66.256
+    769      20-46     10.9232   -0.0002    -0.0001   +0.0000   +0.0000   -0.0001    +0.0013   1    61.100
+    770      20-47     10.7147   -0.0001    +0.0000   +0.0000   +0.0000   -0.0001    +0.0016   1    60.166
+    771      20-48     11.0313   -0.0000    +0.0000   +0.0000   +0.0000   -0.0001    +0.0012   1    61.568
+    772      20-49     14.2699   +0.0003    +0.0003   +0.0000   +0.0000   -0.0000    +0.0001   1    71.482
+    773      20-50     15.0001   -0.0008    -0.0008   +0.0000   +0.0000   +0.0000    +0.0000   1    72.813
+    774      20-51     15.2032   +0.0004    +0.0004   +0.0000   +0.0000   +0.0000    +0.0000   1    73.139
+    775      20-52     15.2716   +0.0003    +0.0003   +0.0000   +0.0000   -0.0000    +0.0000   1    73.245
+    776      20-53     16.5059   +0.0000    +0.0000   +0.0000   +0.0000   -0.0000    +0.0000   1    74.839
+    777      20-54     17.5878   -0.0009    -0.0009   +0.0000   +0.0000   +0.0000    +0.0000   1    75.838
+    778      20-55     16.4965   -0.0010    -0.0010   +0.0000   +0.0000   +0.0000    +0.0000   1    74.829
+    779      21-23      6.8988   -0.0030    +0.0003   -0.0019   +0.0000   -0.0014    +0.0211   1    37.593
+    780      21-24      8.2618   -0.0005    +0.0001   +0.0000   +0.0000   -0.0007    +0.0095   1    46.655
+    781      21-25      7.0736   -0.0028    +0.0002   -0.0016   +0.0000   -0.0014    +0.0192   1    38.798
+    782      21-26      6.5123   -0.0037    +0.0004   -0.0026   +0.0000   -0.0016    +0.0257   1    34.960
+    783      21-27      5.0642   -0.0147    -0.0002   -0.0107   +0.0000   -0.0038    +0.0492   1    25.188
+    784      21-28      4.8726   -0.0169    +0.0002   -0.0130   +0.0000   -0.0041    +0.0529   1    23.947
+    785      21-29      5.2377   -0.0124    +0.0002   -0.0089   +0.0000   -0.0036    +0.0459   1    26.321
+    786      21-30      8.5351   +0.0005    +0.0006   +0.0000   +0.0000   -0.0002    +0.0080   1    48.373
+    787      21-31      8.6302   -0.0012    -0.0017   +0.0000   +0.0000   +0.0004    +0.0075   1    48.957
+    788      21-32      9.5640   +0.0011    +0.0007   +0.0000   +0.0000   +0.0004    +0.0039   1    54.398
+    789      21-33      9.4740   +0.0009    +0.0008   +0.0000   +0.0000   +0.0001    +0.0041   1    53.900
+    790      21-34     10.0642   +0.0002    +0.0003   +0.0000   +0.0000   -0.0001    +0.0027   1    57.039
+    791      21-35      9.6236   -0.0011    -0.0014   +0.0000   +0.0000   +0.0002    +0.0037   1    54.718
+    792      21-36     11.2584   -0.0006    -0.0007   +0.0000   +0.0000   +0.0000    +0.0010   1    62.519
+    793      21-37     11.5899   +0.0006    +0.0005   +0.0000   +0.0000   +0.0001    +0.0007   1    63.829
+    794      21-38     12.2037   +0.0005    +0.0005   +0.0000   +0.0000   +0.0000    +0.0004   1    66.027
+    795      21-39     12.9351   +0.0002    +0.0002   +0.0000   +0.0000   -0.0000    +0.0002   1    68.282
+    796      21-40     13.2405   +0.0002    +0.0002   +0.0000   +0.0000   -0.0000    +0.0002   1    69.109
+    797      21-41     14.0123   -0.0007    -0.0007   +0.0000   +0.0000   +0.0000    +0.0001   1    70.947
+    798      21-42     13.3281   -0.0005    -0.0005   +0.0000   +0.0000   +0.0000    +0.0001   1    69.338
+    799      21-43     12.9361   +0.0004    +0.0004   +0.0000   +0.0000   +0.0000    +0.0002   1    68.282
+    800      21-44     14.1583   +0.0002    +0.0002   +0.0000   +0.0000   -0.0000    +0.0001   1    71.253
+    801      21-45     13.5093   +0.0001    +0.0001   +0.0000   +0.0000   -0.0000    +0.0001   1    69.789
+    802      21-46     12.2164   -0.0001    -0.0000   +0.0000   +0.0000   -0.0000    +0.0004   1    66.070
+    803      21-47     12.0099   -0.0000    +0.0000   +0.0000   +0.0000   -0.0000    +0.0005   1    65.365
+    804      21-48     12.4131   -0.0000    +0.0000   +0.0000   +0.0000   -0.0000    +0.0003   1    66.712
+    805      21-49     15.4329   +0.0002    +0.0002   +0.0000   +0.0000   -0.0000    +0.0000   1    73.485
+    806      21-50     16.1439   -0.0006    -0.0006   +0.0000   +0.0000   +0.0000    +0.0000   1    74.427
+    807      21-51     16.3968   +0.0003    +0.0003   +0.0000   +0.0000   +0.0000    +0.0000   1    74.719
+    808      21-52     16.4775   +0.0002    +0.0002   +0.0000   +0.0000   -0.0000    +0.0000   1    74.808
+    809      21-53     17.6549   +0.0000    +0.0000   +0.0000   +0.0000   -0.0000    +0.0000   1    75.890
+    810      21-54     18.7631   -0.0006    -0.0006   +0.0000   +0.0000   +0.0000    +0.0000   1    76.615
+    811      21-55     17.5698   -0.0007    -0.0007   +0.0000   +0.0000   +0.0000    +0.0000   1    75.824
+    812      22-23      6.1898   -0.0052    +0.0003   -0.0035   +0.0000   -0.0020    +0.0302   1    32.752
+    813      22-24      7.2985   -0.0024    +0.0002   -0.0013   +0.0000   -0.0012    +0.0169   1    40.316
+    814      22-25      6.3914   -0.0046    +0.0002   -0.0029   +0.0000   -0.0019    +0.0273   1    34.130
+    815      22-26      5.3639   -0.0098    +0.0007   -0.0079   +0.0000   -0.0026    +0.0436   1    27.160
+    816      22-27      4.2642   -0.0278    -0.0003   -0.0224   +0.0000   -0.0050    +0.0656   1    20.141
+    817      22-28      3.9866   -0.0302    +0.0003   -0.0249   +0.0000   -0.0056    +0.0717   1    18.489
+    818      22-29      5.1438   -0.0134    +0.0002   -0.0098   +0.0000   -0.0037    +0.0477   1    25.708
+    819      22-30      7.1761   -0.0010    +0.0009   -0.0015   +0.0000   -0.0004    +0.0181   1    39.483
+    820      22-31      6.9106   -0.0026    -0.0027   -0.0011   +0.0000   +0.0012    +0.0209   1    37.686
+    821      22-32      7.7855   +0.0024    +0.0011   -0.0001   +0.0000   +0.0013    +0.0128   1    43.565
+    822      22-33      8.1842   +0.0012    +0.0011   +0.0000   +0.0000   +0.0001    +0.0100   1    46.158
+    823      22-34      9.0894   +0.0002    +0.0004   +0.0000   +0.0000   -0.0002    +0.0055   1    51.704
+    824      22-35      8.9250   -0.0012    -0.0016   +0.0000   +0.0000   +0.0004    +0.0061   1    50.733
+    825      22-36     10.2488   -0.0007    -0.0008   +0.0000   +0.0000   +0.0001    +0.0023   1    57.963
+    826      22-37     10.4084   +0.0008    +0.0006   +0.0000   +0.0000   +0.0002    +0.0020   1    58.736
+    827      22-38     11.4005   +0.0005    +0.0005   +0.0000   +0.0000   +0.0000    +0.0009   1    63.092
+    828      22-39     12.1569   +0.0002    +0.0002   +0.0000   +0.0000   -0.0000    +0.0004   1    65.872
+    829      22-40     12.3554   +0.0002    +0.0002   +0.0000   +0.0000   -0.0000    +0.0004   1    66.526
+    830      22-41     12.9488   -0.0008    -0.0008   +0.0000   +0.0000   +0.0000    +0.0002   1    68.319
+    831      22-42     12.5911   -0.0006    -0.0006   +0.0000   +0.0000   +0.0000    +0.0003   1    67.271
+    832      22-43     12.3791   +0.0005    +0.0004   +0.0000   +0.0000   +0.0000    +0.0004   1    66.603
+    833      22-44     13.3449   +0.0002    +0.0002   +0.0000   +0.0000   -0.0000    +0.0001   1    69.379
+    834      22-45     12.7467   +0.0001    +0.0001   +0.0000   +0.0000   -0.0000    +0.0003   1    67.738
+    835      22-46     11.3349   -0.0001    -0.0000   +0.0000   +0.0000   -0.0001    +0.0009   1    62.828
+    836      22-47     11.2069   -0.0000    +0.0000   +0.0000   +0.0000   -0.0001    +0.0010   1    62.307
+    837      22-48     11.2374   -0.0000    +0.0000   +0.0000   +0.0000   -0.0001    +0.0010   1    62.428
+    838      22-49     14.7436   +0.0002    +0.0002   +0.0000   +0.0000   -0.0000    +0.0000   1    72.374
+    839      22-50     15.4082   -0.0006    -0.0006   +0.0000   +0.0000   +0.0000    +0.0000   1    73.450
+    840      22-51     15.5223   +0.0003    +0.0003   +0.0000   +0.0000   +0.0000    +0.0000   1    73.615
+    841      22-52     15.7392   +0.0003    +0.0003   +0.0000   +0.0000   -0.0000    +0.0000   1    73.915
+    842      22-53     17.0367   +0.0000    +0.0000   +0.0000   +0.0000   -0.0000    +0.0000   1    75.369
+    843      22-54     18.0616   -0.0007    -0.0007   +0.0000   +0.0000   +0.0000    +0.0000   1    76.185
+    844      22-55     17.1304   -0.0007    -0.0007   +0.0000   +0.0000   +0.0000    +0.0000   1    75.454
+    845      23-26      5.9258   -0.0057    +0.0007   -0.0045   +0.0000   -0.0019    +0.0341   1    30.940
+    846      23-27      5.7929   -0.0080    -0.0002   -0.0051   +0.0000   -0.0026    +0.0363   1    30.035
+    847      23-28      7.0821   -0.0029    +0.0001   -0.0016   +0.0000   -0.0014    +0.0191   1    38.858
+    848      23-29      6.0627   -0.0062    +0.0001   -0.0039   +0.0000   -0.0024    +0.0320   1    31.881
+    849      23-30      5.6550   -0.0045    +0.0021   -0.0059   +0.0000   -0.0007    +0.0385   1    29.114
+    850      23-31      5.9726   -0.0055    -0.0048   -0.0027   +0.0000   +0.0021    +0.0334   1    31.262
+    851      23-32      6.6417   +0.0045    +0.0021   -0.0002   +0.0000   +0.0025    +0.0241   1    35.840
+    852      23-33      5.3549   -0.0034    +0.0037   -0.0079   +0.0000   +0.0008    +0.0438   1    27.102
+    853      23-34      5.9271   -0.0045    +0.0013   -0.0045   +0.0000   -0.0013    +0.0341   1    30.958
+    854      23-35      5.4227   -0.0081    -0.0062   -0.0047   +0.0000   +0.0028    +0.0426   1    27.545
+    855      23-36      7.2472   -0.0025    -0.0021   -0.0010   +0.0000   +0.0005    +0.0174   1    39.967
+    856      23-37      7.7712   +0.0027    +0.0014   -0.0001   +0.0000   +0.0013    +0.0129   1    43.473
+    857      23-38      8.1001   +0.0014    +0.0013   +0.0000   +0.0000   +0.0001    +0.0105   1    45.616
+    858      23-39      9.4282   +0.0004    +0.0005   +0.0000   +0.0000   -0.0001    +0.0043   1    53.642
+    859      23-40      8.4639   +0.0004    +0.0007   +0.0000   +0.0000   -0.0003    +0.0083   1    47.927
+    860      23-41      9.1702   -0.0016    -0.0019   +0.0000   +0.0000   +0.0003    +0.0052   1    52.172
+    861      23-42      8.1682   -0.0013    -0.0017   +0.0000   +0.0000   +0.0004    +0.0101   1    46.061
+    862      23-43      7.9586   +0.0024    +0.0013   -0.0001   +0.0000   +0.0011    +0.0115   1    44.696
+    863      23-44      8.4656   +0.0004    +0.0007   +0.0000   +0.0000   -0.0003    +0.0083   1    47.938
+    864      23-45      7.4277   -0.0017    +0.0004   -0.0012   +0.0000   -0.0009    +0.0157   1    41.187
+    865      23-46      6.0429   -0.0066    -0.0002   -0.0040   +0.0000   -0.0024    +0.0323   1    31.740
+    866      23-47      5.4227   -0.0104    +0.0002   -0.0074   +0.0000   -0.0032    +0.0426   1    27.545
+    867      23-48      6.3094   -0.0051    +0.0001   -0.0031   +0.0000   -0.0021    +0.0285   1    33.557
+    868      23-49      9.7777   +0.0005    +0.0006   +0.0000   +0.0000   -0.0001    +0.0033   1    55.549
+    869      23-50     10.8056   -0.0013    -0.0014   +0.0000   +0.0000   +0.0001    +0.0015   1    60.579
+    870      23-51     10.9952   +0.0009    +0.0007   +0.0000   +0.0000   +0.0001    +0.0012   1    61.409
+    871      23-52     10.4621   +0.0006    +0.0006   +0.0000   +0.0000   -0.0000    +0.0019   1    58.993
+    872      23-53     11.7643   +0.0000    +0.0001   +0.0000   +0.0000   -0.0000    +0.0006   1    64.483
+    873      23-54     12.8402   -0.0013    -0.0014   +0.0000   +0.0000   +0.0000    +0.0002   1    68.009
+    874      23-55     11.8462   -0.0015    -0.0016   +0.0000   +0.0000   +0.0001    +0.0006   1    64.783
+    875      24-26      6.1484   -0.0050    +0.0005   -0.0036   +0.0000   -0.0019    +0.0308   1    32.458
+    876      24-27      6.3918   -0.0051    -0.0001   -0.0029   +0.0000   -0.0021    +0.0273   1    34.130
+    877      24-28      7.7436   -0.0019    +0.0001   -0.0009   +0.0000   -0.0010    +0.0131   1    43.287
+    878      24-29      6.7408   -0.0038    +0.0001   -0.0021   +0.0000   -0.0018    +0.0229   1    36.528
+    879      24-30      5.2296   -0.0081    +0.0019   -0.0090   +0.0000   -0.0010    +0.0460   1    26.282
+    880      24-31      5.5226   -0.0063    -0.0045   -0.0043   +0.0000   +0.0024    +0.0408   1    28.212
+    881      24-32      6.0152   +0.0052    +0.0020   -0.0003   +0.0000   +0.0035    +0.0328   1    31.546
+    882      24-33      4.5661   -0.0125    +0.0042   -0.0175   +0.0000   +0.0008    +0.0592   1    22.016
+    883      24-34      5.1685   -0.0102    +0.0014   -0.0096   +0.0000   -0.0020    +0.0472   1    25.867
+    884      24-35      4.8238   -0.0119    -0.0063   -0.0091   +0.0000   +0.0035    +0.0539   1    23.637
+    885      24-36      6.3995   -0.0034    -0.0021   -0.0020   +0.0000   +0.0008    +0.0272   1    34.180
+    886      24-37      6.8887   +0.0035    +0.0014   -0.0001   +0.0000   +0.0022    +0.0212   1    37.531
+    887      24-38      7.2516   -0.0001    +0.0013   -0.0014   +0.0000   +0.0000    +0.0174   1    39.996
+    888      24-39      8.6605   +0.0002    +0.0005   +0.0000   +0.0000   -0.0003    +0.0073   1    49.145
+    889      24-40      7.4066   -0.0011    +0.0007   -0.0012   +0.0000   -0.0006    +0.0159   1    41.046
+    890      24-41      8.0092   -0.0013    -0.0020   +0.0000   +0.0000   +0.0007    +0.0111   1    45.027
+    891      24-42      7.1015   -0.0022    -0.0018   -0.0011   +0.0000   +0.0007    +0.0189   1    38.978
+    892      24-43      7.0307   +0.0032    +0.0013   -0.0001   +0.0000   +0.0020    +0.0197   1    38.496
+    893      24-44      7.2461   -0.0013    +0.0007   -0.0014   +0.0000   -0.0006    +0.0174   1    39.967
+    894      24-45      6.1874   -0.0049    +0.0005   -0.0035   +0.0000   -0.0018    +0.0302   1    32.735
+    895      24-46      4.7373   -0.0193    -0.0003   -0.0148   +0.0000   -0.0043    +0.0556   1    23.096
+    896      24-47      4.1214   -0.0294    +0.0003   -0.0243   +0.0000   -0.0054    +0.0687   1    19.288
+    897      24-48      4.8658   -0.0170    +0.0002   -0.0130   +0.0000   -0.0041    +0.0531   1    23.906
+    898      24-49      8.6050   +0.0004    +0.0006   +0.0000   +0.0000   -0.0002    +0.0076   1    48.801
+    899      24-50      9.6451   -0.0011    -0.0013   +0.0000   +0.0000   +0.0002    +0.0037   1    54.832
+    900      24-51      9.7617   +0.0011    +0.0007   +0.0000   +0.0000   +0.0004    +0.0033   1    55.463
+    901      24-52      9.2075   +0.0005    +0.0006   +0.0000   +0.0000   -0.0001    +0.0050   1    52.387
+    902      24-53     10.5741   -0.0001    +0.0000   +0.0000   +0.0000   -0.0001    +0.0018   1    59.518
+    903      24-54     11.5963   -0.0012    -0.0012   +0.0000   +0.0000   +0.0001    +0.0007   1    63.855
+    904      24-55     10.7705   -0.0012    -0.0014   +0.0000   +0.0000   +0.0002    +0.0015   1    60.423
+    905      25-26      7.1769   -0.0022    +0.0003   -0.0015   +0.0000   -0.0011    +0.0181   1    39.498
+    906      25-27      6.9129   -0.0036    -0.0001   -0.0018   +0.0000   -0.0016    +0.0209   1    37.701
+    907      25-28      8.0511   -0.0008    +0.0001   +0.0000   +0.0000   -0.0008    +0.0108   1    45.304
+    908      25-29      7.2626   -0.0027    +0.0001   -0.0014   +0.0000   -0.0014    +0.0173   1    40.069
+    909      25-30      7.0122   -0.0012    +0.0010   -0.0017   +0.0000   -0.0004    +0.0198   1    38.375
+    910      25-31      7.1426   -0.0023    -0.0025   -0.0009   +0.0000   +0.0011    +0.0185   1    39.261
+    911      25-32      7.7870   +0.0024    +0.0011   -0.0001   +0.0000   +0.0013    +0.0127   1    43.579
+    912      25-33      6.7279   -0.0001    +0.0017   -0.0022   +0.0000   +0.0003    +0.0231   1    36.432
+    913      25-34      7.3919   -0.0013    +0.0006   -0.0012   +0.0000   -0.0007    +0.0161   1    40.946
+    914      25-35      6.9247   -0.0025    -0.0028   -0.0011   +0.0000   +0.0013    +0.0208   1    37.778
+    915      25-36      8.6931   -0.0009    -0.0011   +0.0000   +0.0000   +0.0002    +0.0072   1    49.344
+    916      25-37      9.1800   +0.0013    +0.0008   +0.0000   +0.0000   +0.0005    +0.0051   1    52.231
+    917      25-38      9.5548   +0.0007    +0.0007   +0.0000   +0.0000   +0.0000    +0.0039   1    54.344
+    918      25-39     10.9113   +0.0002    +0.0003   +0.0000   +0.0000   -0.0001    +0.0013   1    61.044
+    919      25-40      9.8234   +0.0003    +0.0004   +0.0000   +0.0000   -0.0001    +0.0032   1    55.785
+    920      25-41     10.4792   -0.0010    -0.0011   +0.0000   +0.0000   +0.0001    +0.0019   1    59.078
+    921      25-42      9.4689   -0.0008    -0.0010   +0.0000   +0.0000   +0.0001    +0.0042   1    53.872
+    922      25-43      9.2870   +0.0012    +0.0007   +0.0000   +0.0000   +0.0005    +0.0047   1    52.842
+    923      25-44      9.6197   +0.0003    +0.0004   +0.0000   +0.0000   -0.0001    +0.0037   1    54.700
+    924      25-45      8.4613   -0.0003    +0.0002   +0.0000   +0.0000   -0.0005    +0.0084   1    47.904
+    925      25-46      7.0942   -0.0031    -0.0001   -0.0016   +0.0000   -0.0015    +0.0190   1    38.933
+    926      25-47      6.2329   -0.0056    +0.0001   -0.0034   +0.0000   -0.0023    +0.0295   1    33.045
+    927      25-48      7.3091   -0.0026    +0.0001   -0.0013   +0.0000   -0.0013    +0.0168   1    40.388
+    928      25-49     10.9027   +0.0003    +0.0004   +0.0000   +0.0000   -0.0000    +0.0013   1    61.006
+    929      25-50     12.0081   -0.0009    -0.0009   +0.0000   +0.0000   +0.0000    +0.0005   1    65.361
+    930      25-51     12.1793   +0.0005    +0.0005   +0.0000   +0.0000   +0.0000    +0.0004   1    65.946
+    931      25-52     11.4421   +0.0004    +0.0004   +0.0000   +0.0000   -0.0000    +0.0008   1    63.255
+    932      25-53     12.7497   +0.0000    +0.0000   +0.0000   +0.0000   -0.0000    +0.0003   1    67.745
+    933      25-54     13.8133   -0.0009    -0.0009   +0.0000   +0.0000   +0.0000    +0.0001   1    70.506
+    934      25-55     12.8425   -0.0010    -0.0011   +0.0000   +0.0000   +0.0000    +0.0002   1    68.016
+    935      26-32      3.7576   +0.0147    +0.0108   -0.0041   +0.0000   +0.0081    +0.0768   1    17.155
+    936      26-34      4.5129   -0.0169    +0.0034   -0.0184   +0.0000   -0.0019    +0.0603   1    21.673
+    937      26-35      4.6702   -0.0193    -0.0124   -0.0109   +0.0000   +0.0040    +0.0571   1    22.654
+    938      26-36      5.3688   -0.0098    -0.0058   -0.0056   +0.0000   +0.0016    +0.0435   1    27.198
+    939      26-37      5.4325   +0.0084    +0.0045   -0.0005   +0.0000   +0.0044    +0.0424   1    27.622
+    940      26-38      6.5128   +0.0007    +0.0030   -0.0026   +0.0000   +0.0003    +0.0257   1    34.960
+    941      26-39      6.9922   -0.0009    +0.0013   -0.0017   +0.0000   -0.0006    +0.0201   1    38.238
+    942      26-40      7.6837   -0.0002    +0.0011   -0.0010   +0.0000   -0.0003    +0.0136   1    42.898
+    943      26-41      8.2252   -0.0027    -0.0034   +0.0000   +0.0000   +0.0006    +0.0097   1    46.414
+    944      26-42      8.2396   -0.0019    -0.0023   +0.0000   +0.0000   +0.0004    +0.0096   1    46.511
+    945      26-43      8.1120   +0.0028    +0.0018   +0.0000   +0.0000   +0.0010    +0.0104   1    45.691
+    946      26-44      9.2796   +0.0007    +0.0008   +0.0000   +0.0000   -0.0001    +0.0048   1    52.803
+    947      26-45      9.1892   +0.0001    +0.0004   +0.0000   +0.0000   -0.0003    +0.0051   1    52.289
+    948      26-46      8.0051   -0.0009    -0.0001   +0.0000   +0.0000   -0.0007    +0.0112   1    45.002
+    949      26-47      8.5690   -0.0004    +0.0001   +0.0000   +0.0000   -0.0005    +0.0078   1    48.576
+    950      26-48      7.8363   -0.0016    +0.0001   -0.0009   +0.0000   -0.0008    +0.0124   1    43.907
+    951      26-49     10.6203   +0.0007    +0.0007   +0.0000   +0.0000   -0.0000    +0.0017   1    59.737
+    952      26-50     10.9450   -0.0018    -0.0019   +0.0000   +0.0000   +0.0001    +0.0013   1    61.193
+    953      26-51     11.0160   +0.0011    +0.0010   +0.0000   +0.0000   +0.0001    +0.0012   1    61.501
+    954      26-52     11.8483   +0.0007    +0.0007   +0.0000   +0.0000   -0.0000    +0.0006   1    64.792
+    955      26-53     13.0576   +0.0000    +0.0001   +0.0000   +0.0000   -0.0000    +0.0002   1    68.623
+    956      26-54     13.9744   -0.0017    -0.0017   +0.0000   +0.0000   +0.0000    +0.0001   1    70.865
+    957      26-55     13.2203   -0.0018    -0.0018   +0.0000   +0.0000   +0.0000    +0.0002   1    69.057
+    958      27-31      4.2814   -0.0088    +0.0043   -0.0168   +0.0000   +0.0037    +0.0652   1    20.252
+    959      27-32      5.1830   +0.0028    -0.0015   -0.0007   +0.0000   +0.0049    +0.0469   1    25.966
+    960      27-33      5.1407   -0.0112    -0.0017   -0.0099   +0.0000   +0.0004    +0.0477   1    25.688
+    961      27-34      5.6513   -0.0083    -0.0006   -0.0059   +0.0000   -0.0018    +0.0386   1    29.076
+    962      27-35      5.5288   +0.0007    +0.0024   -0.0042   +0.0000   +0.0025    +0.0407   1    28.269
+    963      27-36      6.6280   -0.0000    +0.0010   -0.0017   +0.0000   +0.0006    +0.0243   1    35.743
+    964      27-37      6.8209   +0.0014    -0.0008   -0.0001   +0.0000   +0.0023    +0.0220   1    37.064
+    965      27-38      7.6578   -0.0017    -0.0006   -0.0010   +0.0000   -0.0000    +0.0138   1    42.723
+    966      27-39      8.1777   -0.0007    -0.0003   +0.0000   +0.0000   -0.0004    +0.0100   1    46.122
+    967      27-40      8.8479   -0.0005    -0.0002   +0.0000   +0.0000   -0.0003    +0.0065   1    50.281
+    968      27-41      9.5050   +0.0010    +0.0007   +0.0000   +0.0000   +0.0002    +0.0041   1    54.073
+    969      27-42      9.2573   +0.0007    +0.0005   +0.0000   +0.0000   +0.0001    +0.0048   1    52.678
+    970      27-43      9.0045   +0.0002    -0.0004   +0.0000   +0.0000   +0.0006    +0.0058   1    51.208
+    971      27-44     10.2939   -0.0003    -0.0002   +0.0000   +0.0000   -0.0001    +0.0022   1    58.179
+    972      27-45     10.0628   -0.0003    -0.0001   +0.0000   +0.0000   -0.0002    +0.0027   1    57.031
+    973      27-46      8.8602   -0.0005    +0.0000   +0.0000   +0.0000   -0.0005    +0.0064   1    50.356
+    974      27-47      9.2356   -0.0004    -0.0000   +0.0000   +0.0000   -0.0004    +0.0049   1    52.552
+    975      27-48      8.8576   -0.0006    -0.0000   +0.0000   +0.0000   -0.0005    +0.0064   1    50.334
+    976      27-49     11.5998   -0.0002    -0.0002   +0.0000   +0.0000   -0.0000    +0.0007   1    63.865
+    977      27-50     12.0195   +0.0005    +0.0005   +0.0000   +0.0000   +0.0000    +0.0005   1    65.397
+    978      27-51     12.1718   -0.0002    -0.0003   +0.0000   +0.0000   +0.0000    +0.0004   1    65.920
+    979      27-52     12.8208   -0.0002    -0.0002   +0.0000   +0.0000   -0.0000    +0.0002   1    67.952
+    980      27-53     14.0001   -0.0000    -0.0000   +0.0000   +0.0000   -0.0000    +0.0001   1    70.920
+    981      27-54     14.9864   +0.0005    +0.0004   +0.0000   +0.0000   +0.0000    +0.0000   1    72.789
+    982      27-55     14.0616   +0.0005    +0.0005   +0.0000   +0.0000   +0.0000    +0.0001   1    71.051
+    983      28-30      4.9801   -0.0122    +0.0009   -0.0116   +0.0000   -0.0015    +0.0508   1    24.642
+    984      28-31      5.0758   -0.0064    -0.0022   -0.0069   +0.0000   +0.0027    +0.0490   1    25.268
+    985      28-32      5.9104   +0.0042    +0.0009   -0.0003   +0.0000   +0.0036    +0.0344   1    30.833
+    986      28-33      6.3770   -0.0020    +0.0008   -0.0029   +0.0000   +0.0002    +0.0275   1    34.029
+    987      28-34      6.9716   -0.0025    +0.0003   -0.0017   +0.0000   -0.0010    +0.0203   1    38.101
+    988      28-35      6.9653   -0.0010    -0.0011   -0.0011   +0.0000   +0.0012    +0.0204   1    38.055
+    989      28-36      7.8292   -0.0009    -0.0006   -0.0006   +0.0000   +0.0003    +0.0124   1    43.855
+    990      28-37      7.8928   +0.0016    +0.0004   -0.0001   +0.0000   +0.0012    +0.0120   1    44.272
+    991      28-38      8.8883   +0.0003    +0.0003   +0.0000   +0.0000   -0.0000    +0.0063   1    50.524
+    992      28-39      9.2445   -0.0001    +0.0002   +0.0000   +0.0000   -0.0002    +0.0049   1    52.601
+    993      28-40     10.1262   +0.0000    +0.0001   +0.0000   +0.0000   -0.0001    +0.0025   1    57.352
+    994      28-41     10.7066   -0.0004    -0.0005   +0.0000   +0.0000   +0.0001    +0.0016   1    60.133
+    995      28-42     10.6360   -0.0003    -0.0003   +0.0000   +0.0000   +0.0000    +0.0017   1    59.805
+    996      28-43     10.4155   +0.0004    +0.0002   +0.0000   +0.0000   +0.0002    +0.0020   1    58.772
+    997      28-44     11.7009   +0.0001    +0.0001   +0.0000   +0.0000   -0.0000    +0.0007   1    64.250
+    998      28-45     11.5325   +0.0000    +0.0001   +0.0000   +0.0000   -0.0001    +0.0008   1    63.606
+    999      28-46     10.3224   -0.0002    -0.0000   +0.0000   +0.0000   -0.0002    +0.0022   1    58.320
+   1000      28-47     10.7211   -0.0001    +0.0000   +0.0000   +0.0000   -0.0001    +0.0016   1    60.200
+   1001      28-48     10.2233   -0.0002    +0.0000   +0.0000   +0.0000   -0.0002    +0.0023   1    57.835
+   1002      28-49     13.0110   +0.0001    +0.0001   +0.0000   +0.0000   -0.0000    +0.0002   1    68.494
+   1003      28-50     13.3555   -0.0003    -0.0003   +0.0000   +0.0000   +0.0000    +0.0001   1    69.406
+   1004      28-51     13.4714   +0.0002    +0.0002   +0.0000   +0.0000   +0.0000    +0.0001   1    69.698
+   1005      28-52     14.2514   +0.0001    +0.0001   +0.0000   +0.0000   -0.0000    +0.0001   1    71.444
+   1006      28-53     15.4311   +0.0000    +0.0000   +0.0000   +0.0000   -0.0000    +0.0000   1    73.482
+   1007      28-54     16.3874   -0.0003    -0.0003   +0.0000   +0.0000   +0.0000    +0.0000   1    74.709
+   1008      28-55     15.5140   -0.0003    -0.0003   +0.0000   +0.0000   +0.0000    +0.0000   1    73.602
+   1009      29-30      4.5573   -0.0183    +0.0011   -0.0176   +0.0000   -0.0018    +0.0594   1    21.952
+   1010      29-31      5.3110   -0.0049    -0.0020   -0.0053   +0.0000   +0.0025    +0.0446   1    26.810
+   1011      29-32      6.1745   +0.0037    +0.0008   -0.0002   +0.0000   +0.0032    +0.0304   1    32.631
+   1012      29-33      5.6003   -0.0049    +0.0011   -0.0062   +0.0000   +0.0003    +0.0395   1    28.740
+   1013      29-34      5.7186   -0.0069    +0.0004   -0.0055   +0.0000   -0.0018    +0.0375   1    29.540
+   1014      29-35      5.3267   -0.0046    -0.0021   -0.0052   +0.0000   +0.0027    +0.0443   1    26.908
+   1015      29-36      6.6719   -0.0018    -0.0008   -0.0016   +0.0000   +0.0006    +0.0237   1    36.049
+   1016      29-37      7.0358   +0.0025    +0.0006   -0.0001   +0.0000   +0.0020    +0.0196   1    38.542
+   1017      29-38      7.4605   -0.0008    +0.0005   -0.0012   +0.0000   -0.0001    +0.0154   1    41.413
+   1018      29-39      7.9330   -0.0011    +0.0002   -0.0008   +0.0000   -0.0005    +0.0117   1    44.530
+   1019      29-40      8.7264   -0.0001    +0.0002   +0.0000   +0.0000   -0.0003    +0.0070   1    49.540
+   1020      29-41      9.5343   -0.0003    -0.0006   +0.0000   +0.0000   +0.0002    +0.0040   1    54.227
+   1021      29-42      9.0242   -0.0003    -0.0004   +0.0000   +0.0000   +0.0002    +0.0057   1    51.320
+   1022      29-43      8.6194   +0.0011    +0.0003   +0.0000   +0.0000   +0.0008    +0.0075   1    48.890
+   1023      29-44     10.1480   +0.0000    +0.0002   +0.0000   +0.0000   -0.0001    +0.0025   1    57.460
+   1024      29-45      9.9332   -0.0001    +0.0001   +0.0000   +0.0000   -0.0002    +0.0029   1    56.364
+   1025      29-46      8.8707   -0.0006    -0.0000   +0.0000   +0.0000   -0.0005    +0.0064   1    50.419
+   1026      29-47      9.2556   -0.0004    +0.0000   +0.0000   +0.0000   -0.0004    +0.0049   1    52.669
+   1027      29-48      9.1114   -0.0004    +0.0000   +0.0000   +0.0000   -0.0005    +0.0054   1    51.835
+   1028      29-49     11.3330   +0.0001    +0.0001   +0.0000   +0.0000   -0.0000    +0.0009   1    62.817
+   1029      29-50     11.7525   -0.0003    -0.0004   +0.0000   +0.0000   +0.0000    +0.0006   1    64.439
+   1030      29-51     12.0168   +0.0003    +0.0002   +0.0000   +0.0000   +0.0001    +0.0005   1    65.388
+   1031      29-52     12.6139   +0.0001    +0.0001   +0.0000   +0.0000   -0.0000    +0.0003   1    67.339
+   1032      29-53     13.6830   +0.0000    +0.0000   +0.0000   +0.0000   -0.0000    +0.0001   1    70.207
+   1033      29-54     14.7191   -0.0004    -0.0004   +0.0000   +0.0000   +0.0000    +0.0000   1    72.330
+   1034      29-55     13.6129   -0.0004    -0.0004   +0.0000   +0.0000   +0.0000    +0.0001   1    70.040
+   1035      30-37      3.2579   +0.0400    +0.0387   -0.0077   +0.0000   +0.0091    +0.0878   1    14.398
+   1036      30-38      4.6672   +0.0041    +0.0171   -0.0158   +0.0000   +0.0029    +0.0571   1    22.654
+   1037      30-39      5.3766   -0.0007    +0.0066   -0.0077   +0.0000   +0.0005    +0.0433   1    27.256
+   1038      30-40      5.5933   +0.0005    +0.0062   -0.0062   +0.0000   +0.0005    +0.0395   1    28.703
+   1039      30-41      5.9754   -0.0183    -0.0185   -0.0027   +0.0000   +0.0029    +0.0334   1    31.280
+   1040      30-42      6.2415   -0.0119    -0.0115   -0.0024   +0.0000   +0.0020    +0.0294   1    33.096
+   1041      30-43      6.3380   +0.0107    +0.0082   -0.0002   +0.0000   +0.0028    +0.0281   1    33.760
+   1042      30-44      7.1520   +0.0025    +0.0037   -0.0015   +0.0000   +0.0003    +0.0184   1    39.320
+   1043      30-45      7.1577   -0.0000    +0.0017   -0.0015   +0.0000   -0.0002    +0.0183   1    39.365
+   1044      30-46      5.9826   -0.0059    -0.0007   -0.0043   +0.0000   -0.0009    +0.0332   1    31.333
+   1045      30-47      6.7596   -0.0023    +0.0004   -0.0021   +0.0000   -0.0007    +0.0227   1    36.654
+   1046      30-48      5.5771   -0.0068    +0.0007   -0.0063   +0.0000   -0.0012    +0.0398   1    28.590
+   1047      30-49      8.5671   +0.0030    +0.0028   +0.0000   +0.0000   +0.0002    +0.0078   1    48.565
+   1048      30-50      8.8733   -0.0071    -0.0077   +0.0000   +0.0000   +0.0005    +0.0063   1    50.429
+   1049      30-51      8.8294   +0.0049    +0.0042   +0.0000   +0.0000   +0.0007    +0.0065   1    50.165
+   1050      30-52      9.7195   +0.0028    +0.0027   +0.0000   +0.0000   +0.0001    +0.0035   1    55.232
+   1051      30-53     11.0033   +0.0002    +0.0002   +0.0000   +0.0000   -0.0000    +0.0012   1    61.446
+   1052      30-54     11.8398   -0.0058    -0.0059   +0.0000   +0.0000   +0.0001    +0.0006   1    64.759
+   1053      30-55     11.3226   -0.0062    -0.0063   +0.0000   +0.0000   +0.0001    +0.0009   1    62.778
+   1054      31-35      4.4853   +0.0936    +0.0968   -0.0082   +0.0000   +0.0050    +0.0609   1    21.500
+   1055      31-36      4.3606   +0.0602    +0.0661   -0.0110   +0.0000   +0.0050    +0.0635   1    20.737
+   1056      31-37      4.0689   -0.0601    -0.0623   +0.0000   -0.0015   +0.0037    +0.0699   1    18.970
+   1057      31-38      5.7958   -0.0272    -0.0275   -0.0032   +0.0000   +0.0035    +0.0362   1    30.054
+   1058      31-39      6.4539   -0.0111    -0.0114   -0.0017   +0.0000   +0.0020    +0.0265   1    34.547
+   1059      31-40      6.5570   -0.0111    -0.0115   -0.0016   +0.0000   +0.0019    +0.0252   1    35.255
+   1060      31-41      6.7307   +0.0384    +0.0373   -0.0008   +0.0000   +0.0019    +0.0230   1    36.448
+   1061      31-42      7.2639   +0.0224    +0.0216   -0.0006   +0.0000   +0.0014    +0.0173   1    40.084
+   1062      31-43      7.4858   -0.0141    -0.0149   +0.0000   -0.0000   +0.0008    +0.0152   1    41.581
+   1063      31-44      8.0194   -0.0067    -0.0076   +0.0000   +0.0000   +0.0009    +0.0111   1    45.090
+   1064      31-45      7.9845   -0.0032    -0.0035   -0.0005   +0.0000   +0.0007    +0.0113   1    44.875
+   1065      31-46      6.7176   +0.0015    +0.0015   -0.0013   +0.0000   +0.0013    +0.0232   1    36.369
+   1066      31-47      7.3963   -0.0008    -0.0009   -0.0008   +0.0000   +0.0009    +0.0160   1    40.975
+   1067      31-48      6.0406   -0.0022    -0.0015   -0.0025   +0.0000   +0.0018    +0.0324   1    31.723
+   1068      31-49      9.4885   -0.0057    -0.0061   +0.0000   +0.0000   +0.0003    +0.0041   1    53.982
+   1069      31-50      9.7898   +0.0170    +0.0167   +0.0000   +0.0000   +0.0003    +0.0033   1    55.608
+   1070      31-51      9.6352   -0.0091    -0.0093   +0.0000   +0.0000   +0.0002    +0.0037   1    54.779
+   1071      31-52     10.5316   -0.0059    -0.0061   +0.0000   +0.0000   +0.0002    +0.0018   1    59.324
+   1072      31-53     11.8855   -0.0005    -0.0005   +0.0000   +0.0000   +0.0000    +0.0006   1    64.925
+   1073      31-54     12.6567   +0.0140    +0.0140   +0.0000   +0.0000   +0.0000    +0.0003   1    67.470
+   1074      31-55     12.3112   +0.0146    +0.0146   +0.0000   +0.0000   +0.0000    +0.0004   1    66.386
+   1075      32-34      3.8157   +0.0233    +0.0192   -0.0038   +0.0000   +0.0079    +0.0755   1    17.487
+   1076      32-35      4.7784   -0.0430    -0.0456   +0.0000   -0.0003   +0.0030    +0.0548   1    23.346
+   1077      32-36      4.2118   -0.0358    -0.0391   -0.0014   +0.0000   +0.0047    +0.0667   1    19.829
+   1078      32-37      3.7324   +0.0412    +0.0413   -0.0002   +0.0000   +0.0000    +0.0773   1    17.012
+   1079      32-38      5.6562   +0.0195    +0.0159   -0.0004   +0.0000   +0.0041    +0.0385   1    29.114
+   1080      32-39      6.2462   +0.0096    +0.0067   -0.0002   +0.0000   +0.0031    +0.0294   1    33.131
+   1081      32-40      6.2980   +0.0097    +0.0069   -0.0002   +0.0000   +0.0030    +0.0286   1    33.489
+   1082      32-41      6.3039   -0.0221    -0.0236   +0.0000   -0.0000   +0.0015    +0.0286   1    33.523
+   1083      32-42      7.1092   -0.0111    -0.0124   -0.0001   +0.0000   +0.0013    +0.0188   1    39.037
+   1084      32-43      7.4493   +0.0082    +0.0082   -0.0000   +0.0000   +0.0000    +0.0156   1    41.328
+   1085      32-44      7.8035   +0.0057    +0.0044   -0.0001   +0.0000   +0.0013    +0.0126   1    43.684
+   1086      32-45      7.8830   +0.0032    +0.0020   -0.0001   +0.0000   +0.0013    +0.0120   1    44.207
+   1087      32-46      6.6807   +0.0015    -0.0008   -0.0001   +0.0000   +0.0025    +0.0236   1    36.113
+   1088      32-47      7.4679   +0.0021    +0.0005   -0.0001   +0.0000   +0.0016    +0.0154   1    41.455
+   1089      32-48      5.8366   +0.0043    +0.0009   -0.0003   +0.0000   +0.0037    +0.0355   1    30.345
+   1090      32-49      9.2637   +0.0040    +0.0035   +0.0000   +0.0000   +0.0005    +0.0048   1    52.717
+   1091      32-50      9.4805   -0.0095    -0.0097   +0.0000   +0.0000   +0.0002    +0.0041   1    53.936
+   1092      32-51      9.2420   +0.0055    +0.0055   +0.0000   +0.0000   +0.0000    +0.0049   1    52.591
+   1093      32-52     10.2686   +0.0037    +0.0035   +0.0000   +0.0000   +0.0002    +0.0023   1    58.060
+   1094      32-53     11.6295   +0.0004    +0.0003   +0.0000   +0.0000   +0.0001    +0.0007   1    63.978
+   1095      32-54     12.3251   -0.0079    -0.0080   +0.0000   +0.0000   +0.0000    +0.0004   1    66.431
+   1096      32-55     12.1384   -0.0081    -0.0082   +0.0000   +0.0000   +0.0000    +0.0004   1    65.807
+   1097      33-39      4.8333   +0.0024    +0.0133   -0.0135   +0.0000   +0.0025    +0.0537   1    23.699
+   1098      33-40      4.4226   +0.0002    +0.0170   -0.0199   +0.0000   +0.0030    +0.0622   1    21.109
+   1099      33-41      4.8086   -0.0521    -0.0485   -0.0093   +0.0000   +0.0057    +0.0542   1    23.533
+   1100      33-42      4.9579   -0.0351    -0.0311   -0.0088   +0.0000   +0.0047    +0.0512   1    24.500
+   1101      33-43      5.1513   +0.0249    +0.0209   -0.0007   +0.0000   +0.0047    +0.0475   1    25.768
+   1102      33-44      5.7271   +0.0062    +0.0097   -0.0055   +0.0000   +0.0019    +0.0373   1    29.595
+   1103      33-45      5.6802   -0.0003    +0.0045   -0.0057   +0.0000   +0.0009    +0.0381   1    29.281
+   1104      33-46      4.4937   -0.0205    -0.0023   -0.0186   +0.0000   +0.0005    +0.0607   1    21.565
+   1105      33-47      5.3539   -0.0065    +0.0012   -0.0079   +0.0000   +0.0003    +0.0438   1    27.102
+   1106      33-48      4.0520   -0.0221    +0.0023   -0.0248   +0.0000   +0.0004    +0.0702   1    18.879
+   1107      33-49      7.1898   +0.0061    +0.0065   -0.0015   +0.0000   +0.0010    +0.0180   1    39.586
+   1108      33-50      7.5939   -0.0162    -0.0170   -0.0007   +0.0000   +0.0015    +0.0143   1    42.300
+   1109      33-51      7.5348   +0.0108    +0.0093   -0.0001   +0.0000   +0.0016    +0.0148   1    41.901
+   1110      33-52      8.2691   +0.0065    +0.0059   +0.0000   +0.0000   +0.0007    +0.0095   1    46.703
+   1111      33-53      9.5989   +0.0005    +0.0004   +0.0000   +0.0000   +0.0000    +0.0038   1    54.585
+   1112      33-54     10.4360   -0.0114    -0.0117   +0.0000   +0.0000   +0.0003    +0.0020   1    58.872
+   1113      33-55      9.9680   -0.0123    -0.0127   +0.0000   +0.0000   +0.0004    +0.0029   1    56.543
+   1114      34-41      3.9514   -0.0508    -0.0328   -0.0236   +0.0000   +0.0055    +0.0724   1    18.281
+   1115      34-42      3.7735   -0.0466    -0.0250   -0.0257   +0.0000   +0.0041    +0.0764   1    17.250
+   1116      34-43      3.8280   +0.0216    +0.0178   -0.0037   +0.0000   +0.0075    +0.0752   1    17.557
+   1117      34-44      4.7939   -0.0079    +0.0063   -0.0140   +0.0000   -0.0003    +0.0545   1    23.450
+   1118      34-45      4.9300   -0.0111    +0.0027   -0.0122   +0.0000   -0.0016    +0.0518   1    24.316
+   1119      34-46      4.0308   -0.0295    -0.0013   -0.0249   +0.0000   -0.0033    +0.0707   1    18.742
+   1120      34-47      5.1141   -0.0119    +0.0006   -0.0101   +0.0000   -0.0024    +0.0483   1    25.509
+   1121      34-48      3.9886   -0.0274    +0.0010   -0.0249   +0.0000   -0.0035    +0.0716   1    18.512
+   1122      34-49      6.1399   +0.0004    +0.0040   -0.0037   +0.0000   +0.0000    +0.0309   1    32.406
+   1123      34-50      6.4844   -0.0101    -0.0105   -0.0017   +0.0000   +0.0020    +0.0261   1    34.762
+   1124      34-51      6.5532   +0.0080    +0.0055   -0.0002   +0.0000   +0.0026    +0.0252   1    35.239
+   1125      34-52      7.3741   +0.0022    +0.0033   -0.0013   +0.0000   +0.0002    +0.0162   1    40.833
+   1126      34-53      8.5866   -0.0001    +0.0002   +0.0000   +0.0000   -0.0004    +0.0077   1    48.689
+   1127      34-54      9.4697   -0.0055    -0.0061   +0.0000   +0.0000   +0.0005    +0.0042   1    53.872
+   1128      34-55      8.8456   -0.0061    -0.0070   +0.0000   +0.0000   +0.0008    +0.0065   1    50.260
+   1129      35-39      4.0493   -0.0502    -0.0344   -0.0215   +0.0000   +0.0057    +0.0703   1    18.856
+   1130      35-40      3.6535   -0.0672    -0.0451   -0.0286   +0.0000   +0.0065    +0.0790   1    16.581
+   1131      35-41      4.5873   +0.0905    +0.0929   -0.0072   +0.0000   +0.0049    +0.0587   1    22.144
+   1132      35-42      3.7711   +0.0842    +0.0997   -0.0220   +0.0000   +0.0065    +0.0764   1    17.250
+   1133      35-43      3.5210   -0.0873    -0.0857   +0.0000   -0.0058   +0.0042    +0.0820   1    15.826
+   1134      35-44      4.8269   -0.0295    -0.0249   -0.0091   +0.0000   +0.0045    +0.0538   1    23.658
+   1135      35-45      4.7555   -0.0177    -0.0117   -0.0098   +0.0000   +0.0039    +0.0553   1    23.200
+   1136      35-46      3.9013   -0.0146    +0.0054   -0.0246   +0.0000   +0.0045    +0.0735   1    18.002
+   1137      35-47      4.8022   -0.0087    -0.0026   -0.0093   +0.0000   +0.0033    +0.0544   1    23.492
+   1138      35-48      4.2926   -0.0160    -0.0034   -0.0166   +0.0000   +0.0040    +0.0650   1    20.318
+   1139      35-49      6.0764   -0.0162    -0.0165   -0.0024   +0.0000   +0.0028    +0.0318   1    31.969
+   1140      35-50      6.5777   +0.0415    +0.0403   -0.0009   +0.0000   +0.0021    +0.0249   1    35.402
+   1141      35-51      6.8112   -0.0189    -0.0201   +0.0000   -0.0000   +0.0012    +0.0221   1    37.001
+   1142      35-52      7.3318   -0.0124    -0.0131   -0.0008   +0.0000   +0.0015    +0.0166   1    40.546
+   1143      35-53      8.4740   -0.0005    -0.0010   +0.0000   +0.0000   +0.0005    +0.0083   1    47.984
+   1144      35-54      9.4675   +0.0246    +0.0242   +0.0000   +0.0000   +0.0005    +0.0042   1    53.863
+   1145      35-55      8.5702   +0.0304    +0.0296   +0.0000   +0.0000   +0.0008    +0.0078   1    48.588
+   1146      36-43      3.5262   -0.0531    -0.0548   -0.0038   +0.0000   +0.0055    +0.0819   1    15.851
+   1147      36-44      4.4141   -0.0320    -0.0196   -0.0157   +0.0000   +0.0033    +0.0624   1    21.066
+   1148      36-45      4.9630   -0.0137    -0.0068   -0.0087   +0.0000   +0.0018    +0.0511   1    24.541
+   1149      36-46      4.3910   -0.0119    +0.0027   -0.0162   +0.0000   +0.0016    +0.0629   1    20.913
+   1150      36-47      5.7186   -0.0042    -0.0011   -0.0039   +0.0000   +0.0009    +0.0375   1    29.540
+   1151      36-48      4.2244   -0.0197    -0.0023   -0.0190   +0.0000   +0.0016    +0.0664   1    19.918
+   1152      36-49      5.6429   -0.0146    -0.0125   -0.0043   +0.0000   +0.0022    +0.0387   1    29.020
+   1153      36-50      5.7078   +0.0364    +0.0358   -0.0024   +0.0000   +0.0030    +0.0376   1    29.466
+   1154      36-51      5.6974   -0.0170    -0.0194   -0.0002   +0.0000   +0.0027    +0.0378   1    29.392
+   1155      36-52      6.9458   -0.0094    -0.0095   -0.0013   +0.0000   +0.0014    +0.0206   1    37.917
+   1156      36-53      8.0802   -0.0004    -0.0007   +0.0000   +0.0000   +0.0003    +0.0107   1    45.492
+   1157      36-54      8.8521   +0.0185    +0.0177   +0.0000   +0.0000   +0.0007    +0.0064   1    50.303
+   1158      36-55      8.4129   +0.0207    +0.0197   +0.0000   +0.0000   +0.0010    +0.0086   1    47.602
+   1159      37-41      2.9574   -0.1523    -0.1284   +0.0000   -0.0289   +0.0050    +0.0944   1    12.825
+   1160      37-42      3.9497   -0.0433    -0.0463   -0.0020   +0.0000   +0.0050    +0.0724   1    18.281
+   1161      37-43      4.3492   +0.0273    +0.0273   -0.0001   +0.0000   +0.0000    +0.0637   1    20.672
+   1162      37-44      4.9561   +0.0165    +0.0121   -0.0009   +0.0000   +0.0053    +0.0512   1    24.500
+   1163      37-45      5.6000   +0.0078    +0.0041   -0.0004   +0.0000   +0.0041    +0.0395   1    28.740
+   1164      37-46      5.0059   +0.0028    -0.0016   -0.0008   +0.0000   +0.0052    +0.0503   1    24.805
+   1165      37-47      6.3465   +0.0034    +0.0007   -0.0002   +0.0000   +0.0029    +0.0280   1    33.811
+   1166      37-48      4.5540   +0.0062    +0.0015   -0.0014   +0.0000   +0.0061    +0.0594   1    21.931
+   1167      37-49      6.1810   +0.0111    +0.0082   -0.0002   +0.0000   +0.0031    +0.0303   1    32.683
+   1168      37-50      6.1075   -0.0230    -0.0246   +0.0000   -0.0000   +0.0017    +0.0314   1    32.179
+   1169      37-51      5.9546   +0.0141    +0.0141   -0.0000   +0.0000   +0.0000    +0.0337   1    31.137
+   1170      37-52      7.4196   +0.0081    +0.0066   -0.0001   +0.0000   +0.0016    +0.0158   1    41.131
+   1171      37-53      8.5718   +0.0013    +0.0005   +0.0000   +0.0000   +0.0008    +0.0078   1    48.599
+   1172      37-54      9.2400   -0.0128    -0.0131   +0.0000   +0.0000   +0.0003    +0.0049   1    52.582
+   1173      37-55      9.0109   -0.0134    -0.0137   +0.0000   +0.0000   +0.0003    +0.0058   1    51.249
+   1174      38-45      4.5808   -0.0100    +0.0066   -0.0172   +0.0000   +0.0007    +0.0589   1    22.102
+   1175      38-46      4.4588   -0.0215    -0.0021   -0.0192   +0.0000   -0.0002    +0.0614   1    21.348
+   1176      38-47      5.8779   -0.0040    +0.0008   -0.0047   +0.0000   -0.0002    +0.0349   1    30.616
+   1177      38-48      4.6183   -0.0154    +0.0015   -0.0166   +0.0000   -0.0003    +0.0581   1    22.336
+   1178      38-49      4.6970   +0.0025    +0.0153   -0.0154   +0.0000   +0.0026    +0.0565   1    22.823
+   1179      38-50      4.6069   -0.0529    -0.0470   -0.0116   +0.0000   +0.0057    +0.0583   1    22.272
+   1180      38-51      4.7373   +0.0285    +0.0238   -0.0011   +0.0000   +0.0058    +0.0556   1    23.096
+   1181      38-52      6.1269   +0.0082    +0.0101   -0.0037   +0.0000   +0.0018    +0.0311   1    32.319
+   1182      38-53      7.0827   -0.0009    +0.0008   -0.0016   +0.0000   -0.0001    +0.0191   1    38.858
+   1183      38-54      7.8604   -0.0170    -0.0182   -0.0005   +0.0000   +0.0018    +0.0122   1    44.064
+   1184      38-55      7.3181   -0.0197    -0.0214   -0.0008   +0.0000   +0.0025    +0.0168   1    40.446
+   1185      39-43      3.6695   +0.0245    +0.0213   -0.0046   +0.0000   +0.0079    +0.0787   1    16.653
+   1186      39-44      4.8758   -0.0063    +0.0066   -0.0129   +0.0000   -0.0001    +0.0529   1    23.968
+   1187      39-45      5.9285   -0.0035    +0.0019   -0.0045   +0.0000   -0.0009    +0.0341   1    30.958
+   1188      39-46      5.9501   -0.0064    -0.0006   -0.0044   +0.0000   -0.0015    +0.0338   1    31.101
+   1189      39-47      7.3928   -0.0017    +0.0003   -0.0012   +0.0000   -0.0007    +0.0161   1    40.946
+   1190      39-48      6.0218   -0.0051    +0.0004   -0.0041   +0.0000   -0.0015    +0.0326   1    31.599
+   1191      39-49      5.5395   -0.0008    +0.0056   -0.0066   +0.0000   +0.0002    +0.0405   1    28.326
+   1192      39-50      5.0657   -0.0232    -0.0201   -0.0069   +0.0000   +0.0038    +0.0491   1    25.208
+   1193      39-51      5.1549   +0.0147    +0.0104   -0.0007   +0.0000   +0.0050    +0.0474   1    25.787
+   1194      39-52      6.9919   +0.0026    +0.0040   -0.0017   +0.0000   +0.0003    +0.0201   1    38.238
+   1195      39-53      7.7486   -0.0012    +0.0003   -0.0009   +0.0000   -0.0006    +0.0130   1    43.327
+   1196      39-54      8.3904   -0.0073    -0.0084   +0.0000   +0.0000   +0.0011    +0.0088   1    47.462
+   1197      39-55      7.9650   -0.0085    -0.0094   -0.0005   +0.0000   +0.0015    +0.0114   1    44.747
+   1198      40-46      3.7322   -0.0230    -0.0017   -0.0181   +0.0000   -0.0032    +0.0773   1    17.012
+   1199      40-47      5.2435   -0.0103    +0.0006   -0.0089   +0.0000   -0.0020    +0.0458   1    26.360
+   1200      40-48      3.8403   -0.0249    +0.0012   -0.0229   +0.0000   -0.0032    +0.0749   1    17.628
+   1201      40-50      3.3257   -0.0653    -0.0544   -0.0177   +0.0000   +0.0068    +0.0864   1    14.754
+   1202      40-51      3.3538   +0.0309    +0.0288   -0.0070   +0.0000   +0.0090    +0.0858   1    14.906
+   1203      40-52      4.7496   -0.0035    +0.0101   -0.0147   +0.0000   +0.0011    +0.0554   1    23.158
+   1204      40-53      5.7797   -0.0060    +0.0007   -0.0052   +0.0000   -0.0015    +0.0365   1    29.944
+   1205      40-54      6.5026   -0.0137    -0.0154   -0.0016   +0.0000   +0.0033    +0.0259   1    34.894
+   1206      40-55      6.1753   -0.0157    -0.0174   -0.0022   +0.0000   +0.0039    +0.0304   1    32.649
+   1207      41-45      4.0405   -0.0336    -0.0167   -0.0216   +0.0000   +0.0047    +0.0705   1    18.810
+   1208      41-46      4.2561   -0.0091    +0.0044   -0.0173   +0.0000   +0.0038    +0.0658   1    20.096
+   1209      41-47      5.7777   -0.0029    -0.0017   -0.0033   +0.0000   +0.0021    +0.0365   1    29.944
+   1210      41-48      3.9633   -0.0232    -0.0040   -0.0233   +0.0000   +0.0042    +0.0722   1    18.351
+   1211      41-49      3.6881   -0.0725    -0.0507   -0.0283   +0.0000   +0.0065    +0.0782   1    16.773
+   1212      41-50      3.3561   +0.1595    +0.1838   -0.0312   +0.0000   +0.0069    +0.0857   1    14.931
+   1213      41-51      3.0377   -0.1409    -0.1234   +0.0000   -0.0225   +0.0050    +0.0926   1    13.253
+   1214      41-52      4.8232   -0.0378    -0.0335   -0.0091   +0.0000   +0.0048    +0.0539   1    23.637
+   1215      41-53      5.8771   -0.0031    -0.0022   -0.0030   +0.0000   +0.0020    +0.0349   1    30.616
+   1216      41-54      6.3941   +0.0572    +0.0553   -0.0010   +0.0000   +0.0029    +0.0273   1    34.147
+   1217      41-55      6.4896   +0.0553    +0.0535   -0.0010   +0.0000   +0.0028    +0.0261   1    34.795
+   1218      42-47      4.4213   -0.0159    -0.0021   -0.0156   +0.0000   +0.0018    +0.0622   1    21.109
+   1219      42-48      3.5835   -0.0241    -0.0035   -0.0231   +0.0000   +0.0024    +0.0806   1    16.169
+   1220      42-51      3.1241   -0.0802    -0.0798   -0.0067   +0.0000   +0.0064    +0.0908   1    13.700
+   1221      42-53      4.8702   -0.0103    -0.0023   -0.0096   +0.0000   +0.0016    +0.0529   1    23.947
+   1222      42-54      5.7660   +0.0503    +0.0482   -0.0022   +0.0000   +0.0043    +0.0367   1    29.852
+   1223      42-55      5.1447   +0.0640    +0.0628   -0.0044   +0.0000   +0.0056    +0.0477   1    25.708
+   1224      43-46      3.2712   -0.0029    -0.0040   -0.0076   +0.0000   +0.0087    +0.0875   1    14.475
+   1225      43-47      4.5186   +0.0060    +0.0015   -0.0015   +0.0000   +0.0060    +0.0602   1    21.716
+   1226      43-48      4.1531   +0.0062    +0.0018   -0.0024   +0.0000   +0.0068    +0.0680   1    19.469
+   1227      43-50      3.2992   -0.1026    -0.0965   +0.0000   -0.0106   +0.0044    +0.0869   1    14.628
+   1228      43-51      3.8098   +0.0376    +0.0378   -0.0001   +0.0000   +0.0000    +0.0756   1    17.463
+   1229      43-52      4.2317   +0.0273    +0.0229   -0.0022   +0.0000   +0.0066    +0.0663   1    19.963
+   1230      43-53      5.1199   +0.0056    +0.0015   -0.0007   +0.0000   +0.0048    +0.0481   1    25.549
+   1231      43-54      6.1292   -0.0292    -0.0308   +0.0000   -0.0000   +0.0016    +0.0310   1    32.336
+   1232      43-55      5.1495   -0.0438    -0.0460   +0.0000   -0.0002   +0.0024    +0.0476   1    25.748
+   1233      44-54      4.7577   -0.0355    -0.0329   -0.0098   +0.0000   +0.0072    +0.0552   1    23.221
+   1234      44-55      4.3691   -0.0471    -0.0401   -0.0152   +0.0000   +0.0082    +0.0634   1    20.781
+   1235      45-51      4.0196   +0.0136    +0.0091   -0.0029   +0.0000   +0.0074    +0.0709   1    18.696
+   1236      45-53      4.4195   -0.0234    +0.0006   -0.0199   +0.0000   -0.0041    +0.0622   1    21.109
+   1237      45-54      5.4305   -0.0108    -0.0110   -0.0047   +0.0000   +0.0049    +0.0424   1    27.603
+   1238      45-55      4.7819   -0.0180    -0.0148   -0.0096   +0.0000   +0.0064    +0.0548   1    23.367
+   1239      46-50      5.0445   -0.0013    +0.0029   -0.0071   +0.0000   +0.0029    +0.0495   1    25.067
+   1240      46-51      5.1503   +0.0028    -0.0015   -0.0007   +0.0000   +0.0050    +0.0476   1    25.748
+   1241      46-52      4.5262   -0.0210    -0.0016   -0.0181   +0.0000   -0.0013    +0.0600   1    21.759
+   1242      46-53      5.9426   -0.0073    -0.0001   -0.0044   +0.0000   -0.0028    +0.0339   1    31.066
+   1243      46-54      6.9101   +0.0030    +0.0019   -0.0011   +0.0000   +0.0023    +0.0210   1    37.671
+   1244      46-55      6.3133   +0.0034    +0.0023   -0.0019   +0.0000   +0.0031    +0.0284   1    33.591
+   1245      47-49      4.9895   -0.0125    +0.0008   -0.0115   +0.0000   -0.0018    +0.0506   1    24.703
+   1246      47-50      6.2552   -0.0018    -0.0014   -0.0021   +0.0000   +0.0017    +0.0292   1    33.199
+   1247      47-51      6.4090   +0.0034    +0.0007   -0.0002   +0.0000   +0.0028    +0.0271   1    34.247
+   1248      47-52      5.2616   -0.0089    +0.0009   -0.0087   +0.0000   -0.0010    +0.0455   1    26.478
+   1249      47-53      6.6168   -0.0044    +0.0001   -0.0024   +0.0000   -0.0020    +0.0244   1    35.678
+   1250      47-54      7.6205   -0.0003    -0.0012   -0.0006   +0.0000   +0.0015    +0.0141   1    42.478
+   1251      47-55      6.8968   -0.0003    -0.0015   -0.0012   +0.0000   +0.0023    +0.0211   1    37.593
+   1252      48-49      4.6085   -0.0179    +0.0010   -0.0168   +0.0000   -0.0021    +0.0583   1    22.272
+   1253      48-50      5.4630   -0.0041    -0.0019   -0.0045   +0.0000   +0.0024    +0.0418   1    27.832
+   1254      48-51      5.3024   +0.0052    +0.0011   -0.0006   +0.0000   +0.0047    +0.0447   1    26.752
+   1255      48-52      5.0864   -0.0106    +0.0009   -0.0104   +0.0000   -0.0011    +0.0488   1    25.329
+   1256      48-53      6.5960   -0.0044    +0.0001   -0.0024   +0.0000   -0.0021    +0.0247   1    35.532
+   1257      48-54      7.3745   -0.0003    -0.0013   -0.0008   +0.0000   +0.0017    +0.0162   1    40.833
+   1258      48-55      7.1986   -0.0003    -0.0013   -0.0009   +0.0000   +0.0019    +0.0179   1    39.645
+   1259      50-54      3.3257   +0.2225    +0.2452   -0.0319   +0.0000   +0.0092    +0.0864   1    14.754
+   1260      50-55      3.3278   +0.2218    +0.2445   -0.0318   +0.0000   +0.0092    +0.0863   1    14.780
+   1261      51-53      3.1698   +0.0058    +0.0048   -0.0084   +0.0000   +0.0094    +0.0898   1    13.935
+   1262      51-54      3.4473   -0.1245    -0.1219   +0.0000   -0.0070   +0.0045    +0.0836   1    15.431
+   1263      51-55      3.9656   -0.0870    -0.0890   +0.0000   -0.0019   +0.0039    +0.0721   1    18.374
+                                ________   ________  ________  ________  ________
+Total                            -3.5443    -0.7055   -3.6175    -0.3716   +1.1503
+                                ________  ________  ________  ________ ________
+                                   Total       Elec       vdW        Hb    Desolv
+
+
+	Per-atom Intramolecular Energy Analysis
+	=======================================
+
+Atom Type   Total     Elec       vdW        Hb     Desolv 
+____ ___  ________  ________  ________  ________  ________
+   1  C    -0.0831   -0.0325   -0.0656   +0.0000   +0.0150
+   2  C    -0.1069   -0.0271   -0.0929   +0.0000   +0.0130
+   3  OA   -0.1698   -0.0528   -0.1377   -0.0364   +0.0571
+   4  N    -0.0795   -0.0157   -0.0998   +0.0000   +0.0359
+   5  HD   -0.0721   -0.0638   -0.0196   -0.0493   +0.0607
+   6  C    -0.0723   -0.0094   -0.0861   +0.0000   +0.0232
+   7  C    -0.0745   -0.0296   -0.0526   +0.0000   +0.0077
+   8  OA   -0.2022   -0.0867   -0.0995   -0.0611   +0.0451
+   9  N    -0.0945   -0.0449   -0.0744   +0.0000   +0.0248
+  10  HD   -0.0919   -0.0976   -0.0183   -0.0366   +0.0606
+  11  C    -0.0610   -0.0086   -0.0638   +0.0000   +0.0114
+  12  C    -0.0553   -0.0150   -0.0437   +0.0000   +0.0033
+  13  OA   -0.0420   +0.0076   -0.0791   -0.0002   +0.0297
+  14  N    -0.0548   -0.0327   -0.0365   +0.0000   +0.0145
+  15  HD   -0.1139   -0.0817   -0.0129   -0.0605   +0.0412
+  16  C    -0.0423   -0.0114   -0.0385   +0.0000   +0.0076
+  17  C    -0.0221   +0.0008   -0.0230   +0.0000   +0.0001
+  18  C    -0.0544   -0.0055   -0.0533   +0.0000   +0.0044
+  19  C    -0.0184   -0.0031   -0.0192   +0.0000   +0.0039
+  20  C    -0.0999   +0.0016   -0.0990   +0.0000   -0.0025
+  21  C    -0.0713   -0.0033   -0.0698   +0.0000   +0.0018
+  22  C    -0.1094   -0.0025   -0.1098   +0.0000   +0.0029
+  23  C    -0.0746   -0.0027   -0.0723   +0.0000   +0.0004
+  24  C    -0.1152   -0.0076   -0.1126   +0.0000   +0.0051
+  25  C    -0.0307   -0.0057   -0.0300   +0.0000   +0.0050
+  26  C    -0.0640   -0.0059   -0.0683   +0.0000   +0.0101
+  27  C    -0.0889   +0.0003   -0.0952   +0.0000   +0.0060
+  28  C    -0.0778   -0.0008   -0.0795   +0.0000   +0.0025
+  29  C    -0.1035   -0.0022   -0.1057   +0.0000   +0.0045
+  30  C    -0.0528   +0.0070   -0.0758   +0.0000   +0.0160
+  31  OA   -0.0868   -0.0233   -0.0540   -0.0493   +0.0398
+  32  HD   +0.0227   -0.0146   -0.0087   -0.0002   +0.0462
+  33  C    -0.0790   +0.0022   -0.1150   +0.0000   +0.0338
+  34  C    -0.1398   -0.0203   -0.1342   +0.0000   +0.0147
+  35  OA   -0.0119   +0.0736   -0.1452   -0.0033   +0.0630
+  36  N    -0.0483   -0.0120   -0.0659   +0.0000   +0.0296
+  37  HD   -0.0467   -0.0656   -0.0086   -0.0152   +0.0427
+  38  C    -0.0582   -0.0133   -0.0663   +0.0000   +0.0215
+  39  C    -0.0397   -0.0035   -0.0512   +0.0000   +0.0151
+  40  C    -0.1029   -0.0375   -0.0814   +0.0000   +0.0160
+  41  OA   -0.1053   -0.0282   -0.0920   -0.0257   +0.0406
+  42  N    -0.0247   +0.0111   -0.0639   +0.0000   +0.0281
+  43  HD   -0.0617   -0.0838   -0.0141   -0.0083   +0.0444
+  44  C    -0.0681   -0.0416   -0.0437   +0.0000   +0.0172
+  45  C    -0.0655   -0.0160   -0.0638   +0.0000   +0.0144
+  46  C    -0.0999   +0.0016   -0.1124   +0.0000   +0.0110
+  47  C    -0.0697   -0.0018   -0.0724   +0.0000   +0.0045
+  48  C    -0.1198   -0.0024   -0.1279   +0.0000   +0.0105
+  49  C    -0.0565   -0.0194   -0.0453   +0.0000   +0.0083
+  50  OA   +0.1923   +0.2399   -0.0752   -0.0053   +0.0329
+  51  HD   -0.1453   -0.1549   -0.0145   -0.0157   +0.0398
+  52  C    -0.0240   +0.0032   -0.0360   +0.0000   +0.0088
+  53  C    -0.0245   +0.0018   -0.0293   +0.0000   +0.0029
+  54  OA   +0.0545   +0.0607   -0.0272   -0.0035   +0.0246
+  55  OA   +0.0631   +0.0699   -0.0347   -0.0010   +0.0289
+
+
+Total Intramolecular Interaction Energy   = -3.544 kcal/mol
+Unbound model to be used is 'same as bound' [AutoDock 4.2 default].
+
+
+		Intermolecular Energy Analysis
+		==============================
+
+Atom Atom    Total      vdW+Hbond  Electrosta  Desolvation Partial          Coordinates         
+ Num Type    Energy      Energy    tic Energy     Energy    Charge      x         y         z    
+____ ____  __________  __________  __________  __________ _______  ________  ________  ________
+   1  C      -0.4363     -0.5341     -0.0049      0.1028   0.1360   21.0020   21.8870   59.8200
+   2  C      -0.4173     -0.5087      0.0065      0.0849   0.1300   19.8630   23.7750   58.7200
+   3  OA     -0.7331     -0.8778     -0.1615      0.3062  -0.4450   18.7400   23.4350   59.0470
+   4  N      -0.1642     -0.4165      0.0407      0.2117  -0.3050   20.9830   23.1460   59.0660
+   5  HD     -0.1510     -0.2369     -0.0836      0.1695   0.2250   21.8570   23.5520   58.7990
+   6  C      -0.3459     -0.4954     -0.0018      0.1513   0.2400   20.0030   24.9520   57.8040
+   7  C      -0.3954     -0.4683     -0.0067      0.0796   0.1360   20.1040   24.8530   55.3580
+   8  OA     -0.7607     -1.0389     -0.0418      0.3199  -0.4440   21.0570   25.6200   55.2890
+   9  N      -0.1913     -0.3525     -0.0004      0.1616  -0.2830   19.4800   24.5320   56.4900
+  10  HD     -0.2546     -0.3871      0.0005      0.1320   0.2360   18.6380   23.9940   56.4480
+  11  C      -0.2517     -0.3379     -0.0272      0.1133   0.2390   19.5820   24.2000   54.0970
+  12  C      -0.2417     -0.2768     -0.0097      0.0448   0.1050   19.1570   25.4240   52.0360
+  13  OA     -0.0068     -0.1526      0.0118      0.1339  -0.4560   17.9540   25.1870   52.1040
+  14  N      -0.1012     -0.3071      0.0554      0.1505  -0.2900   20.0210   24.9720   52.9420
+  15  HD     -0.5512     -0.5662     -0.1364      0.1514   0.2340   20.9950   25.1670   52.8270
+  16  C      -0.2717     -0.3497     -0.0219      0.0998   0.2060   19.7600   26.2340   50.9010
+  17  C      -0.3161     -0.3198     -0.0004      0.0041   0.0090   18.9760   27.5100   50.6440
+  18  C      -0.4178     -0.4299     -0.0008      0.0130   0.0230   19.0280   28.4530   51.8400
+  19  C      -0.4102     -0.4211     -0.0016      0.0125   0.0230   19.5120   28.2220   49.4100
+  20  C      -0.3261     -0.3406     -0.0067      0.0212   0.0440   20.0690   22.7380   54.0290
+  21  C      -0.2690     -0.2804     -0.0030      0.0145   0.0340   19.3840   21.9600   52.8880
+  22  C      -0.5045     -0.5192     -0.0061      0.0209   0.0340   21.5950   22.5810   53.8890
+  23  C      -0.4616     -0.4936      0.0042      0.0278   0.0440   19.2460   26.1720   58.3500
+  24  C      -0.4308     -0.4535      0.0009      0.0218   0.0340   19.8000   26.5750   59.7280
+  25  C      -0.5183     -0.5421      0.0011      0.0227   0.0340   19.3030   27.3880   57.4230
+  26  C      -0.5194     -0.5642     -0.0050      0.0499   0.0620   21.5040   20.7230   58.9200
+  27  C      -0.4744     -0.4888      0.0016      0.0128  -0.0180   20.7400   20.6280   57.5820
+  28  C      -0.5091     -0.5193     -0.0006      0.0107   0.0140   21.5210   19.6890   56.6320
+  29  C      -0.5514     -0.5616     -0.0005      0.0106   0.0140   19.3140   20.1350   57.7970
+  30  C      -0.5033     -0.6234     -0.0159      0.1360   0.1660   21.9380   21.9840   61.0320
+  31  OA      0.1493     -0.3736      0.1186      0.4043  -0.4400   23.2480   22.3490   60.5950
+  32  HD     -0.3462     -0.5148     -0.0645      0.2331   0.2400   23.8260   22.4090   61.3460
+  33  C      -0.3393     -0.5207     -0.0135      0.1949   0.2640   21.4990   23.0360   62.0600
+  34  C      -0.4119     -0.4962      0.0078      0.0765   0.1140   20.3390   22.5230   62.8910
+  35  OA     -0.7521     -0.8893     -0.1707      0.3079  -0.4540   19.1920   22.6630   62.4840
+  36  N      -0.1842     -0.3973      0.0204      0.1927  -0.2910   20.6500   21.9560   64.0750
+  37  HD     -0.2262     -0.3090     -0.0919      0.1747   0.2340   21.6020   21.7110   64.2610
+  38  C      -0.3766     -0.5199     -0.0041      0.1474   0.2330   19.6440   21.6910   65.0860
+  39  C      -0.5422     -0.6376      0.0016      0.0938   0.1240   19.8780   20.3110   65.7080
+  40  C      -0.3680     -0.4291     -0.0036      0.0648   0.1290   19.7110   22.7970   66.0980
+  41  OA     -0.7161     -0.9467     -0.0137      0.2443  -0.4450   20.7140   22.9340   66.8030
+  42  N      -0.1150     -0.2524      0.0075      0.1299  -0.3060   18.6760   23.6310   66.0920
+  43  HD     -0.3657     -0.4641     -0.0079      0.1064   0.2250   17.8220   23.3500   65.6540
+  44  C      -0.2490     -0.2896     -0.0032      0.0437   0.1340   18.7630   24.9500   66.7130
+  45  C      -0.2828     -0.3035      0.0001      0.0206   0.0610   18.3720   26.0450   65.7250
+  46  C      -0.3288     -0.3353     -0.0012      0.0076  -0.0180   19.1370   26.0660   64.3910
+  47  C      -0.3715     -0.3797      0.0014      0.0068   0.0140   18.6600   27.2980   63.6220
+  48  C      -0.3788     -0.3867      0.0007      0.0072   0.0140   20.6550   26.1590   64.5000
+  49  C      -0.2154     -0.2448     -0.0075      0.0370   0.1510   17.8480   24.9520   67.9500
+  50  OA     -0.0619     -0.2327      0.0449      0.1258  -0.4430   18.2640   23.9220   68.8730
+  51  HD     -0.4385     -0.4844     -0.0321      0.0780   0.2390   19.1590   24.0850   69.1450
+  52  C      -0.1791     -0.2046     -0.0104      0.0358   0.1840   17.8060   26.2750   68.7120
+  53  C      -0.0937     -0.0954     -0.0009      0.0027   0.0190   16.8100   26.0900   69.8590
+  54  OA      0.0455     -0.0642      0.0323      0.0774  -0.5810   17.2310   26.2320   71.0310
+  55  OA      0.0439     -0.0429      0.0166      0.0702  -0.5810   15.6050   25.7800   69.6160
+          __________  __________  __________  _______ ________
+    Total   -18.5905    -23.6787     -0.5871     5.6753  -0.9990
+          __________  __________  __________  __________ _______
+          vdW+Hbond+   vdW+Hbond  Electrosta  Desolvation Partial
+          +Elec+Desolv   Energy    tic Energy    Energy    Charge
+              Energy 
+
+Total Intermolecular Interaction Energy          = -18.5905 kcal/mol
+Total Intermolecular vdW + Hbond + desolv Energy = -18.0034 kcal/mol
+Total Intermolecular Electrostatic Energy        =  -0.5871 kcal/mol
+Total Intermolecular + Intramolecular Energy     = -22.1349 kcal/mol
+
+
+epdb: USER    Estimated Free Energy of Binding    =  -14.98 kcal/mol  [=(1)+(2)+(3)-(4)]
+epdb: USER    Estimated Inhibition Constant, Ki   =   10.54 pM (picomolar)  [Temperature = 298.15 K]
+epdb: USER    
+epdb: USER    (1) Final Intermolecular Energy     =  -18.59 kcal/mol
+epdb: USER        vdW + Hbond + desolv Energy     =  -18.00 kcal/mol
+epdb: USER        Electrostatic Energy            =   -0.59 kcal/mol
+epdb: USER    (2) Final Total Internal Energy     =   -3.54 kcal/mol
+epdb: USER    (3) Torsional Free Energy           =   +7.16 kcal/mol
+epdb: USER    (4) Unbound System's Energy         =   +0.00 kcal/mol
+epdb: USER    
+epdb: USER    
+
+DPF> 
+
+DPF> ## AUTODOCK_SCORE -15.02
+
+DPF> ## AUTODOCK_ERROR_CORRECTION 1.5223
+
+>>> Closing the docking parameter file (DPF)...
+This docking finished at:			9:45 33" p.m., 04/12/2025
+
+
+________________________________________________________________________________
+
+./autodock4: Successful Completion on "fedora"
+
+Real= 2.44s,  CPU= 2.37s,  System= 0.05s
+________________________________________________________________________________
+

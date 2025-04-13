@@ -1,17 +1,16 @@
-#include "mudock/cpp_implementation/weed_bonds.hpp"
-#include "mudock/molecule/fragments.hpp"
-
 #include <boost/program_options.hpp>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <memory>
 #include <mudock/chem/ligand_maps.hpp>
+#include <mudock/cpp_implementation/weed_bonds.hpp>
 #include <mudock/format/ob_wrapper.hpp>
 #include <mudock/format/pdbqt.hpp>
 #include <mudock/grid/grid_map.hpp>
 #include <mudock/log.hpp>
 #include <mudock/molecule.hpp>
+#include <mudock/molecule/fragments.hpp>
 #include <mudock/mudock.hpp>
 #include <mudock/type_alias.hpp>
 #include <mudock/utils.hpp>
@@ -32,7 +31,8 @@ struct dpf_tokens {
   static constexpr auto MOVE_TOKEN   = "move";
 };
 
-static constexpr auto SCORE_TOKEN = "AUTODOCK_SCORE";
+static constexpr auto SCORE_TOKEN       = "AUTODOCK_SCORE";
+static constexpr auto ERROR_SCORE_TOKEN = "AUTODOCK_ERROR_CORRECTION";
 
 int main(int argc, char* argv[]) {
   namespace po                   = boost::program_options;
@@ -59,7 +59,7 @@ int main(int argc, char* argv[]) {
   std::unique_ptr<mudock::grid_map> electrostatic_map, desolvation_map;
   std::vector<std::unique_ptr<mudock::grid_atom_map>> grid_maps_unique;
   auto ligand = std::make_unique<mudock::static_molecule>();
-  mudock::fp_type adt_score;
+  mudock::fp_type adt_score, adt_error_score;
   while (std::getline(desc_s, line)) {
     // Skip empty lines
     if (line.empty())
@@ -87,11 +87,17 @@ int main(int argc, char* argv[]) {
       ss >> _ >> ligand_path;
 
       mudock::parse(*ligand, ligand_path);
+      const auto ob_mol = mudock::parser(ligand_path);
+      convert<mudock::openbabel::pdbqt_rotate_check>(*ligand, ob_mol);
       mudock::openbabel::apply_autodock_forcefield(*ligand, ligand_path);
     } else if (line.find(SCORE_TOKEN) != std::string::npos) {
       std::stringstream ss{line};
       std::string _;
       ss >> _ >> _ >> adt_score;
+    } else if (line.find(ERROR_SCORE_TOKEN) != std::string::npos) {
+      std::stringstream ss{line};
+      std::string _;
+      ss >> _ >> _ >> adt_error_score;
     }
   }
 
@@ -168,9 +174,12 @@ int main(int argc, char* argv[]) {
                                           electrostatic_map.get()->data(),
                                           desolvation_map.get()->data());
 
-  if (std::abs(energy - adt_score) > mudock::fp_type{0.01}) {
-    mudock::error(
-        std::format("Difference betweem scores of {} ({} vs {})", dpf_path.string(), adt_score, energy));
+  // High tolerance due to the precomputation done in autodock, refers to intnbtable.cc
+  if (std::abs(energy - adt_score + adt_error_score) > mudock::fp_type{0.1}) {
+    mudock::error(std::format("Difference betweem scores of {} ({} vs {})",
+                              dpf_path.string(),
+                              adt_score - adt_error_score,
+                              energy));
     throw std::runtime_error("Error in score");
   }
 

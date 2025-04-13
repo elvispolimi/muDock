@@ -1,0 +1,43 @@
+          AutoDock 4.2 Release 4.2.6   
+         (C) 1989-2012 The Scripps Research Institute
+        AutoDock comes with ABSOLUTELY NO WARRANTY.
+        AutoDock is free software, and you are welcome
+        to redistribute it under certain conditions;
+        for details type 'autodock4 -C'
+
+                     main.cc  $Revision: 1.213 $
+
+                   Compiled on Apr 10 2025 at 17:19:16
+
+
+This file was created at:			10:50 15" p.m., 04/12/2025
+                   on host:		"fedora"
+Current Working Directory = "/home/gaccordi/repo/autodock4/autodock/build"
+
+      ________________________________________________________________
+
+                   SETTING UP DEFAULT PARAMETER LIBRARY
+      ________________________________________________________________
+
+
+Random number generator was seeded with values 2049966, 1744491015.
+Docking parameter file (DPF) used for this docking:		/home/gaccordi/repo/muDock/data/4few/4few_epdb.dpf
+DPF> ## GENERIC SECTION
+
+DPF> autodock_parameter_version 4.2       # used by autodock to validate parameter set
+
+	Autodock parameter version 4.2.
+DPF> outlev ADT                           # diagnostic output level
+
+Output Level = 1  ADT-COMPATIBLE OUTPUT DURING DOCKING.
+DPF> smooth 0
+
+
+Internal energy non-bond potentials will be smoothed over range 0.000 Angstrom
+
+DPF> 
+
+DPF> ## LIGAND-SPECIFIC SECTION
+
+DPF> ligand_types A C H HD N NA OA SA Cl F S Br P I             # ligand atom types
+

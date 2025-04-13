@@ -86,9 +86,13 @@ namespace mudock {
   //===------------------------------------------------------------------------------------------------------
   // Translate an OpenBabel molecule to our internal format
   //===------------------------------------------------------------------------------------------------------
+  template<typename F>
+  concept is_rotate_check = requires(F f, OpenBabel::OBBond& bond) {
+    { f(bond) } -> std::same_as<bool>;
+  };
 
-  template<class molecule_type>
-    requires is_molecule<molecule_type>
+  template<auto rotor_check, class molecule_type>
+    requires is_molecule<molecule_type> && is_rotate_check<decltype(rotor_check)>
   void convert(molecule_type&& dest, const ob_mol_wrapper& source) {
     const size_t num_atoms = source->NumAtoms();
     const size_t num_bonds = source->NumBonds();
@@ -131,54 +135,6 @@ namespace mudock {
     // Verify that there are no gaps in molecule indexes
     assert(((max_atom_index + 1) == num_atoms) && (num_atoms == mudock_atom_index));
 
-    // FIXME
-    auto IsImide = [](OpenBabel::OBBond* querybond) {
-      if (querybond->GetBondOrder() != 2)
-        return (false);
-
-      OpenBabel::OBAtom* bgn = querybond->GetBeginAtom();
-      OpenBabel::OBAtom* end = querybond->GetEndAtom();
-      if ((bgn->GetAtomicNum() == 6 && end->GetAtomicNum() == 7) ||
-          (bgn->GetAtomicNum() == 7 && end->GetAtomicNum() == 6))
-        return (true);
-
-      return (false);
-    };
-
-    auto IsAmidine = [IsImide](OpenBabel::OBBond* querybond) {
-      OpenBabel::OBAtom *c, *n;
-      c = n = nullptr;
-
-      // Look for C-N bond
-      OpenBabel::OBAtom* bgn = querybond->GetBeginAtom();
-      OpenBabel::OBAtom* end = querybond->GetEndAtom();
-      if (bgn->GetAtomicNum() == 6 && end->GetAtomicNum() == 7) {
-        c = bgn;
-        n = end;
-      }
-      if (bgn->GetAtomicNum() == 7 && end->GetAtomicNum() == 6) {
-        c = end;
-        n = bgn;
-      }
-      if (!c || !n)
-        return (false);
-      if (querybond->GetBondOrder() != 1)
-        return (false);
-      if (n->GetTotalDegree() != 3)
-        return false; // must be a degree 3 nitrogen
-
-      // Make sure C is attached to =N
-      OpenBabel::OBBond* bond;
-      std::vector<OpenBabel::OBBond*>::iterator i;
-      for (bond = c->BeginBond(i); bond; bond = c->NextBond(i)) {
-        if (IsImide(bond))
-          return (true);
-      }
-
-      // Return
-      return (false);
-    };
-
     // fill the bond information
     auto mudock_bond_index = int{0};
     for (auto bond_it = source->BeginBonds(); bond_it < source->EndBonds(); ++bond_it) {
@@ -189,14 +145,7 @@ namespace mudock {
       mudock_bond.source       = index_translator.at(atom_id_source);
       mudock_bond.dest         = index_translator.at(atom_id_dest);
       mudock_bond.type         = parse_ob_bond_type(*bond);
-      //mudock_bond.can_rotate   = bond->IsRotor(true);
-      mudock_bond.can_rotate = true;
-      if ((bond->GetBondOrder() != 1 || bond->IsAromatic() || bond->IsAmide() || IsAmidine(bond) ||
-           bond->IsInRing()) ||
-          (((bond->GetBeginAtom())->GetExplicitDegree() == 1) ||
-           ((bond->GetEndAtom())->GetExplicitDegree() == 1))) {
-        mudock_bond.can_rotate = false;
-      }
+      mudock_bond.can_rotate   = rotor_check(*bond);
 
       ++mudock_bond_index;
     }
@@ -206,14 +155,12 @@ namespace mudock {
     dest.properties.assign(property_type::NAME, name);
   }
 
-  // template<class molecule_type>
-  //   requires is_molecule<molecule_type>
-  // void convert(const ob_mol_wrapper& dest, molecule_type&& source) {
-  //   // TODO
-  //   throw std::runtime_error("Converted not implemented yet!");
-  // }
   namespace openbabel {
+    [[nodiscard]] bool rotate_check(OpenBabel::OBBond&);
+    [[nodiscard]] bool pdbqt_rotate_check(OpenBabel::OBBond&);
+
     // The following function relies on the same order of atom loading and file
+    // FIXME use the same approach as for the check rotor
     template<class molecule_type>
       requires is_molecule<molecule_type>
     void apply_autodock_forcefield(molecule_type&& molecule, const std::filesystem::path input_path) {
@@ -420,7 +367,7 @@ namespace mudock {
              const std::filesystem::path input_path,
              const bool assing_autodock_types = false) {
     const auto ob_mol = parser(input_path);
-    convert(molecule, ob_mol);
+    convert<openbabel::rotate_check>(molecule, ob_mol);
 
     if (assing_autodock_types)
       openbabel::apply_autodock_forcefield(molecule, ob_mol);
@@ -432,7 +379,7 @@ namespace mudock {
              const std::string_view description,
              const bool assing_autodock_types = false) {
     const auto ob_mol = format_parser<format>(description);
-    convert(molecule, ob_mol);
+    convert<openbabel::rotate_check>(molecule, ob_mol);
 
     if (assing_autodock_types)
       openbabel::apply_autodock_forcefield(molecule, ob_mol);

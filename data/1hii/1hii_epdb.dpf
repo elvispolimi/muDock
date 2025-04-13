@@ -26,4 +26,5 @@ move /home/gaccordi/repo/muDock/data/1hii/1hii_ligand.pdbqt
 ## EVALUATE LIGAND ENERGY in RECEPTOR SECTION
 epdb                                 # small molecule to be evaluated
 
-## AUTODOCK_SCORE -15.02 
+## AUTODOCK_SCORE -15.02
+## AUTODOCK_ERROR_CORRECTION 1.5223
