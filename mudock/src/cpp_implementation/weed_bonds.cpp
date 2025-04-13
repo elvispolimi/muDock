@@ -65,8 +65,6 @@ namespace mudock {
             outer_4 = outer_2;
           } else
             continue;
-          if ((outer_3 == 0 && outer_4 == 6) || (outer_3 == 6 && outer_4 == 0))
-            printf("here");
           nbmatrix.at(outer_4, outer_3) = 0;
           nbmatrix.at(outer_3, outer_4) = 0;
         }

@@ -1,0 +1,30 @@
+## GENERIC SECTION
+autodock_parameter_version 4.2       # used by autodock to validate parameter set
+outlev ADT                           # diagnostic output level
+smooth 0
+
+## LIGAND-SPECIFIC SECTION
+ligand_types A C H HD N NA OA SA Cl F S Br P I             # ligand atom types
+fld /home/gaccordi/repo/muDock/data/5cst/5cst_pocket.maps.fld  # grid_data_file
+map /home/gaccordi/repo/muDock/data/5cst/5cst_pocket.A.map # atom-specific affinity map
+map /home/gaccordi/repo/muDock/data/5cst/5cst_pocket.C.map # atom-specific affinity map
+map /home/gaccordi/repo/muDock/data/5cst/5cst_pocket.H.map # atom-specific affinity map
+map /home/gaccordi/repo/muDock/data/5cst/5cst_pocket.HD.map # atom-specific affinity map
+map /home/gaccordi/repo/muDock/data/5cst/5cst_pocket.N.map # atom-specific affinity map
+map /home/gaccordi/repo/muDock/data/5cst/5cst_pocket.NA.map # atom-specific affinity map
+map /home/gaccordi/repo/muDock/data/5cst/5cst_pocket.OA.map # atom-specific affinity map
+map /home/gaccordi/repo/muDock/data/5cst/5cst_pocket.SA.map # atom-specific affinity map
+map /home/gaccordi/repo/muDock/data/5cst/5cst_pocket.Cl.map # atom-specific affinity map
+map /home/gaccordi/repo/muDock/data/5cst/5cst_pocket.F.map # atom-specific affinity map
+map /home/gaccordi/repo/muDock/data/5cst/5cst_pocket.S.map # atom-specific affinity map
+map /home/gaccordi/repo/muDock/data/5cst/5cst_pocket.Br.map # atom-specific affinity map
+map /home/gaccordi/repo/muDock/data/5cst/5cst_pocket.P.map # atom-specific affinity map
+map /home/gaccordi/repo/muDock/data/5cst/5cst_pocket.I.map # atom-specific affinity map
+elecmap /home/gaccordi/repo/muDock/data/5cst/5cst_pocket.e.map # electrostatic potential map
+dsolvmap /home/gaccordi/repo/muDock/data/5cst/5cst_pocket.d.map              # desolvation potential map
+move /home/gaccordi/repo/muDock/data/5cst/5cst_ligand.pdbqt
+## EVALUATE LIGAND ENERGY in RECEPTOR SECTION
+epdb                                 # small molecule to be evaluated
+
+## AUTODOCK_SCORE -2.72
+## AUTODOCK_ERROR_CORRECTION 0.0

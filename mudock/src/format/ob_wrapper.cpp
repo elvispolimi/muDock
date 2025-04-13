@@ -161,4 +161,62 @@ namespace mudock {
       }
   }
 
+  namespace openbabel {
+    bool rotate_check(OpenBabel::OBBond& bond) { return bond.IsRotor(); }
+    bool pdbqt_rotate_check(OpenBabel::OBBond& bond) {
+      auto IsImide = [](OpenBabel::OBBond* querybond) {
+        if (querybond->GetBondOrder() != 2)
+          return (false);
+
+        OpenBabel::OBAtom* bgn = querybond->GetBeginAtom();
+        OpenBabel::OBAtom* end = querybond->GetEndAtom();
+        if ((bgn->GetAtomicNum() == 6 && end->GetAtomicNum() == 7) ||
+            (bgn->GetAtomicNum() == 7 && end->GetAtomicNum() == 6))
+          return (true);
+
+        return (false);
+      };
+
+      auto IsAmidine = [IsImide](OpenBabel::OBBond* querybond) {
+        OpenBabel::OBAtom *c, *n;
+        c = n = nullptr;
+
+        // Look for C-N bond
+        OpenBabel::OBAtom* bgn = querybond->GetBeginAtom();
+        OpenBabel::OBAtom* end = querybond->GetEndAtom();
+        if (bgn->GetAtomicNum() == 6 && end->GetAtomicNum() == 7) {
+          c = bgn;
+          n = end;
+        }
+        if (bgn->GetAtomicNum() == 7 && end->GetAtomicNum() == 6) {
+          c = end;
+          n = bgn;
+        }
+        if (!c || !n)
+          return (false);
+        if (querybond->GetBondOrder() != 1)
+          return (false);
+        if (n->GetTotalDegree() != 3)
+          return false; // must be a degree 3 nitrogen
+
+        // Make sure C is attached to =N
+        OpenBabel::OBBond* bond;
+        std::vector<OpenBabel::OBBond*>::iterator i;
+        for (bond = c->BeginBond(i); bond; bond = c->NextBond(i)) {
+          if (IsImide(bond))
+            return (true);
+        }
+
+        // Return
+        return (false);
+      };
+      if ((bond.GetBondOrder() != 1 || bond.IsAromatic() || bond.IsAmide() || IsAmidine(&bond) ||
+           bond.IsInRing()) ||
+          (((bond.GetBeginAtom())->GetExplicitDegree() == 1) ||
+           ((bond.GetEndAtom())->GetExplicitDegree() == 1))) {
+        return false;
+      }
+      return true;
+    }
+  } // namespace openbabel
 } // namespace mudock
