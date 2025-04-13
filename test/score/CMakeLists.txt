@@ -21,3 +21,7 @@ function(add_tests dir)
 endfunction()
 
 add_tests("${CMAKE_SOURCE_DIR}/data")
+
+if(MUDOCK_ENABLE_GH)
+
+endif()

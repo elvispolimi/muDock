@@ -172,7 +172,6 @@ namespace mudock {
           }
         }
         emap_total_eintcal += e_vdW_Hb;
-        printf("%d %f %f %f %f\n", i, distance, e_elec, e_vdW_Hb, e_desolv);
       }
     }
     const fp_type tors_free_energy = n_torsions * autodock_parameters::coeff_tors;

@@ -37,12 +37,16 @@ static constexpr auto ERROR_SCORE_TOKEN = "AUTODOCK_ERROR_CORRECTION";
 int main(int argc, char* argv[]) {
   namespace po                   = boost::program_options;
   std::filesystem::path dpf_path = std::filesystem::path{"rec.dpf"};
+  std::string device_conf;
 
   po::options_description arguments_description("Available options");
   arguments_description.add_options()("help", "print this help message");
   arguments_description.add_options()("dpf",
                                       po::value(&dpf_path)->default_value(dpf_path),
                                       "Path to the autodock DPF file");
+  arguments_description.add_options()("use",
+                                      po::value(&device_conf)->default_value("cpu"),
+                                      "Map each implementation to the device");
 
   // parse them
   po::options_description all("Allowed Options");
@@ -116,32 +120,16 @@ int main(int argc, char* argv[]) {
   const auto num_atoms    = ligand->num_atoms();
   const int atom_map_size = grid_atom_maps.get()->get_single_map_size();
 
-  const mudock::fp_type minimum[3] = {electrostatic_map.get()->minimum.x,
-                                      electrostatic_map.get()->minimum.y,
-                                      electrostatic_map.get()->minimum.z};
-  const mudock::fp_type maximum[3] = {electrostatic_map.get()->maximum.x,
-                                      electrostatic_map.get()->maximum.y,
-                                      electrostatic_map.get()->maximum.z};
-  const mudock::fp_type center[3]  = {electrostatic_map.get()->center.x,
-                                      electrostatic_map.get()->center.y,
-                                      electrostatic_map.get()->center.z};
-
   std::vector<int> map_ligand_offsets;
   map_ligand_offsets.resize(num_atoms);
   for (int i = 0; i < num_atoms; i++)
     map_ligand_offsets[i] =
         static_cast<int>(map_from_autodock_type(ligand->autodock_type(i))) * atom_map_size;
 
-  auto graph = make_graph(ligand->get_bonds(), ligand->num_atoms());
-  const auto ligand_fragments =
-      std::make_unique<mudock::fragments<mudock::static_containers>>(graph,
-                                                                     ligand->get_bonds(),
-                                                                     ligand->num_atoms());
-
   std::vector<int> non_bond_list_a1, non_bond_list_a2;
   std::vector<mudock::fp_type> cA_v, cB_v;
   std::vector<int> xB_v;
-  mudock::non_bond_list(*ligand, *ligand_fragments, non_bond_list_a1, non_bond_list_a2);
+  mudock::non_bond_list(*ligand, non_bond_list_a1, non_bond_list_a2);
   mudock::precompute_lennard_jones(non_bond_list_a1.size(),
                                    cA_v,
                                    cB_v,
@@ -158,16 +146,16 @@ int main(int argc, char* argv[]) {
                                           ligand->get_charge().data(),
                                           map_ligand_offsets.data(),
                                           num_atoms,
-                                          ligand_fragments.get()->get_num_rotatable_bonds(),
+                                          ligand->num_rotamers(),
                                           non_bond_list_a1.size(),
                                           non_bond_list_a1.data(),
                                           non_bond_list_a2.data(),
                                           cA_v.data(),
                                           cB_v.data(),
                                           xB_v.data(),
-                                          minimum,
-                                          maximum,
-                                          center,
+                                          electrostatic_map.get()->minimum.get_array().data(),
+                                          electrostatic_map.get()->maximum.get_array().data(),
+                                          electrostatic_map.get()->center.get_array().data(),
                                           electrostatic_map.get()->index.size_x(),
                                           electrostatic_map.get()->index.size_xy(),
                                           grid_atom_maps->get_fused_maps().data(),
