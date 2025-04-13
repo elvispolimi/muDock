@@ -56,8 +56,7 @@ namespace mudock {
     fp_type emap_total_trilinear  = 0;
     fp_type dmap_total_trilinear  = 0;
 
-#pragma GCC ivdep
-#pragma clang loop vectorize(enable) interleave(enable) unroll(enable)
+#pragma omp simd
     for (int index = 0; index < num_atoms; ++index) {
       fp_type coord[3]{ligand_x[index], ligand_y[index], ligand_z[index]};
 
@@ -120,9 +119,7 @@ namespace mudock {
 
     fp_type elect_total_eintcal{0}, emap_total_eintcal{0}, dmap_total_eintcal{0};
     if (n_torsions > 0) {
-#pragma GCC ivdep
-#pragma clang loop vectorize(enable) interleave(enable) unroll(enable)
-      // TODO check reciprocal math here
+#pragma omp simd
       for (int i = 0; i < num_nonbond; ++i) {
         const int& a1 = non_bond_list_a1[i];
         const int& a2 = non_bond_list_a2[i];

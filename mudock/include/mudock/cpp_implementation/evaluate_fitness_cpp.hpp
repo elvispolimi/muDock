@@ -114,16 +114,12 @@ namespace mudock {
     auto altered_y        = std::make_unique<std::array<fp_type, max_static_atoms()>>();
     auto altered_z        = std::make_unique<std::array<fp_type, max_static_atoms()>>();
 
-// Randomly initialize the population
-// TODO enable vectorization
-#pragma clang loop interleave(enable) unroll(enable)
+    // Randomly initialize the population
     for (int element_index = 0; element_index < population_size; ++element_index) {
       auto& element = population[element_index];
-#pragma clang loop interleave(enable) unroll(enable)
       for (int i{0}; i < 3; ++i) { // initialize the rigid translation
         element.genes[i] = get_init_change_distribution(generator, dist) * coordinate_step;
       }
-#pragma clang loop interleave(enable) unroll(enable)
       for (int i{3}; i < 6 + num_rotamers; ++i) { // initialize the rotations
         element.genes[i] = get_init_change_distribution(generator, dist) * angle_step;
       }
@@ -131,8 +127,7 @@ namespace mudock {
 
     for (int generation = 0; generation < num_generations; ++generation) {
       LIKWID_MARKER_START("GA");
-// Evaluate the fitness of the population
-#pragma clang loop interleave(enable) unroll(enable)
+      // Evaluate the fitness of the population
       for (int element_index = 0; element_index < population_size; ++element_index) {
         auto& element = population[element_index];
 
@@ -181,7 +176,6 @@ namespace mudock {
       LIKWID_MARKER_STOP("GA");
 
       // Generate the new population
-#pragma clang loop interleave(enable) unroll(enable)
       for (int element_index = 0; element_index < population_size; ++element_index) {
         auto& next_individual = next_population[element_index];
         // select the parent
@@ -208,13 +202,11 @@ namespace mudock {
                   std::begin(next_individual.genes) + split_index);
         next_individual.score = fp_type{0};
 
-// mutate the offspring
-#pragma clang loop interleave(enable) unroll(enable)
+        // mutate the offspring
         for (int i{0}; i < 3; ++i) {
           if (get_mutation_coin_distribution(generator, dist) < mutation_prob)
             next_individual.genes[i] += get_mutation_change_distribution(generator, dist) * coordinate_step;
         }
-#pragma clang loop interleave(enable) unroll(enable)
         for (int i{3}; i < 6 + num_rotamers; ++i) {
           if (get_mutation_coin_distribution(generator, dist) < mutation_prob)
             next_individual.genes[i] += get_mutation_change_distribution(generator, dist) * angle_step;

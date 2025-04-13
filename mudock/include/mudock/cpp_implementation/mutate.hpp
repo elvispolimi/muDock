@@ -20,8 +20,7 @@ namespace mudock {
     translate_molecule<vect>(x, y, z, num_atoms, c[0], c[1], c[2]);
     rotate_molecule<vect>(x, y, z, num_atoms, c[3], c[4], c[5]);
 
-// change the molecule shape
-#pragma clang loop interleave(enable) unroll(enable)
+    // change the molecule shape
     for (int i = 0; i < num_rotamers; ++i) {
       const auto* bitmask    = frag_masks + i * num_atoms;
       const auto start_index = frag_start_indexes[i];
