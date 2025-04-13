@@ -1,3 +1,5 @@
+#include "mudock/cpp_implementation/vectorization.hpp"
+
 #include <boost/program_options.hpp>
 #include <cstdlib>
 #include <filesystem>
@@ -138,29 +140,30 @@ int main(int argc, char* argv[]) {
                                    non_bond_list_a1,
                                    non_bond_list_a2);
 
-  const auto energy = mudock::calc_energy(ligand->get_x().data(),
-                                          ligand->get_y().data(),
-                                          ligand->get_z().data(),
-                                          ligand->get_vol().data(),
-                                          ligand->get_solpar().data(),
-                                          ligand->get_charge().data(),
-                                          map_ligand_offsets.data(),
-                                          num_atoms,
-                                          ligand->num_rotamers(),
-                                          non_bond_list_a1.size(),
-                                          non_bond_list_a1.data(),
-                                          non_bond_list_a2.data(),
-                                          cA_v.data(),
-                                          cB_v.data(),
-                                          xB_v.data(),
-                                          electrostatic_map.get()->minimum.get_array().data(),
-                                          electrostatic_map.get()->maximum.get_array().data(),
-                                          electrostatic_map.get()->center.get_array().data(),
-                                          electrostatic_map.get()->index.size_x(),
-                                          electrostatic_map.get()->index.size_xy(),
-                                          grid_atom_maps->get_fused_maps().data(),
-                                          electrostatic_map.get()->data(),
-                                          desolvation_map.get()->data());
+  const auto energy = mudock::calc_energy<mudock::cpu_vectorization::AUTO>(
+      ligand->get_x().data(),
+      ligand->get_y().data(),
+      ligand->get_z().data(),
+      ligand->get_vol().data(),
+      ligand->get_solpar().data(),
+      ligand->get_charge().data(),
+      map_ligand_offsets.data(),
+      num_atoms,
+      ligand->num_rotamers(),
+      non_bond_list_a1.size(),
+      non_bond_list_a1.data(),
+      non_bond_list_a2.data(),
+      cA_v.data(),
+      cB_v.data(),
+      xB_v.data(),
+      electrostatic_map.get()->minimum.get_array().data(),
+      electrostatic_map.get()->maximum.get_array().data(),
+      electrostatic_map.get()->center.get_array().data(),
+      electrostatic_map.get()->index.size_x(),
+      electrostatic_map.get()->index.size_xy(),
+      grid_atom_maps->get_fused_maps().data(),
+      electrostatic_map.get()->data(),
+      desolvation_map.get()->data());
 
   // High tolerance due to the precomputation done in autodock, refers to intnbtable.cc
   if (std::abs(energy - adt_score + adt_error_score) > mudock::fp_type{0.1}) {

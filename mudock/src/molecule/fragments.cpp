@@ -3,6 +3,7 @@
 #include <cassert>
 #include <gsl/pointers>
 #include <mudock/grid.hpp>
+#include <mudock/molecule.hpp>
 #include <mudock/molecule/constraints.hpp>
 #include <mudock/molecule/containers.hpp>
 #include <mudock/molecule/fragments.hpp>
@@ -195,15 +196,20 @@ namespace mudock {
                                      std::vector<int> frag_masks,
                                      std::vector<int> frag_start_indexes,
                                      std::vector<int> frag_stop_indexes,
-                                     const fragments<static_containers> &ligand_fragments) {
+                                     const static_molecule &ligand) {
+    auto graph = make_graph(ligand.get_bonds(), ligand.num_atoms());
+    const auto ligand_fragments =
+        std::make_unique<mudock::fragments<mudock::static_containers>>(graph,
+                                                                       ligand.get_bonds(),
+                                                                       ligand.num_atoms());
     frag_masks.resize(num_atoms * num_rotamers);
     frag_start_indexes.resize(num_rotamers);
     frag_stop_indexes.resize(num_rotamers);
     for (size_t rot = 0; rot < num_rotamers; ++rot) {
       std::memcpy((frag_masks.data() + num_atoms * rot),
-                  ligand_fragments.get_mask(rot).data(),
+                  ligand_fragments->get_mask(rot).data(),
                   num_atoms * sizeof(int));
-      const auto [start_index, stop_index] = ligand_fragments.get_rotatable_atoms(rot);
+      const auto [start_index, stop_index] = ligand_fragments->get_rotatable_atoms(rot);
       frag_start_indexes.data()[rot]       = start_index;
       frag_stop_indexes.data()[rot]        = stop_index;
     }

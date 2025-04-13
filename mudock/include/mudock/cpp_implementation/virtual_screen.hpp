@@ -12,6 +12,7 @@
 #include <mudock/grid/grid_map.hpp>
 #include <mudock/knobs.hpp>
 #include <mudock/molecule.hpp>
+#include <mudock/molecule/fragments.hpp>
 #include <mudock/type_alias.hpp>
 #include <vector>
 
@@ -73,96 +74,33 @@ namespace mudock {
                                                   electro_map->center.y - ligand_center_of_mass.y,
                                                   electro_map->center.z - ligand_center_of_mass.z);
 
-      // Find out the rotatable bonds in the ligand
-      auto graph = make_graph(ligand.get_bonds(), ligand.num_atoms());
-      const auto ligand_fragments =
-          std::make_unique<fragments<static_containers>>(graph, ligand.get_bonds(), ligand.num_atoms());
-
-      const auto num_rotamers = ligand_fragments.get()->get_num_rotatable_bonds();
+      const auto num_rotamers = ligand.num_rotamers();
 
       // Get weed bonds and non bonds lists
-      grid<uint_fast8_t, index2D> nbmatrix{{num_atoms, num_atoms}};
-      nonbonds(nbmatrix, ligand.get_bonds(), num_atoms);
       std::vector<int> non_bond_list_a1, non_bond_list_a2;
-      weed_bonds(nbmatrix, non_bond_list_a1, non_bond_list_a2, num_atoms, *ligand_fragments.get());
-
-      const auto non_bond_size = non_bond_list_a1.size();
-      std::vector<fp_type> cA_v, cB_v;
+      std::vector<mudock::fp_type> cA_v, cB_v;
       std::vector<int> xB_v;
-      cA_v.resize(non_bond_size);
-      cB_v.resize(non_bond_size);
-      xB_v.resize(non_bond_size);
-      for (size_t index = 0; index < non_bond_size; ++index) {
-        const int& a1 = non_bond_list_a1[index];
-        const int& a2 = non_bond_list_a2[index];
+      mudock::non_bond_list(ligand, non_bond_list_a1, non_bond_list_a2);
+      mudock::precompute_lennard_jones(non_bond_list_a1.size(),
+                                       cA_v,
+                                       cB_v,
+                                       xB_v,
+                                       ligand,
+                                       non_bond_list_a1,
+                                       non_bond_list_a2);
 
-        const auto& hbond_i    = ligand.num_hbond(a1);
-        const auto& hbond_j    = ligand.num_hbond(a2);
-        const auto& Rij_hb_i   = ligand.Rij_hb(a1);
-        const auto& Rij_hb_j   = ligand.Rij_hb(a2);
-        const auto& Rii_i      = ligand.Rii(a1);
-        const auto& Rii_j      = ligand.Rii(a2);
-        const auto& epsij_hb_i = ligand.epsij_hb(a1);
-        const auto& epsij_hb_j = ligand.epsij_hb(a2);
-        const auto& epsii_i    = ligand.epsii(a1);
-        const auto& epsii_j    = ligand.epsii(a2);
-
-        // we need to determine the correct xA and xB exponents
-        const int xA = xA_default; // for both LJ, 12-6 and HB, 12-10, xA is 12
-        int xB       = xB_default; // assume we have LJ, 12-6
-
-        fp_type Rij{(Rii_i + Rii_j) * fp_type{0.5}}, epsij{std::sqrt(epsii_i * epsii_j)};
-        if ((hbond_i == 1 || hbond_i == 2) && hbond_j > 2) {
-          // i is a donor and j is an acceptor.
-          // i is a hydrogen, j is a heteroatom
-          Rij   = Rij_hb_j;
-          epsij = epsij_hb_j;
-          xB    = 10;
-        } else if ((hbond_i > 2) && (hbond_j == 1 || hbond_j == 2)) {
-          // i is an acceptor and j is a donor.
-          // i is a heteroatom, j is a hydrogen
-          Rij   = Rij_hb_i;
-          epsij = epsij_hb_i;
-          xB    = 10;
-        }
-        fp_type cA{0};
-        fp_type cB{0};
-        if (xA != xB) {
-          const fp_type tmp = epsij / (xA - xB);
-          cA                = tmp * std::pow(Rij, static_cast<fp_type>(xA)) * xB;
-          cB                = tmp * std::pow(Rij, static_cast<fp_type>(xB)) * xA;
-        }
-        cA_v[index] = cA;
-        cB_v[index] = cB;
-        xB_v[index] = xB;
-      }
-
-      const fp_type minimum[3]        = {electro_map.get()->minimum_coord.x,
-                                         electro_map.get()->minimum_coord.y,
-                                         electro_map.get()->minimum_coord.z};
-      const fp_type maximum[3]        = {electro_map.get()->maximum_coord.x,
-                                         electro_map.get()->maximum_coord.y,
-                                         electro_map.get()->maximum_coord.z};
-      const fp_type center[3]         = {electro_map.get()->center.x,
-                                         electro_map.get()->center.y,
-                                         electro_map.get()->center.z};
       const int atom_map_size         = grid_atom_maps.get()->get_single_map_size();
       const fp_type* atom_map_pointer = grid_atom_maps.get()->get_fused_maps().data();
 
       std::vector<int> frag_masks;
       std::vector<int> frag_start_indexes;
       std::vector<int> frag_stop_indexes;
-      frag_masks.resize(num_atoms * num_rotamers);
-      frag_start_indexes.resize(num_rotamers);
-      frag_stop_indexes.resize(num_rotamers);
-      for (int rot = 0; rot < num_rotamers; ++rot) {
-        std::memcpy((frag_masks.data() + num_atoms * rot),
-                    ligand_fragments.get()->get_mask(rot).data(),
-                    num_atoms * sizeof(int));
-        const auto [start_index, stop_index] = ligand_fragments.get()->get_rotatable_atoms(rot);
-        frag_start_indexes.data()[rot]       = start_index;
-        frag_stop_indexes.data()[rot]        = stop_index;
-      }
+      get_linearized_fragments_mask(num_atoms,
+                                    num_rotamers,
+                                    frag_masks,
+                                    frag_start_indexes,
+                                    frag_stop_indexes,
+                                    ligand);
 
       std::vector<int> map_ligand_offsets;
       map_ligand_offsets.resize(num_atoms);
@@ -178,11 +116,11 @@ namespace mudock {
                              ligand.get_charge().data(),
                              map_ligand_offsets.data(),
                              num_atoms,
-                             ligand_fragments.get()->get_num_rotatable_bonds(),
+                             num_rotamers,
                              frag_masks.data(),
                              frag_start_indexes.data(),
                              frag_stop_indexes.data(),
-                             non_bond_size,
+                             non_bond_list_a1.size(),
                              non_bond_list_a1.data(),
                              non_bond_list_a2.data(),
                              cA_v.data(),
@@ -195,9 +133,9 @@ namespace mudock {
                              configuration.population_number,
                              configuration.tournament_length,
                              configuration.mutation_prob,
-                             minimum,
-                             maximum,
-                             center,
+                             electro_map.get()->minimum_coord.get_array().data(),
+                             electro_map.get()->maximum_coord.get_array().data(),
+                             electro_map.get()->center.get_array().data(),
                              electro_map.get()->index.size_x(),
                              electro_map.get()->index.size_xy(),
                              population.data(),

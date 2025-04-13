@@ -3,6 +3,7 @@
 #include <mudock/grid.hpp>
 #include <mudock/grid/grid_map.hpp>
 #include <mudock/molecule.hpp>
+#include <mudock/molecule/fragments.hpp>
 #include <mudock/type_alias.hpp>
 #include <span>
 #include <vector>

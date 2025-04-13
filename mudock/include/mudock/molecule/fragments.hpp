@@ -2,8 +2,8 @@
 
 #include <cassert>
 #include <cstddef>
-#include <cstdint>
 #include <mudock/grid/mdindex.hpp>
+#include <mudock/molecule.hpp>
 #include <mudock/molecule/bond.hpp>
 #include <mudock/molecule/containers.hpp>
 #include <mudock/molecule/graph.hpp>
@@ -119,6 +119,6 @@ namespace mudock {
                                      std::vector<int> frag_masks,
                                      std::vector<int> frag_start_indexes,
                                      std::vector<int> frag_stop_indexes,
-                                     const fragments<static_containers>& ligand_fragments);
+                                     const static_molecule& ligand);
 
 } // namespace mudock
