@@ -1,6 +1,7 @@
 #pragma once
 
 #include <mudock/grid.hpp>
+#include <mudock/grid/grid_map.hpp>
 #include <mudock/molecule.hpp>
 #include <mudock/type_alias.hpp>
 #include <span>

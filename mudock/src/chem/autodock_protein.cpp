@@ -183,7 +183,7 @@ namespace mudock {
   hbond_geometries compute_hbon_geometries(const std::span<const fp_type> x,
                                            const std::span<const fp_type> y,
                                            const std::span<const fp_type> z,
-                                           const std::span<const std::size_t> hbond,
+                                           const std::span<const int> hbond,
                                            const std::span<const element> elements,
                                            const molecule_graph_type& graph) {
     const auto num_atoms = x.size();
@@ -549,5 +549,5 @@ namespace mudock {
 
       return result;
     }
-
-  } // namespace mudock
+  }
+} // namespace mudock
