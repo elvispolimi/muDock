@@ -88,8 +88,8 @@ int main(int argc, char* argv[]) {
 
       mudock::parse(*ligand, ligand_path);
       const auto ob_mol = mudock::parser(ligand_path);
-      convert<mudock::openbabel::pdbqt_rotate_check>(*ligand, ob_mol);
-      mudock::openbabel::apply_autodock_forcefield(*ligand, ligand_path);
+      convert<mudock::pdbqt_rotate_check>(*ligand, ob_mol);
+      mudock::apply_autodock_forcefield_pdbqt(*ligand, ligand_path);
     } else if (line.find(SCORE_TOKEN) != std::string::npos) {
       std::stringstream ss{line};
       std::string _;

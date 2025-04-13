@@ -1,11 +1,10 @@
-#include "mudock/format/ob_wrapper.hpp"
-
 #include <boost/program_options.hpp>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <memory>
 #include <mudock/chem/ligand_maps.hpp>
+#include <mudock/format.hpp>
 #include <mudock/format/pdbqt.hpp>
 #include <mudock/grid/grid_map.hpp>
 #include <mudock/log.hpp>
@@ -55,7 +54,7 @@ int main(int argc, char* argv[]) {
 
   parse(protein, pdbqt_path);
 
-  mudock::openbabel::apply_autodock_forcefield(protein, pdbqt_path);
+  mudock::apply_autodock_forcefield_pdbqt(protein, pdbqt_path);
 
   //mudock::apply_autodock_forcefield(protein);
   const auto grid_atom_maps    = generate_atom_grid_maps(protein);

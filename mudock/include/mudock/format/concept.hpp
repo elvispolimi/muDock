@@ -1,8 +1,8 @@
 #pragma once
 
 #include <concepts>
+#include <iostream>
 #include <mudock/molecule.hpp>
-#include <ostream>
 #include <string_view>
 
 namespace mudock {
