@@ -32,7 +32,7 @@ inline auto read_from_stream(stream_type&& in) {
 constexpr auto is_debug() {
   // TODO this should work only with CMAKE
 #ifdef DEBUG_MODE
-  return true;
+  return false;
 #else
   return false;
 #endif

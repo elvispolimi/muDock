@@ -17,7 +17,7 @@
 
 template<class T>
 inline T round3dp(const T x) {
-  return ((std::floor((x) * 1000.0 + 0.5)) / 1000.0);
+  return ((std::floor((x) *T{1000.0} + T{0.5})) / T{1000.0});
 }
 
 struct fld_tokens {

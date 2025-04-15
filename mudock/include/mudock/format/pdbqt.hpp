@@ -16,13 +16,13 @@ namespace mudock {
   template<class molecule_type>
     requires is_molecule<molecule_type>
   void apply_autodock_forcefield_pdbqt(molecule_type&& molecule, const std::filesystem::path input_path) {
-    const auto format = parse_supported_format(input_path);
+    [[maybe_unused]] const auto format = parse_supported_format(input_path);
     assert(format == supported_format::PDBQT);
 
     const auto desc = read_from_stream(std::ifstream(input_path));
     std::stringstream desc_s{desc};
 
-    const std::size_t num_atoms = molecule.num_atoms();
+    [[maybe_unused]] const std::size_t num_atoms = molecule.num_atoms();
 
     std::size_t index = 0;
     std::string line;

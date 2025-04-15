@@ -13,6 +13,7 @@ namespace mudock {
                                                  const fp_type offset_z) {
     // Define SIMD type for fp_type (e.g., float or double)
     const HWY_FULL(fp_type) d;
+    const auto num_loops = static_cast<size_t>((num_atoms + +Lanes(d) - 1) / Lanes(d));
 
     // Load offsets as SIMD vectors
     const auto v_offset_x = Set(d, offset_x);
@@ -20,7 +21,7 @@ namespace mudock {
     const auto v_offset_z = Set(d, offset_z);
 
     // Process in SIMD lanes
-    for (int i = 0; i <= num_atoms; i += Lanes(d)) {
+    for (int i = 0; i < num_loops * Lanes(d); i += Lanes(d)) {
       const auto remaining = num_atoms - i;
       // Load elements from x, y, and z arrays
       auto vx = LoadN(d, x + i, remaining);
@@ -28,9 +29,9 @@ namespace mudock {
       auto vz = LoadN(d, z + i, remaining);
 
       // Add offsets to each component
-      vx = hwy::HWY_NAMESPACE::Add(vx, v_offset_x);
-      vy = hwy::HWY_NAMESPACE::Add(vy, v_offset_y);
-      vz = hwy::HWY_NAMESPACE::Add(vz, v_offset_z);
+      vx = Add(vx, v_offset_x);
+      vy = Add(vy, v_offset_y);
+      vz = Add(vz, v_offset_z);
 
       // Store results back into the arrays
       StoreN(vx, d, x + i, remaining);
@@ -47,8 +48,9 @@ namespace mudock {
                                               const fp_type angle_x,
                                               const fp_type angle_y,
                                               const fp_type angle_z) {
-    // Define SIMD type for fp_type (e.g., float or double)
+    // Define SIMD type for fp_type (e.g.,x, y, z, num_atoms, angle_x, angle_y, angle_z float or double)
     const HWY_FULL(fp_type) d;
+    const auto num_loops = static_cast<size_t>((num_atoms + +Lanes(d) - 1) / Lanes(d));
 
     // Compute the molecule center of mass
     // Initialize accumulators
@@ -57,7 +59,7 @@ namespace mudock {
     auto sum_z = Zero(d);
 
     // Process in SIMD lanes
-    for (int i = 0; i <= num_atoms; i += Lanes(d)) {
+    for (int i = 0; i < num_loops * Lanes(d); i += Lanes(d)) {
       const auto remaining = num_atoms - i;
       // Load elements from x, y, and z arrays
       auto vx = LoadN(d, x + i, remaining);
@@ -65,15 +67,15 @@ namespace mudock {
       auto vz = LoadN(d, z + i, remaining);
 
       // Accumulate sums
-      sum_x = hwy::HWY_NAMESPACE::Add(sum_x, vx);
-      sum_y = hwy::HWY_NAMESPACE::Add(sum_y, vy);
-      sum_z = hwy::HWY_NAMESPACE::Add(sum_z, vz);
+      sum_x = Add(sum_x, vx);
+      sum_y = Add(sum_y, vy);
+      sum_z = Add(sum_z, vz);
     }
 
     // Horizontal reduction to compute the final sums
-    const auto total_x = hwy::HWY_NAMESPACE::ReduceSum(d, sum_x);
-    const auto total_y = hwy::HWY_NAMESPACE::ReduceSum(d, sum_y);
-    const auto total_z = hwy::HWY_NAMESPACE::ReduceSum(d, sum_z);
+    const auto total_x = ReduceSum(d, sum_x);
+    const auto total_y = ReduceSum(d, sum_y);
+    const auto total_z = ReduceSum(d, sum_z);
     // Compute center of mass
     const fp_type c_x = total_x / num_atoms;
     const fp_type c_y = total_y / num_atoms;
@@ -112,35 +114,23 @@ namespace mudock {
     const auto v_m22 = Set(d, m22);
     // Process in SIMD lanes
     // TODO check the equal comparison
-    for (int i = 0; i <= num_atoms; i += Lanes(d)) {
+    for (int i = 0; i < num_loops * Lanes(d); i += Lanes(d)) {
       const auto remaining = num_atoms - i;
       // Load elements from x, y, and z arrays
       auto translate_x = LoadN(d, x + i, remaining);
       auto translate_y = LoadN(d, y + i, remaining);
       auto translate_z = LoadN(d, z + i, remaining);
 
-      translate_x = hwy::HWY_NAMESPACE::Sub(translate_x, v_c_x);
-      translate_y = hwy::HWY_NAMESPACE::Sub(translate_y, v_c_y);
-      translate_z = hwy::HWY_NAMESPACE::Sub(translate_z, v_c_z);
+      translate_x = Sub(translate_x, v_c_x);
+      translate_y = Sub(translate_y, v_c_y);
+      translate_z = Sub(translate_z, v_c_z);
 
-      const auto v_t_x = hwy::HWY_NAMESPACE::MulAdd(
-          translate_x,
-          v_m00,
-          hwy::HWY_NAMESPACE::MulAdd(translate_y,
-                                     v_m01,
-                                     hwy::HWY_NAMESPACE::MulAdd(translate_z, v_m02, v_c_x)));
-      const auto v_t_y = hwy::HWY_NAMESPACE::MulAdd(
-          translate_x,
-          v_m10,
-          hwy::HWY_NAMESPACE::MulAdd(translate_y,
-                                     v_m11,
-                                     hwy::HWY_NAMESPACE::MulAdd(translate_z, v_m12, v_c_y)));
-      const auto v_t_z = hwy::HWY_NAMESPACE::MulAdd(
-          translate_x,
-          v_m20,
-          hwy::HWY_NAMESPACE::MulAdd(translate_y,
-                                     v_m21,
-                                     hwy::HWY_NAMESPACE::MulAdd(translate_z, v_m22, v_c_z)));
+      const auto v_t_x =
+          MulAdd(translate_x, v_m00, MulAdd(translate_y, v_m01, MulAdd(translate_z, v_m02, v_c_x)));
+      const auto v_t_y =
+          MulAdd(translate_x, v_m10, MulAdd(translate_y, v_m11, MulAdd(translate_z, v_m12, v_c_y)));
+      const auto v_t_z =
+          MulAdd(translate_x, v_m20, MulAdd(translate_y, v_m21, MulAdd(translate_z, v_m22, v_c_z)));
 
       // Store results back into the arrays
       StoreN(v_t_x, d, x + i, remaining);
@@ -205,6 +195,9 @@ namespace mudock {
     // Define SIMD type for fp_type (e.g., float or double)
     const HWY_FULL(fp_type) d;
     const HWY_FULL(int) d_mask;
+
+    const auto num_loops = static_cast<size_t>((num_atoms + +Lanes(d) - 1) / Lanes(d));
+    ;
     // Factor
     const auto v_m00 = Set(d, m00);
     const auto v_m01 = Set(d, m01);
@@ -219,36 +212,29 @@ namespace mudock {
     const auto v_m22 = Set(d, m22);
     const auto v_m23 = Set(d, m23);
     // Process in SIMD lanes
-    for (int i = 0; i <= num_atoms; i += Lanes(d)) {
-      // for (int i = 0; i < num_atoms; ++i) {
+    for (int i = 0; i < num_loops * Lanes(d); i += Lanes(d)) {
       const auto remaining = num_atoms - i;
+
+      // Load integer mask values
+      const auto int_mask_values = LoadN(d_mask, frag_mask + i, remaining);
+      // Create mask by comparing to zero (assuming 0 means false, non-zero means true)
+      const auto int_mask = Ne(int_mask_values, Zero(d_mask));
+      // Convert integer mask to float mask
+      const auto m = RebindMask(d, int_mask);
+
       // Load elements from x, y, and z arrays
       auto v_x = LoadN(d, x + i, remaining);
       auto v_y = LoadN(d, y + i, remaining);
       auto v_z = LoadN(d, z + i, remaining);
 
-      const auto int_mask_vec = LoadN(d_mask, frag_mask + i, remaining);
-      // Convert integer mask (0 or 1) to a Highway boolean mask
-      const auto m_int = hwy::HWY_NAMESPACE::MaskFromVec(int_mask_vec);
-      const auto m     = hwy::HWY_NAMESPACE::RebindMask(d, m_int);
-
-      const auto v_t_x = hwy::HWY_NAMESPACE::MulAdd(
-          v_x,
-          v_m00,
-          hwy::HWY_NAMESPACE::MulAdd(v_y, v_m01, hwy::HWY_NAMESPACE::MulAdd(v_z, v_m02, v_m03)));
-      const auto v_t_y = hwy::HWY_NAMESPACE::MulAdd(
-          v_x,
-          v_m10,
-          hwy::HWY_NAMESPACE::MulAdd(v_y, v_m11, hwy::HWY_NAMESPACE::MulAdd(v_z, v_m12, v_m13)));
-      const auto v_t_z = hwy::HWY_NAMESPACE::MulAdd(
-          v_x,
-          v_m20,
-          hwy::HWY_NAMESPACE::MulAdd(v_y, v_m21, hwy::HWY_NAMESPACE::MulAdd(v_z, v_m22, v_m23)));
+      const auto v_t_x = MulAdd(v_x, v_m00, MulAdd(v_y, v_m01, MulAdd(v_z, v_m02, v_m03)));
+      const auto v_t_y = MulAdd(v_x, v_m10, MulAdd(v_y, v_m11, MulAdd(v_z, v_m12, v_m13)));
+      const auto v_t_z = MulAdd(v_x, v_m20, MulAdd(v_y, v_m21, MulAdd(v_z, v_m22, v_m23)));
 
       // Store results back into the arrays
-      hwy::HWY_NAMESPACE::BlendedStore(v_t_x, m, d, x + i);
-      hwy::HWY_NAMESPACE::BlendedStore(v_t_y, m, d, y + i);
-      hwy::HWY_NAMESPACE::BlendedStore(v_t_z, m, d, z + i);
+      BlendedStore(v_t_x, m, d, x + i);
+      BlendedStore(v_t_y, m, d, y + i);
+      BlendedStore(v_t_z, m, d, z + i);
     }
   }
 } // namespace mudock

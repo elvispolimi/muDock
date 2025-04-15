@@ -298,9 +298,9 @@ namespace mudock {
             }
           } /* ( ib != ia ) */
         /* if no bonds, something is wrong */
-        if (nbond == 0) {
-          error("Oxygen atom found with no bonded atoms.");
-        }
+        // if (nbond == 0) {
+        //   error("Oxygen atom found with no bonded atoms.");
+        // }
 
         /* one bond: Carbonyl Oxygen O=C-X */
 
