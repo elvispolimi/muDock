@@ -193,9 +193,9 @@ namespace mudock {
 
   void get_linearized_fragments_mask(const size_t num_atoms,
                                      const size_t num_rotamers,
-                                     std::vector<int> frag_masks,
-                                     std::vector<int> frag_start_indexes,
-                                     std::vector<int> frag_stop_indexes,
+                                     std::vector<int> &frag_masks,
+                                     std::vector<int> &frag_start_indexes,
+                                     std::vector<int> &frag_stop_indexes,
                                      const static_molecule &ligand) {
     auto graph = make_graph(ligand.get_bonds(), ligand.num_atoms());
     const auto ligand_fragments =

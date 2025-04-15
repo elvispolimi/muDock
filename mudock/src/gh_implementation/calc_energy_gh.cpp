@@ -1,4 +1,3 @@
-
 #include <hwy/contrib/math/math-inl.h>
 #include <hwy/highway.h>
 #include <mudock/chem/autodock_parameters.hpp>
@@ -89,6 +88,9 @@ namespace mudock {
                                              const fp_type* __restrict__ desolv_map) {
     const HWY_FULL(fp_type) d;
     const HWY_FULL(int) di;
+    const auto num_atom_loops     = static_cast<size_t>((num_atoms + Lanes(d) - 1) / Lanes(d));
+    const auto num_non_bond_loops = static_cast<size_t>((num_nonbond + Lanes(di) - 1) / Lanes(di));
+    static_assert(Lanes(d) == Lanes(di));
 
     fp_type elect_total_trilinear = 0;
     fp_type emap_total_trilinear  = 0;
@@ -118,8 +120,7 @@ namespace mudock {
     const auto map_index_x_xy_vec          = Set(di, map_index_x + map_index_xy);
     const auto map_index_x_xy_plus_one_vec = Set(di, map_index_x + map_index_xy + 1);
 
-#pragma clang loop interleave(enable) unroll(enable)
-    for (int index = 0; index < num_atoms; index += Lanes(d)) {
+    for (size_t index = 0; index < num_atom_loops * Lanes(di); index += Lanes(di)) {
       const auto remaining = num_atoms - index;
       // Load the x, y, z coordinates in a SIMD fashion
       auto x                 = LoadN(d, ligand_x + index, remaining);
@@ -268,8 +269,7 @@ namespace mudock {
       const auto coeff_desolv_vec            = Set(d, autodock_parameters::coeff_desolv);
       const auto reciprocal_sigma_square_vec = ApproximateReciprocal(Set(d, sigma_square));
 
-#pragma clang loop interleave(enable) unroll(enable)
-      for (int i = 0; i < num_nonbond; i += Lanes(di)) {
+      for (size_t i = 0; i < num_non_bond_loops * Lanes(d); i += Lanes(d)) {
         const auto remaining     = num_nonbond - i;
         const auto valid_nonbond = FirstN(d, remaining);
 

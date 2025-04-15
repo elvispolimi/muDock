@@ -61,7 +61,9 @@ namespace mudock {
 
     void operator()(static_molecule& ligand) {
       const auto seed =
-          static_cast<size_t>(std::chrono::high_resolution_clock::now().time_since_epoch().count());
+          configuration.seed.has_value()
+              ? configuration.seed.value()
+              : static_cast<size_t>(std::chrono::high_resolution_clock::now().time_since_epoch().count());
       // Place the molecule to the center of the target protein
       const int num_atoms = ligand.num_atoms();
       const auto x = ligand.get_x(), y = ligand.get_y(), z = ligand.get_z();

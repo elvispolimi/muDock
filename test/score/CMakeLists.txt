@@ -1,5 +1,5 @@
 # Define a function to add tests for each subfolder
-function(add_tests dir)
+function(add_adt_tests dir)
   # List all subdirectories in the given directory
   file(
     GLOB directories
@@ -14,14 +14,36 @@ function(add_tests dir)
       message(STATUS "${subdir}")
       # Define the test executable for the subdirectory (e.g., test_subfolder)
       add_test(NAME test_score_${subdir_name}
-               COMMAND test_score --dpf ${subdir}/${subdir_name}_epdb.dpf
+               COMMAND atd_test_score --dpf ${subdir}/${subdir_name}_epdb.dpf
       )# You can customize this
     endif()
   endforeach()
 endfunction()
+add_adt_tests("${CMAKE_SOURCE_DIR}/data")
 
-add_tests("${CMAKE_SOURCE_DIR}/data")
+function(add_tests dir backend device id)
+  # List all subdirectories in the given directory
+  file(
+    GLOB directories
+    LIST_DIRECTORIES true
+    ${dir}/*)
+
+  # Iterate through the subdirectories
+  foreach(subdir ${directories})
+    if(IS_DIRECTORY ${subdir}) # Make sure it's a directory
+      get_filename_component(subdir_name ${subdir} NAME) # Get the directory
+      # name
+      message(STATUS "${subdir}")
+      # Define the test executable for the subdirectory (e.g., test_subfolder)
+      add_test(
+        NAME test_score_${backend}_${subdir_name}
+        COMMAND
+          test_score -p ${subdir}/${subdir_name}_protein.pdb -l
+          ${subdir}/${subdir_name}_ligand.mol2 --use ${backend}:${device}:${id})
+    endif()
+  endforeach()
+endfunction()
 
 if(MUDOCK_ENABLE_GH)
-
+  add_tests("${CMAKE_SOURCE_DIR}/data" "GH" "CPU" "0")
 endif()
