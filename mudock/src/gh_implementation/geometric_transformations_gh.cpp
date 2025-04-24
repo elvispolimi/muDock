@@ -21,7 +21,7 @@ namespace mudock {
     const auto v_offset_z = Set(d, offset_z);
 
     // Process in SIMD lanes
-    for (int i = 0; i < num_loops * Lanes(d); i += Lanes(d)) {
+    for (int i = 0; i < static_cast<int>(num_loops * Lanes(d)); i += Lanes(d)) {
       const auto remaining = num_atoms - i;
       // Load elements from x, y, and z arrays
       auto vx = LoadN(d, x + i, remaining);
@@ -59,7 +59,7 @@ namespace mudock {
     auto sum_z = Zero(d);
 
     // Process in SIMD lanes
-    for (int i = 0; i < num_loops * Lanes(d); i += Lanes(d)) {
+    for (int i = 0; i < static_cast<int>(num_loops * Lanes(d)); i += Lanes(d)) {
       const auto remaining = num_atoms - i;
       // Load elements from x, y, and z arrays
       auto vx = LoadN(d, x + i, remaining);
@@ -114,7 +114,7 @@ namespace mudock {
     const auto v_m22 = Set(d, m22);
     // Process in SIMD lanes
     // TODO check the equal comparison
-    for (int i = 0; i < num_loops * Lanes(d); i += Lanes(d)) {
+    for (int i = 0; i < static_cast<int>(num_loops * Lanes(d)); i += Lanes(d)) {
       const auto remaining = num_atoms - i;
       // Load elements from x, y, and z arrays
       auto translate_x = LoadN(d, x + i, remaining);
@@ -212,7 +212,7 @@ namespace mudock {
     const auto v_m22 = Set(d, m22);
     const auto v_m23 = Set(d, m23);
     // Process in SIMD lanes
-    for (int i = 0; i < num_loops * Lanes(d); i += Lanes(d)) {
+    for (int i = 0; i < static_cast<int>(num_loops * Lanes(d)); i += Lanes(d)) {
       const auto remaining = num_atoms - i;
 
       // Load integer mask values
