@@ -71,9 +71,9 @@ namespace mudock {
     // Process full SIMD lanes
     size_t i = 0;
     for (; i + simd_size <= static_cast<size_t>(num_atoms); i += simd_size) {
-      const auto vx = batch_type::load_aligned(x + i);
-      const auto vy = batch_type::load_aligned(y + i);
-      const auto vz = batch_type::load_aligned(z + i);
+      const auto vx = batch_type::load_unaligned(x + i);
+      const auto vy = batch_type::load_unaligned(y + i);
+      const auto vz = batch_type::load_unaligned(z + i);
 
       sum_x += vx;
       sum_y += vy;

@@ -64,6 +64,7 @@ int main(int argc, char* argv[]) {
 
   mudock::apply_autodock_forcefield(*ligand);
 
+  mudock::info("Generating score reference ...");
   auto output_queue = std::make_shared<mudock::safe_stack<mudock::static_molecule>>();
   auto input_queue  = std::make_shared<mudock::safe_stack<mudock::static_molecule>>();
   input_queue->enqueue(std::make_unique<mudock::static_molecule>(mudock::static_molecule(*ligand)));
@@ -84,6 +85,7 @@ int main(int argc, char* argv[]) {
   ss >> reference_score;
 
   for (auto& conf: device_confs) {
+    mudock::info("Comparing reference with ", conf, " ...");
     input_queue->enqueue(std::make_unique<mudock::static_molecule>(mudock::static_molecule(*ligand)));
     {
       auto threadpool = mudock::threadpool();

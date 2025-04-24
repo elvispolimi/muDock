@@ -159,7 +159,7 @@ if(MUDOCK_ENABLE_CUDA)
       # Get the part after the _
       string(SUBSTRING ${GPU_ARCHITECTURE} ${UNDER_POS} 1000 CMAKE_CUDA_TEMP)
       string(SUBSTRING ${CMAKE_CUDA_TEMP} 1 1000 CMAKE_CUDA_ARCHITECTURES
-      )# Skip the colon
+      ) # Skip the colon
     else()
       message(FATAL_ERROR "${MUDOCK_GPU_ARCHITECTURES} cannot get CUDA GPUs.")
     endif()
@@ -431,5 +431,3 @@ endif()
 
 message(STATUS "//===---------------------------===//")
 message(STATUS "")
-
-message(STATUS "Listing variables containing 'openbabel' (case-insensitive):")
