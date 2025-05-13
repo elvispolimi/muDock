@@ -10,8 +10,6 @@ function(add_tests dir)
   foreach(subdir ${directories})
     if(IS_DIRECTORY ${subdir}) # Make sure it's a directory
       get_filename_component(subdir_name ${subdir} NAME) # Get the directory
-      # name
-      message(STATUS "${subdir}")
       # Define the test executable for the subdirectory (e.g., test_subfolder)
       add_test(NAME test_grid_${subdir_name}
                COMMAND test_grid --pdbqt ${subdir}/${subdir_name}_pocket.pdbqt
