@@ -10,12 +10,10 @@ function(add_adt_tests dir)
   foreach(subdir ${directories})
     if(IS_DIRECTORY ${subdir}) # Make sure it's a directory
       get_filename_component(subdir_name ${subdir} NAME) # Get the directory
-      # name
-      message(STATUS "${subdir}")
       # Define the test executable for the subdirectory (e.g., test_subfolder)
       add_test(NAME test_score_adt_${subdir_name}
                COMMAND test_score_adt --dpf ${subdir}/${subdir_name}_epdb.dpf
-      )# You can customize this
+      ) # You can customize this
     endif()
   endforeach()
 endfunction()
@@ -32,8 +30,6 @@ function(add_tests dir backend device id)
   foreach(subdir ${directories})
     if(IS_DIRECTORY ${subdir}) # Make sure it's a directory
       get_filename_component(subdir_name ${subdir} NAME) # Get the directory
-      # name
-      message(STATUS "${subdir}")
       # Define the test executable for the subdirectory (e.g., test_subfolder)
       add_test(
         NAME test_score_${backend}_${subdir_name}
