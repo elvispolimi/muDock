@@ -1,11 +1,11 @@
 #include <cstddef>
+#include <limits>
 #include <mudock/chem/autodock_parameters.hpp>
 #include <mudock/chem/grid_const.hpp>
 #include <mudock/chem/ligand_maps.hpp>
 #include <mudock/chem/mehler_solmajer.hpp>
 #include <mudock/cpp_implementation/calc_energy_gh.hpp>
 #include <mudock/type_alias.hpp>
-#include <limits>
 #include <stdint.h>
 #include <xsimd/xsimd.hpp>
 
@@ -82,7 +82,7 @@ namespace mudock {
 
     constexpr std::size_t simd_size     = batch_type::size;
     constexpr std::size_t simd_size_int = batch_int::size;
-    constexpr auto full_bitmask = std::numeric_limits<uint>::max() >> (sizeof(uint)*8-simd_size);
+    constexpr auto full_bitmask         = std::numeric_limits<uint>::max() >> (sizeof(uint) * 8 - simd_size);
 
     const auto num_atom_loops     = static_cast<size_t>((num_atoms + simd_size - 1) / simd_size);
     const auto num_non_bond_loops = static_cast<size_t>((num_nonbond + simd_size_int - 1) / simd_size_int);
@@ -116,18 +116,20 @@ namespace mudock {
     const auto map_index_x_xy_plus_one_vec = batch_int(map_index_x + map_index_xy + 1);
 
     for (std::size_t index = 0; index < num_atom_loops * simd_size; index += simd_size) {
-      const auto remaining      = static_cast<int>(index)<num_atoms? 0 :(num_atoms - index)%simd_size;
-      const auto remaining_mask = xsimd::batch_bool<batch_type::value_type>::from_mask(full_bitmask>>remaining);
+      const auto remaining =
+          static_cast<int>(index + simd_size) < num_atoms ? simd_size : (num_atoms - index) % simd_size;
+      const auto remaining_mask =
+          xsimd::batch_bool<fp_type>::from_mask(full_bitmask >> (simd_size - remaining));
 
       // Load coordinates
-      auto x           = xsimd::load_unaligned(ligand_x + index);
-      auto y           = xsimd::load_unaligned(ligand_y + index);
-      auto z           = xsimd::load_unaligned(ligand_z + index);
-      auto atom_charge = xsimd::load_unaligned(ligand_charge + index);
+      auto x = xsimd::load_unaligned(ligand_x + index);
+      auto y = xsimd::select(remaining_mask, xsimd::load_unaligned(ligand_y + index), batch_type{0});
+      auto z = xsimd::load_unaligned(ligand_z + index);
+      const auto atom_charge = xsimd::load_unaligned(ligand_charge + index);
 
       // Bounds check
       const mask_type outside_x = (x < min_x) | (x > max_x);
-      const mask_type outside_y = (y < min_y) | (y > max_y);
+      const mask_type outside_y = (y < min_y) | (x > max_y);
       const mask_type outside_z = (z < min_z) | (z > max_z);
       const mask_type outside   = (outside_x | outside_y | outside_z) & remaining_mask;
 
@@ -254,8 +256,10 @@ namespace mudock {
       const auto reciprocal_sigma_square_vec = batch_type(1.0) / batch_type(sigma_square);
 
       for (size_t i = 0; i < num_non_bond_loops * simd_size; i += simd_size) {
-        const auto remaining      = static_cast<int>(i)<num_nonbond? 0 :(num_nonbond - i)%simd_size;
-        const auto remaining_mask = xsimd::batch_bool<batch_type::value_type>::from_mask(full_bitmask>>remaining);
+        const auto remaining =
+            static_cast<int>(i + simd_size) < num_nonbond ? simd_size : (num_nonbond - i) % simd_size;
+        const auto remaining_mask =
+            xsimd::batch_bool<batch_type::value_type>::from_mask(full_bitmask >> (simd_size - remaining));
 
         const auto a1 = xsimd::load_unaligned(non_bond_list_a1 + i);
         const auto a2 = xsimd::load_unaligned(non_bond_list_a2 + i);
@@ -282,7 +286,7 @@ namespace mudock {
 
         const auto e_elec = charge_a1 * charge_a2 * elec_scale * coeff_estat_vec * r_dielectric;
 
-        elect_total_eintcal += xsimd::reduce_add(xsimd::select(remaining_mask,e_elec,batch_type{0}));
+        elect_total_eintcal += xsimd::reduce_add(xsimd::select(remaining_mask, e_elec, batch_type{0}));
 
         // Calculate desolv
         const auto ligand_vol_a1_v    = batch_type::gather(ligand_vol, a1);
@@ -297,32 +301,32 @@ namespace mudock {
                               xsimd::exp(half_fp_vec * reciprocal_sigma_square_vec * clamped_distance_two) *
                               nb_desolv;
 
-        dmap_total_eintcal += xsimd::reduce_add(xsimd::select(remaining_mask, e_desolv,batch_type{0}));
+        dmap_total_eintcal += xsimd::reduce_add(xsimd::select(remaining_mask, e_desolv, batch_type{0}));
 
         // Calculate vdW/Hb
         auto low_distance_mask = (clamped_distance_two < nbc2_vec);
         batch_type e_vdW_Hb(0.0);
         if (xsimd::any(low_distance_mask)) {
-            const auto xB_vec = batch_type::load_unaligned(xB_list + i);
-            const auto xab_cond = (xA_vec != xB_vec);
+          const auto xB_vec   = batch_type::load_unaligned(xB_list + i);
+          const auto xab_cond = (xA_vec != xB_vec);
 
-            if (xsimd::any(xab_cond)) {
-                const auto cA = batch_type::load_unaligned(cA_list + i);
-                const auto cB = batch_type::load_unaligned(cB_list + i);
+          if (xsimd::any(xab_cond)) {
+            const auto cA = batch_type::load_unaligned(cA_list + i);
+            const auto cB = batch_type::load_unaligned(cB_list + i);
 
-                const auto log_distance = xsimd::log(distance);
-                const auto rA = xsimd::exp(batch_type(xA_vec) * log_distance);
-                const auto rB = xsimd::exp(batch_type(xB_vec) * log_distance);
+            const auto log_distance = xsimd::log(distance);
+            const auto rA           = xsimd::exp(batch_type(xA_vec) * log_distance);
+            const auto rB           = xsimd::exp(batch_type(xB_vec) * log_distance);
 
-                e_vdW_Hb = xsimd::min(eintclamp_vec, cA / rA - cB / rB);
-                
-                // Apply xab_cond mask
-                e_vdW_Hb = xsimd::select(xab_cond, e_vdW_Hb, batch_type(0.0));
-            }
+            e_vdW_Hb = xsimd::min(eintclamp_vec, cA / rA - cB / rB);
+
+            // Apply xab_cond mask
+            e_vdW_Hb = xsimd::select(xab_cond, e_vdW_Hb, batch_type(0.0));
+          }
         }
 
         // Accumulate all lanes
-        emap_total_eintcal += xsimd::reduce_add(xsimd::select(remaining_mask,e_vdW_Hb,batch_type{0}));
+        emap_total_eintcal += xsimd::reduce_add(xsimd::select(remaining_mask, e_vdW_Hb, batch_type{0}));
       }
     }
 

@@ -54,6 +54,7 @@ int main(int argc, char* argv[]) {
 
   po::notify(vm);
 
+  mudock::info("Reading and parsing DPF file ", dpf_path, " ...");
   const auto desc = read_from_stream(std::ifstream(dpf_path));
   std::stringstream desc_s{desc};
 
@@ -137,6 +138,7 @@ int main(int argc, char* argv[]) {
                                    non_bond_list_a1,
                                    non_bond_list_a2);
 
+  mudock::info("Computing energy ...");
   const auto energy = mudock::calc_energy<mudock::cpu_vectorization::AUTO>(
       ligand->get_x().data(),
       ligand->get_y().data(),
@@ -153,8 +155,8 @@ int main(int argc, char* argv[]) {
       cA_v.data(),
       cB_v.data(),
       xB_v.data(),
-      electrostatic_map.get()->minimum.get_array().data(),
-      electrostatic_map.get()->maximum.get_array().data(),
+      electrostatic_map.get()->minimum_coord.get_array().data(),
+      electrostatic_map.get()->maximum_coord.get_array().data(),
       electrostatic_map.get()->center.get_array().data(),
       electrostatic_map.get()->index.size_x(),
       electrostatic_map.get()->index.size_xy(),
