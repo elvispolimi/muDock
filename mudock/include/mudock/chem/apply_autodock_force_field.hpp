@@ -10,7 +10,7 @@
 namespace mudock {
   template<class container_aliases>
     requires is_container_specification<container_aliases>
-  void apply_autodock_forcefield(molecule<container_aliases>& molecule, const bool reuse_adt = false) {
+  void apply_autodock_forcefield(molecule<container_aliases>& molecule) {
     // allocate memory for the support vectors required to allocate the atoms type
     const std::size_t num_atoms = molecule.num_atoms();
     typename container_aliases::template atoms_size<autodock_ff> mol_autodock_types;
@@ -23,8 +23,14 @@ namespace mudock {
     // create the graph of the molecule
     const auto graph = make_graph(molecule.get_bonds(), num_atoms);
 
-      // create the graph of the molecule
-      const auto graph = make_graph(molecule.get_bonds(), num_atoms);
+    // assign the autodock babel type
+    auto babel_type_span = make_span(mol_autodock_babel_types, num_atoms);
+    assign_autodock_babel_types(babel_type_span,
+                                molecule.get_x(),
+                                molecule.get_y(),
+                                molecule.get_z(),
+                                molecule.get_elements(),
+                                graph);
 
     // assign the autodock type
     assign_autodock_types(make_span(mol_autodock_types, num_atoms),

@@ -13,8 +13,8 @@ function(add_adt_tests dir)
       # name
       message(STATUS "${subdir}")
       # Define the test executable for the subdirectory (e.g., test_subfolder)
-      add_test(NAME test_score_${subdir_name}
-               COMMAND atd_test_score --dpf ${subdir}/${subdir_name}_epdb.dpf
+      add_test(NAME test_score_adt_${subdir_name}
+               COMMAND test_score_adt --dpf ${subdir}/${subdir_name}_epdb.dpf
       )# You can customize this
     endif()
   endforeach()
@@ -46,4 +46,7 @@ endfunction()
 
 if(MUDOCK_ENABLE_GH)
   add_tests("${CMAKE_SOURCE_DIR}/data" "GH" "CPU" "0")
+endif()
+if(MUDOCK_ENABLE_XSIMD)
+  add_tests("${CMAKE_SOURCE_DIR}/data" "XSIMD" "CPU" "0")
 endif()
