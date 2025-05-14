@@ -1,4 +1,5 @@
 #include <boost/program_options.hpp>
+#include <cassert>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
@@ -29,6 +30,8 @@ struct fld_tokens {
 };
 
 int main(int argc, char* argv[]) {
+  static_assert(std::is_same<mudock::fp_type, double>::value,
+                "Grid test requires mudock::fp_type to be double");
   namespace po                     = boost::program_options;
   std::filesystem::path pdbqt_path = std::filesystem::path{"protein.pdbqt"};
   std::filesystem::path fld_path   = std::filesystem::path{"maps.fld"};
@@ -105,7 +108,7 @@ int main(int argc, char* argv[]) {
       map_path = map_path.substr(std::strlen(fld_tokens::FILE_TOKEN));
       if (id == label_desol)
         reference_grid_map = &desolvation_map;
-      else if (id != label_eletr && id >= 0 && id < mudock::num_ligand_map_types()) {
+      else if (id != label_eletr && id > 0 && id <= mudock::num_ligand_map_types()) {
         reference_grid_map = &grid_atom_maps.get_atom_map(mudock::autodock_type_from_map(variables[id - 1]));
       } else if (id != label_eletr) {
         throw std::runtime_error("Unknown label/variables map in fld files");

@@ -13,8 +13,8 @@ function(add_tests dir)
       # Define the test executable for the subdirectory (e.g., test_subfolder)
       add_test(NAME test_grid_${subdir_name}
                COMMAND test_grid --pdbqt ${subdir}/${subdir_name}_pocket.pdbqt
-                       --autogrid ${subdir}/${subdir_name}_pocket.gpf
-      ) # You can customize this
+                       --autogrid ${subdir}/${subdir_name}_pocket.maps.fld
+      )# You can customize this
     endif()
   endforeach()
 endfunction()
