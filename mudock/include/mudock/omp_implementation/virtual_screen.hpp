@@ -1,7 +1,7 @@
 #pragma once
 
 #include <mudock/batch.hpp>
-#include <mudock/chem/ligand_maps.hpp>
+#include <mudock/chem/autodock_ligand_types.hpp>
 #include <mudock/cpp_implementation/chromosome.hpp>
 #include <mudock/grid.hpp>
 #include <mudock/knobs.hpp>

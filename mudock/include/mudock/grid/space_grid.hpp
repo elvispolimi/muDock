@@ -1,69 +1,87 @@
 #pragma once
 
 #include <cmath>
-#include <mudock/grid/mdvector.hpp>
+#include <mudock/grid/mdindex.hpp>
+#include <mudock/grid/mdspan.hpp>
 #include <mudock/grid/point3D.hpp>
 #include <mudock/type_alias.hpp>
+#include <type_traits>
 
 namespace mudock {
 
   // This class model 3D space grid, where each pixel is a floating point. It can be accessed using the
   // coordinates rather than indexes
-  class space_grid: public md_vector<fp_type, 3> {
-    fp_type _inv_resolution = 2;
+  // FIXME N==3 for the time being, requires making point<fp_type, n>.hpp operations parametric on the size of the point
+  template<typename C, typename T, std::size_t n>
+    requires((std::is_same<C, md_span<T, n>>::value || std::is_same<C, md_container<T, n>>::value) && n == 3)
+  class space_grid_t {
+    C md_data;
 
     // utility function that compute the flat index of the given point
-    [[nodiscard]] std::size_t get_index(const point3D& p) const {
-      return md_index<3>::to1D(static_cast<std::size_t>((p.x - _min.x) * _inv_resolution),
-                               static_cast<std::size_t>((p.y - _min.y) * _inv_resolution),
-                               static_cast<std::size_t>((p.z - _min.z) * _inv_resolution));
+    [[nodiscard]] std::size_t get_index(const point<fp_type, n>& p) const {
+      // return md_index<n>::to1D(static_cast<std::size_t>((p.x - _min.x) * _inv_resolution),
+      //                          static_cast<std::size_t>((p.y - _min.y) * _inv_resolution),
+      //                          static_cast<std::size_t>((p.z - _min.z) * _inv_resolution));
+      return md_index<n>::to1D((p - _min).truncate() * _inv_resolution);
     }
 
   public:
     // information about the 3D space that we are representing
-    point3D _min, _max, _center;
+    fp_type _inv_resolution = 2;
+    point<fp_type, n> _min, _max, _center;
 
-    // space grid constructors that try to figure out the space that we need to model
-    inline space_grid(): md_vector<fp_type, 3>(1, 1, 1), _min(0, 0, 0), _max(0, 0, 0), _center(0, 0, 0) {}
-    inline space_grid(const point3D min, const point3D max, const fp_type resolution)
-        : md_vector<fp_type, 3>(std::ceil(std::abs(min.x - max.x) / resolution),
-                                std::ceil(std::abs(min.y - max.y) / resolution),
-                                std::ceil(std::abs(min.z - max.z) / resolution)),
-          _inv_resolution(fp_type{1} / resolution),
-          _min(min),
-          _max(max),
-          _center((max.x + min.x / fp_type{2}) + min.x,
-                  (max.y + min.y / fp_type{2}) + min.y,
-                  (max.z + min.z / fp_type{2}) + min.z) {}
+    inline space_grid_t(): md_data() {}
+    space_grid_t(const point<fp_type, n> min,
+                 const point<fp_type, n> max,
+                 const point<fp_type, n> center,
+                 const fp_type resolution,
+                 const C data)
+      requires(std::is_same<C, md_span<T, n>>::value)
+        : md_data(data), _inv_resolution(fp_type{1} / resolution), _min(min), _max(max), _center(center) {}
+    space_grid_t(const point<fp_type, n> min,
+                 const point<fp_type, n> max,
+                 const point<fp_type, n> center,
+                 const fp_type resolution,
+                 const C data)
+      requires(std::is_same<C, md_container<T, n>>::value)
+        : md_data(data), _inv_resolution(fp_type{1} / resolution), _min(min), _max(max), _center(center) {}
 
     // function to check if the point fall inside the space grid
-    [[nodiscard]] inline bool is_outside(point3D p) {
-      return (p.x < _min.x) || (p.x > _max.x) || (p.y < _min.y) || (p.y > _max.y) || (p.z < _min.z) ||
-             (p.z > _max.z);
+    [[nodiscard]] inline bool is_outside(point<fp_type, n> p) {
+      // return (p.x < _min.x) || (p.x > _max.x) || (p.y < _min.y) || (p.y > _max.y) || (p.z < _min.z) ||
+      //        (p.z > _max.z);
+      return (p < _min) || (p > _max);
+    }
+
+    template<std::size_t index>
+    [[nodiscard]] std::size_t size() const {
+      return md_data.template size<index>();
     }
 
     // function to convert the index to the coordinate of the point
-    [[nodiscard]] inline auto to_coord(const std::size_t x, const std::size_t y, const std::size_t z) const {
-      return point3D{static_cast<fp_type>(x) * _inv_resolution + _min.x,
-                     static_cast<fp_type>(y) * _inv_resolution + _min.y,
-                     static_cast<fp_type>(z) * _inv_resolution + _min.z};
+    template<typename... I>
+    [[nodiscard]] inline auto to_coord(I... sizes) const
+      requires(sizeof...(sizes) == n)
+    {
+      return (point<T, n>{sizes...} * _inv_resolution) + _min;
     }
 
     // function to access data of the space grid w/out checking if the point is actually inside
-    [[nodiscard]] inline fp_type& get(point3D p) { return md_vector<fp_type, 3>::_data[get_index(p)]; }
-    [[nodiscard]] inline const fp_type& get(point3D p) const {
-      return md_vector<fp_type, 3>::_data[get_index(p)];
-    }
+    [[nodiscard]] inline fp_type& get(point<fp_type, n> p) { return md_data._data[get_index(p)]; }
+    [[nodiscard]] inline const fp_type& get(point<fp_type, n> p) const { return md_data._data[get_index(p)]; }
 
     // forward functions to access data using indexes instead of coordinates
     template<class... Y>
     [[nodiscard]] inline fp_type& get(Y&&... indexes) {
-      return md_vector<fp_type, 3>::get(indexes...);
+      return md_data.get(indexes...);
     }
     template<class... Y>
     [[nodiscard]] inline const fp_type& get(Y&&... indexes) const {
-      return md_vector<fp_type, 3>::get(indexes...);
+      return md_data.get(indexes...);
     }
   };
+
+  using space_grid_view = space_grid_t<md_span<fp_type, 3>, fp_type, 3>;
+  using space_grid      = space_grid_t<md_container<std::vector<fp_type>, 3>, std::vector<fp_type>, 3>;
 
 } // namespace mudock

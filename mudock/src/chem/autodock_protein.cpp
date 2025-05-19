@@ -1,16 +1,33 @@
+#include "mudock/grid/space_grid.hpp"
+#include "mudock/utils.hpp"
+
 #include <algorithm>
 #include <array>
 #include <cassert>
-#include <cstdint>
-#include <limits>
 #include <mudock/chem/autodock_parameters.hpp>
 #include <mudock/chem/autodock_protein.hpp>
 #include <mudock/grid.hpp>
-#include <numeric>
 #include <stdexcept>
 #include <vector>
 
 namespace mudock {
+
+  autodock_protein::autodock_protein(const point3D min, const point3D max, const fp_type resolution)
+      : index(static_cast<int>(std::ceil(std::abs(min.x - max.x) / resolution)),
+              static_cast<int>(std::ceil(std::abs(min.y - max.y) / resolution)),
+              static_cast<int>(std::ceil(std::abs(min.z - max.z) / resolution))),
+        data(index.flat_size() * get_num_map) {
+    const point3D center{(max.x + min.x / fp_type{2}) + min.x,
+                         (max.y + min.y / fp_type{2}) + min.y,
+                         (max.z + min.z / fp_type{2}) + min.z};
+    constexpr_for<0, get_num_map, 1>([&](const auto i) {
+      map[i] = space_grid_view{min,
+                               max,
+                               center,
+                               resolution,
+                               data.get_slice(md_index<1>(index.flat_size() * i), index)};
+    });
+  };
 
   //===------------------------------------------------------------------------------------------------------
   // Global parameters for deriving the pre-computation grid
@@ -191,7 +208,7 @@ namespace mudock {
     assert(z.size() == num_atoms);
     assert(hbond.size() == num_atoms);
     assert(elements.size() == num_atoms);
-    auto result                       = hbond_geometries{num_atoms};
+    auto adt_protein                  = hbond_geometries{num_atoms};
     const auto [atom_begin, atom_end] = boost::vertices(graph);
     for (auto it = atom_begin; it != atom_end; ++it) {
       const auto atom_index  = graph[*it].atom_index;
@@ -212,13 +229,13 @@ namespace mudock {
           if (d2 < fp_type{1.9}) {
             const auto neigh_element = elements[neigh_index];
             if (neigh_element == element::O || neigh_element == element::S) {
-              result.exp[atom_index]      = 4;
-              result.disorder[atom_index] = 1;
+              adt_protein.exp[atom_index]      = 4;
+              adt_protein.disorder[atom_index] = 1;
             } else {
-              result.exp[atom_index]      = 2;
-              result.disorder[atom_index] = 1;
+              adt_protein.exp[atom_index]      = 2;
+              adt_protein.disorder[atom_index] = 1;
             }
-            result.vector1[atom_index] = normalize(diff);
+            adt_protein.vector1[atom_index] = normalize(diff);
           }
         }
       } else if (hbond_value == std::size_t{5}) { // ----------------------------------  A2 oxygen
@@ -265,8 +282,8 @@ namespace mudock {
           // so we need to explore the neighbor's neighbor for Carbonyl Oxygen O=C-X
           if (elements[neigh1_index] != element::C) [[unlikely]]
             throw std::runtime_error("The original autogrid was not expecting a non C atom with a O");
-          result.vector1[atom_index] = normalize(difference(atom_point, std::as_const(neigh1_point)));
-          auto found                 = false;
+          adt_protein.vector1[atom_index] = normalize(difference(atom_point, std::as_const(neigh1_point)));
+          auto found                      = false;
           const auto [c_neigh_begin, c_neigh_end] = boost::out_edges(neigh1_vertex, graph);
           for (auto c_neigh = c_neigh_begin; c_neigh != c_neigh_end; ++c_neigh) {
             const auto c_neigh_index   = graph[c_neigh->m_target].atom_index;
@@ -278,8 +295,8 @@ namespace mudock {
                 (c_d2 < fp_type{2.69} && c_neigh_element == element::H)) {
               found = true;
               // C=O cross C-X gives the lone pair plane normal
-              result.vector2[atom_index] =
-                  normalize(cross_product(std::as_const(result.vector1[atom_index]), c_neigh_point));
+              adt_protein.vector2[atom_index] =
+                  normalize(cross_product(std::as_const(adt_protein.vector1[atom_index]), c_neigh_point));
             }
           }
           if (!found) [[unlikely]]
@@ -289,14 +306,14 @@ namespace mudock {
           const auto neigh1_element = elements[neigh1_index];
           const auto neigh2_element = elements[neigh2_index];
           if (neigh1_element == element::H && neigh2_element == element::C) {
-            result.vector1[atom_index] = normalize(difference(atom_point, neigh1_point));
+            adt_protein.vector1[atom_index] = normalize(difference(atom_point, neigh1_point));
           } else if (neigh1_element == element::C && neigh2_element == element::H) {
-            result.vector1[atom_index] = normalize(difference(atom_point, neigh2_point));
+            adt_protein.vector1[atom_index] = normalize(difference(atom_point, neigh2_point));
           } else if (neigh1_element == element::H && neigh2_element == element::H) {
-            result.vector2[atom_index] = normalize(difference(neigh2_point, neigh1_point));
-            const auto p               = scale(std::as_const(result.vector2[atom_index]),
+            adt_protein.vector2[atom_index] = normalize(difference(neigh2_point, neigh1_point));
+            const auto p                    = scale(std::as_const(adt_protein.vector2[atom_index]),
                                  sum_components(difference(atom_point, std::as_const(neigh1_point))));
-            result.vector1[atom_index] = normalize(add(p, atom_point));
+            adt_protein.vector1[atom_index] = normalize(add(p, atom_point));
           } else [[unlikely]]
             throw std::runtime_error("The original autogrid was not expecting a non C atom");
         }
@@ -345,18 +362,18 @@ namespace mudock {
         else if (bond_counter == std::size_t{1}) { // Azide Nitrogen N=C bond vector
           if (elements[neigh1_index] != element::C) [[unlikely]]
             throw std::runtime_error("The original autogrid was not expecting a non C atom with an N");
-          result.vector1[atom_index] = normalize(difference(atom_point, neigh1_point));
+          adt_protein.vector1[atom_index] = normalize(difference(atom_point, neigh1_point));
         } else if (bond_counter == std::size_t{2}) { // two bonds: X1-N=X2
-          result.vector1[atom_index] = normalize(
+          adt_protein.vector1[atom_index] = normalize(
               difference(atom_point, scale(add(neigh1_point, neigh2_point), fp_type{1} / fp_type{2})));
         } else if (bond_counter == std::size_t{3}) { // three bonds
-          const auto p1              = add(std::as_const(neigh1_point), std::as_const(neigh2_point));
-          const auto p2              = scale(add(p1, std::as_const(neigh3_point)), fp_type{1} / fp_type{3});
-          result.vector1[atom_index] = normalize(difference(atom_point, p2));
+          const auto p1 = add(std::as_const(neigh1_point), std::as_const(neigh2_point));
+          const auto p2 = scale(add(p1, std::as_const(neigh3_point)), fp_type{1} / fp_type{3});
+          adt_protein.vector1[atom_index] = normalize(difference(atom_point, p2));
         }
       }
     }
-    return result;
+    return adt_protein;
   }
 
   //===------------------------------------------------------------------------------------------------------
@@ -371,14 +388,14 @@ namespace mudock {
     static constexpr auto rk       = fp_type{7.7839};
     static constexpr auto lambda_B = -lambda * B;
 
-    std::array<fp_type, num_radius_tick> result;
-    result[0] = fp_type{1};
+    std::array<fp_type, num_radius_tick> adt_protein;
+    adt_protein[0] = fp_type{1};
     for (std::size_t radius_index = 0; radius_index < num_radius_tick; ++radius_index) {
       const auto radius =
           static_cast<fp_type>(radius_index) * (num_radius_angstrom / static_cast<fp_type>(num_radius_tick));
-      result[radius_index] = fp_type{332} / (A + B / (fp_type{1} + rk * std::exp(lambda_B * radius)));
+      adt_protein[radius_index] = fp_type{332} / (A + B / (fp_type{1} + rk * std::exp(lambda_B * radius)));
     }
-    return result;
+    return adt_protein;
   }
 
   //===------------------------------------------------------------------------------------------------------
@@ -429,41 +446,34 @@ namespace mudock {
         compute_hbon_geometries(x, y, z, protein.get_num_hbond(), protein.get_elements(), graph);
 
     // declare the maps that will describe the protein
-    autodock_protein result;
-
-    // allocate memory for the different grids
-    result.electrostatic = space_grid(min, max, resolution);
-    result.desolvation   = space_grid(min, max, resolution);
-    for (const auto element: target_atom_types) {
-      result.atom_map.emplace(element, space_grid(min, max, resolution));
-    }
+    autodock_protein adt_protein{min, max, resolution};
 
     // get the remaining protein information
     const auto charge     = protein.get_charge();
     const auto volume     = protein.get_vol();
     const auto elements   = protein.get_elements();
     const auto num_hbonds = protein.get_num_hbond();
-    const auto size_x     = result.electrostatic.size<0>();
-    const auto size_y     = result.electrostatic.size<1>();
-    const auto size_z     = result.electrostatic.size<2>();
+    const auto size_x     = adt_protein.get_eletrostatic().size<0>();
+    const auto size_y     = adt_protein.get_eletrostatic().size<1>();
+    const auto size_z     = adt_protein.get_eletrostatic().size<2>();
     for (std::size_t index_z = 0; index_z < size_z; ++index_z) {
       for (std::size_t index_y = 0; index_y < size_y; ++index_y) {
         for (std::size_t index_x = 0; index_x < size_x; ++index_x) {
           // get the voxel point
-          const auto voxel_point = result.electrostatic.to_coord(index_x + half_resolution,
-                                                                 index_y + half_resolution,
-                                                                 index_z + half_resolution);
+          const auto voxel_point = adt_protein.get_eletrostatic().to_coord(index_x + half_resolution,
+                                                                           index_y + half_resolution,
+                                                                           index_z + half_resolution);
 
           // add electrostatic and desolvation energy + find the nearest Hbond
           auto nearest_H_index      = std::size_t{0};
-          auto nearest_H_distance   = distance(point3D{x[0], y[0], z[0]}, point3D{voxel_point});
+          auto nearest_H_distance   = point3D{x[0], y[0], z[0]}.distance(voxel_point);
           auto nearest_H_valid      = num_hbonds[0] == 1 || num_hbonds[0] == 2;
           auto electrostatic_energy = fp_type{0};
           auto desolvation_energy   = fp_type{0};
           for (std::size_t i = 0; i < num_atoms; ++i) {
             // compute properties of the given atom
-            const auto atom_point = point3D{x[i], y[i], z[i]};
-            const auto d          = distance(atom_point, voxel_point);
+            const auto atom_point = point<fp_type, 3>{x[i], y[i], z[i]};
+            const auto d          = atom_point.distance(voxel_point);
             const auto inv_d      = fp_type{1} / d;
             const auto inv_dmax   = fp_type{1} / std::max(fp_type{0.5}, d);
 
@@ -489,18 +499,18 @@ namespace mudock {
           }
 
           // commit the values in the actual grid maps
-          result.electrostatic.get(index_x, index_y, index_z) = electrostatic_energy;
-          result.desolvation.get(index_x, index_y, index_z)   = desolvation_energy;
+          adt_protein.get_eletrostatic().get(index_x, index_y, index_z) = electrostatic_energy;
+          adt_protein.get_desolvation().get(index_x, index_y, index_z)  = desolvation_energy;
 
           // find out the Hbond parameters
           auto racc = fp_type{1}, rdon = fp_type{1}, Hramp = fp_type{1}, cos_theta = fp_type{0};
           if (nearest_H_valid) {
             for (std::size_t i = 0; i < num_atoms; ++i) {
               const auto atom_point = point3D{x[i], y[i], z[i]};
-              const auto diff       = difference(atom_point, voxel_point);
+              const auto diff       = atom_point - voxel_point;
               switch (num_hbonds[i]) {
                 case std::size_t{2}:
-                  cos_theta = -sum_components(product(diff, vector1[i]));
+                  cos_theta = -diff.product(vector1[i]).sum_components();
                   if (cos_theta <= fp_type{0}) {
                     racc = fp_type{0};
                   } else {
@@ -526,7 +536,7 @@ namespace mudock {
                   break;
 
                 case std::size_t{4}:
-                  cos_theta = -sum_components(product(diff, vector1[i]));
+                  cos_theta = -diff.product(vector1[i]).sum_components();
                   if (cos_theta <= fp_type{0}) {
                     rdon = fp_type{0};
                   } else {
@@ -546,8 +556,7 @@ namespace mudock {
           }
         }
       }
-
-      return result;
     }
+    return adt_protein;
   }
 } // namespace mudock

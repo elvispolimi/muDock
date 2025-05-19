@@ -3,7 +3,7 @@
 #include <cstdlib>
 #include <filesystem>
 #include <memory>
-#include <mudock/chem/ligand_maps.hpp>
+#include <mudock/chem/autodock_ligand_types.hpp>
 #include <mudock/cpp_implementation/vectorization.hpp>
 #include <mudock/cpp_implementation/weed_bonds.hpp>
 #include <mudock/format/ob_wrapper.hpp>
