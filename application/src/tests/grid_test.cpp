@@ -1,10 +1,13 @@
+#include "mudock/chem/autodock_protein.hpp"
+#include "mudock/grid/space_grid.hpp"
+
 #include <boost/program_options.hpp>
 #include <cassert>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <memory>
-#include <mudock/chem/ligand_maps.hpp>
+#include <mudock/chem/autodock_ligand_types.hpp>
 #include <mudock/format.hpp>
 #include <mudock/format/pdbqt.hpp>
 #include <mudock/grid/grid_map.hpp>
@@ -60,14 +63,16 @@ int main(int argc, char* argv[]) {
   mudock::apply_autodock_forcefield_pdbqt(protein, pdbqt_path);
 
   //mudock::apply_autodock_forcefield(protein);
-  const auto grid_atom_maps    = generate_atom_grid_maps(protein);
-  const auto electrostatic_map = generate_electrostatic_grid_map(protein);
-  const auto desolvation_map   = generate_desolvation_grid_map(protein);
+  // const auto grid_atom_maps    = generate_atom_grid_maps(protein);
+  // const auto electrostatic_map = generate_electrostatic_grid_map(protein);
+  // const auto desolvation_map   = generate_desolvation_grid_map(protein);
+  auto graph                           = make_graph(protein.get_bonds(), protein.num_atoms());
+  mudock::autodock_protein protein_adt = mudock::make_autodock_protein(protein, graph);
 
   const auto desc = read_from_stream(std::ifstream(fld_path));
   std::stringstream desc_s{desc};
 
-  std::array<mudock::ligand_map_types, mudock::num_ligand_map_types()> variables;
+  std::array<mudock::autodock_ligand_ff, mudock::num_autodock_ligand_types()> variables;
   int label       = 0;
   int label_eletr = 0;
   int label_desol = 0;
@@ -103,22 +108,28 @@ int main(int argc, char* argv[]) {
       std::istringstream stream(line);
       std::string token, map_path;
       stream >> token >> id >> map_path >> token;
-      const mudock::grid_map* reference_grid_map = &electrostatic_map;
+      const mudock::space_grid_view* reference_grid_map = &protein_adt.get_eletrostatic();
 
       map_path = map_path.substr(std::strlen(fld_tokens::FILE_TOKEN));
       if (id == label_desol)
-        reference_grid_map = &desolvation_map;
-      else if (id != label_eletr && id > 0 && id <= mudock::num_ligand_map_types()) {
-        reference_grid_map = &grid_atom_maps.get_atom_map(mudock::autodock_type_from_map(variables[id - 1]));
+        reference_grid_map = &protein_adt.get_desolvation();
+      else if (id != label_eletr && id > 0 && id <= mudock::num_autodock_ligand_types()) {
+        reference_grid_map = &protein_adt.get_atom_map(variables[id - 1]);
       } else if (id != label_eletr) {
         throw std::runtime_error("Unknown label/variables map in fld files");
       }
       mudock::grid_map autogrid_map = load_autogrid_map(map_path);
       // Compare eletrostatic map
-      for (int k = 0; k < std::min(reference_grid_map->index.size_z(), autogrid_map.index.size_z()); ++k)
-        for (int j = 0; j < std::min(reference_grid_map->index.size_y(), autogrid_map.index.size_y()); ++j)
-          for (int i = 0; i < std::min(reference_grid_map->index.size_x(), autogrid_map.index.size_x()); ++i)
-            if (std::abs(static_cast<float>(round3dp(reference_grid_map->at(i, j, k))) -
+      for (int k = 0;
+           k < std::min(static_cast<int>(reference_grid_map->size<2>()), autogrid_map.index.size_z());
+           ++k)
+        for (int j = 0;
+             j < std::min(static_cast<int>(reference_grid_map->size<1>()), autogrid_map.index.size_y());
+             ++j)
+          for (int i = 0;
+               i < std::min(static_cast<int>(reference_grid_map->size<0>()), autogrid_map.index.size_x());
+               ++i)
+            if (std::abs(static_cast<float>(round3dp(reference_grid_map->get(i, j, k))) -
                          static_cast<float>(autogrid_map.at(i, j, k))) > float{0.01}) {
               mudock::error(std::format("Difference betweem maps {} at ({},{},{})", map_path, i, j, k));
               throw std::runtime_error("Error in Map");

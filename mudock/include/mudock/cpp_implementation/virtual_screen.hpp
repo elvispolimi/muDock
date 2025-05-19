@@ -108,7 +108,7 @@ namespace mudock {
       map_ligand_offsets.resize(num_atoms);
       for (int i = 0; i < num_atoms; i++)
         map_ligand_offsets[i] =
-            static_cast<int>(map_from_autodock_type(ligand.autodock_type(i))) * atom_map_size;
+            static_cast<int>(autodock_ligand_from_type(ligand.autodock_type(i))) * atom_map_size;
       // Simulate the population evolution for the given amount of time
       evaluate_fitness<vect>(x.data(),
                              y.data(),

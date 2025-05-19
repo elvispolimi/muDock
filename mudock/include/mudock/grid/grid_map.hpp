@@ -4,8 +4,8 @@
 #include <cmath>
 #include <cstring>
 #include <mudock/chem.hpp>
+#include <mudock/chem/autodock_ligand_types.hpp>
 #include <mudock/chem/grid_const.hpp>
-#include <mudock/chem/ligand_maps.hpp>
 #include <mudock/grid/mdindex.hpp>
 #include <mudock/grid/point3D.hpp>
 #include <mudock/log.hpp>
@@ -159,7 +159,7 @@ namespace mudock {
       assert(!maps.empty());
       map_size = maps[0].index.get_dim();
       fused_maps.resize(map_size * maps.size());
-      for (int i = 0; i < num_ligand_map_types(); ++i)
+      for (int i = 0; i < num_autodock_ligand_types(); ++i)
         std::memcpy(fused_maps.data() + map_size * i, maps[i].data(), sizeof(fp_type) * map_size);
       for (auto& map: maps) { grid_maps.emplace(map.get_atom_type(), std::move(map)); }
     }

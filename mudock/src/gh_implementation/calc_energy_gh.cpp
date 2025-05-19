@@ -2,7 +2,7 @@
 #include <hwy/highway.h>
 #include <mudock/chem/autodock_parameters.hpp>
 #include <mudock/chem/grid_const.hpp>
-#include <mudock/chem/ligand_maps.hpp>
+#include <mudock/chem/autodock_ligand_types.hpp>
 #include <mudock/chem/mehler_solmajer.hpp>
 #include <mudock/cpp_implementation/calc_energy_gh.hpp>
 #include <mudock/type_alias.hpp>

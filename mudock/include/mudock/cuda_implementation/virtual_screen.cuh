@@ -5,7 +5,7 @@
 #include <mudock/cuda_implementation/cuda_random.cuh>
 #include <mudock/cuda_implementation/cuda_wrapper.cuh>
 #include <mudock/cuda_implementation/device.cuh>
-#include <mudock/chem/ligand_maps.hpp>
+#include <mudock/chem/autodock_ligand_types.hpp>
 #include <mudock/grid.hpp>
 #include <mudock/knobs.hpp>
 #include <mudock/molecule.hpp>

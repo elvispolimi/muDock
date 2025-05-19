@@ -1,32 +1,137 @@
 #pragma once
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <mudock/grid/pi.hpp>
 #include <mudock/type_alias.hpp>
+#include <ranges>
 #include <type_traits>
 #include <utility>
 
 namespace mudock {
+  template<typename T, std::size_t n>
+  class point {
+    static_assert(n > 0, "A multi dimensional point must at least a dimension");
 
-  struct point3D {
-    fp_type x = fp_type{0.0};
-    fp_type y = fp_type{0.0};
-    fp_type z = fp_type{0.0};
+  protected:
+    // the storage of sizes and coefficients for dealing with md indexes
+    std::array<T, n> _sizes;
 
-    point3D(const fp_type _x, const fp_type _y, const fp_type _z): x(_x), y(_y), z(_z) {};
-    point3D(const fp_type v): x(v), y(v), z(v) {};
-    point3D() {};
+  public:
+    static constexpr auto num_dimensions = n;
 
-    ~point3D()                          = default;
-    point3D(point3D&& other)            = default;
-    point3D(const point3D& other)       = default;
-    point3D& operator=(point3D&& other) = default;
-    point3D& operator=(const point3D&)  = default;
+    ~point()                  = default;
+    point(point&& other)      = default;
+    point(const point& other) = default;
+    point& operator=(point&& other) {
+      _sizes = std::move(other._sizes);
+      return *this;
+    };
+    point& operator=(const point& other) {
+      _sizes = other._sizes;
+      return *this;
+    };
+
+    template<typename... I>
+    point(I... sizes)
+      requires(std::conjunction_v<std::is_same<T, I>...> && sizeof...(sizes) > 0 && sizeof...(sizes) <= n)
+    {
+      const auto size_list = std::initializer_list{static_cast<std::size_t>(sizes)...};
+      std::copy(std::cbegin(size_list), std::cend(size_list), std::begin(_sizes));
+    }
+
+    point() {};
+
+    template<std::size_t index>
+    [[nodiscard]] std::size_t size() const {
+      return _sizes[index];
+    }
+
+    bool operator<(const point<T, n>& other) const {
+      return [&]<std::size_t... I>(const std::array<T, n>& a,
+                                   const std::array<T, n>& b,
+                                   std::index_sequence<I...>) {
+        return ((a[I] < b[I]) || ...);
+      }(_sizes, other._sizes, std::make_index_sequence<n>{});
+    }
+    bool sum_components() const {
+      return [&]<std::size_t... I>(const std::array<T, n>& a, std::index_sequence<I...>) {
+        return (a[I] + ...);
+      }(_sizes, std::make_index_sequence<n>{});
+    }
+    bool operator>(const point<T, n>& other) const { return other < this; }
+    T distance(const point<T, n>& other) const {
+      return std::sqrt((*this - other).square().sum_components());
+    }
+    point<T, n> operator-(const point<T, n>& other) const {
+      return [&]<std::size_t... I>(const std::array<T, n>& a,
+                                   const std::array<T, n>& b,
+                                   std::index_sequence<I...>) {
+        return point<T, n>{(a[I] - b[I])...};
+      }(_sizes, other._sizes, std::make_index_sequence<n>{});
+    }
+    point<T, n> operator+(const point<T, n>& other) const {
+      return [&]<std::size_t... I>(const std::array<T, n>& a,
+                                   const std::array<T, n>& b,
+                                   std::index_sequence<I...>) {
+        return point<T, n>{(a[I] + b[I])...};
+      }(_sizes, other._sizes, std::make_index_sequence<n>{});
+    }
+    point<T, n> square() const {
+      return [&]<std::size_t... I>(const std::array<T, n>& a, std::index_sequence<I...>) {
+        return point<T, n>{(a[I] * a[I])...};
+      }(_sizes, std::make_index_sequence<n>{});
+    }
+
+    point<T, n> truncate() {
+      return [&]<std::size_t... I>(const std::array<T, n>& a, std::index_sequence<I...>) {
+        return point<T, n>{std::trunc(a[I])...};
+      }(_sizes, std::make_index_sequence<n>{});
+    }
+
+    point<T, n> operator*(const T scale) const {
+      return [&]<std::size_t... I>(const std::array<T, n>& a, std::index_sequence<I...>) {
+        return point<T, n>{(a[I] * scale)...};
+      }(_sizes, std::make_index_sequence<n>{});
+    }
+    point<T, n> operator*(const point<T, n>& other) const {
+      return [&]<std::size_t... I>(const std::array<T, n>& a,
+                                   const std::array<T, n>& b,
+                                   std::index_sequence<I...>) {
+        return point<T, n>{(a[I] * b[I])...};
+      }(_sizes, other._sizes, std::make_index_sequence<n>{});
+    }
+    template<typename A>
+    point<T, n> product(const A other) const {
+      return *this * other;
+    }
+  };
+
+  struct point3D: public point<fp_type, 3> {
+    fp_type& x = _sizes[0];
+    fp_type& y = _sizes[1];
+    fp_type& z = _sizes[2];
+
+    point3D(const fp_type _x, const fp_type _y, const fp_type _z): point<fp_type, 3>(_x, _y, _z) {};
+    point3D(const fp_type v): point<fp_type, 3>(v, v, v) {};
+    point3D(): point<fp_type, 3>() {};
+
+    ~point3D()                    = default;
+    point3D(point3D&& other)      = default;
+    point3D(const point3D& other) = default;
+    point3D& operator=(point3D&& other) {
+      point::operator=(other);
+      return *this;
+    }
+    point3D& operator=(const point3D& other) {
+      point::operator=(other);
+      return *this;
+    }
 
     inline std::array<fp_type, 3> get_array() const { return {x, y, z}; }
   };
-
+  // FIX ME make them deprected
   template<class point_type>
   [[nodiscard]] constexpr std::remove_reference_t<point_type> add(point_type&& a, point_type&& b) {
     return {a.x + b.x, a.y + b.y, a.z + b.z};

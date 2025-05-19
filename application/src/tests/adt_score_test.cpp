@@ -5,7 +5,7 @@
 #include <filesystem>
 #include <fstream>
 #include <memory>
-#include <mudock/chem/ligand_maps.hpp>
+#include <mudock/chem/autodock_ligand_types.hpp>
 #include <mudock/cpp_implementation/weed_bonds.hpp>
 #include <mudock/format/ob_wrapper.hpp>
 #include <mudock/format/pdbqt.hpp>
@@ -81,7 +81,7 @@ int main(int argc, char* argv[]) {
         size_t last_dot_pos        = map_path.rfind('.');
         size_t second_last_dot_pos = map_path.rfind('.', last_dot_pos - 1);
         const auto symbol = map_path.substr(second_last_dot_pos + 1, last_dot_pos - second_last_dot_pos - 1);
-        const auto map_type = mudock::autodock_type_from_map(mudock::parse_map_symbol(symbol));
+        const auto map_type = mudock::autodock_type_from_ligand(mudock::parse_map_symbol(symbol));
         grid_maps_unique.emplace_back(
             std::make_unique<mudock::grid_atom_map>(map_type, load_autogrid_map(map_path)));
       }
@@ -109,8 +109,8 @@ int main(int argc, char* argv[]) {
       grid_maps_unique.begin(),
       grid_maps_unique.end(),
       [](const std::unique_ptr<mudock::grid_atom_map>& a, const std::unique_ptr<mudock::grid_atom_map>& b) {
-        return static_cast<int>(map_from_autodock_type(a->get_atom_type())) <
-               static_cast<int>(map_from_autodock_type(b->get_atom_type())); // descending order
+        return static_cast<int>(autodock_ligand_from_type(a->get_atom_type())) <
+               static_cast<int>(autodock_ligand_from_type(b->get_atom_type())); // descending order
       });
 
   std::vector<mudock::grid_atom_map> grid_maps;
@@ -124,7 +124,7 @@ int main(int argc, char* argv[]) {
   map_ligand_offsets.resize(num_atoms);
   for (int i = 0; i < num_atoms; i++)
     map_ligand_offsets[i] =
-        static_cast<int>(map_from_autodock_type(ligand->autodock_type(i))) * atom_map_size;
+        static_cast<int>(autodock_ligand_from_type(ligand->autodock_type(i))) * atom_map_size;
 
   std::vector<int> non_bond_list_a1, non_bond_list_a2;
   std::vector<mudock::fp_type> cA_v, cB_v;

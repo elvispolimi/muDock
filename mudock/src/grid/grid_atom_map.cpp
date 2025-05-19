@@ -171,9 +171,9 @@ namespace mudock {
     // receptor_types.erase(std::remove(receptor_types.begin(), receptor_types.end(), mudock::autodock_ff::H));
 
     // Define the autodock ligand types
-    std::array<autodock_ff, mudock::num_ligand_map_types()> ligand_types;
+    std::array<autodock_ff, mudock::num_autodock_ligand_types()> ligand_types;
     for (std::size_t i = 0; i < ligand_types.size(); ++i)
-      ligand_types[i] = mudock::autodock_type_from_map(static_cast<mudock::ligand_map_types>(i));
+      ligand_types[i] = mudock::autodock_type_from_ligand(static_cast<mudock::autodock_ligand_ff>(i));
 
     for (auto ligand_type: ligand_types) {
       // grid_atom_maps.push_back({ligand_type, npts});

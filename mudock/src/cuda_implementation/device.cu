@@ -1,4 +1,4 @@
-#include <mudock/chem/ligand_maps.hpp>
+#include <mudock/chem/autodock_ligand_types.hpp>
 #include <mudock/cuda_implementation/device.cuh>
 #include <mudock/cuda_implementation/evaluate_fitness.cuh>
 
@@ -64,7 +64,7 @@ namespace mudock {
     init_texture_memory(*desolv_map.get(), desolv_tex);
 
     std::size_t index{0};
-    atom_texs.alloc(num_ligand_map_types());
+    atom_texs.alloc(num_autodock_ligand_types());
     for (auto& atom_tex: atom_texs.host) {
       const grid_map& grid_atom =
           grid_atom_maps.get()->get_atom_map(autodock_type_from_map(static_cast<ligand_map_types>(index)));

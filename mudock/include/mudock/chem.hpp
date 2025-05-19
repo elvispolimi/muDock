@@ -9,4 +9,4 @@
 #include <mudock/chem/bond_types.hpp>
 #include <mudock/chem/elements.hpp>
 #include <mudock/chem/grid_const.hpp>
-#include <mudock/chem/ligand_maps.hpp>
+#include <mudock/chem/autodock_ligand_types.hpp>

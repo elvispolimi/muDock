@@ -2,7 +2,7 @@
 #include <cstddef>
 #include <cstring>
 #include <hip/hip_runtime.h>
-#include <mudock/chem/ligand_maps.hpp>
+#include <mudock/chem/autodock_ligand_types.hpp>
 #include <mudock/cpp_implementation/center_of_mass.hpp>
 #include <mudock/cpp_implementation/geometric_transformations.hpp>
 #include <mudock/cpp_implementation/mutate.hpp>
@@ -105,7 +105,7 @@ namespace mudock {
     init_texture_memory(*desolv_map.get(), desolv_tex, stream);
 
     std::size_t index{0};
-    atom_texs.alloc(num_ligand_map_types());
+    atom_texs.alloc(num_autodock_ligand_types());
     for (auto &atom_tex: atom_texs.host) {
       const grid_map &grid_atom =
           grid_atom_maps.get()->get_atom_map(autodock_type_from_map(static_cast<ligand_map_types>(index)));

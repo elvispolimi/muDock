@@ -3,14 +3,17 @@
 #include <algorithm>
 #include <array>
 #include <cassert>
+#include <concepts>
 #include <cstdint>
 #include <initializer_list>
 #include <numeric>
 #include <stdexcept>
 #include <tuple>
+#include <type_traits>
 
 namespace mudock {
-
+  template<typename T>
+  concept Numeric = std::integral<std::remove_cvref_t<T>>;
   /**
    * This class converts a multidimensional index to a flat index and viceversa. The spinning direction is
    * the lefmost index, i.e. we use the following formula to compute the multindex
@@ -32,9 +35,14 @@ namespace mudock {
       _sizes.fill(1);
       _coefs.fill(1);
     }
+    ~md_index()                                = default;
+    md_index(md_index&& other)                 = default;
+    md_index(const md_index& other)            = default;
+    md_index& operator=(md_index&& other)      = default;
+    md_index& operator=(const md_index& other) = default;
 
     // otherwise we initialize the index as requested by the user
-    template<class... T>
+    template<Numeric... T>
     md_index(T&&... sizes) {
       static_assert(sizeof...(sizes) == n, "Mismatch between sizes and dimension numbers");
       const auto size_list = std::initializer_list{static_cast<std::size_t>(sizes)...};
@@ -44,7 +52,7 @@ namespace mudock {
     }
 
     // function to perform the index conversion
-    template<class... T>
+    template<Numeric... T>
     [[nodiscard]] std::size_t to1D(T&&... indexes) const {
       static_assert(sizeof...(indexes) == n, "Mismatch between indexes and dimension numbers");
       assert(is_inside(indexes...));
@@ -70,10 +78,19 @@ namespace mudock {
     [[nodiscard]] std::size_t size() const {
       return _sizes[index];
     }
+    [[nodiscard]] std::size_t size_x() const { return _sizes[0]; }
+    template<typename = std::enable_if<(n > 1)>>
+    [[nodiscard]] std::size_t size_y() const {
+      return _sizes[1];
+    }
+    template<typename = std::enable_if<(n > 2)>>
+    [[nodiscard]] std::size_t size_z() const {
+      return _sizes[2];
+    }
     [[nodiscard]] std::size_t flat_size() const { return _sizes[0] * _coefs[n - 1]; }
 
     // utility function to perform boundaries check
-    template<class... T>
+    template<Numeric... T>
     [[nodiscard]] auto is_inside(T&&... indexes) const {
       static_assert(sizeof...(indexes) == n, "Mismatch between indexes and dimension numbers");
       const auto index_list = std::initializer_list{static_cast<std::size_t>(indexes)...};
