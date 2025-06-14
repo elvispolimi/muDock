@@ -35,6 +35,7 @@ namespace mudock {
         for (int index_x = 0; index_x < npts.size_x(); ++index_x) {
           const fp_type coord_x = grid_minimum.x + index_x * grid_spacing;
           fp_type energy{0};
+
           for (int index = 0; index < receptor.num_atoms(); ++index) {
             const fp_type d = distance(point3D{receptor.x(index), receptor.y(index), receptor.z(index)},
                                        point3D{coord_x, coord_y, coord_z});

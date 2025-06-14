@@ -38,13 +38,18 @@ namespace mudock {
                  const C data)
       requires(std::is_same<C, md_span<T, n>>::value)
         : md_data(data), _inv_resolution(fp_type{1} / resolution), _min(min), _max(max), _center(center) {}
+    template<class... Y>
     space_grid_t(const point<fp_type, n> min,
                  const point<fp_type, n> max,
                  const point<fp_type, n> center,
                  const fp_type resolution,
-                 const C data)
-      requires(std::is_same<C, md_container<T, n>>::value)
-        : md_data(data), _inv_resolution(fp_type{1} / resolution), _min(min), _max(max), _center(center) {}
+                 Y&&... sizes)
+      requires(std::is_same<C, md_container<T, n>>::value && sizeof...(sizes) == n)
+        : md_data(sizes...),
+          _inv_resolution(fp_type{1} / resolution),
+          _min(min),
+          _max(max),
+          _center(center) {}
 
     // function to check if the point fall inside the space grid
     [[nodiscard]] inline bool is_outside(point<fp_type, n> p) {
@@ -64,6 +69,18 @@ namespace mudock {
       requires(sizeof...(sizes) == n)
     {
       return (point<T, n>{sizes...} * _inv_resolution) + _min;
+    }
+
+    [[nodiscard]] T x() const { return md_data.size_x(); }
+    [[nodiscard]] T y() const
+      requires(n > 1)
+    {
+      return md_data.size_y();
+    }
+    [[nodiscard]] T z() const
+      requires(n > 2)
+    {
+      return md_data.size_z();
     }
 
     // function to access data of the space grid w/out checking if the point is actually inside

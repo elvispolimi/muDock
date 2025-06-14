@@ -1,4 +1,5 @@
 #include <cstdio>
+#include <mudock/chem/autodock_grid_types.hpp>
 #include <mudock/chem/autodock_parameters.hpp>
 #include <mudock/chem/grid_const.hpp>
 #include <mudock/chem/mehler_solmajer.hpp>
@@ -49,12 +50,13 @@ namespace mudock {
                                                const fp_type* __restrict__ center,
                                                const int map_index_x,
                                                const int map_index_xy,
-                                               const fp_type* __restrict__ grid_maps,
-                                               const fp_type* __restrict__ electro_map,
-                                               const fp_type* __restrict__ desolv_map) {
+                                               const int map_index_xyz,
+                                               const fp_type* __restrict__ grid_maps) {
     fp_type elect_total_trilinear = 0;
     fp_type emap_total_trilinear  = 0;
     fp_type dmap_total_trilinear  = 0;
+    const fp_type* electro_map    = grid_maps + map_index_xyz * static_cast<int>(autodock_grid_type::ELEC);
+    const fp_type* desolv_map     = grid_maps + map_index_xyz * static_cast<int>(autodock_grid_type::DESOLV);
 
 #pragma omp simd
     for (int index = 0; index < num_atoms; ++index) {

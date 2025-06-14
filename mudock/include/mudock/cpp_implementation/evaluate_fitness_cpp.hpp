@@ -2,7 +2,7 @@
 
 #include <cstring>
 #include <memory>
-#include <mudock/chem/autodock_ligand_types.hpp>
+#include <mudock/chem/autodock_grid_types.hpp>
 #include <mudock/cpp_implementation/calc_energy.hpp>
 #include <mudock/cpp_implementation/chromosome.hpp>
 #include <mudock/cpp_implementation/mutate.hpp>
@@ -91,8 +91,6 @@ namespace mudock {
                         const fp_type* __restrict__ cB_list,
                         const int* __restrict__ xB_list,
                         const fp_type* __restrict__ grid_maps,
-                        const fp_type* __restrict__ electro_map,
-                        const fp_type* __restrict__ desolv_map,
                         const int num_generations,
                         const int population_size,
                         const int tournament_length,
@@ -102,6 +100,7 @@ namespace mudock {
                         const fp_type* __restrict__ center,
                         const int map_index_x,
                         const int map_index_xy,
+                        const int map_index_xyz,
                         individual* __restrict__ population_buffer1,
                         individual* __restrict__ population_buffer2,
                         const int seed) {
@@ -168,9 +167,8 @@ namespace mudock {
                                               center,
                                               map_index_x,
                                               map_index_xy,
-                                              grid_maps,
-                                              electro_map,
-                                              desolv_map);
+                                              map_index_xyz,
+                                              grid_maps);
         element.score     = energy; // dummy implementation to test the genetic
       }
       LIKWID_MARKER_STOP("GA");

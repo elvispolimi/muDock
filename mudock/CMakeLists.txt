@@ -16,7 +16,7 @@ list(
   "${header_path}/${header_prefix}/chem/autodock_protein.hpp"
   "${header_path}/${header_prefix}/chem/autodock_types.hpp"
   "${header_path}/${header_prefix}/chem/bond_types.hpp"
-  "${header_path}/${header_prefix}/chem/autodock_ligand_types.hpp"
+  "${header_path}/${header_prefix}/chem/autodock_grid_types.hpp"
   "${header_path}/${header_prefix}/chem/elements.hpp"
   "${header_path}/${header_prefix}/compute/device_names.hpp"
   "${header_path}/${header_prefix}/compute/parse_ids.hpp"
@@ -39,7 +39,6 @@ list(
   "${header_path}/${header_prefix}/format/ob_wrapper.hpp"
   "${header_path}/${header_prefix}/format/supported_format.hpp"
   "${header_path}/${header_prefix}/grid/mdindex.hpp"
-  "${header_path}/${header_prefix}/grid/mdcontainer.hpp"
   "${header_path}/${header_prefix}/grid/grid_map.hpp"
   "${header_path}/${header_prefix}/grid/pi.hpp"
   "${header_path}/${header_prefix}/grid/point3D.hpp"
@@ -79,7 +78,7 @@ list(
   "${source_path}/chem/autodock_protein.cpp"
   "${source_path}/chem/autodock_types.cpp"
   "${source_path}/chem/bond_types.cpp"
-  "${source_path}/chem/autodock_ligand_types.cpp"
+  "${source_path}/chem/autodock_grid_types.cpp"
   "${source_path}/chem/elements.cpp"
   "${source_path}/compute/parse_ids.cpp"
   "${source_path}/compute/reorder_buffer.cpp"
@@ -259,6 +258,10 @@ if(MUDOCK_ENABLE_XSIMD)
   target_include_directories(libmudock PUBLIC "${XSIMD_INCLUDE_DIR}")
 endif()
 
+if(MUDOCK_ENABLE_OMP_SIMD)
+  target_compile_options(libmudock PRIVATE -fopenmp-simd)
+endif()
+
 # check if we need to activate the compilation flag that signals HIP
 if(MUDOCK_ENABLE_HIP)
   target_compile_definitions(libmudock PUBLIC MUDOCK_USE_HIP)
@@ -365,7 +368,7 @@ endif()
 
 # Profiling
 if(MUDOCK_ENABLE_LIKWID)
-  target_include_directories(libmudock PRIVATE ${LIKWID_INCLUDE_DIR})
+  target_include_directories(libmudock PUBLIC ${LIKWID_INCLUDE_DIR})
   add_definitions(-DLIKWID_PERFMON)
 endif()
 

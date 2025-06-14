@@ -16,7 +16,7 @@ namespace mudock {
     else
       throw std::runtime_error("Missing autodock type");
   }
-  const std::array<autodock_ff_description, 131> AUTODOCK_FF_DICTIONARY = {{
+  const std::array<autodock_ff_description, num_autodock_ff()> AUTODOCK_FF_DICTIONARY = {{
       {
           autodock_ff::H,
           "H",

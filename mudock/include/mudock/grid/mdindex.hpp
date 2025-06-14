@@ -4,7 +4,6 @@
 #include <array>
 #include <cassert>
 #include <concepts>
-#include <cstdint>
 #include <initializer_list>
 #include <numeric>
 #include <stdexcept>
@@ -73,12 +72,21 @@ namespace mudock {
       return result;
     }
 
+    [[nodiscard]] bool operator==(const md_index<n>& other) const {
+      return [&]<std::size_t... I>(const std::array<std::size_t, n>& a,
+                                   const std::array<std::size_t, n>& b,
+                                   std::index_sequence<I...>) {
+        return ((a[I] == b[I]) && ...);
+      }(_sizes, other._sizes, std::make_index_sequence<n>{});
+    }
+
     // utility functions to get sizes in the index
     template<std::size_t index>
     [[nodiscard]] std::size_t size() const {
       return _sizes[index];
     }
     [[nodiscard]] std::size_t size_x() const { return _sizes[0]; }
+
     template<typename = std::enable_if<(n > 1)>>
     [[nodiscard]] std::size_t size_y() const {
       return _sizes[1];
@@ -87,7 +95,13 @@ namespace mudock {
     [[nodiscard]] std::size_t size_z() const {
       return _sizes[2];
     }
-    [[nodiscard]] std::size_t flat_size() const { return _sizes[0] * _coefs[n - 1]; }
+
+    template<typename = std::enable_if<(n > 2)>>
+    [[nodiscard]] std::size_t size_xy() const {
+      return _coefs[2];
+    }
+
+    [[nodiscard]] std::size_t flat_size() const { return _sizes[n - 1] * _coefs[n - 1]; }
 
     // utility function to perform boundaries check
     template<Numeric... T>
@@ -97,7 +111,7 @@ namespace mudock {
       return std::none_of(
           std::begin(index_list),
           std::end(index_list),
-          [coef_it = std::cbegin(_coefs)](const auto index) mutable { return index >= *coef_it++; });
+          [size_it = std::cbegin(_sizes)](const auto index) mutable { return index >= *size_it++; });
     }
   };
 

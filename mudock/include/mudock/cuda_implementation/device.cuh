@@ -2,6 +2,7 @@
 
 #include <cuda_runtime.h>
 #include <memory>
+#include <mudock/chem/autodock_protein.hpp>
 #include <mudock/cuda_implementation/cuda_wrapper.cuh>
 #include <mudock/grid.hpp>
 
@@ -16,10 +17,7 @@ namespace mudock {
     cudaTextureObject_t electro_tex, desolv_tex;
     cuda_wrapper<std::vector, cudaTextureObject_t> atom_texs;
 
-    device(const std::size_t gpu_id,
-           std::shared_ptr<const grid_atom_mapper>& grid_atom_maps,
-           std::shared_ptr<const grid_map>& electro_map,
-           std::shared_ptr<const grid_map>& desolv_map);
+    device(const std::size_t gpu_id, const autodock_protein& adt_protein);
 
     cudaStream_t get_stream() const;
   };
