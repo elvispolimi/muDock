@@ -208,6 +208,8 @@ endif()
 
 # OpenMP
 option(MUDOCK_ENABLE_OMP "Enable the OpenMP kernel implementation" OFF)
+# OpenMP
+option(MUDOCK_ENABLE_OMP_SIMD "Enable the OpenMP SIMD optimizations" OFF)
 
 if(MUDOCK_ENABLE_OMP)
   if(NOT MUDOCK_ENABLE_HIP
@@ -352,6 +354,11 @@ if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64")
       "CPU Tune............................: ${MUDOCK_CPU_TUNE} (MUDOCK_CPU_TUNE)"
   )
 endif()
+
+message(
+  STATUS
+    "OpenMP SIMD.........................: ${MUDOCK_ENABLE_OMP_SIMD} (MUDOCK_ENABLE_OMP_SIMD)"
+)
 
 if(MUDOCK_ENABLE_TEST)
   message(

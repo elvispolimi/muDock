@@ -1,11 +1,11 @@
 #pragma once
 
 #include <memory>
+#include <mudock/chem/autodock_protein.hpp>
 #include <mudock/compute.hpp>
 #include <mudock/grid.hpp>
 #include <mudock/knobs.hpp>
 #include <mudock/molecule.hpp>
-#include <string_view>
 
 namespace mudock {
 
@@ -13,9 +13,7 @@ namespace mudock {
   void manage_cuda(const std::vector<std::string>& configurations,
                    threadpool& pool,
                    const knobs knobs,
-                   std::shared_ptr<const grid_atom_mapper>& grid_atom_maps,
-                   std::shared_ptr<const grid_map>& electro_map,
-                   std::shared_ptr<const grid_map>& desolv_map,
+                   const autodock_protein& adt_protein,
                    std::shared_ptr<safe_stack<static_molecule>>& input_molecules,
                    std::shared_ptr<safe_stack<static_molecule>>& output_molecules);
 } // namespace mudock

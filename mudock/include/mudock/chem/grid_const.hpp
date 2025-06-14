@@ -45,7 +45,7 @@ namespace mudock {
   static constexpr fp_type ELECSCALE{332.06363};
   static constexpr fp_type qsolpar{0.01097};
   static constexpr fp_type r_smooth{
-      0.0}; // vdw nonbond smoothing range, not radius, Ang - default 0.5 matches AutoGrid recommendations
+      0.5}; // vdw nonbond smoothing range, not radius, Ang - default 0.5 matches AutoGrid recommendations
   // Non bond cutoff
   static constexpr fp_type nbc2{64}; // 8*8
   static constexpr fp_type ENERGYPENALTY{500};

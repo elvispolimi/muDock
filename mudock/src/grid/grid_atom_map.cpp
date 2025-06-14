@@ -1,10 +1,10 @@
-#include "mudock/chem/autodock_types.hpp"
-
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <csignal>
 #include <limits>
 #include <mudock/chem.hpp>
+#include <mudock/chem/autodock_types.hpp>
 #include <mudock/grid.hpp>
 #include <mudock/grid/grid_map.hpp>
 #include <mudock/log.hpp>
@@ -147,10 +147,8 @@ namespace mudock {
       */
       if (std::fabs(energy) < precision)
         energy = 0;
+
       atom_map.at(coord_x, coord_y, coord_z) = energy;
-      // TODO
-      // gridmap[k].energy_max = max(gridmap[k].energy_max, gridmap[k].energy);
-      // gridmap[k].energy_min = min(gridmap[k].energy_min, gridmap[k].energy);
     }
 
     [[nodiscard]] inline auto& get_interaction(const autodock_ff r_t) { return interactions.at(r_t); }
@@ -171,9 +169,9 @@ namespace mudock {
     // receptor_types.erase(std::remove(receptor_types.begin(), receptor_types.end(), mudock::autodock_ff::H));
 
     // Define the autodock ligand types
-    std::array<autodock_ff, mudock::num_autodock_ligand_types()> ligand_types;
-    for (std::size_t i = 0; i < ligand_types.size(); ++i)
-      ligand_types[i] = mudock::autodock_type_from_ligand(static_cast<mudock::autodock_ligand_ff>(i));
+    std::array<autodock_ff, 1> ligand_types;
+    for (std::size_t i = 0; i < 1; ++i)
+      ligand_types[i] = mudock::autodock_ff_from_grid(static_cast<mudock::autodock_grid_type>(0));
 
     for (auto ligand_type: ligand_types) {
       // grid_atom_maps.push_back({ligand_type, npts});

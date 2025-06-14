@@ -104,7 +104,8 @@ if(MUDOCK_ENABLE_TEST)
     PROPERTIES CXX_STANDARD 20
                CXX_STANDARD_REQUIRED ON
                CXX_EXTENSIONS OFF)
-  target_link_libraries(test_score PRIVATE libmudock Boost::program_options)
+  target_link_libraries(test_score PRIVATE libmudock Boost::program_options
+                                           likwid::likwid)
 
 endif()
 

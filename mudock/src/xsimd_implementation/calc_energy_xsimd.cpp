@@ -1,8 +1,8 @@
 #include <cstddef>
 #include <limits>
+#include <mudock/chem/autodock_grid_types.hpp>
 #include <mudock/chem/autodock_parameters.hpp>
 #include <mudock/chem/grid_const.hpp>
-#include <mudock/chem/autodock_ligand_types.hpp>
 #include <mudock/chem/mehler_solmajer.hpp>
 #include <mudock/cpp_implementation/calc_energy_gh.hpp>
 #include <mudock/type_alias.hpp>
@@ -73,9 +73,8 @@ namespace mudock {
                                                 const fp_type* __restrict__ center,
                                                 const int map_index_x,
                                                 const int map_index_xy,
-                                                const fp_type* __restrict__ grid_maps,
-                                                const fp_type* __restrict__ electro_map,
-                                                const fp_type* __restrict__ desolv_map) {
+                                                const int map_index_xyz,
+                                                const fp_type* __restrict__ grid_maps) {
     using batch_type = xsimd::batch<fp_type>;
     using batch_int  = xsimd::batch<int>;
     using mask_type  = typename batch_type::batch_bool_type;
@@ -86,6 +85,8 @@ namespace mudock {
 
     const auto num_atom_loops     = static_cast<size_t>((num_atoms + simd_size - 1) / simd_size);
     const auto num_non_bond_loops = static_cast<size_t>((num_nonbond + simd_size_int - 1) / simd_size_int);
+    const fp_type* electro_map    = grid_maps + map_index_xyz * static_cast<int>(autodock_grid_type::ELEC);
+    const fp_type* desolv_map     = grid_maps + map_index_xyz * static_cast<int>(autodock_grid_type::DESOLV);
 
     fp_type elect_total_trilinear = 0;
     fp_type emap_total_trilinear  = 0;

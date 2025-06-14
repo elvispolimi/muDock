@@ -3,7 +3,7 @@
 #include <cstdlib>
 #include <filesystem>
 #include <memory>
-#include <mudock/chem/autodock_ligand_types.hpp>
+#include <mudock/chem/autodock_grid_types.hpp>
 #include <mudock/cpp_implementation/vectorization.hpp>
 #include <mudock/cpp_implementation/weed_bonds.hpp>
 #include <mudock/format/ob_wrapper.hpp>
@@ -54,15 +54,16 @@ int main(int argc, char* argv[]) {
   parse(protein, protein_path);
 
   mudock::apply_autodock_forcefield(protein);
-  auto grid_atom_maps    = std::make_shared<const mudock::grid_atom_mapper>(generate_atom_grid_maps(protein));
-  auto electrostatic_map = std::make_shared<const mudock::grid_map>(generate_electrostatic_grid_map(protein));
-  auto desolvation_map   = std::make_shared<const mudock::grid_map>(generate_desolvation_grid_map(protein));
+  // auto grid_atom_maps    = std::make_shared<const mudock::grid_atom_mapper>(generate_atom_grid_maps(protein));
+  // auto electrostatic_map = std::make_shared<const mudock::grid_map>(generate_electrostatic_grid_map(protein));
+  // auto desolvation_map   = std::make_shared<const mudock::grid_map>(generate_desolvation_grid_map(protein));
 
   mudock::info("Reading and parsing ligand ", ligand_path, " ...");
   auto ligand = std::make_unique<mudock::static_molecule>();
   mudock::parse(*ligand, ligand_path);
 
   mudock::apply_autodock_forcefield(*ligand);
+  const mudock::autodock_protein protein_adt = mudock::make_autodock_protein(protein);
 
   mudock::info("Generating score reference ...");
   auto output_queue = std::make_shared<mudock::safe_stack<mudock::static_molecule>>();
@@ -72,9 +73,7 @@ int main(int argc, char* argv[]) {
     auto threadpool = mudock::threadpool();
     mudock::manage_cpp({std::string{use_cpu_conf}},
                        threadpool,
-                       grid_atom_maps,
-                       electrostatic_map,
-                       desolvation_map,
+                       protein_adt,
                        knobs,
                        input_queue,
                        output_queue);
@@ -89,46 +88,11 @@ int main(int argc, char* argv[]) {
     input_queue->enqueue(std::make_unique<mudock::static_molecule>(mudock::static_molecule(*ligand)));
     {
       auto threadpool = mudock::threadpool();
-      mudock::manage_cpp({conf},
-                         threadpool,
-                         grid_atom_maps,
-                         electrostatic_map,
-                         desolvation_map,
-                         knobs,
-                         input_queue,
-                         output_queue);
-      mudock::manage_cuda({conf},
-                          threadpool,
-                          knobs,
-                          grid_atom_maps,
-                          electrostatic_map,
-                          desolvation_map,
-                          input_queue,
-                          output_queue);
-      mudock::manage_hip({conf},
-                         threadpool,
-                         knobs,
-                         grid_atom_maps,
-                         electrostatic_map,
-                         desolvation_map,
-                         input_queue,
-                         output_queue);
-      mudock::manage_sycl({conf},
-                          threadpool,
-                          knobs,
-                          grid_atom_maps,
-                          electrostatic_map,
-                          desolvation_map,
-                          input_queue,
-                          output_queue);
-      mudock::manage_omp({conf},
-                         threadpool,
-                         knobs,
-                         grid_atom_maps,
-                         electrostatic_map,
-                         desolvation_map,
-                         input_queue,
-                         output_queue);
+      mudock::manage_cpp({conf}, threadpool, protein_adt, knobs, input_queue, output_queue);
+      mudock::manage_cuda({conf}, threadpool, knobs, protein_adt, input_queue, output_queue);
+      mudock::manage_hip({conf}, threadpool, knobs, protein_adt, input_queue, output_queue);
+      mudock::manage_sycl({conf}, threadpool, knobs, protein_adt, input_queue, output_queue);
+      mudock::manage_omp({conf}, threadpool, knobs, protein_adt, input_queue, output_queue);
     }
     ligand_out = output_queue->dequeue();
     std::stringstream sss(ligand_out->properties.get(mudock::property_type::SCORE));

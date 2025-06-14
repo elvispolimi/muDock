@@ -1,8 +1,8 @@
 #include <hwy/contrib/math/math-inl.h>
 #include <hwy/highway.h>
+#include <mudock/chem/autodock_grid_types.hpp>
 #include <mudock/chem/autodock_parameters.hpp>
 #include <mudock/chem/grid_const.hpp>
-#include <mudock/chem/autodock_ligand_types.hpp>
 #include <mudock/chem/mehler_solmajer.hpp>
 #include <mudock/cpp_implementation/calc_energy_gh.hpp>
 #include <mudock/type_alias.hpp>
@@ -83,13 +83,15 @@ namespace mudock {
                                              const fp_type* __restrict__ center,
                                              const int map_index_x,
                                              const int map_index_xy,
-                                             const fp_type* __restrict__ grid_maps,
-                                             const fp_type* __restrict__ electro_map,
-                                             const fp_type* __restrict__ desolv_map) {
+                                             const int map_index_xyz,
+                                             const fp_type* __restrict__ grid_maps) {
     const HWY_FULL(fp_type) d;
     const HWY_FULL(int) di;
     const auto num_atom_loops     = static_cast<size_t>((num_atoms + Lanes(d) - 1) / Lanes(d));
     const auto num_non_bond_loops = static_cast<size_t>((num_nonbond + Lanes(di) - 1) / Lanes(di));
+    const fp_type* electro_map    = grid_maps + map_index_xyz * static_cast<int>(autodock_grid_type::ELEC);
+    const fp_type* desolv_map     = grid_maps + map_index_xyz * static_cast<int>(autodock_grid_type::DESOLV);
+
     static_assert(Lanes(d) == Lanes(di));
 
     fp_type elect_total_trilinear = 0;

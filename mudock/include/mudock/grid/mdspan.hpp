@@ -36,6 +36,7 @@ namespace mudock {
     [[nodiscard]] const auto& get(Y&&... indexes) const {
       return _data[md_index<n>::to1D(indexes...)];
     }
+    [[nodiscard]] T* data() const { return _data; }
   };
 
   template<class T, std::size_t n>
@@ -69,6 +70,8 @@ namespace mudock {
     [[nodiscard]] auto get_slice(const md_index<a> begin, const md_index<b> size) {
       return md_span<typename T::value_type, b>(_data.data() + begin.flat_size(), size);
     }
+
+    [[nodiscard]] auto data() const { return _data.data(); }
   };
 
   template<class T, std::size_t n>

@@ -1,4 +1,4 @@
-#include <mudock/chem/autodock_ligand_types.hpp>
+#include <mudock/chem/autodock_grid_types.hpp>
 #include <mudock/cpp_implementation/center_of_mass.hpp>
 #include <mudock/cpp_implementation/geometric_transformations.hpp>
 #include <mudock/cpp_implementation/mutate.hpp>
@@ -62,13 +62,13 @@ namespace mudock {
 
     init_texture_memory(*desolv_map.get(), desolv_tex);
 
-    atom_texs.wrappers_pointer.alloc(num_autodock_ligand_types());
-    atom_texs.wrappers.reserve(num_autodock_ligand_types());
-    for (int index{0}; index < num_autodock_ligand_types(); ++index) {
+    atom_texs.wrappers_pointer.alloc(num_autodock_ff_grids());
+    atom_texs.wrappers.reserve(num_autodock_ff_grids());
+    for (int index{0}; index < num_autodock_ff_grids(); ++index) {
       atom_texs.wrappers.emplace_back(queue);
       sycl_object<fp_type> &atom_tex = atom_texs.wrappers.back();
       const grid_map &grid_atom =
-          grid_atom_maps.get()->get_atom_map(autodock_type_from_map(static_cast<ligand_map_types>(index)));
+          grid_atom_maps.get()->get_atom_map(autodock_grid_from_ff(static_cast<ligand_map_types>(index)));
       init_texture_memory(grid_atom, atom_tex);
       atom_texs.wrappers_pointer.host[index] = atom_tex.dev_pointer();
     }

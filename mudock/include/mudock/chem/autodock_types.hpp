@@ -160,7 +160,8 @@ namespace mudock {
     fp_type epsij_hb = 0;
     int hbond        = 0;
   };
-  extern const std::array<autodock_ff_description, 131> AUTODOCK_FF_DICTIONARY;
+  static constexpr auto num_autodock_ff() { return 131; }
+  extern const std::array<autodock_ff_description, num_autodock_ff()> AUTODOCK_FF_DICTIONARY;
 
   // utility functions to work with them
   inline const autodock_ff_description& get_description(const autodock_ff a) {

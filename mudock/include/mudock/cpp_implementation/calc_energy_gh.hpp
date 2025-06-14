@@ -28,7 +28,6 @@ namespace mudock {
                                              const fp_type* __restrict__ center,
                                              const int map_index_x,
                                              const int map_index_xy,
-                                             const fp_type* __restrict__ grid_maps,
-                                             const fp_type* __restrict__ electro_map,
-                                             const fp_type* __restrict__ desolv_map);
+                                             const int map_index_xyz,
+                                             const fp_type* __restrict__ grid_maps);
 } // namespace mudock
