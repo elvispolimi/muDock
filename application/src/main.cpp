@@ -1,12 +1,12 @@
 #include "command_line_args.hpp"
 
 #include <cassert>
-#include <fstream>
 #include <iostream>
 #include <memory>
-#include <mudock/chem/autodock_ligand_types.hpp>
-#include <mudock/likwid_utils.hpp>
+#include <mudock/chem/autodock_grid_types.hpp>
+#include <mudock/chem/autodock_protein.hpp>
 #include <mudock/grid/grid_map.hpp>
+#include <mudock/likwid_utils.hpp>
 #include <mudock/mudock.hpp>
 #include <string>
 
@@ -20,9 +20,7 @@ int main(int argc, char* argv[]) {
   parse(protein, args.protein_path);
 
   mudock::apply_autodock_forcefield(protein);
-  auto grid_atom_maps    = std::make_shared<const mudock::grid_atom_mapper>(generate_atom_grid_maps(protein));
-  auto electrostatic_map = std::make_shared<const mudock::grid_map>(generate_electrostatic_grid_map(protein));
-  auto desolvation_map   = std::make_shared<const mudock::grid_map>(generate_desolvation_grid_map(protein));
+  mudock::autodock_protein protein_adt = mudock::make_autodock_protein(protein);
 
   // read  all the ligands description from the standard input and split them
   mudock::info("Reading ligands from the stdin ...");
@@ -53,46 +51,11 @@ int main(int argc, char* argv[]) {
   auto output_queue = std::make_shared<mudock::safe_stack<mudock::static_molecule>>();
   {
     auto threadpool = mudock::threadpool();
-    mudock::manage_cpp(args.device_confs,
-                       threadpool,
-                       grid_atom_maps,
-                       electrostatic_map,
-                       desolvation_map,
-                       args.knobs,
-                       input_queue,
-                       output_queue);
-    mudock::manage_cuda(args.device_confs,
-                        threadpool,
-                        args.knobs,
-                        grid_atom_maps,
-                        electrostatic_map,
-                        desolvation_map,
-                        input_queue,
-                        output_queue);
-    mudock::manage_hip(args.device_confs,
-                       threadpool,
-                       args.knobs,
-                       grid_atom_maps,
-                       electrostatic_map,
-                       desolvation_map,
-                       input_queue,
-                       output_queue);
-    mudock::manage_sycl(args.device_confs,
-                        threadpool,
-                        args.knobs,
-                        grid_atom_maps,
-                        electrostatic_map,
-                        desolvation_map,
-                        input_queue,
-                        output_queue);
-    mudock::manage_omp(args.device_confs,
-                       threadpool,
-                       args.knobs,
-                       grid_atom_maps,
-                       electrostatic_map,
-                       desolvation_map,
-                       input_queue,
-                       output_queue);
+    mudock::manage_cpp(args.device_confs, threadpool, protein_adt, args.knobs, input_queue, output_queue);
+    mudock::manage_cuda(args.device_confs, threadpool, args.knobs, protein_adt, input_queue, output_queue);
+    mudock::manage_hip(args.device_confs, threadpool, args.knobs, protein_adt, input_queue, output_queue);
+    mudock::manage_sycl(args.device_confs, threadpool, args.knobs, protein_adt, input_queue, output_queue);
+    mudock::manage_omp(args.device_confs, threadpool, args.knobs, protein_adt, input_queue, output_queue);
     mudock::info("All workers have been created!");
   } // when we exit from this block the computation is complete
 
