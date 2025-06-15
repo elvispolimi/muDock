@@ -1,7 +1,8 @@
 #pragma once
 
+#include "mudock/grid/mdspan.hpp"
+
 #include <mudock/grid.hpp>
-#include <mudock/grid/grid_map.hpp>
 #include <mudock/molecule.hpp>
 #include <mudock/molecule/fragments.hpp>
 #include <mudock/type_alias.hpp>
@@ -20,7 +21,7 @@ namespace mudock {
     nonbond_param(): a1(0), a2(0) {}
   } non_bond_parameter;
 
-  void nonbonds(grid<uint_fast8_t, index2D>& nbmatrix,
+  void nonbonds(md_container<std::vector<uint_fast8_t>, 2>& nbmatrix,
                 const std::span<const bond> ligand_bond,
                 const int num_atoms);
 
@@ -41,7 +42,7 @@ namespace mudock {
   | Weed out bonds in rigid pieces,                                            |
   |____________________________________________________________________________|
   */
-  void weed_bonds(grid<uint_fast8_t, index2D>& nbmatrix,
+  void weed_bonds(md_container<std::vector<uint_fast8_t>, 2>& nbmatrix,
                   std::vector<int>& non_bond_list_a1,
                   std::vector<int>& non_bond_list_a2,
                   const int num_atoms,

@@ -11,7 +11,6 @@
 #include <mudock/cpp_implementation/vectorization.hpp>
 #include <mudock/cpp_implementation/weed_bonds.hpp>
 #include <mudock/grid.hpp>
-#include <mudock/grid/grid_map.hpp>
 #include <mudock/knobs.hpp>
 #include <mudock/molecule.hpp>
 #include <mudock/molecule/fragments.hpp>

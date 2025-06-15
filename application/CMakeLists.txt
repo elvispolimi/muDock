@@ -65,13 +65,6 @@ if(MUDOCK_ENABLE_OMP)
                       "-fopenmp-targets=nvptx64")
 endif()
 
-if(MUDOCK_ENABLE_LIKWID)
-  target_include_directories("${CMAKE_PROJECT_NAME}"
-                             PRIVATE ${LIKWID_INCLUDE_DIR})
-  target_link_libraries("${CMAKE_PROJECT_NAME}" likwid::likwid)
-  add_definitions(-DLIKWID_PERFMON)
-endif()
-
 if(MUDOCK_ENABLE_TEST)
   add_executable(test_grid
                  "${CMAKE_CURRENT_SOURCE_DIR}/src/tests/grid_test.cpp")
@@ -104,9 +97,17 @@ if(MUDOCK_ENABLE_TEST)
     PROPERTIES CXX_STANDARD 20
                CXX_STANDARD_REQUIRED ON
                CXX_EXTENSIONS OFF)
-  target_link_libraries(test_score PRIVATE libmudock Boost::program_options
-                                           likwid::likwid)
+  target_link_libraries(test_score PRIVATE libmudock Boost::program_options)
 
+endif()
+
+if(MUDOCK_ENABLE_LIKWID)
+  # target_include_directories("${CMAKE_PROJECT_NAME}" PRIVATE
+  # ${LIKWID_INCLUDE_DIR})
+  target_link_libraries("${CMAKE_PROJECT_NAME}" likwid::likwid)
+  target_link_libraries(test_score likwid::likwid)
+
+  add_definitions(-DLIKWID_PERFMON)
 endif()
 
 # ##############################################################################

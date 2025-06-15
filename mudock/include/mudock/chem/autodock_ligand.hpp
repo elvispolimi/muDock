@@ -1,10 +1,10 @@
 #pragma once
 
-#include "mudock/chem/autodock_grid_types.hpp"
-#include "mudock/molecule/containers.hpp"
-
+#include <mudock/chem/autodock_grid_types.hpp>
+#include <mudock/chem/autodock_protein.hpp>
 #include <mudock/cpp_implementation/weed_bonds.hpp>
 #include <mudock/molecule.hpp>
+#include <mudock/molecule/containers.hpp>
 #include <mudock/type_alias.hpp>
 #include <vector>
 
