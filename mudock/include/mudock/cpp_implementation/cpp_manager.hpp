@@ -4,7 +4,6 @@
 #include <mudock/chem/autodock_protein.hpp>
 #include <mudock/compute.hpp>
 #include <mudock/grid.hpp>
-#include <mudock/grid/grid_map.hpp>
 #include <mudock/knobs.hpp>
 #include <mudock/molecule.hpp>
 

@@ -39,7 +39,6 @@ list(
   "${header_path}/${header_prefix}/format/ob_wrapper.hpp"
   "${header_path}/${header_prefix}/format/supported_format.hpp"
   "${header_path}/${header_prefix}/grid/mdindex.hpp"
-  "${header_path}/${header_prefix}/grid/grid_map.hpp"
   "${header_path}/${header_prefix}/grid/pi.hpp"
   "${header_path}/${header_prefix}/grid/point3D.hpp"
   "${header_path}/${header_prefix}/grid/space_grid.hpp"
@@ -88,15 +87,11 @@ list(
   "${source_path}/format/mol2.cpp"
   "${source_path}/format/ob_wrapper.cpp"
   "${source_path}/format/supported_format.cpp"
-  "${source_path}/grid/grid_atom_map.cpp"
-  "${source_path}/grid/grid_electrostatic_map.cpp"
-  "${source_path}/grid/grid_desolvation_map.cpp"
   "${source_path}/molecule/fragments.cpp"
   "${source_path}/molecule/graph.cpp"
   "${source_path}/molecule/property_table.cpp"
   "${source_path}/log.cpp"
-  "${source_path}/cpp_implementation/geometric_transformations_cpp.cpp"
-  "${source_path}/cpp_implementation/calc_energy_cpp.cpp")
+  "${source_path}/cpp_implementation/geometric_transformations_cpp.cpp")
 
 if(MUDOCK_ENABLE_GH)
   list(APPEND source_files

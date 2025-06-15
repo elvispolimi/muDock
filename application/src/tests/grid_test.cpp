@@ -7,7 +7,6 @@
 #include <mudock/chem/autodock_grid_types.hpp>
 #include <mudock/format.hpp>
 #include <mudock/format/pdbqt.hpp>
-#include <mudock/grid/grid_map.hpp>
 #include <mudock/log.hpp>
 #include <mudock/mudock.hpp>
 #include <mudock/type_alias.hpp>

@@ -5,7 +5,6 @@
 #include <memory>
 #include <mudock/chem/autodock_grid_types.hpp>
 #include <mudock/chem/autodock_protein.hpp>
-#include <mudock/grid/grid_map.hpp>
 #include <mudock/likwid_utils.hpp>
 #include <mudock/mudock.hpp>
 #include <string>

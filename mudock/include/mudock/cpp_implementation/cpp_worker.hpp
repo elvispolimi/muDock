@@ -1,12 +1,12 @@
 #pragma once
 
-#include "mudock/chem/autodock_protein.hpp"
-
 #include <memory>
+#include <mudock/chem/autodock_protein.hpp>
 #include <mudock/compute.hpp>
 #include <mudock/cpp_implementation/vectorization.hpp>
 #include <mudock/cpp_implementation/virtual_screen.hpp>
 #include <mudock/knobs.hpp>
+#include <mudock/log.hpp>
 #include <mudock/molecule.hpp>
 
 namespace mudock {

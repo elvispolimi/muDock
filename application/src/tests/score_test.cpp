@@ -8,7 +8,6 @@
 #include <mudock/cpp_implementation/weed_bonds.hpp>
 #include <mudock/format/ob_wrapper.hpp>
 #include <mudock/format/pdbqt.hpp>
-#include <mudock/grid/grid_map.hpp>
 #include <mudock/knobs.hpp>
 #include <mudock/log.hpp>
 #include <mudock/molecule.hpp>

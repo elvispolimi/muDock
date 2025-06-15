@@ -1,12 +1,15 @@
-#include "mudock/molecule.hpp"
-#include "mudock/molecule/fragments.hpp"
-
+#include <cstdint>
+#include <mudock/chem/grid_const.hpp>
 #include <mudock/cpp_implementation/weed_bonds.hpp>
+#include <mudock/grid/mdspan.hpp>
+#include <mudock/log.hpp>
+#include <mudock/molecule.hpp>
+#include <mudock/molecule/fragments.hpp>
 #include <vector>
 
 namespace mudock {
   // nonbonds.cc for nbmatrix required by weed_bonds
-  void nonbonds(grid<uint_fast8_t, index2D>& nbmatrix,
+  void nonbonds(md_container<std::vector<uint_fast8_t>, 2>& nbmatrix,
                 const std::span<const bond> ligand_bond,
                 const int num_atoms) {
     //
@@ -15,14 +18,14 @@ namespace mudock {
 
     // set all nonbonds in nbmatrix to 1, except "1-1 interactions" (self interaction)
     for (int i = 0; i < num_atoms; i++) {
-      for (int j = 0; j < num_atoms; j++) { nbmatrix.at(i, j) = 1; } // j
-      nbmatrix.at(i, i) = 0;                                         /* 2005-01-10 RH & GMM */
+      for (int j = 0; j < num_atoms; j++) { nbmatrix.get(i, j) = 1; } // j
+      nbmatrix.get(i, i) = 0;                                         /* 2005-01-10 RH & GMM */
     }
 
     for (auto& bond: ligand_bond) {
       // Ignore 1-2 Interactions
-      nbmatrix.at(bond.source, bond.dest) = 0;
-      nbmatrix.at(bond.dest, bond.source) = 0;
+      nbmatrix.get(bond.source, bond.dest) = 0;
+      nbmatrix.get(bond.dest, bond.source) = 0;
     }
 
     for (auto& bond_1: ligand_bond)
@@ -45,8 +48,8 @@ namespace mudock {
           continue;
 
         // Ignore "1-3 Interactions"
-        nbmatrix.at(outer_2, outer_1) = 0;
-        nbmatrix.at(outer_1, outer_2) = 0;
+        nbmatrix.get(outer_2, outer_1) = 0;
+        nbmatrix.get(outer_1, outer_2) = 0;
 
         for (auto& bond_3: ligand_bond) {
           int outer_3{0};
@@ -65,8 +68,8 @@ namespace mudock {
             outer_4 = outer_2;
           } else
             continue;
-          nbmatrix.at(outer_4, outer_3) = 0;
-          nbmatrix.at(outer_3, outer_4) = 0;
+          nbmatrix.get(outer_4, outer_3) = 0;
+          nbmatrix.get(outer_3, outer_4) = 0;
         }
       }
   }
@@ -88,7 +91,7 @@ namespace mudock {
   | Weed out bonds in rigid pieces,                                            |
   |____________________________________________________________________________|
   */
-  void weed_bonds(grid<uint_fast8_t, index2D>& nbmatrix,
+  void weed_bonds(md_container<std::vector<uint_fast8_t>, 2>& nbmatrix,
                   std::vector<int>& non_bond_list_a1,
                   std::vector<int>& non_bond_list_a2,
                   const int num_atoms,
@@ -104,8 +107,8 @@ namespace mudock {
           //
           // Later on, we will not calculate the interaction energy
           //    between atoms "i" and "j"
-          nbmatrix.at(j, i) = 0;
-          nbmatrix.at(i, j) = 0;
+          nbmatrix.get(j, i) = 0;
+          nbmatrix.get(i, j) = 0;
         }
       } // i
     } // j
@@ -117,7 +120,7 @@ namespace mudock {
     for (int i = 0; i < ligand_fragments.get_num_rotatable_bonds(); ++i) {
       const auto [atom_id1, atom_id2] = ligand_fragments.get_rotatable_atoms(i);
       // TODO check why not viceversa? weedbonds.cc:110
-      nbmatrix.at(atom_id2, atom_id1) = 0;
+      nbmatrix.get(atom_id2, atom_id1) = 0;
     } // i
 
     /* 
@@ -129,30 +132,30 @@ namespace mudock {
       for (int j = 0; j < ligand_fragments.get_num_rotatable_bonds(); ++j) {
         const auto [atom_id3, atom_id4] = ligand_fragments.get_rotatable_atoms(j);
         if (ligand_rigid_pieces[atom_id1] == ligand_rigid_pieces[atom_id3]) {
-          nbmatrix.at(atom_id4, atom_id2) = 0;
-          nbmatrix.at(atom_id2, atom_id4) = 0;
+          nbmatrix.get(atom_id4, atom_id2) = 0;
+          nbmatrix.get(atom_id2, atom_id4) = 0;
         }
         if (ligand_rigid_pieces[atom_id1] == ligand_rigid_pieces[atom_id4]) {
-          nbmatrix.at(atom_id3, atom_id2) = 0;
-          nbmatrix.at(atom_id2, atom_id3) = 0;
+          nbmatrix.get(atom_id3, atom_id2) = 0;
+          nbmatrix.get(atom_id2, atom_id3) = 0;
         }
         if (ligand_rigid_pieces[atom_id2] == ligand_rigid_pieces[atom_id3]) {
-          nbmatrix.at(atom_id4, atom_id1) = 0;
-          nbmatrix.at(atom_id1, atom_id4) = 0;
+          nbmatrix.get(atom_id4, atom_id1) = 0;
+          nbmatrix.get(atom_id1, atom_id4) = 0;
         }
         if (ligand_rigid_pieces[atom_id2] == ligand_rigid_pieces[atom_id4]) {
-          nbmatrix.at(atom_id3, atom_id1) = 0;
-          nbmatrix.at(atom_id1, atom_id3) = 0;
+          nbmatrix.get(atom_id3, atom_id1) = 0;
+          nbmatrix.get(atom_id1, atom_id3) = 0;
         }
       }
       for (int k = 0; k < num_atoms; ++k) {
         if (ligand_rigid_pieces[atom_id1] == ligand_rigid_pieces[k]) {
-          nbmatrix.at(k, atom_id2) = 0;
-          nbmatrix.at(atom_id2, k) = 0;
+          nbmatrix.get(k, atom_id2) = 0;
+          nbmatrix.get(atom_id2, k) = 0;
         }
         if (ligand_rigid_pieces[atom_id2] == ligand_rigid_pieces[k]) {
-          nbmatrix.at(k, atom_id1) = 0;
-          nbmatrix.at(atom_id1, k) = 0;
+          nbmatrix.get(k, atom_id1) = 0;
+          nbmatrix.get(atom_id1, k) = 0;
         }
       } // k
     }
@@ -161,11 +164,11 @@ namespace mudock {
     // TODO check what true_ligand_atoms is
     for (int i = 0; i < num_atoms; ++i) {
       for (int j = i + 1; j < num_atoms; ++j) {
-        if ((nbmatrix.at(i, j) == 1 && nbmatrix.at(j, i) == 1)) {
+        if ((nbmatrix.get(i, j) == 1 && nbmatrix.get(j, i) == 1)) {
           non_bond_list_a1.push_back(i);
           non_bond_list_a2.push_back(j);
-        } else if ((nbmatrix.at(i, j) != 0 && nbmatrix.at(j, i) == 0) ||
-                   (nbmatrix.at(i, j) == 0 && nbmatrix.at(j, i) != 0)) {
+        } else if ((nbmatrix.get(i, j) != 0 && nbmatrix.get(j, i) == 0) ||
+                   (nbmatrix.get(i, j) == 0 && nbmatrix.get(j, i) != 0)) {
           std::ostringstream oss;
           // Build the formatted string
           oss << "BUG: ASSYMMETRY detected in Non-Bond Matrix at " << i << "," << j;
@@ -186,7 +189,8 @@ namespace mudock {
                                                                        ligand.get_bonds(),
                                                                        ligand.num_atoms());
 
-    grid<uint_fast8_t, index2D> nbmatrix{{num_atoms, num_atoms}};
+    md_container<std::vector<uint_fast8_t>, 2> nbmatrix{num_atoms, num_atoms};
+    // grid<uint_fast8_t, index2D> nbmatrix{{num_atoms, num_atoms}};
     nonbonds(nbmatrix, ligand.get_bonds(), num_atoms);
     weed_bonds(nbmatrix, non_bond_list_a1, non_bond_list_a2, num_atoms, *ligand_fragments);
   }
