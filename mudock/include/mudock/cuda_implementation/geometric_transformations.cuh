@@ -1,6 +1,6 @@
 #pragma once
 
-#include <mudock/grid.hpp>
+#include <mudock/grid/pi.hpp>
 #include <mudock/molecule.hpp>
 #include <mudock/molecule/containers.hpp>
 #include <mudock/type_alias.hpp>

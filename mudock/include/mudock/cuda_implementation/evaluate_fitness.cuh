@@ -6,7 +6,7 @@
 #include <mudock/cuda_implementation/calc_energy.cuh>
 #include <mudock/cuda_implementation/cuda_check_error_macro.cuh>
 #include <mudock/cuda_implementation/mutate.cuh>
-#include <mudock/grid.hpp>
+#include <mudock/grid/point3D.hpp>
 #include <mudock/molecule/containers.hpp>
 #include <mudock/type_alias.hpp>
 #include <mudock/utils.hpp>
@@ -22,9 +22,9 @@ namespace mudock {
   extern __device__ __constant__ fp_type map_min_const[3];
   extern __device__ __constant__ fp_type map_max_const[3];
   extern __device__ __constant__ fp_type map_center_const[3];
-  void setup_constant_memory(const point3D& minimum_coord,
-                             const point3D& maximum_coord,
-                             const point3D& center);
+  void setup_constant_memory(const point<fp_type, 3>& minimum_coord,
+                             const point<fp_type, 3>& maximum_coord,
+                             const point<fp_type, 3>& center);
 
   __device__ inline fp_type trilinear_interpolation_cuda(const int coord[],
                                                          const cudaTextureObject_t& tex,
@@ -100,6 +100,7 @@ namespace mudock {
                                    const int atom_stride,
                                    const int rotamers_stride,
                                    const int nonbond_stride,
+                                   const int map_index_xyz,
                                    const fp_type* __restrict__ original_ligand_x,
                                    const fp_type* __restrict__ original_ligand_y,
                                    const fp_type* __restrict__ original_ligand_z,
@@ -109,14 +110,12 @@ namespace mudock {
                                    const fp_type* __restrict__ ligand_vol,
                                    const fp_type* __restrict__ ligand_solpar,
                                    const fp_type* __restrict__ ligand_charge,
-                                   const int* __restrict__ ligand_num_hbond,
-                                   const fp_type* __restrict__ ligand_Rij_hb,
-                                   const fp_type* __restrict__ ligand_Rii,
-                                   const fp_type* __restrict__ ligand_epsij_hb,
-                                   const fp_type* __restrict__ ligand_epsii,
                                    const int* __restrict__ ligand_num_nonbonds,
                                    const int* __restrict__ ligand_nonbond_a1,
                                    const int* __restrict__ ligand_nonbond_a2,
+                                   const fp_type* __restrict__ ligand_nonbond_cA,
+                                   const fp_type* __restrict__ ligand_nonbond_cB,
+                                   const int* __restrict__ ligand_nonbond_xB,
                                    const int* __restrict__ ligand_num_atoms,
                                    const int* __restrict__ ligand_num_rotamers,
                                    const int* __restrict__ ligand_fragments,
@@ -148,11 +147,6 @@ namespace mudock {
     const fp_type* l_ligand_vol        = ligand_vol + ligand_id * atom_stride;
     const fp_type* l_ligand_solpar     = ligand_solpar + ligand_id * atom_stride;
     const fp_type* l_ligand_charge     = ligand_charge + ligand_id * atom_stride;
-    const int* l_ligand_num_hbond      = ligand_num_hbond + ligand_id * atom_stride;
-    const fp_type* l_ligand_Rij_hb     = ligand_Rij_hb + ligand_id * atom_stride;
-    const fp_type* l_ligand_Rii        = ligand_Rii + ligand_id * atom_stride;
-    const fp_type* l_ligand_epsij_hb   = ligand_epsij_hb + ligand_id * atom_stride;
-    const fp_type* l_ligand_epsii      = ligand_epsii + ligand_id * atom_stride;
     chromosome* l_chromosomes          = chromosomes + ligand_id * chromosome_stride;
     // Point to the next population buffer
     chromosome* l_next_chromosomes      = chromosomes + ligand_id * chromosome_stride + chromosome_number;
@@ -162,7 +156,11 @@ namespace mudock {
     const auto* l_atom_tex_indexes      = atom_tex_indexes + ligand_id * atom_stride;
     const int* l_ligand_nonbond_a1      = ligand_nonbond_a1 + ligand_num_nonbonds[ligand_id];
     const int* l_ligand_nonbond_a2      = ligand_nonbond_a2 + ligand_num_nonbonds[ligand_id];
-    curandState& l_state                = (state[global_thread_id]);
+    const fp_type* l_ligand_nonbond_cA  = ligand_nonbond_cA + ligand_num_nonbonds[ligand_id];
+    const fp_type* l_ligand_nonbond_cB  = ligand_nonbond_cB + ligand_num_nonbonds[ligand_id];
+    const int* l_ligand_nonbond_xB      = ligand_nonbond_xB + ligand_num_nonbonds[ligand_id];
+
+    curandState& l_state = (state[global_thread_id]);
 
     // Shared memory
     extern __shared__ fp_type shared_data[];
@@ -221,7 +219,7 @@ namespace mudock {
         fp_type dmap_total_trilinear  = 0;
 #pragma unroll
         for (int atom_index = local_thread_id; atom_index < MAX_ATOMS; atom_index += thread_per_block) {
-          if (atom_index < num_atoms) { 
+          if (atom_index < num_atoms) {
             fp_type coord_tex[3]{l_scratch_ligand_x[atom_index],
                                  l_scratch_ligand_y[atom_index],
                                  l_scratch_ligand_z[atom_index]};
@@ -230,10 +228,10 @@ namespace mudock {
                 coord_tex[1] < map_min_const[1] || coord_tex[1] > map_max_const[1] ||
                 coord_tex[2] < map_min_const[2] || coord_tex[2] > map_max_const[2]) {
               // Is outside
-              const auto diff_x      = coord_tex[0] - map_center_const[0];
-              const auto diff_y      = coord_tex[1] - map_center_const[1];
-              const auto diff_z      = coord_tex[2] - map_center_const[2];
-              const fp_type distance_two     = diff_x * diff_x + diff_y * diff_y + diff_z * diff_z;
+              const auto diff_x          = coord_tex[0] - map_center_const[0];
+              const auto diff_y          = coord_tex[1] - map_center_const[1];
+              const auto diff_z          = coord_tex[2] - map_center_const[2];
+              const fp_type distance_two = diff_x * diff_x + diff_y * diff_y + diff_z * diff_z;
 
               const fp_type epenalty = distance_two * ENERGYPENALTY;
               elect_total_trilinear += epenalty;
@@ -263,14 +261,14 @@ namespace mudock {
 
               // Compute coefficients
               const fp_type coeffs[8] = {pu[0] * pv[0] * pw[0],
-                                        pu[0] * pv[0] * pw[1],
-                                        pu[0] * pv[1] * pw[0],
-                                        pu[0] * pv[1] * pw[1],
-                                        pu[1] * pv[0] * pw[0],
-                                        pu[1] * pv[0] * pw[1],
-                                        pu[1] * pv[1] * pw[0],
-                                        pu[1] * pv[1] * pw[1]};
-              const int int_coord [3] = {u0,v0,w0};                  
+                                         pu[0] * pv[0] * pw[1],
+                                         pu[0] * pv[1] * pw[0],
+                                         pu[0] * pv[1] * pw[1],
+                                         pu[1] * pv[0] * pw[0],
+                                         pu[1] * pv[0] * pw[1],
+                                         pu[1] * pv[1] * pw[0],
+                                         pu[1] * pv[1] * pw[1]};
+              const int int_coord[3]  = {u0, v0, w0};
               //  TODO check approximations with in hardware interpolation
               // elect_total_trilinear +=
               //     tex3D<fp_type>(electro_texture, coord_tex[0], coord_tex[1], coord_tex[2]) *
@@ -283,12 +281,14 @@ namespace mudock {
               //                                        coord_tex[2]);
               //                                        printf("%f\n",temp);
               //                                        emap_total_trilinear +=temp;
-              elect_total_trilinear +=
-                  trilinear_interpolation_cuda(int_coord, electro_texture, coeffs) * l_ligand_charge[atom_index];
+              elect_total_trilinear += trilinear_interpolation_cuda(int_coord, electro_texture, coeffs) *
+                                       l_ligand_charge[atom_index];
               dmap_total_trilinear += trilinear_interpolation_cuda(int_coord, desolv_texture, coeffs) *
                                       fabsf(l_ligand_charge[atom_index]);
               emap_total_trilinear =
-                  trilinear_interpolation_cuda(int_coord, atom_textures[l_atom_tex_indexes[atom_index]], coeffs);
+                  trilinear_interpolation_cuda(int_coord,
+                                               atom_textures[l_atom_tex_indexes[atom_index]],
+                                               coeffs);
             }
           }
         }
@@ -297,19 +297,17 @@ namespace mudock {
 
         if (num_rotamers > 0)
           total_trilinear_eintcal += calc_intra_energy(l_scratch_ligand_x,
-                                             l_scratch_ligand_y,
-                                             l_scratch_ligand_z,
-                                             l_ligand_vol,
-                                             l_ligand_solpar,
-                                             l_ligand_charge,
-                                             l_ligand_num_hbond,
-                                             l_ligand_Rij_hb,
-                                             l_ligand_Rii,
-                                             l_ligand_epsij_hb,
-                                             l_ligand_epsii,
-                                             num_nonbonds,
-                                             l_ligand_nonbond_a1,
-                                             l_ligand_nonbond_a2);
+                                                       l_scratch_ligand_y,
+                                                       l_scratch_ligand_z,
+                                                       l_ligand_vol,
+                                                       l_ligand_solpar,
+                                                       l_ligand_charge,
+                                                       num_nonbonds,
+                                                       l_ligand_nonbond_a1,
+                                                       l_ligand_nonbond_a2,
+                                                       l_ligand_nonbond_cA,
+                                                       l_ligand_nonbond_cB,
+                                                       l_ligand_nonbond_xB);
 
 // Perform a tree reduction using __shfl_down_sync
 // TODO merge them togheter

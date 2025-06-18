@@ -6,11 +6,12 @@
 #include <mudock/molecule.hpp>
 #include <mudock/molecule/containers.hpp>
 #include <mudock/type_alias.hpp>
+#include <span>
 #include <vector>
 
 namespace mudock {
   struct autodock_ligand {
-    autodock_ligand(const static_molecule& _ligand): ligand(_ligand) {
+    autodock_ligand(static_molecule& _ligand): ligand(_ligand) {
       non_bond_list(ligand, non_bond_list_a1, non_bond_list_a2);
       precompute_lennard_jones(non_bond_list_a1.size(),
                                cA_v,
@@ -29,6 +30,8 @@ namespace mudock {
                                     ligand);
     };
 
+    [[nodiscard]] inline auto get_num_atoms() const { return ligand.num_atoms(); }
+    [[nodiscard]] inline auto get_num_rotatable_bonds() const { return ligand.num_rotamers(); }
     [[nodiscard]] inline auto& get_ligand() const { return ligand; }
     [[nodiscard]] inline auto get_non_bond_size() const { return non_bond_list_a1.size(); }
     [[nodiscard]] inline auto* get_non_bond_A() const { return non_bond_list_a1.data(); }
@@ -37,9 +40,12 @@ namespace mudock {
     [[nodiscard]] inline auto* get_non_bond_cB() const { return cB_v.data(); }
     [[nodiscard]] inline auto* get_non_bond_xB() const { return xB_v.data(); }
 
-    [[nodiscard]] inline auto* get_ligand_x() const { return ligand.get_x().data(); }
-    [[nodiscard]] inline auto* get_ligand_y() const { return ligand.get_y().data(); }
-    [[nodiscard]] inline auto* get_ligand_z() const { return ligand.get_z().data(); }
+    [[nodiscard]] inline auto* get_ligand_x_p() { return ligand.get_x().data(); }
+    [[nodiscard]] inline auto* get_ligand_y_p() { return ligand.get_y().data(); }
+    [[nodiscard]] inline auto* get_ligand_z_p() { return ligand.get_z().data(); }
+    [[nodiscard]] inline auto get_ligand_x() const { return ligand.get_x(); }
+    [[nodiscard]] inline auto get_ligand_y() const { return ligand.get_y(); }
+    [[nodiscard]] inline auto get_ligand_z() const { return ligand.get_z(); }
     [[nodiscard]] inline auto* get_ligand_vol() const { return ligand.get_vol().data(); }
     [[nodiscard]] inline auto* get_ligand_solpar() const { return ligand.get_solpar().data(); }
     [[nodiscard]] inline auto* get_ligand_charge() const { return ligand.get_charge().data(); }
@@ -64,6 +70,6 @@ namespace mudock {
     static_containers::atoms_size<autodock_grid_type> map_index_per_atom;
     static_containers::atoms_size<int> map_offset_per_atom;
 
-    const static_molecule& ligand;
+    static_molecule& ligand;
   };
 } // namespace mudock

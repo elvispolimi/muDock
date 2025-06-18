@@ -9,18 +9,18 @@ namespace mudock {
   __device__ __constant__ fp_type map_center_const[3];
 
   void setup_constant_memory(const point3D& minimum_coord,
-                                    const point3D& maximum_coord,
-                                    const point3D& center) {
-    const fp_type l_map_min[3]{minimum_coord.x, minimum_coord.y, minimum_coord.z};
-    const fp_type l_map_max[3]{maximum_coord.x, maximum_coord.y, maximum_coord.z};
-    const fp_type l_map_center[3]{center.x, center.y, center.z};
+                             const point3D& maximum_coord,
+                             const point3D& center) {
+    const auto l_map_min    = minimum_coord.get_component_p();
+    const auto l_map_max    = maximum_coord.get_component_p();
+    const auto l_map_center = center.get_component_p();
 
     MUDOCK_CHECK(
-        cudaMemcpyToSymbol(map_min_const, &l_map_min, 3 * sizeof(fp_type), 0, cudaMemcpyHostToDevice));
+        cudaMemcpyToSymbol(map_min_const, l_map_min, 3 * sizeof(fp_type), 0, cudaMemcpyHostToDevice));
     MUDOCK_CHECK(
-        cudaMemcpyToSymbol(map_max_const, &l_map_max, 3 * sizeof(fp_type), 0, cudaMemcpyHostToDevice));
+        cudaMemcpyToSymbol(map_max_const, l_map_max, 3 * sizeof(fp_type), 0, cudaMemcpyHostToDevice));
     MUDOCK_CHECK(
-        cudaMemcpyToSymbol(map_center_const, &l_map_center, 3 * sizeof(fp_type), 0, cudaMemcpyHostToDevice));
+        cudaMemcpyToSymbol(map_center_const, l_map_center, 3 * sizeof(fp_type), 0, cudaMemcpyHostToDevice));
     cudaDeviceSynchronize();
   }
 

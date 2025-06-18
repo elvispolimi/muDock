@@ -12,10 +12,11 @@ namespace mudock {
     // Device ID
     const std::size_t id;
     // Grid Maps
-    const point3D center_maps;
+    const point<fp_type, 3> center_maps;
     const cudaStream_t stream;
     cudaTextureObject_t electro_tex, desolv_tex;
     cuda_wrapper<std::vector, cudaTextureObject_t> atom_texs;
+    const autodock_protein& adt_protein;
 
     device(const std::size_t gpu_id, const autodock_protein& adt_protein);
 

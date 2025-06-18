@@ -20,16 +20,16 @@
 namespace mudock {
 
   autodock_protein::autodock_protein(const point3D min, const point3D max, const fp_type resolution)
-      : index(static_cast<int>(std::ceil(std::abs(min.x - max.x) / resolution) + 1),
-              static_cast<int>(std::ceil(std::abs(min.y - max.y) / resolution) + 1),
-              static_cast<int>(std::ceil(std::abs(min.z - max.z) / resolution) + 1)),
+      : index(min.difference(max)
+                  .apply(std::abs<fp_type>)
+                  .divide({resolution})
+                  .apply(static_cast<fp_type (*)(fp_type)>(std::ceil))
+                  .add({fp_type{1}})),
         data(index.size_x(), index.size_y(), index.size_z(), num_autodock_grids()),
         _inv_resolution(1 / resolution),
         _min(min),
         _max(max),
-        _center{(max.x - min.x) / fp_type{2} + min.x,
-                (max.y - min.y) / fp_type{2} + min.y,
-                (max.z - min.z) / fp_type{2} + min.z} {};
+        _center{max.difference(min).divide({fp_type{2}}).add(min)} {};
 
   //===------------------------------------------------------------------------------------------------------
   // Global parameters for deriving the pre-computation grid
@@ -51,7 +51,10 @@ namespace mudock {
     std::vector<int> disorder;
 
     inline hbond_geometries(const std::size_t n)
-        : vector1(n, point3D{0, 0, 0}), vector2(n, point3D{0, 0, 0}), exp(n, fp_type{0}), disorder(n, 0) {}
+        : vector1(n, point3D{fp_type{0}}),
+          vector2(n, point3D{fp_type{0}}),
+          exp(n, fp_type{0}),
+          disorder(n, 0) {}
   };
 
   // this function compute the hbon geometries
@@ -88,8 +91,8 @@ namespace mudock {
             // for (auto neigh = neigh_begin; neigh != neigh_end; ++neigh) {
             // const auto neigh_index = graph[neigh->m_target].atom_index;
             const auto neigh_point = point3D{x[neigh_index], y[neigh_index], z[neigh_index]};
-            const auto diff        = difference(atom_point, neigh_point);
-            const auto d2          = sum_components(square(diff));
+            const auto diff        = atom_point.difference(neigh_point);
+            const auto d2          = diff.square().sum_components();
             if (d2 < fp_type{1.9}) {
               const auto neigh_element = elements[neigh_index];
               if (neigh_element == element::O || neigh_element == element::S) {
@@ -99,7 +102,7 @@ namespace mudock {
                 adt_protein.exp[atom_index]      = 2;
                 adt_protein.disorder[atom_index] = 1;
               }
-              adt_protein.vector1[atom_index] = normalize(diff);
+              adt_protein.vector1[atom_index] = diff.normalize();
               // }
             }
           }
@@ -118,8 +121,8 @@ namespace mudock {
             // const auto neigh_vertex  = neigh->m_target;
             // const auto neigh_index   = graph[neigh_vertex].atom_index;
             const auto neigh_point   = point3D{x[neigh_index], y[neigh_index], z[neigh_index]};
-            const auto diff          = difference(atom_point, neigh_point);
-            const auto d2            = sum_components(square(diff));
+            const auto diff          = atom_point.difference(neigh_point);
+            const auto d2            = diff.square().sum_components();
             const auto neigh_element = elements[neigh_index];
             if ((d2 < fp_type{3.61} && neigh_element != element::H) ||
                 (d2 < fp_type{1.69} && neigh_element == element::H)) {
@@ -147,7 +150,7 @@ namespace mudock {
           // so we need to explore the neighbor's neighbor for Carbonyl Oxygen O=C-X
           if (elements[neigh1_index] != element::C) [[unlikely]]
             throw std::runtime_error("The original autogrid was not expecting a non C atom with a O");
-          adt_protein.vector1[atom_index] = normalize(difference(atom_point, std::as_const(neigh1_point)));
+          adt_protein.vector1[atom_index] = atom_point.difference(std::as_const(neigh1_point)).normalize();
           // auto found                      = false;
           // const auto [c_neigh_begin, c_neigh_end] = boost::out_edges(neigh1_vertex, graph);
           // for (auto c_neigh = c_neigh_begin; c_neigh != c_neigh_end; ++c_neigh) {
@@ -155,16 +158,16 @@ namespace mudock {
             if ((other_index != neigh1_index) && (other_index != atom_index)) {
               // const auto c_neigh_index   = graph[c_neigh->m_target].atom_index;
               const auto c_neigh_point   = point3D{x[other_index], y[other_index], z[other_index]};
-              const auto c_diff          = difference(std::as_const(neigh1_point), c_neigh_point);
-              const auto c_d2            = sum_components(square(c_diff));
-              const auto c_norm          = normalize(c_diff);
+              const auto c_diff          = std::as_const(neigh1_point).difference(c_neigh_point);
+              const auto c_d2            = c_diff.square().sum_components();
+              const auto c_norm          = c_diff.normalize();
               const auto c_neigh_element = elements[other_index];
               if ((c_d2 < fp_type{2.89} && c_neigh_element != element::H) ||
                   (c_d2 < fp_type{1.69} && c_neigh_element == element::H)) {
                 // found = true;
                 // C=O cross C-X gives the lone pair plane normal
                 adt_protein.vector2[atom_index] =
-                    normalize(cross_product(std::as_const(adt_protein.vector1[atom_index]), c_norm));
+                    std::as_const(adt_protein.vector1[atom_index]).product(c_norm).normalize();
               }
             }
             // if (!found) [[unlikely]]
@@ -186,13 +189,14 @@ namespace mudock {
           // } else [[unlikely]]
           //   throw std::runtime_error("The original autogrid was not expecting a non C atom");
           // rvector2[index] = normalize(point3D{receptor.x(index_2), receptor.y(index_2), receptor.z(index_2)},
-          adt_protein.vector2[atom_index] = normalize(neigh2_point, neigh1_point);
+          adt_protein.vector2[atom_index] = neigh2_point.difference(neigh1_point).normalize();
 
-          const point3D diff = difference(atom_point, neigh1_point);
+          const point3D diff = atom_point.difference(neigh1_point);
           const auto rdot    = (diff * adt_protein.vector2[atom_index]).sum_components();
 
-          adt_protein.vector1[atom_index] = normalize(
-              difference(atom_point, add(scale(adt_protein.vector2[atom_index], rdot), neigh1_point)));
+          adt_protein.vector1[atom_index] =
+              atom_point.difference(adt_protein.vector2[atom_index].product(rdot).add(neigh1_point))
+                  .normalize();
         }
       } else if (hbond_value == std::size_t{4}) { // ----------------------------------  A1 nitrogen
         if (elements[atom_index] != element::N) [[unlikely]]
@@ -209,8 +213,8 @@ namespace mudock {
             // const auto neigh_vertex  = neigh->m_target;
             // const auto neigh_index   = graph[neigh_vertex].atom_index;
             const auto neigh_point   = point3D{x[neigh_index], y[neigh_index], z[neigh_index]};
-            const auto diff          = difference(atom_point, neigh_point);
-            const auto d2            = sum_components(square(diff));
+            const auto diff          = atom_point.difference(neigh_point);
+            const auto d2            = diff.square().sum_components();
             const auto neigh_element = elements[neigh_index];
             if ((d2 < fp_type{3.61} && neigh_element != element::H) ||
                 (d2 < fp_type{1.69} && neigh_element == element::H)) {
@@ -241,14 +245,17 @@ namespace mudock {
         else if (bond_counter == std::size_t{1}) { // Azide Nitrogen N=C bond vector
           if (elements[neigh1_index] != element::C) [[unlikely]]
             throw std::runtime_error("The original autogrid was not expecting a non C atom with an N");
-          adt_protein.vector1[atom_index] = normalize(difference(atom_point, neigh1_point));
+          adt_protein.vector1[atom_index] = atom_point.difference(neigh1_point).normalize();
         } else if (bond_counter == std::size_t{2}) { // two bonds: X1-N=X2
-          adt_protein.vector1[atom_index] = normalize(
-              difference(atom_point, scale(add(neigh1_point, neigh2_point), fp_type{1} / fp_type{2})));
+          adt_protein.vector1[atom_index] =
+              atom_point
+                  .difference(
+                      neigh1_point.add(neigh2_point).product(point<fp_type, 3>{fp_type{1} / fp_type{2}}))
+                  .normalize();
         } else if (bond_counter == std::size_t{3}) { // three bonds
-          const auto p1 = add(std::as_const(neigh1_point), std::as_const(neigh2_point));
-          const auto p2 = scale(add(p1, std::as_const(neigh3_point)), fp_type{1} / fp_type{3});
-          adt_protein.vector1[atom_index] = normalize(difference(atom_point, p2));
+          const auto p1 = std::as_const(neigh1_point).add(std::as_const(neigh2_point));
+          const auto p2 = p1.add(std::as_const(neigh3_point)).product(fp_type{fp_type{1} / fp_type{3}});
+          adt_protein.vector1[atom_index] = atom_point.difference(p2).normalize();
         }
       }
     }
@@ -383,7 +390,7 @@ namespace mudock {
                       if (i == nearest_H_index) {
                         Hramp = fp_type{1};
                       } else {
-                        cos_theta = sum_components(product(vector1[nearest_H_index], vector1[i]));
+                        cos_theta = vector1[nearest_H_index].product(vector1[i]).sum_components();
                         cos_theta = std::min(fp_type{1}, std::max(cos_theta, fp_type{-1}));
                         Hramp     = fp_type{0.5} -
                                 fp_type{0.5} * std::cos(std::acos(cos_theta) * fp_type{120} / fp_type{90});

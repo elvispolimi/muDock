@@ -1,9 +1,5 @@
-#include <cstdlib>
-#include <iostream>
-#include <mudock/cuda_implementation/cuda_worker.hpp>
+#include <mudock/cuda_implementation/cuda_worker.cuh>
 #include <mudock/log.hpp>
-#include <stdexcept>
-#include <string>
 
 namespace mudock {
   cuda_worker::cuda_worker(const knobs knobs,
