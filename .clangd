@@ -1,0 +1,12 @@
+CompileFlags:
+  Remove:
+    - -forward-unknown-to-host-compiler
+    - --options-file
+    - --generate-code=*
+    - -Xcompiler=*
+    - --expt-relaxed-constexpr
+    - -rdc=true
+    - -Xlinker=*
+    - -Xptxas
+    - -G
+
