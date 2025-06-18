@@ -13,7 +13,7 @@ namespace mudock {
   // coordinates rather than indexes
   // FIXME N==3 for the time being, requires making point<fp_type, n>.hpp operations parametric on the size of the point
   template<typename C, typename T, std::size_t n>
-    requires((std::is_same<C, md_span<T, n>>::value || std::is_same<C, md_container<T, n>>::value) && n == 3)
+  // requires((std::is_same<C, md_span<T, n>>::value || std::is_same<C, md_container<T, n>>::value) && n == 3)
   class space_grid_t {
     C md_data;
 
@@ -36,7 +36,7 @@ namespace mudock {
                  const point<fp_type, n> center,
                  const fp_type resolution,
                  const C data)
-      requires(std::is_same<C, md_span<T, n>>::value)
+        // requires(std::is_same<C, md_span<T, n>>::value)
         : md_data(data), _inv_resolution(fp_type{1} / resolution), _min(min), _max(max), _center(center) {}
     template<class... Y>
     space_grid_t(const point<fp_type, n> min,
@@ -44,7 +44,7 @@ namespace mudock {
                  const point<fp_type, n> center,
                  const fp_type resolution,
                  Y&&... sizes)
-      requires(std::is_same<C, md_container<T, n>>::value && sizeof...(sizes) == n)
+        // requires(std::is_same<C, md_container<T, n>>::value && sizeof...(sizes) == n)
         : md_data(sizes...),
           _inv_resolution(fp_type{1} / resolution),
           _min(min),
@@ -96,9 +96,14 @@ namespace mudock {
     [[nodiscard]] inline const fp_type& get(Y&&... indexes) const {
       return md_data.get(indexes...);
     }
+
+    [[nodiscard]] inline const md_index<n>& get_space_index() const { return md_data; }
+    [[nodiscard]] inline T* data() const { return md_data.data(); };
   };
 
-  using space_grid_view = space_grid_t<md_span<fp_type, 3>, fp_type, 3>;
-  using space_grid      = space_grid_t<md_container<std::vector<fp_type>, 3>, std::vector<fp_type>, 3>;
+  template<typename T>
+  using space_grid_view = space_grid_t<md_span<T, 3>, T, 3>;
+  // using space_grid_view_const = space_grid_t<md_span<const fp_type, 3>, const fp_type, 3>;
+  using space_grid = space_grid_t<md_container<std::vector<fp_type>, 3>, std::vector<fp_type>, 3>;
 
 } // namespace mudock

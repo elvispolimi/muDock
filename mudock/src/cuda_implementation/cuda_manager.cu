@@ -1,8 +1,9 @@
 #include <memory>
+#include <mudock/chem/autodock_protein.hpp>
 #include <mudock/compute.hpp>
 #include <mudock/cuda_implementation/cuda_batch_sizer.cuh>
-#include <mudock/cuda_implementation/cuda_manager.hpp>
-#include <mudock/cuda_implementation/cuda_worker.hpp>
+#include <mudock/cuda_implementation/cuda_manager.cuh>
+#include <mudock/cuda_implementation/cuda_worker.cuh>
 #include <mudock/cuda_implementation/device.cuh>
 #include <stdexcept>
 
@@ -13,9 +14,7 @@ namespace mudock {
   void manage_cuda(const std::vector<std::string>& configurations,
                    threadpool& pool,
                    const knobs knobs,
-                   std::shared_ptr<const grid_atom_mapper>& grid_atom_maps,
-                   std::shared_ptr<const grid_map>& electro_map,
-                   std::shared_ptr<const grid_map>& desolv_map,
+                   const autodock_protein& adt_protein,
                    std::shared_ptr<safe_stack<static_molecule>>& input_molecules,
                    std::shared_ptr<safe_stack<static_molecule>>& output_molecules) {
     // single out the CUDA description
@@ -66,7 +65,7 @@ namespace mudock {
         // we spawn two workers for each GPU to implement the double buffer
         // TODO create e locking mechanism for the device
         // As to make the bucketizer more effective
-        const auto dev = std::make_shared<device>(id, grid_atom_maps, electro_map, desolv_map);
+        const auto dev = std::make_shared<device>(id, adt_protein);
 
         pool.add_worker<mudock::cuda_worker>(knobs, input_molecules, output_molecules, rob, dev);
         pool.add_worker<mudock::cuda_worker>(knobs, input_molecules, output_molecules, rob, dev);

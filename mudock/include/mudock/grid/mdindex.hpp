@@ -5,6 +5,7 @@
 #include <cassert>
 #include <concepts>
 #include <initializer_list>
+#include <mudock/grid/point3D.hpp>
 #include <numeric>
 #include <stdexcept>
 #include <tuple>
@@ -33,6 +34,13 @@ namespace mudock {
     md_index() {
       _sizes.fill(1);
       _coefs.fill(1);
+    }
+    template<typename T>
+    md_index(const point<T, n>& point) {
+      const auto& size_list = point.get_component();
+      std::copy(std::cbegin(size_list), std::cend(size_list), std::begin(_sizes));
+      _coefs[0] = std::size_t{1};
+      for (std::size_t i = 1; i < num_dimensions; ++i) { _coefs[i] = _coefs[i - 1] * _sizes[i - 1]; }
     }
     ~md_index()                                = default;
     md_index(md_index&& other)                 = default;

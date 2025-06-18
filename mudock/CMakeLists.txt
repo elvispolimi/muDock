@@ -91,7 +91,8 @@ list(
   "${source_path}/molecule/graph.cpp"
   "${source_path}/molecule/property_table.cpp"
   "${source_path}/log.cpp"
-  "${source_path}/cpp_implementation/geometric_transformations_cpp.cpp")
+  "${source_path}/cpp_implementation/geometric_transformations_cpp.cpp"
+  "${source_path}/cpp_implementation/calc_energy_cpp.cpp")
 
 if(MUDOCK_ENABLE_GH)
   list(APPEND source_files
@@ -113,10 +114,10 @@ if(MUDOCK_ENABLE_CUDA)
     "${header_path}/${header_prefix}/cuda_implementation/calc_energy.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/cuda_batch_sizer.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/cuda_check_error_macro.cuh"
-    "${header_path}/${header_prefix}/cuda_implementation/cuda_manager.hpp"
+    "${header_path}/${header_prefix}/cuda_implementation/cuda_manager.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/cuda_random.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/cuda_object.cuh"
-    "${header_path}/${header_prefix}/cuda_implementation/cuda_worker.hpp"
+    "${header_path}/${header_prefix}/cuda_implementation/cuda_worker.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/cuda_wrapper.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/evaluate_fitness.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/geometric_transformations.cuh"
@@ -128,8 +129,8 @@ if(MUDOCK_ENABLE_CUDA)
     source_files
     "${source_path}/cuda_implementation/cuda_object.cu"
     "${source_path}/cuda_implementation/cuda_batch_sizer.cu"
-    "${source_path}/cuda_implementation/cuda_manager.cpp"
-    "${source_path}/cuda_implementation/cuda_worker.cpp"
+    "${source_path}/cuda_implementation/cuda_manager.cu"
+    "${source_path}/cuda_implementation/cuda_worker.cu"
     "${source_path}/cuda_implementation/cuda_random.cu"
     "${source_path}/cuda_implementation/virtual_screen.cu"
     "${source_path}/cuda_implementation/device.cu"
@@ -291,12 +292,15 @@ if(MUDOCK_ENABLE_CUDA)
                  CUDA_STANDARD_REQUIRED ON
                  CUDA_EXTENSIONS OFF)
   endif()
-  set(CMAKE_CUDA_ARCHITECTURES OFF)
-  set(CMAKE_CUDA_FLAGS "--expt-relaxed-constexpr")
-  set(CMAKE_CUDA_FLAGS_RELEASE "-O3 -use_fast_math --expt-relaxed-constexpr")
+  # set(CMAKE_CUDA_ARCHITECTURES OFF)
+  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --expt-relaxed-constexpr")
+  set(CMAKE_CUDA_FLAGS_RELEASE
+      "${CMAKE_CUDA_FLAGS_RELEASE} -O3 -use_fast_math --expt-relaxed-constexpr")
   set(CMAKE_CUDA_FLAGS_RELWITHDEBINFO
-      "-G -g -Xptxas -v --expt-relaxed-constexpr")
-  set(CMAKE_CUDA_FLAGS_DEBUG "-G -g -Xptxas -v --expt-relaxed-constexpr")
+      "${CMAKE_CUDA_FLAGS_RELWITHDEBINFO} -G -g -Xptxas -v --expt-relaxed-constexpr"
+  )
+  set(CMAKE_CUDA_FLAGS_DEBUG
+      "${CMAKE_CUDA_FLAGS_DEBUG} -G -g -Xptxas -v --expt-relaxed-constexpr")
 endif()
 
 # check if we need to activate the compilation flag that signals OpenMP

@@ -9,6 +9,7 @@ namespace mudock {
     { T(i) };                 // constructible from size
     { t[i] };                 // indexable
   } && !std::is_pointer_v<T>; // not a raw pointer
+
   /**
    * This class represents a multidimensional vector that adapt a std::vector with more dimensions
    */
@@ -70,7 +71,10 @@ namespace mudock {
     [[nodiscard]] auto get_slice(const md_index<a> begin, const md_index<b> size) {
       return md_span<typename T::value_type, b>(_data.data() + begin.flat_size(), size);
     }
-
+    template<std::size_t a, std::size_t b>
+    [[nodiscard]] auto get_slice(const md_index<a> begin, const md_index<b> size) const {
+      return md_span<const typename T::value_type, b>(_data.data() + begin.flat_size(), size);
+    }
     [[nodiscard]] auto data() const { return _data.data(); }
   };
 

@@ -75,41 +75,11 @@ namespace mudock {
 
       auto adt_ligand = autodock_ligand{ligand};
       adt_ligand.update_offsets(adt_protein);
-      // // Get weed bonds and non bonds lists
-      // std::vector<int> non_bond_list_a1, non_bond_list_a2;
-      // std::vector<mudock::fp_type> cA_v, cB_v;
-      // std::vector<int> xB_v;
-      // mudock::non_bond_list(ligand, non_bond_list_a1, non_bond_list_a2);
-      // mudock::precompute_lennard_jones(non_bond_list_a1.size(),
-      //                                  cA_v,
-      //                                  cB_v,
-      //                                  xB_v,
-      //                                  ligand,
-      //                                  non_bond_list_a1,
-      //                                  non_bond_list_a2);
-      //
-      // const int atom_map_size         = grid_atom_maps.get()->get_single_map_size();
-      // const fp_type* atom_map_pointer = grid_atom_maps.get()->get_fused_maps().data();
-      //
-      // std::vector<int> frag_masks;
-      // std::vector<int> frag_start_indexes;
-      // std::vector<int> frag_stop_indexes;
-      // get_linearized_fragments_mask(num_atoms,
-      //                               num_rotamers,
-      //                               frag_masks,
-      //                               frag_start_indexes,
-      //                               frag_stop_indexes,
-      //                               ligand);
-      //
-      // std::vector<int> map_ligand_offsets;
-      // map_ligand_offsets.resize(num_atoms);
-      // for (int i = 0; i < num_atoms; i++)
-      //   map_ligand_offsets[i] =
-      //       static_cast<int>(autodock_grid_from_ff(ligand.autodock_type(i))) * atom_map_size;
+
       // Simulate the population evolution for the given amount of time
-      evaluate_fitness<vect>(adt_ligand.get_ligand_x(),
-                             adt_ligand.get_ligand_y(),
-                             adt_ligand.get_ligand_z(),
+      evaluate_fitness<vect>(adt_ligand.get_ligand_x_p(),
+                             adt_ligand.get_ligand_y_p(),
+                             adt_ligand.get_ligand_z_p(),
                              adt_ligand.get_ligand_vol(),
                              adt_ligand.get_ligand_solpar(),
                              adt_ligand.get_ligand_charge(),
@@ -130,8 +100,8 @@ namespace mudock {
                              configuration.population_number,
                              configuration.tournament_length,
                              configuration.mutation_prob,
-                             adt_protein.get_min(),
-                             adt_protein.get_max(),
+                             adt_protein.get_min_p(),
+                             adt_protein.get_max_p(),
                              adt_protein.get_center_p(),
                              adt_protein.get_size_x(),
                              adt_protein.get_size_xy(),

@@ -1,3 +1,5 @@
+#include "mudock/type_alias.hpp"
+
 #include <cassert>
 #include <mudock/cpp_implementation/center_of_mass.hpp>
 #include <mudock/cpp_implementation/geometric_transformations_cpp.hpp>
@@ -30,16 +32,16 @@ namespace mudock {
                                                 const fp_type angle_y,
                                                 const fp_type angle_z) {
     // compute the molecule center of mass
-    point3D c{0, 0, 0};
+    point3D c{fp_type{0}};
 #pragma omp simd
     for (int i = 0; i < num_atoms; i++) {
-      c.x += x[i];
-      c.y += y[i];
-      c.z += z[i];
+      c.x() += x[i];
+      c.y() += y[i];
+      c.z() += z[i];
     }
-    c.x /= num_atoms;
-    c.y /= num_atoms;
-    c.z /= num_atoms;
+    c.x() /= num_atoms;
+    c.y() /= num_atoms;
+    c.z() /= num_atoms;
 
     // compute the angles sine and cosine
     const auto rad_x = deg_to_rad(angle_x), rad_y = deg_to_rad(angle_y), rad_z = deg_to_rad(angle_z);
@@ -61,10 +63,10 @@ namespace mudock {
 // apply the rotation matrix
 #pragma omp simd
     for (int i = 0; i < num_atoms; ++i) {
-      const auto translated_x = x[i] - c.x, translated_y = y[i] - c.y, translated_z = z[i] - c.z;
-      x[i] = translated_x * m00 + translated_y * m01 + translated_z * m02 + c.x;
-      y[i] = translated_x * m10 + translated_y * m11 + translated_z * m12 + c.y;
-      z[i] = translated_x * m20 + translated_y * m21 + translated_z * m22 + c.z;
+      const auto translated_x = x[i] - c.x(), translated_y = y[i] - c.y(), translated_z = z[i] - c.z();
+      x[i] = translated_x * m00 + translated_y * m01 + translated_z * m02 + c.x();
+      y[i] = translated_x * m10 + translated_y * m11 + translated_z * m12 + c.y();
+      z[i] = translated_x * m20 + translated_y * m21 + translated_z * m22 + c.z();
     }
   }
 

@@ -196,7 +196,17 @@ namespace mudock {
    */
   struct autodock_protein {
     inline auto get_atom_map(const autodock_grid_type type) {
-      return space_grid_view{
+      return space_grid_view<fp_type>{
+          _min,
+          _max,
+          _center,
+          _inv_resolution,
+          data.get_slice(md_index<4>{index.size_x(), index.size_y(), index.size_z(), static_cast<int>(type)},
+                         index)};
+    };
+
+    inline auto get_atom_map(const autodock_grid_type type) const {
+      return space_grid_view<const fp_type>{
           _min,
           _max,
           _center,
@@ -208,10 +218,12 @@ namespace mudock {
     [[nodiscard]] inline auto get_desolvation() { return get_atom_map(autodock_grid_type::DESOLV); };
     [[nodiscard]] inline auto get_map_flat_size() const { return index.flat_size(); };
     [[nodiscard]] inline const auto* get_maps_pointer() const { return data.data(); };
-    [[nodiscard]] inline auto* get_min() const { return _min.data(); };
-    [[nodiscard]] inline auto* get_max() const { return _max.data(); };
+    [[nodiscard]] inline auto* get_min_p() const { return _min.data(); };
+    [[nodiscard]] inline auto* get_max_p() const { return _max.data(); };
     [[nodiscard]] inline auto* get_center_p() const { return _center.data(); };
     [[nodiscard]] inline auto get_center() const { return _center; };
+    [[nodiscard]] inline auto get_min() const { return _min; };
+    [[nodiscard]] inline auto get_max() const { return _max; };
 
     [[nodiscard]] inline auto get_size_x() const { return index.size_x(); };
     [[nodiscard]] inline auto get_size_xy() const { return index.size_xy(); };

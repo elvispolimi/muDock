@@ -2,6 +2,6 @@
 
 namespace mudock {
 
-  using fp_type = float;
+  using fp_type = double;
 
 } // namespace mudock

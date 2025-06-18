@@ -6,7 +6,7 @@
 #include <mudock/knobs.hpp>
 #include <mudock/molecule.hpp>
 #if defined(MUDOCK_USE_CUDA)
-  #include <mudock/cuda_implementation/cuda_manager.hpp>
+  #include <mudock/cuda_implementation/cuda_manager.cuh>
 #else
   #include <mudock/log.hpp>
 namespace mudock {

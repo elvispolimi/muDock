@@ -1,3 +1,6 @@
+#include "mudock/chem/autodock_ligand.hpp"
+#include "mudock/cpp_implementation/vectorization.hpp"
+
 #include <alloca.h>
 #include <cstddef>
 #include <cstring>
@@ -31,11 +34,6 @@ namespace mudock {
         ligand_vol(stream),
         ligand_solpar(stream),
         ligand_charge(stream),
-        ligand_Rij_hb(stream),
-        ligand_Rii(stream),
-        ligand_epsij_hb(stream),
-        ligand_epsii(stream),
-        ligand_num_hbond(stream),
         ligand_num_atoms(stream),
         ligand_num_rotamers(stream),
         ligand_fragments(stream),
@@ -44,6 +42,9 @@ namespace mudock {
         index_nonbonds(stream),
         nonbond_a1(stream),
         nonbond_a2(stream),
+        nonbond_cA(stream),
+        nonbond_cB(stream),
+        nonbond_xB(stream),
         map_texture_index(stream),
         ligand_scores(stream),
         chromosomes(stream),
@@ -61,6 +62,7 @@ namespace mudock {
     const std::size_t tot_rotamers_in_batch       = batch_ligands * batch_rotamers;
     // Use double buffering on the GPU for actual and next population at each iteration
     const std::size_t population_stride = configuration.population_number * 2;
+    const auto &adt_protein             = (*dev).adt_protein;
     original_ligand_x.alloc(tot_atoms_in_batch);
     original_ligand_y.alloc(tot_atoms_in_batch);
     original_ligand_z.alloc(tot_atoms_in_batch);
@@ -73,12 +75,7 @@ namespace mudock {
     ligand_vol.alloc(tot_atoms_in_batch);
     ligand_solpar.alloc(tot_atoms_in_batch);
     ligand_charge.alloc(tot_atoms_in_batch);
-    ligand_Rij_hb.alloc(tot_atoms_in_batch);
-    ligand_Rii.alloc(tot_atoms_in_batch);
-    ligand_epsij_hb.alloc(tot_atoms_in_batch);
-    ligand_epsii.alloc(tot_atoms_in_batch);
     // TODO check if it is required
-    ligand_num_hbond.alloc(tot_atoms_in_batch);
     ligand_num_atoms.alloc(batch_ligands);
     ligand_num_rotamers.alloc(batch_ligands);
     ligand_scores.alloc(batch_ligands);
@@ -89,119 +86,100 @@ namespace mudock {
     index_nonbonds.host_pointer()[0] = 0;
     nonbond_a1.alloc(max_non_bonds);
     nonbond_a2.alloc(max_non_bonds);
+    nonbond_cA.alloc(max_non_bonds);
+    nonbond_cB.alloc(max_non_bonds);
+    nonbond_xB.alloc(max_non_bonds);
     // GA Data structures
     chromosomes.alloc(population_stride * batch_ligands);
     // Support data precomputation
     map_texture_index.alloc(tot_atoms_in_batch);
 
     // Copy data
-    std::size_t index{0};
-    // TODO pragma OMP improve performance
-    // Keep the fragments for the output
-    std::vector<fragments<static_containers>> batch_fragments;
-    batch_fragments.reserve(batch_ligands);
-    // Support data structures
-    // TODO you can upload directly the nbmatrix
-    // Actually also the nb matrix can be computed on the GPU
-    grid<uint_fast8_t, index2D> nbmatrix{{static_cast<int>(batch_atoms), static_cast<int>(batch_atoms)}};
-    for (auto &ligand: std::span(incoming_batch.molecules.data(), batch_ligands)) {
+    std::vector<autodock_ligand> vector_adt_ligands;
+    for (std::size_t index{0}; index < batch_ligands; ++index) {
+      auto &ligand = incoming_batch.molecules[index];
+      vector_adt_ligands.emplace_back(*ligand);
+      auto &adt_ligand = vector_adt_ligands.back();
+      adt_ligand.update_offsets(adt_protein);
       const int stride_atoms = index * batch_atoms;
       // Atoms and bonds
-      const int num_atoms                    = ligand.get()->num_atoms();
+      const int num_atoms                    = adt_ligand.get_num_atoms();
       ligand_num_atoms.host_pointer()[index] = num_atoms;
       // TODO bonds
       // Place the molecule to the center of the target protein
-      const auto x = ligand.get()->get_x(), y = ligand.get()->get_y(), z = ligand.get()->get_z();
+      const auto x = adt_ligand.get_ligand_x(), y = adt_ligand.get_ligand_y(), z = adt_ligand.get_ligand_z();
+      auto x_p = adt_ligand.get_ligand_x_p(), y_p = adt_ligand.get_ligand_y_p(),
+           z_p = adt_ligand.get_ligand_z_p();
+
       const auto ligand_center_of_mass = compute_center_of_mass(x, y, z);
-      translate_molecule(x,
-                         y,
-                         z,
-                         dev.get()->center_maps.x - ligand_center_of_mass.x,
-                         dev.get()->center_maps.y - ligand_center_of_mass.y,
-                         dev.get()->center_maps.z - ligand_center_of_mass.z);
+      const auto offset                = adt_protein.get_center() - ligand_center_of_mass;
+      translate_molecule<cpu_vectorization::AUTO>(x_p,
+                                                  y_p,
+                                                  z_p,
+                                                  num_atoms,
+                                                  offset.x(),
+                                                  offset.y(),
+                                                  offset.z());
 
       std::memcpy((void *) (original_ligand_x.host_pointer() + stride_atoms),
-                  x.data(),
+                  x_p,
                   num_atoms * sizeof(fp_type));
       std::memcpy((void *) (original_ligand_y.host_pointer() + stride_atoms),
-                  y.data(),
+                  y_p,
                   num_atoms * sizeof(fp_type));
       std::memcpy((void *) (original_ligand_z.host_pointer() + stride_atoms),
-                  z.data(),
+                  z_p,
                   num_atoms * sizeof(fp_type));
-      // Fragments
-      // Find out the rotatable bonds in the ligand
-      auto graph = make_graph(ligand.get()->get_bonds());
-      // TODO check this assignment
-      batch_fragments[index]  = {graph, ligand.get()->get_bonds(), ligand.get()->num_atoms()};
-      const auto &l_fragments = batch_fragments[index];
 
       // Randomly initialize the population
-      const auto num_rotamers                   = l_fragments.get_num_rotatable_bonds();
+      const auto num_rotamers                   = adt_ligand.get_num_rotatable_bonds();
       ligand_num_rotamers.host_pointer()[index] = num_rotamers;
       const int stride_masks                    = index * batch_rotamers * batch_atoms;
       const int stride_rotamers                 = index * batch_rotamers;
       assert(batch_rotamers > ligand.get()->num_rotamers());
-      for (int rot = 0; rot < num_rotamers; ++rot) {
-        std::memcpy((void *) (ligand_fragments.host_pointer() + stride_masks + rot * batch_atoms),
-                    l_fragments.get_mask(rot).data(),
-                    num_atoms * sizeof(int));
-        const auto [start_index, stop_index]                          = l_fragments.get_rotatable_atoms(rot);
-        frag_start_atom_indices.host_pointer()[stride_rotamers + rot] = start_index;
-        frag_stop_atom_indices.host_pointer()[stride_rotamers + rot]  = stop_index;
-      }
 
-      // Weed bonds
-      // TODO can be accelerated on the GPU
-      // No need to move data -> already computed on the GPU
-      nbmatrix.reset();
-      nonbonds(nbmatrix, ligand.get()->get_bonds(), num_atoms);
-      std::vector<int> non_bond_a1_tmp, non_bond_a2_tmp;
-      weed_bonds(nbmatrix, non_bond_a1_tmp, non_bond_a2_tmp, num_atoms, l_fragments);
+      std::memcpy((void *) (ligand_fragments.host_pointer() + stride_masks),
+                  adt_ligand.get_fragments_masks(),
+                  num_atoms * num_rotamers * sizeof(fp_type));
+      std::memcpy((void *) (frag_start_atom_indices.host_pointer() + stride_rotamers),
+                  adt_ligand.get_fragmets_starts(),
+                  num_rotamers * sizeof(fp_type));
+      std::memcpy((void *) (frag_stop_atom_indices.host_pointer() + stride_rotamers),
+                  adt_ligand.get_fragments_stops(),
+                  num_rotamers * sizeof(fp_type));
 
+      const auto non_bond_size = adt_ligand.get_non_bond_size();
       std::memcpy((void *) (nonbond_a1.host_pointer() + index_nonbonds.host_pointer()[index]),
-                  non_bond_a1_tmp.data(),
-                  non_bond_a1_tmp.size() * sizeof(int));
+                  adt_ligand.get_non_bond_A(),
+                  non_bond_size * sizeof(int));
       std::memcpy((void *) (nonbond_a2.host_pointer() + index_nonbonds.host_pointer()[index]),
-                  non_bond_a2_tmp.data(),
-                  non_bond_a2_tmp.size() * sizeof(int));
-      index_nonbonds.host_pointer()[index + 1] =
-          index_nonbonds.host_pointer()[index] + non_bond_a1_tmp.size();
+                  adt_ligand.get_non_bond_B(),
+                  non_bond_size * sizeof(int));
+      std::memcpy((void *) (nonbond_cA.host_pointer() + index_nonbonds.host_pointer()[index]),
+                  adt_ligand.get_non_bond_cA(),
+                  non_bond_size * sizeof(fp_type));
+      std::memcpy((void *) (nonbond_cB.host_pointer() + index_nonbonds.host_pointer()[index]),
+                  adt_ligand.get_non_bond_cB(),
+                  non_bond_size * sizeof(fp_type));
+      std::memcpy((void *) (nonbond_xB.host_pointer() + index_nonbonds.host_pointer()[index]),
+                  adt_ligand.get_non_bond_xB(),
+                  non_bond_size * sizeof(int));
+      index_nonbonds.host_pointer()[index + 1] = index_nonbonds.host_pointer()[index] + non_bond_size;
 
       // Autodock typing
       std::memcpy((void *) (ligand_vol.host_pointer() + stride_atoms),
-                  ligand.get()->get_vol().data(),
+                  adt_ligand.get_ligand_vol(),
                   num_atoms * sizeof(fp_type));
       std::memcpy((void *) (ligand_solpar.host_pointer() + stride_atoms),
-                  ligand.get()->get_solpar().data(),
+                  adt_ligand.get_ligand_solpar(),
                   num_atoms * sizeof(fp_type));
       std::memcpy((void *) (ligand_charge.host_pointer() + stride_atoms),
-                  ligand.get()->get_charge().data(),
+                  adt_ligand.get_ligand_charge(),
                   num_atoms * sizeof(fp_type));
-      std::memcpy((void *) (ligand_Rij_hb.host_pointer() + stride_atoms),
-                  ligand.get()->get_Rij_hb().data(),
-                  num_atoms * sizeof(fp_type));
-      std::memcpy((void *) (ligand_Rii.host_pointer() + stride_atoms),
-                  ligand.get()->get_Rii().data(),
-                  num_atoms * sizeof(fp_type));
-      std::memcpy((void *) (ligand_epsij_hb.host_pointer() + stride_atoms),
-                  ligand.get()->get_epsij_hb().data(),
-                  num_atoms * sizeof(fp_type));
-      std::memcpy((void *) (ligand_epsii.host_pointer() + stride_atoms),
-                  ligand.get()->get_epsii().data(),
-                  num_atoms * sizeof(fp_type));
-      std::memcpy((void *) (ligand_num_hbond.host_pointer() + stride_atoms),
-                  ligand.get()->get_num_hbond().data(),
+
+      std::memcpy((void *) (map_texture_index.host_pointer() + stride_atoms),
+                  adt_ligand.get_atom_map_offsets(),
                   num_atoms * sizeof(int));
-
-      std::size_t atom_index{0};
-      for (auto &autodock_t: ligand.get()->get_autodock_type()) {
-        const auto map_index = static_cast<int>(map_from_autodock_type(autodock_t));
-        map_texture_index.host_pointer()[stride_atoms + atom_index] = map_index;
-        ++atom_index;
-      }
-
-      ++index;
     }
     // Copy in
     ligand_num_atoms.copy_host2device();
@@ -215,15 +193,13 @@ namespace mudock {
     ligand_vol.copy_host2device();
     ligand_solpar.copy_host2device();
     ligand_charge.copy_host2device();
-    ligand_Rij_hb.copy_host2device();
-    ligand_Rii.copy_host2device();
-    ligand_epsij_hb.copy_host2device();
-    ligand_epsii.copy_host2device();
-    ligand_num_hbond.copy_host2device();
     map_texture_index.copy_host2device();
     index_nonbonds.copy_host2device();
     nonbond_a1.copy_host2device();
     nonbond_a2.copy_host2device();
+    nonbond_cA.copy_host2device();
+    nonbond_cB.copy_host2device();
+    nonbond_xB.copy_host2device();
 
     // Setup cuda random
     // A state for each thread
@@ -255,6 +231,7 @@ namespace mudock {
                                                                   batch_atoms,
                                                                   batch_rotamers,
                                                                   max_non_bonds,
+                                                                  adt_protein.get_size_xyz(),
                                                                   original_ligand_x.dev_pointer(),
                                                                   original_ligand_y.dev_pointer(),
                                                                   original_ligand_z.dev_pointer(),
@@ -264,14 +241,12 @@ namespace mudock {
                                                                   ligand_vol.dev_pointer(),
                                                                   ligand_solpar.dev_pointer(),
                                                                   ligand_charge.dev_pointer(),
-                                                                  ligand_num_hbond.dev_pointer(),
-                                                                  ligand_Rij_hb.dev_pointer(),
-                                                                  ligand_Rii.dev_pointer(),
-                                                                  ligand_epsij_hb.dev_pointer(),
-                                                                  ligand_epsii.dev_pointer(),
                                                                   index_nonbonds.dev_pointer(),
                                                                   nonbond_a1.dev_pointer(),
                                                                   nonbond_a2.dev_pointer(),
+                                                                  nonbond_cA.dev_pointer(),
+                                                                  nonbond_cB.dev_pointer(),
+                                                                  nonbond_xB.dev_pointer(),
                                                                   ligand_num_atoms.dev_pointer(),
                                                                   ligand_num_rotamers.dev_pointer(),
                                                                   ligand_fragments.dev_pointer(),
@@ -296,16 +271,24 @@ namespace mudock {
     ligand_scores.copy_device2host();
 
     // update the ligand position with the best one that we found
-    index = 0;
-    for (auto &ligand: std::span(incoming_batch.molecules.data(), incoming_batch.num_ligands)) {
+    for (std::size_t index{0}; index < batch_ligands; ++index) {
+      auto &adt_ligand        = vector_adt_ligands[index];
+      auto &ligand            = incoming_batch.molecules[index];
+      const int num_atoms     = adt_ligand.get_num_atoms();
+      const auto num_rotamers = adt_ligand.get_num_rotatable_bonds();
+
+      // for (auto &ligand: std::span(incoming_batch.molecules.data(), incoming_batch.num_ligands)) {
       // Reset the random number generator to improve consistency
-      apply(ligand.get()->get_x(),
-            ligand.get()->get_y(),
-            ligand.get()->get_z(),
-            *(best_chromosomes.host_pointer() + index),
-            batch_fragments[index]);
+      apply<cpu_vectorization::AUTO>(adt_ligand.get_ligand_x_p(),
+                                     adt_ligand.get_ligand_y_p(),
+                                     adt_ligand.get_ligand_z_p(),
+                                     *(best_chromosomes.host_pointer() + index),
+                                     num_atoms,
+                                     num_rotamers,
+                                     adt_ligand.get_fragments_masks(),
+                                     adt_ligand.get_fragmets_starts(),
+                                     adt_ligand.get_fragments_stops());
       ligand->properties.assign(property_type::SCORE, std::to_string(ligand_scores.host_pointer()[index]));
-      ++index;
     }
   }
 } // namespace mudock

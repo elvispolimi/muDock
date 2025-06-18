@@ -42,7 +42,7 @@ int main(int argc, char* argv[]) {
   po::notify(vm);
 
   const mudock::autodock_protein adt_protein = load_autogrid_map_dpf(dpf_path);
-  const auto ligand                          = load_autogrid_ligand(dpf_path);
+  auto ligand                                = load_autogrid_ligand(dpf_path);
   const auto adt_score                       = load_autodock_score(dpf_path);
   const auto adt_error_score                 = load_autodock_error_score(dpf_path);
 
@@ -52,9 +52,9 @@ int main(int argc, char* argv[]) {
   adt_ligand.update_offsets(adt_protein);
 
   mudock::info("Computing energy ...");
-  const auto energy = mudock::calc_energy<mudock::cpu_vectorization::AUTO>(adt_ligand.get_ligand_x(),
-                                                                           adt_ligand.get_ligand_y(),
-                                                                           adt_ligand.get_ligand_z(),
+  const auto energy = mudock::calc_energy<mudock::cpu_vectorization::AUTO>(adt_ligand.get_ligand_x_p(),
+                                                                           adt_ligand.get_ligand_y_p(),
+                                                                           adt_ligand.get_ligand_z_p(),
                                                                            adt_ligand.get_ligand_vol(),
                                                                            adt_ligand.get_ligand_solpar(),
                                                                            adt_ligand.get_ligand_charge(),
@@ -67,8 +67,8 @@ int main(int argc, char* argv[]) {
                                                                            adt_ligand.get_non_bond_cA(),
                                                                            adt_ligand.get_non_bond_cB(),
                                                                            adt_ligand.get_non_bond_xB(),
-                                                                           adt_protein.get_min(),
-                                                                           adt_protein.get_max(),
+                                                                           adt_protein.get_min_p(),
+                                                                           adt_protein.get_max_p(),
                                                                            adt_protein.get_center_p(),
                                                                            adt_protein.get_size_x(),
                                                                            adt_protein.get_size_xy(),

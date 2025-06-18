@@ -17,13 +17,7 @@ namespace mudock {
 
   static constexpr int range_near_atom_receptor = 20;
 
-  // TODO why this value?
-  static constexpr int NEINT{
-      2048}; /* Number of values in internal energy table, they are based on radius range values */
-  /* Number of dielectric and desolvation values in lookup table.
-  NDIEL is bigger than NEINT because electrostatic interactions are much
-  longer-range than van der Waals interactions. */
-  // TODO wrong comment in autogrid
+  static constexpr int NEINT{2048};
   static constexpr int NDIEL{16384};
 
   static constexpr fp_type NBC{8.00}; /* Non-bonded cutoff for internal energy calc./Ang*/
