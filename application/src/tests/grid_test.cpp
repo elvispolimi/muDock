@@ -68,15 +68,15 @@ int main(int argc, char* argv[]) {
             const auto max_absolute = std::max(std::fabs(reference_round), std::fabs(autogrid_round)) / 100;
             const auto delta        = std::clamp(max_absolute, float{0.01}, float{1});
             if (std::fabs(reference_round - autogrid_round) > delta) {
-              mudock::error(
-                  std::format("Difference betweem maps {} at ({},{},{}): muDock {} autogrid {} with delta {}",
-                              mudock::get_description(map_type).name,
-                              i,
-                              j,
-                              k,
-                              reference_round,
-                              autogrid_round,
-                              delta));
+              mudock::error(std::format(
+                  "Difference betweem maps {} at ({},{},{}): muDock {} autogrid {} with an error threshold of {}",
+                  mudock::get_description(map_type).name,
+                  i,
+                  j,
+                  k,
+                  reference_round,
+                  autogrid_round,
+                  delta));
               throw std::runtime_error("Error in Map");
             }
           }

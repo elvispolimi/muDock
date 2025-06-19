@@ -255,7 +255,15 @@ if(MUDOCK_ENABLE_XSIMD)
 endif()
 
 if(MUDOCK_ENABLE_OMP_SIMD)
-  target_compile_options(libmudock PRIVATE -fopenmp-simd)
+  if(CMAKE_C_COMPILER_ID STREQUAL "GNU" OR CMAKE_C_COMPILER_ID STREQUAL "Clang")
+    target_compile_options(libmudock PRIVATE -fopenmp-simd -ffast-math)
+  else()
+    message(
+      STATUS
+        "MuDock does not optimize SIMD auto-vectorization with {CMAKE_C_COMPILER_ID}"
+    )
+  endif()
+
 endif()
 
 # check if we need to activate the compilation flag that signals HIP
@@ -378,4 +386,4 @@ endif()
 # ### Declare the install step
 # ##############################################################################
 
-# at the moment we don't deploy the library
+# at the moment we don't deploy the librar
