@@ -267,12 +267,11 @@ if(MUDOCK_ENABLE_HIP)
     PUBLIC
       $<$<AND:$<CONFIG:RELWITHDEBINFO>,$<COMPILE_LANGUAGE:CXX>>:--expt-relaxed-constexpr>
   )
-  target_compile_options(
-    libmudock PUBLIC $<$<AND:$<CONFIG:DEBUG>,$<COMPILE_LANGUAGE:CXX>>:-G -g
-                     -Xptxas -v --expt-relaxed-constexpr>)
-  target_compile_options(
-    libmudock PUBLIC $<$<AND:$<CONFIG:RELEASE>,$<COMPILE_LANGUAGE:CXX>>:-O3
-                     -use_fast_math --expt-relaxed-constexpr>)
+  # FIXME target_compile_options( libmudock PUBLIC
+  # $<$<AND:$<CONFIG:DEBUG>,$<COMPILE_LANGUAGE:CXX>>:-G -g -Xptxas -v
+  # --expt-relaxed-constexpr>) target_compile_options( libmudock PUBLIC
+  # $<$<AND:$<CONFIG:RELEASE>,$<COMPILE_LANGUAGE:CXX>>:-O3 -use_fast_math
+  # --expt-relaxed-constexpr>)
 endif()
 
 # check if we need to activate the compilation flag that signals CUDA
@@ -371,6 +370,10 @@ if(MUDOCK_ENABLE_LIKWID)
   add_definitions(-DLIKWID_PERFMON)
 endif()
 
+# Profiling
+if(MUDOCK_ENABLE_TEST)
+  target_compile_definitions(libmudock PUBLIC MUDOCK_TEST)
+endif()
 # ##############################################################################
 # ### Declare the install step
 # ##############################################################################

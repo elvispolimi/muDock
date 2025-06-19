@@ -62,7 +62,7 @@ namespace mudock {
       const int num_atoms     = ligand.num_atoms();
       const auto num_rotamers = ligand.num_rotamers();
 
-      const auto x = ligand.get_x(), y = ligand.get_y(), z = ligand.get_z();
+      auto x = ligand.get_x(), y = ligand.get_y(), z = ligand.get_z();
       const auto ligand_center_of_mass = compute_center_of_mass(x, y, z);
       const auto offset                = adt_protein.get_center() - ligand_center_of_mass;
       translate_molecule<cpu_vectorization::AUTO>(x.data(),
@@ -72,6 +72,7 @@ namespace mudock {
                                                   offset.x(),
                                                   offset.y(),
                                                   offset.z());
+      // for (int a = 0; a < num_atoms; ++a) printf("%f %f %f\n", x[a], y[a], z[a]);
 
       auto adt_ligand = autodock_ligand{ligand};
       adt_ligand.update_offsets(adt_protein);

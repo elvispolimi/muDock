@@ -8,8 +8,6 @@
 
 namespace mudock {
 
-  // static constexpr auto cpp_token = std::string_view{"CPP"};
-
   void manage_cpp(const std::vector<std::string>& configurations,
                   threadpool& pool,
                   const autodock_protein& adt_protein,

@@ -30,8 +30,7 @@ inline auto read_from_stream(stream_type&& in) {
                      std::istreambuf_iterator<std::string::value_type>{}};
 }
 constexpr auto is_debug() {
-  // TODO this should work only with CMAKE
-#ifdef DEBUG_MODE
+#ifdef MUDOCK_TEST
   return true;
 #else
   return false;
