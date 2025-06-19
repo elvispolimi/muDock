@@ -178,7 +178,7 @@ namespace mudock {
                   num_atoms * sizeof(fp_type));
 
       std::memcpy((void *) (map_texture_index.host_pointer() + stride_atoms),
-                  adt_ligand.get_atom_map_offsets(),
+                  adt_ligand.get_atom_map_index(),
                   num_atoms * sizeof(int));
     }
     // Copy in

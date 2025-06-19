@@ -67,14 +67,13 @@ namespace mudock {
 
     atom_texs.alloc(num_autodock_ff_grids());
     for (size_t index{0}; index < num_autodock_grids(); index++) {
+      auto& tex        = atom_texs.host_pointer()[index];
       const auto& grid = adt_protein.get_atom_map(static_cast<autodock_grid_type>(index));
+      init_texture_memory(grid, tex);
     }
-    // for (auto& atom_tex: atom_texs.host) {
-    //   const grid_map& grid_atom =
-    //       grid_atom_maps.get()->get_atom_map(autodock_type_from_map(static_cast<ligand_map_types>(index)));
-    //   init_texture_memory(grid_atom, atom_tex);
-    //   ++index;
-    // }
+    init_texture_memory(adt_protein.get_atom_map(autodock_grid_type::ELEC), this->electro_tex);
+    init_texture_memory(adt_protein.get_atom_map(autodock_grid_type::DESOLV), this->desolv_tex);
+
     atom_texs.copy_host2device();
 
     // Grid spacing fixed to 0.5 Angstrom

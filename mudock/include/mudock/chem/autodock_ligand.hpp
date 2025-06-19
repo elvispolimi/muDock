@@ -54,6 +54,8 @@ namespace mudock {
     [[nodiscard]] inline auto* get_fragments_stops() const { return frag_stop_indexes.data(); }
 
     [[nodiscard]] inline auto* get_atom_map_offsets() const { return map_offset_per_atom.data(); }
+    [[nodiscard]] inline auto* get_atom_map_index() const { return map_index_per_atom.data(); }
+
     inline void update_offsets(const autodock_protein& adt_protein) {
       const auto atom_map_size = adt_protein.get_map_flat_size();
       for (int i = 0; i < ligand.num_atoms(); i++)
