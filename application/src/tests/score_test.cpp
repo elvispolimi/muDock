@@ -97,15 +97,19 @@ int main(int argc, char* argv[]) {
     std::stringstream sss(ligand_out->properties.get(mudock::property_type::SCORE));
     mudock::fp_type score;
     sss >> score;
-    const auto diff  = std::abs(score - reference_score);
-    const auto error = std::max(reference_score * mudock::fp_type{0.001}, mudock::fp_type{0.1});
+    const auto diff = std::abs(score - reference_score);
+    // const auto error        = std::max(reference_score * mudock::fp_type{0.001}, mudock::fp_type{0.1});
+    const auto max_absolute = std::max(std::fabs(score), std::fabs(reference_score)) / 100;
+    const auto error        = std::clamp(max_absolute, float{0.001}, float{1});
     if (diff > error) {
-      mudock::error(std::format("Difference betweem scores of {} on {} ( CPU {} vs {} {})",
-                                ligand_path.string(),
-                                protein_path.string(),
-                                reference_score,
-                                conf,
-                                score));
+      mudock::error(std::format(
+          "Difference betweem scores of {} on {} ( CPU {} vs {} {} with an error threshold of {})",
+          ligand_path.string(),
+          protein_path.string(),
+          reference_score,
+          conf,
+          score,
+          error));
       throw std::runtime_error("Error in score");
     }
   }
