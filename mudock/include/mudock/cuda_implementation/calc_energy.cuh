@@ -166,43 +166,6 @@ namespace mudock {
 
         fp_type e_vdW_Hb{0};
         if (distance_two_clamp < nbc2) {
-          //   const int& hbond_i        = ligand_num_hbond[a1];
-          //   const int& hbond_j        = ligand_num_hbond[a2];
-          //   const fp_type& Rij_hb_i   = ligand_Rij_hb[a1];
-          //   const fp_type& Rij_hb_j   = ligand_Rij_hb[a2];
-          //   const fp_type& Rii_i      = ligand_Rii[a1];
-          //   const fp_type& Rii_j      = ligand_Rii[a2];
-          //   const fp_type& epsij_hb_i = ligand_epsij_hb[a1];
-          //   const fp_type& epsij_hb_j = ligand_epsij_hb[a2];
-          //   const fp_type& epsii_i    = ligand_epsii[a1];
-          //   const fp_type& epsii_j    = ligand_epsii[a2];
-          //
-          //   int xA = 12;
-          //   int xB = 6;
-          //
-          //   fp_type Rij{0}, epsij{0};
-          //   if ((hbond_i == 1 || hbond_i == 2) && hbond_j > 2) {
-          //     Rij   = Rij_hb_j;
-          //     epsij = epsij_hb_j;
-          //     xB    = 10;
-          //   } else if ((hbond_i > 2) && (hbond_j == 1 || hbond_j == 2)) {
-          //     Rij   = Rij_hb_i;
-          //     epsij = epsij_hb_i;
-          //     xB    = 10;
-          //   } else {
-          //     Rij   = (Rii_i + Rii_j) / fp_type{2};
-          //     epsij = sqrtf(epsii_i * epsii_j);
-          //   }
-          //   if (xA != xB) {
-          //     const fp_type tmp = epsij / (xA - xB);
-          //     const fp_type cA  = tmp * powf(Rij, xA) * xB;
-          //     const fp_type cB  = tmp * powf(Rij, xB) * xA;
-          //
-          //     const fp_type rA = powf(distance, static_cast<fp_type>(xA));
-          //     const fp_type rB = powf(distance, static_cast<fp_type>(xB));
-          //
-          //     e_vdW_Hb = fminf(EINTCLAMP, (cA / rA - cB / rB));
-          // }
           const int xA = xA_default;
           const int xB = ligand_nonbond_xB[nonbond_list];
 

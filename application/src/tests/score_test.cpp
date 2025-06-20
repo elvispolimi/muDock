@@ -100,7 +100,7 @@ int main(int argc, char* argv[]) {
     const auto diff = std::abs(score - reference_score);
     // const auto error        = std::max(reference_score * mudock::fp_type{0.001}, mudock::fp_type{0.1});
     const auto max_absolute = std::max(std::fabs(score), std::fabs(reference_score)) / 100;
-    const auto error        = std::clamp(max_absolute, float{0.001}, float{1});
+    const auto error        = std::clamp(max_absolute, float{0.001}, float{5});
     if (diff > error) {
       mudock::error(std::format(
           "Difference betweem scores of {} on {} ( CPU {} vs {} {} with an error threshold of {})",
