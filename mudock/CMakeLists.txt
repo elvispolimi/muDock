@@ -116,6 +116,7 @@ if(MUDOCK_ENABLE_CUDA)
     "${header_path}/${header_prefix}/cuda_implementation/cuda_check_error_macro.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/cuda_manager.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/cuda_random.cuh"
+    "${header_path}/${header_prefix}/cuda_implementation/cuda_texture.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/cuda_object.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/cuda_worker.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/cuda_wrapper.cuh"
@@ -290,8 +291,7 @@ if(MUDOCK_ENABLE_CUDA)
       libmudock
       PROPERTIES CUDA_STANDARD 20
                  CUDA_STANDARD_REQUIRED ON
-                 CUDA_EXTENSIONS OFF
-                 INTERPROCEDURAL_OPTIMIZATION ON)
+                 CUDA_EXTENSIONS OFF)
   else()
     set_target_properties(
       libmudock
@@ -302,12 +302,10 @@ if(MUDOCK_ENABLE_CUDA)
   # set(CMAKE_CUDA_ARCHITECTURES OFF)
   set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --expt-relaxed-constexpr")
   set(CMAKE_CUDA_FLAGS_RELEASE
-      "${CMAKE_CUDA_FLAGS_RELEASE} -O3 -use_fast_math --expt-relaxed-constexpr")
+      "${CMAKE_CUDA_FLAGS_RELEASE} -use_fast_math -Xptxas -v")
   set(CMAKE_CUDA_FLAGS_RELWITHDEBINFO
-      "${CMAKE_CUDA_FLAGS_RELWITHDEBINFO} -G -g -Xptxas -v --expt-relaxed-constexpr"
-  )
-  set(CMAKE_CUDA_FLAGS_DEBUG
-      "${CMAKE_CUDA_FLAGS_DEBUG} -G -g -Xptxas -v --expt-relaxed-constexpr")
+      "${CMAKE_CUDA_FLAGS_RELWITHDEBINFO} -G -Xptxas -v")
+  set(CMAKE_CUDA_FLAGS_DEBUG "${CMAKE_CUDA_FLAGS_DEBUG} -G -Xptxas -v")
 endif()
 
 # check if we need to activate the compilation flag that signals OpenMP

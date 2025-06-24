@@ -26,6 +26,7 @@ namespace mudock {
        {autodock_grid_type::Cl, "Cl"},
        {autodock_grid_type::F, "F"},
        {autodock_grid_type::S, "S"},
+       {autodock_grid_type::Si, "Si"},
        {autodock_grid_type::Br, "Br"},
        {autodock_grid_type::P, "P"},
        {autodock_grid_type::I, "I"},

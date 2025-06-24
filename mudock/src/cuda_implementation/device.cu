@@ -1,15 +1,17 @@
-#include "mudock/chem/autodock_protein.hpp"
-#include "mudock/grid/mdindex.hpp"
-#include "mudock/grid/space_grid.hpp"
-#include "mudock/type_alias.hpp"
-
 #include <mudock/chem/autodock_grid_types.hpp>
+#include <mudock/chem/autodock_protein.hpp>
+#include <mudock/cuda_implementation/cuda_check_error_macro.cuh>
 #include <mudock/cuda_implementation/device.cuh>
 #include <mudock/cuda_implementation/evaluate_fitness.cuh>
+#include <mudock/grid/mdindex.hpp>
+#include <mudock/grid/space_grid.hpp>
+#include <mudock/type_alias.hpp>
 
 namespace mudock {
   // TODO pack together maps using float4 data structures
-  void init_texture_memory(const space_grid_view<const fp_type> grid_map, cudaTextureObject_t& tex_obj) {
+  void init_texture_memory(const space_grid_view<const fp_type> grid_map,
+                           cudaTexture_wrapper& tex_obj,
+                           const cudaStream_t& stream) {
     // Create 3D CUDA array for the texture
     cudaArray* d_array;
     cudaChannelFormatDesc channel_desc = cudaCreateChannelDesc<fp_type>();
@@ -31,7 +33,7 @@ namespace mudock {
     copyParams.dstPos            = make_cudaPos(0, 0, 0);
     copyParams.extent            = extent;
     copyParams.kind              = cudaMemcpyHostToDevice;
-    MUDOCK_CHECK(cudaMemcpy3D(&copyParams));
+    MUDOCK_CHECK(cudaMemcpy3DAsync(&copyParams, stream));
 
     // Create texture object
     cudaResourceDesc res_desc;
@@ -44,20 +46,22 @@ namespace mudock {
     tex_desc.addressMode[0] = cudaAddressModeClamp;
     tex_desc.addressMode[1] = cudaAddressModeClamp;
     tex_desc.addressMode[2] = cudaAddressModeClamp;
-    // tex_desc.filterMode     = cudaFilterModeLinear; // Enable linear interpolation
-    tex_desc.filterMode       = cudaFilterModePoint;
+#ifdef MUDOCK_TEST
+    tex_desc.filterMode = cudaFilterModePoint;
+#else
+    tex_desc.filterMode = cudaFilterModeLinear;
+#endif
     tex_desc.readMode         = cudaReadModeElementType;
-    tex_desc.normalizedCoords = false; // We will use unnormalized coordinates
+    tex_desc.normalizedCoords = false;
 
-    // Create the texture object
-    MUDOCK_CHECK(cudaCreateTextureObject(&tex_obj, &res_desc, &tex_desc, NULL));
+    MUDOCK_CHECK(cudaCreateTextureObject(&tex_obj(), &res_desc, &tex_desc, NULL));
   }
 
   device::device(const std::size_t gpu_id, const autodock_protein& adt_protein)
       : id(gpu_id),
         center_maps(adt_protein.get_center()),
         stream(get_stream()),
-        atom_texs(stream),
+        atom_tex(stream()),
         adt_protein(adt_protein) {
     // TODO move this part into the cuda_worker -> once per GPU
     // TODO move this only to one for Device, DO NOT repeat the memory loading per each thread
@@ -65,20 +69,20 @@ namespace mudock {
     const point<fp_type, 3>&minimum(adt_protein.get_min()), maximum(adt_protein.get_max()),
         center(adt_protein.get_center());
 
-    atom_texs.alloc(num_autodock_ff_grids());
+    atom_tex.alloc(num_autodock_grids());
     for (size_t index{0}; index < num_autodock_grids(); index++) {
-      auto& tex        = atom_texs.host_pointer()[index];
-      const auto& grid = adt_protein.get_atom_map(static_cast<autodock_grid_type>(index));
-      init_texture_memory(grid, tex);
-    }
-    init_texture_memory(adt_protein.get_atom_map(autodock_grid_type::ELEC), this->electro_tex);
-    init_texture_memory(adt_protein.get_atom_map(autodock_grid_type::DESOLV), this->desolv_tex);
+      auto& tex = atom_tex.host_pointer()[index];
 
-    atom_texs.copy_host2device();
+      const auto& grid = adt_protein.get_atom_map(static_cast<autodock_grid_type>(index));
+      init_texture_memory(grid, tex, stream());
+      MUDOCK_CHECK(cudaStreamSynchronize(stream()));
+    }
+
+    atom_tex.copy_host2device();
 
     // Grid spacing fixed to 0.5 Angstrom
     setup_constant_memory(minimum, maximum, center);
-    MUDOCK_CHECK(cudaStreamSynchronize(stream));
+    MUDOCK_CHECK(cudaStreamSynchronize(stream()));
   }
 
   cudaStream_t device::get_stream() const {

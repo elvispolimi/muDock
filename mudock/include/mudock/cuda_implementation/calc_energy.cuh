@@ -1,8 +1,11 @@
 #pragma once
 
+#include <cmath>
+#include <mudock/chem/autodock_grid_types.hpp>
 #include <mudock/chem/autodock_parameters.hpp>
 #include <mudock/chem/autodock_types.hpp>
 #include <mudock/chem/grid_const.hpp>
+#include <mudock/cuda_implementation/cuda_texture.cuh>
 #include <mudock/type_alias.hpp>
 
 namespace mudock {
@@ -40,12 +43,12 @@ namespace mudock {
   }
 
   template<int MAX_ATOMS>
-  __device__ inline fp_type calc_intra_energy(const fp_type* ligand_x,
-                                              const fp_type* ligand_y,
-                                              const fp_type* ligand_z,
-                                              const fp_type* ligand_vol,
-                                              const fp_type* ligand_solpar,
-                                              const fp_type* ligand_charge,
+  __device__ inline fp_type calc_intra_energy(const fp_type* __restrict__ ligand_x,
+                                              const fp_type* __restrict__ ligand_y,
+                                              const fp_type* __restrict__ ligand_z,
+                                              const fp_type* __restrict__ ligand_vol,
+                                              const fp_type* __restrict__ ligand_solpar,
+                                              const fp_type* __restrict__ ligand_charge,
                                               const int num_atoms,
                                               const int num_rotamers,
                                               const int ligand_num_nonbonds,
@@ -54,10 +57,10 @@ namespace mudock {
                                               const fp_type* __restrict__ ligand_nonbond_cA,
                                               const fp_type* __restrict__ ligand_nonbond_cB,
                                               const int* __restrict__ ligand_nonbond_xB,
-                                              const cudaTextureObject_t* __restrict__ atom_textures,
-                                              const int* __restrict__ atom_tex_indexes,
-                                              const cudaTextureObject_t electro_texture,
-                                              const cudaTextureObject_t desolv_texture) {
+                                              const cudaTexture_wrapper* __restrict__ atom_textures,
+                                              const int* __restrict__ atom_tex_indexes) {
+    const cudaTextureObject_t& electro_texture = atom_textures[static_cast<int>(autodock_grid_type::ELEC)]();
+    const cudaTextureObject_t& desolv_texture = atom_textures[static_cast<int>(autodock_grid_type::DESOLV)]();
     // Calculate energy
     fp_type elect_total_trilinear = 0;
     fp_type emap_total_trilinear  = 0;
@@ -82,9 +85,10 @@ namespace mudock {
         } else {
           // Is inside
           // Center atom coordinates on the grid center
-          coord_tex[0] = (coord_tex[0] - map_min_const[0]) * inv_spacing,
-          coord_tex[1] = (coord_tex[1] - map_min_const[1]) * inv_spacing;
-          coord_tex[2] = (coord_tex[2] - map_min_const[2]) * inv_spacing;
+          coord_tex[0]       = (coord_tex[0] - map_min_const[0]) * inv_spacing,
+          coord_tex[1]       = (coord_tex[1] - map_min_const[1]) * inv_spacing;
+          coord_tex[2]       = (coord_tex[2] - map_min_const[2]) * inv_spacing;
+          const auto& charge = ligand_charge[atom_index];
 
           const int u0      = coord_tex[0];
           const fp_type p0u = coord_tex[0] - static_cast<fp_type>(u0);
@@ -113,22 +117,24 @@ namespace mudock {
                                      pu[1] * pv[1] * pw[1]};
           const int int_coord[3]  = {u0, v0, w0};
           //  TODO check approximations with in hardware interpolation
-          // elect_total_trilinear +=
-          //     tex3D<fp_type>(electro_texture, coord_tex[0], coord_tex[1], coord_tex[2]) *
-          //     l_ligand_charge[atom_index];
-          // dmap_total_trilinear += tex3D<fp_type>(desolv_texture, coord_tex[0], coord_tex[1], coord_tex[2]) *
-          //                         fabsf(l_ligand_charge[atom_index]);
-          // const auto temp = tex3D<fp_type>(atom_textures[l_atom_tex_indexes[atom_index]],
-          //                                        coord_tex[0],
-          //                                        coord_tex[1],
-          //                                        coord_tex[2]);
-          //                                        emap_total_trilinear +=temp;
-          elect_total_trilinear +=
-              trilinear_interpolation_cuda(int_coord, electro_texture, coeffs) * ligand_charge[atom_index];
-          dmap_total_trilinear += trilinear_interpolation_cuda(int_coord, desolv_texture, coeffs) *
-                                  fabsf(ligand_charge[atom_index]);
+#ifdef MUDOCK_TEST
+          elect_total_trilinear += trilinear_interpolation_cuda(int_coord, electro_texture, coeffs) * charge;
+          dmap_total_trilinear +=
+              trilinear_interpolation_cuda(int_coord, desolv_texture, coeffs) * fabsf(charge);
           emap_total_trilinear +=
-              trilinear_interpolation_cuda(int_coord, atom_textures[atom_tex_indexes[atom_index]], coeffs);
+              trilinear_interpolation_cuda(int_coord, atom_textures[atom_tex_indexes[atom_index]](), coeffs);
+#else
+          elect_total_trilinear +=
+              tex3D<fp_type>(electro_texture, coord_tex[0] + 0.5, coord_tex[1] + 0.5, coord_tex[2] + 0.5) *
+              charge;
+          dmap_total_trilinear +=
+              tex3D<fp_type>(desolv_texture, coord_tex[0] + 0.5, coord_tex[1] + 0.5, coord_tex[2] + 0.5) *
+              fabsf(charge);
+          emap_total_trilinear += tex3D<fp_type>(atom_textures[atom_tex_indexes[atom_index]](),
+                                                 coord_tex[0] + 0.5,
+                                                 coord_tex[1] + 0.5,
+                                                 coord_tex[2] + 0.5);
+#endif
         }
       }
     }
@@ -139,26 +145,28 @@ namespace mudock {
     fp_type elect_total_eintcal{0}, emap_total_eintcal{0}, dmap_total_eintcal{0};
     if (num_rotamers > 0)
       for (int nonbond_list = threadIdx.x; nonbond_list < ligand_num_nonbonds; nonbond_list += blockDim.x) {
-        const int& a1 = ligand_nonbond_a1[nonbond_list];
-        const int& a2 = ligand_nonbond_a2[nonbond_list];
+        const int& a1    = ligand_nonbond_a1[nonbond_list];
+        const int& a2    = ligand_nonbond_a2[nonbond_list];
+        const auto& a1_c = ligand_charge[a1];
+        const auto& a2_c = ligand_charge[a2];
 
-        const auto diff_x                = ligand_x[a1] - ligand_x[a2];
-        const auto diff_y                = ligand_y[a1] - ligand_y[a2];
-        const auto diff_z                = ligand_z[a1] - ligand_z[a2];
-        const fp_type distance_two       = diff_x * diff_x + diff_y * diff_y + diff_z * diff_z;
-        const fp_type distance_two_clamp = std::max(distance_two, RMIN_ELEC_SQUARE_CUDA);
-        const fp_type distance           = sqrtf(distance_two_clamp);
+        const auto diff_x          = ligand_x[a1] - ligand_x[a2];
+        const auto diff_y          = ligand_y[a1] - ligand_y[a2];
+        const auto diff_z          = ligand_z[a1] - ligand_z[a2];
+        const fp_type distance_two = diff_x * diff_x + diff_y * diff_y + diff_z * diff_z;
+        const fp_type distance_two_clamp =
+            distance_two > RMIN_ELEC_SQUARE_CUDA ? distance_two : RMIN_ELEC_SQUARE_CUDA;
+        const fp_type distance = sqrtf(distance_two_clamp);
 
         //  Calculate  Electrostatic  Energy
         const fp_type epsilon      = A + B / (fp_type{1} + rk * expf(lambda_B * distance));
         const fp_type r_dielectric = fp_type{1} / (distance * epsilon);
-        const fp_type e_elec       = ligand_charge[a1] * ligand_charge[a2] * ELECSCALE *
-                               autodock_parameters::coeff_estat * r_dielectric;
+        const fp_type e_elec = a1_c * a2_c * ELECSCALE * autodock_parameters::coeff_estat * r_dielectric;
         elect_total_eintcal += e_elec;
 
         // Calcuate desolv
-        const fp_type nb_desolv = (ligand_vol[a2] * (ligand_solpar[a1] + qsolpar * fabsf(ligand_charge[a1])) +
-                                   ligand_vol[a1] * (ligand_solpar[a2] + qsolpar * fabsf(ligand_charge[a2])));
+        const fp_type nb_desolv = (ligand_vol[a2] * (ligand_solpar[a1] + qsolpar * fabsf(a1_c)) +
+                                   ligand_vol[a1] * (ligand_solpar[a2] + qsolpar * fabsf(a2_c)));
 
         const fp_type e_desolv = autodock_parameters::coeff_desolv *
                                  expf(fp_type{-0.5} / (sigma_square_cuda) *distance_two_clamp) * nb_desolv;
@@ -173,11 +181,12 @@ namespace mudock {
             const fp_type cA = ligand_nonbond_cA[nonbond_list];
             const fp_type cB = ligand_nonbond_cB[nonbond_list];
 
-            const auto log_distance = std::log(distance);
-            const fp_type rA        = std::exp(static_cast<fp_type>(xA) * log_distance);
-            const fp_type rB        = std::exp(static_cast<fp_type>(xB) * log_distance);
+            const auto log_distance = logf(distance);
+            const fp_type rA        = expf(static_cast<fp_type>(xA) * log_distance);
+            const fp_type rB        = expf(static_cast<fp_type>(xB) * log_distance);
 
-            e_vdW_Hb = std::min(EINTCLAMP_CUDA, (cA / rA - cB / rB));
+            e_vdW_Hb = (cA / rA - cB / rB);
+            e_vdW_Hb = EINTCLAMP_CUDA < e_vdW_Hb ? EINTCLAMP_CUDA : e_vdW_Hb;
           }
         }
         emap_total_eintcal += e_vdW_Hb;

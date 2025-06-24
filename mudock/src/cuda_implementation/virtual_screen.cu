@@ -253,10 +253,8 @@ namespace mudock {
                                                                   frag_start_atom_indices.dev_pointer(),
                                                                   frag_stop_atom_indices.dev_pointer(),
                                                                   chromosomes.dev_pointer(),
-                                                                  dev.get()->atom_texs.dev_pointer(),
+                                                                  dev.get()->atom_tex.dev_pointer(),
                                                                   map_texture_index.dev_pointer(),
-                                                                  dev.get()->electro_tex,
-                                                                  dev.get()->desolv_tex,
                                                                   curand_states.dev_pointer(),
                                                                   ligand_scores.dev_pointer(),
                                                                   best_chromosomes.dev_pointer());

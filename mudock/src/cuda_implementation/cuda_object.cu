@@ -3,6 +3,7 @@
 #include <mudock/cuda_implementation/cuda_check_error_macro.cuh>
 #include <mudock/cuda_implementation/cuda_object.cuh>
 #include <mudock/cuda_implementation/cuda_random.cuh>
+#include <mudock/cuda_implementation/cuda_texture.cuh>
 #include <mudock/type_alias.hpp>
 
 namespace mudock {
@@ -60,6 +61,6 @@ namespace mudock {
   template class cuda_object<fp_type>;
   template class cuda_object<fp_type*>;
   template class cuda_object<curandState>;
-  template class cuda_object<cudaTextureObject_t>;
+  template class cuda_object<cudaTexture_wrapper>;
   template class cuda_object<chromosome>;
 } // namespace mudock

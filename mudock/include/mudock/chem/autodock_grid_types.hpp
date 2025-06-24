@@ -2,11 +2,30 @@
 
 #include <mudock/chem/autodock_types.hpp>
 #include <stdexcept>
+#include <string>
 
 namespace mudock {
-  enum class autodock_grid_type : int { A = 0, C, H, HD, N, NA, OA, SA, Cl, F, S, Br, P, I, ELEC, DESOLV };
+  enum class autodock_grid_type : int {
+    A = 0,
+    C,
+    H,
+    HD,
+    N,
+    NA,
+    OA,
+    SA,
+    Cl,
+    F,
+    S,
+    Si,
+    Br,
+    P,
+    I,
+    ELEC,
+    DESOLV
+  };
 
-  static constexpr int num_autodock_ff_grids() { return 14; }
+  static constexpr int num_autodock_ff_grids() { return 15; }
   static constexpr int num_autodock_grids() { return num_autodock_ff_grids() + 2; }
 
   inline autodock_grid_type autodock_grid_from_ff(const autodock_ff& autodock_type) {
@@ -22,10 +41,14 @@ namespace mudock {
       case autodock_ff::Cl: return autodock_grid_type::Cl;
       case autodock_ff::F: return autodock_grid_type::F;
       case autodock_ff::S: return autodock_grid_type::S;
+      case autodock_ff::Si: return autodock_grid_type::Si;
       case autodock_ff::Br: return autodock_grid_type::Br;
       case autodock_ff::P: return autodock_grid_type::P;
       case autodock_ff::I: return autodock_grid_type::I;
-      default: throw std::runtime_error("Missing Autodock Grid Type");
+      default:
+        const auto error_msg =
+            std::string("Missing Autodock Grid Type ") + std::string(get_description(autodock_type).name);
+        throw std::runtime_error(error_msg);
     }
   }
 
@@ -42,6 +65,7 @@ namespace mudock {
       case autodock_grid_type::Cl: return autodock_ff::Cl;
       case autodock_grid_type::F: return autodock_ff::F;
       case autodock_grid_type::S: return autodock_ff::S;
+      case autodock_grid_type::Si: return autodock_ff::Si;
       case autodock_grid_type::Br: return autodock_ff::Br;
       case autodock_grid_type::P: return autodock_ff::P;
       case autodock_grid_type::I: return autodock_ff::I;

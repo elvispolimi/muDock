@@ -1,16 +1,15 @@
 #pragma once
 
-#include <cstddef>
 #include <curand_kernel.h>
 #include <mudock/cpp_implementation/chromosome.hpp>
 #include <mudock/cuda_implementation/calc_energy.cuh>
 #include <mudock/cuda_implementation/cuda_check_error_macro.cuh>
+#include <mudock/cuda_implementation/cuda_texture.cuh>
 #include <mudock/cuda_implementation/mutate.cuh>
 #include <mudock/grid/point3D.hpp>
 #include <mudock/molecule/containers.hpp>
 #include <mudock/type_alias.hpp>
 #include <mudock/utils.hpp>
-#include <stdio.h>
 
 // Keep it to 32 to enable warp optimizations
 #define BLOCK_SIZE 32
@@ -101,10 +100,8 @@ namespace mudock {
                                    const int* __restrict__ frag_start_atom_index,
                                    const int* __restrict__ frag_stop_atom_index,
                                    chromosome* __restrict__ chromosomes,
-                                   const cudaTextureObject_t* __restrict__ atom_textures,
+                                   const cudaTexture_wrapper* __restrict__ atom_textures,
                                    const int* __restrict__ atom_tex_indexes,
-                                   const cudaTextureObject_t electro_texture,
-                                   const cudaTextureObject_t desolv_texture,
                                    curandState* __restrict__ state,
                                    fp_type* __restrict__ ligand_scores,
                                    chromosome* __restrict__ best_chromosomes) {
@@ -206,9 +203,7 @@ namespace mudock {
                                                                        l_ligand_nonbond_cB,
                                                                        l_ligand_nonbond_xB,
                                                                        atom_textures,
-                                                                       l_atom_tex_indexes,
-                                                                       electro_texture,
-                                                                       desolv_texture);
+                                                                       l_atom_tex_indexes);
 
 #pragma unroll
         for (int offset = BLOCK_SIZE / 2; offset > 0; offset /= 2) {
