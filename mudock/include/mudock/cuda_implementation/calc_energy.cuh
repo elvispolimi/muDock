@@ -191,6 +191,7 @@ namespace mudock {
         }
         emap_total_eintcal += e_vdW_Hb;
       }
-    return elect_total_eintcal + emap_total_eintcal + dmap_total_eintcal + total_trilinear_eintcal;
+    return elect_total_eintcal + emap_total_eintcal + dmap_total_eintcal + total_trilinear_eintcal +
+           elect_total_trilinear + dmap_total_trilinear + emap_total_trilinear
   }
 } // namespace mudock
