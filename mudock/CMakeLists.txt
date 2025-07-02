@@ -155,15 +155,15 @@ if(MUDOCK_ENABLE_HIP)
     "${header_path}/${header_prefix}/hip_implementation/geometric_transformations.hpp"
     "${header_path}/${header_prefix}/hip_implementation/mutate.hpp"
     "${header_path}/${header_prefix}/hip_implementation/virtual_screen.hpp")
-  list(
-    APPEND
-    source_files
-    "${source_path}/hip_implementation/hip_batch_sizer.cpp"
-    "${source_path}/hip_implementation/hip_manager.cpp"
-    "${source_path}/hip_implementation/hip_worker.cpp"
-    "${source_path}/hip_implementation/hip_random.cpp"
-    "${source_path}/hip_implementation/evaluate_fitness.cpp"
-    "${source_path}/hip_implementation/virtual_screen.cpp")
+  set(hip_source_files
+      "${source_path}/hip_implementation/hip_batch_sizer.cpp"
+      "${source_path}/hip_implementation/hip_manager.cpp"
+      "${source_path}/hip_implementation/hip_worker.cpp"
+      "${source_path}/hip_implementation/hip_random.cpp"
+      "${source_path}/hip_implementation/evaluate_fitness.cpp"
+      "${source_path}/hip_implementation/virtual_screen.cpp")
+  list(APPEND source_files ${hip_source_files})
+  set_source_files_properties(${hip_source_files} PROPERTIES LANGUAGE HIP)
 endif()
 
 # declare the SYCL sources
@@ -228,16 +228,13 @@ add_library(libmudock STATIC ${source_files} ${header_files})
 add_library(mudock::libmudock ALIAS libmudock)
 set_target_properties(libmudock PROPERTIES PUBLIC_HEADER "${headers}")
 target_include_directories(libmudock PUBLIC "${header_path}")
-# TODO check this PUBLIC include
 target_include_directories(libmudock PUBLIC ${OpenBabel3_INCLUDE_DIRS})
-set_target_properties(libmudock PROPERTIES POSITION_INDEPENDENT_CODE ON)
 set_target_properties(libmudock PROPERTIES PREFIX "" OUTPUT_NAME "libmudock")
 set_target_properties(
   libmudock
   PROPERTIES CXX_STANDARD 20
              CXX_STANDARD_REQUIRED ON
              CXX_EXTENSIONS OFF
-             CUDA_SEPARABLE_COMPILATION ON
              POSITION_INDEPENDENT_CODE ON)
 target_link_libraries(libmudock PUBLIC Microsoft.GSL::GSL Boost::graph
                                        ${OpenBabel3_LIBRARIES})
@@ -257,7 +254,8 @@ endif()
 
 if(MUDOCK_ENABLE_OMP_SIMD)
   if(CMAKE_C_COMPILER_ID STREQUAL "GNU" OR CMAKE_C_COMPILER_ID STREQUAL "Clang")
-    target_compile_options(libmudock PRIVATE -fopenmp-simd -ffast-math)
+    target_compile_options(
+      libmudock PUBLIC $<$<COMPILE_LANGUAGE:CXX>:-fopenmp-simd -ffast-math>)
   else()
     message(
       STATUS
@@ -267,15 +265,13 @@ if(MUDOCK_ENABLE_OMP_SIMD)
 
 endif()
 
-# check if we need to activate the compilation flag that signals HIP
 if(MUDOCK_ENABLE_HIP)
   target_compile_definitions(libmudock PUBLIC MUDOCK_USE_HIP)
-  target_link_libraries(libmudock PUBLIC hiprand)
+  target_include_directories(
+    libmudock PRIVATE $<$<COMPILE_LANGUAGE:HIP>:${hip_INCLUDE_DIRS}>)
+  target_link_libraries(libmudock PUBLIC hip::hiprand hip::host)
   target_compile_options(
-    libmudock
-    PUBLIC
-      $<$<AND:$<CONFIG:RELWITHDEBINFO>,$<COMPILE_LANGUAGE:CXX>>:--expt-relaxed-constexpr>
-  )
+    libmudock PUBLIC $<$<COMPILE_LANGUAGE:HIP>:--expt-relaxed-constexpr>)
   # FIXME target_compile_options( libmudock PUBLIC
   # $<$<AND:$<CONFIG:DEBUG>,$<COMPILE_LANGUAGE:CXX>>:-G -g -Xptxas -v
   # --expt-relaxed-constexpr>) target_compile_options( libmudock PUBLIC
@@ -287,17 +283,21 @@ endif()
 if(MUDOCK_ENABLE_CUDA)
   target_compile_definitions(libmudock PUBLIC MUDOCK_USE_CUDA)
   if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    # CUDA_SEPARABLE_COMPILATION ON required for constant memory to be shared
+    # across translation unit
     set_target_properties(
       libmudock
       PROPERTIES CUDA_STANDARD 20
                  CUDA_STANDARD_REQUIRED ON
-                 CUDA_EXTENSIONS OFF)
+                 CUDA_EXTENSIONS OFF
+                 CUDA_SEPARABLE_COMPILATION ON)
   else()
     set_target_properties(
       libmudock
       PROPERTIES CUDA_STANDARD 20
                  CUDA_STANDARD_REQUIRED ON
-                 CUDA_EXTENSIONS OFF)
+                 CUDA_EXTENSIONS OFF
+                 CUDA_SEPARABLE_COMPILATION ON)
   endif()
   # set(CMAKE_CUDA_ARCHITECTURES OFF)
   set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --expt-relaxed-constexpr")
