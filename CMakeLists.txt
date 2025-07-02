@@ -56,37 +56,6 @@ if(NOT MUDOCK_GPU_ARCHITECTURES STREQUAL "none")
   endif()
 endif()
 
-# HIP
-option(MUDOCK_ENABLE_HIP "Enable the HIP kernel implementation" OFF)
-
-if(MUDOCK_ENABLE_HIP)
-  if(NOT MUDOCK_ENABLE_SYCL
-     AND NOT MUDOCK_ENABLE_CUDA
-     AND NOT MUDOCK_ENABLE_OMP)
-    # enable_language(HIP)
-    find_program(HIP_COMPILER hipcc)
-    set(CMAKE_CXX_COMPILER "${HIP_COMPILER}")
-
-    if(GPU_PLATFORM STREQUAL "cuda")
-      set(HIP_PLATFORM "nvidia")
-      add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-arch=${GPU_ARCHITECTURE}>)
-    elseif(GPU_PLATFORM STREQUAL "amd")
-      set(HIP_PLATFORM "${GPU_PLATFORM}")
-
-      # TODO target arch
-    else()
-      # TODO add other HIP devices support
-      message(FATAL_ERROR "Wrong target for HIP implementation")
-    endif()
-
-    set(HIP_ARCHITECTURES "${GPU_ARCHITECTURE}")
-    find_package(HIP REQUIRED)
-    find_package(hiprand REQUIRED)
-  else()
-    message(FATAL_ERROR "Enable only one parallel framework at a time.")
-  endif()
-endif()
-
 # CPU
 project(muDock VERSION 1.0)
 enable_language(CXX)
@@ -101,7 +70,37 @@ if(MUDOCK_ENABLE_IPO)
     message(WARNING "IPO is not supported: ${ipo_output}")
   endif()
 endif()
+# HIP
+option(MUDOCK_ENABLE_HIP "Enable the HIP kernel implementation" OFF)
 
+if(MUDOCK_ENABLE_HIP)
+  if(NOT MUDOCK_ENABLE_SYCL
+     AND NOT MUDOCK_ENABLE_CUDA
+     AND NOT MUDOCK_ENABLE_OMP)
+    find_program(HIP_COMPILER hipcc)
+    # set(CMAKE_CXX_COMPILER "${HIP_COMPILER}")
+
+    if(GPU_PLATFORM STREQUAL "cuda")
+      set(HIP_PLATFORM "nvidia")
+      find_package(CUDAToolkit REQUIRED COMPONENTS curand)
+      # add_compile_options($<$<COMPILE_LANGUAGE:HIP>:-arch=${GPU_ARCHITECTURE}>)
+    elseif(GPU_PLATFORM STREQUAL "amd")
+      set(HIP_PLATFORM "${GPU_PLATFORM}")
+
+      # TODO target arch
+    else()
+      # TODO add other HIP devices support
+      message(FATAL_ERROR "Wrong target for HIP implementation")
+    endif()
+
+    set(CMAKE_HIP_ARCHITECTURES "${GPU_ARCHITECTURE}")
+    find_package(hip REQUIRED)
+    enable_language(HIP)
+    find_package(hiprand REQUIRED)
+  else()
+    message(FATAL_ERROR "Enable only one parallel framework at a time.")
+  endif()
+endif()
 # Check if specific target architectures should be used TODO check this
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU"
    OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang"
@@ -411,7 +410,7 @@ if(MUDOCK_ENABLE_HIP)
       "Target HIP platform.................: ${HIP_PLATFORM} (HIP_PLATFORM)")
   message(
     STATUS
-      "Target HIP targets..................: ${HIP_ARCHITECTURES} (HIP_ARCHITECTURES)"
+      "Target HIP targets..................: ${CMAKE_HIP_ARCHITECTURES} (CMAKE_HIP_ARCHITECTURES)"
   )
 endif()
 
