@@ -240,6 +240,12 @@ endif()
 # ##############################################################################
 option(MUDOCK_ENABLE_TEST "Enabel muDock tests" OFF)
 if(MUDOCK_ENABLE_TEST)
+  if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    message(
+      FATAL_ERROR
+        "Cannot enable Release mode and tests due to fast-math and O3 approximations!"
+    )
+  endif()
   enable_testing()
   add_subdirectory(test)
 endif()
