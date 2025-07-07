@@ -10,6 +10,7 @@
 
 namespace mudock {
 
+  template<int MAX_ATOMS>
   __device__ void translate_molecule_hip(fp_type* __restrict__ x,
                                          fp_type* __restrict__ y,
                                          fp_type* __restrict__ z,
@@ -17,13 +18,17 @@ namespace mudock {
                                          const fp_type* offset_y,
                                          const fp_type* offset_z,
                                          const int num_atoms) {
-    for (int i = threadIdx.x; i < num_atoms; i += blockDim.x) {
-      x[i] += *offset_x;
-      y[i] += *offset_y;
-      z[i] += *offset_z;
+#pragma unroll
+    for (int i = threadIdx.x; i < MAX_ATOMS; i += blockDim.x) {
+      if (i < num_atoms) {
+        x[i] += *offset_x;
+        y[i] += *offset_y;
+        z[i] += *offset_z;
+      }
     }
   };
 
+  template<int MAX_ATOMS>
   __device__ void rotate_molecule_hip(fp_type* __restrict__ x,
                                       fp_type* __restrict__ y,
                                       fp_type* __restrict__ z,
@@ -33,10 +38,13 @@ namespace mudock {
                                       const int num_atoms) {
     // compute the molecule center of mass
     fp_type c_x{0}, c_y{0}, c_z{0};
-    for (int i = threadIdx.x; i < num_atoms; i += blockDim.x) {
-      c_x += x[i];
-      c_y += y[i];
-      c_z += z[i];
+#pragma unroll
+    for (int i = threadIdx.x; i < MAX_ATOMS; i += blockDim.x) {
+      if (i < num_atoms) {
+        c_x += x[i];
+        c_y += y[i];
+        c_z += z[i];
+      }
     }
     c_x /= num_atoms;
     c_y /= num_atoms;
@@ -70,14 +78,18 @@ namespace mudock {
     const auto m22 = cx * cy;
 
     // apply the rotation matrix
-    for (int i = threadIdx.x; i < num_atoms; i += blockDim.x) {
-      const auto translated_x = x[i] - c_x, translated_y = y[i] - c_y, translated_z = z[i] - c_z;
-      x[i] = translated_x * m00 + translated_y * m01 + translated_z * m02 + c_x;
-      y[i] = translated_x * m10 + translated_y * m11 + translated_z * m12 + c_y;
-      z[i] = translated_x * m20 + translated_y * m21 + translated_z * m22 + c_z;
+#pragma unroll
+    for (int i = threadIdx.x; i < MAX_ATOMS; i += blockDim.x) {
+      if (i < num_atoms) {
+        const auto translated_x = x[i] - c_x, translated_y = y[i] - c_y, translated_z = z[i] - c_z;
+        x[i] = translated_x * m00 + translated_y * m01 + translated_z * m02 + c_x;
+        y[i] = translated_x * m10 + translated_y * m11 + translated_z * m12 + c_y;
+        z[i] = translated_x * m20 + translated_y * m21 + translated_z * m22 + c_z;
+      }
     }
   };
 
+  template<int MAX_ATOMS>
   __device__ void rotate_fragment_hip(fp_type* __restrict__ x,
                                       fp_type* __restrict__ y,
                                       fp_type* __restrict__ z,
@@ -97,9 +109,9 @@ namespace mudock {
     const auto l2 = u * u + v * v + w * w;
     // Check if origin and dest coincide
     // No need to continue the intramolecular energy will be very high
-    if (isinf(l2) || l2 == fp_type{0} || isnan(l2))
-      // TODO print error?
-      return;
+    // if (isinf(l2) || l2 == fp_type{0} || isnan(l2))
+    // TODO print error?
+    // return;
     const auto l = std::sqrt(l2);
 
     // compute the angle sine and cosine
@@ -128,8 +140,9 @@ namespace mudock {
         ((origz * (u2 + v2) - w * (origx * u + origy * v)) * one_minus_c + (origx * v - origy * u) * ls) / l2;
 
     // apply the rotation matrix
-    for (int i = threadIdx.x; i < num_atoms; i += blockDim.x) {
-      if (bitmask[i] != 0) {
+#pragma unroll
+    for (int i = threadIdx.x; i < MAX_ATOMS; i += blockDim.x) {
+      if (i < num_atoms && bitmask[i] != 0) {
         const auto prev_x = x[i], prev_y = y[i], prev_z = z[i];
         x[i] = prev_x * m00 + prev_y * m01 + prev_z * m02 + m03;
         y[i] = prev_x * m10 + prev_y * m11 + prev_z * m12 + m13;

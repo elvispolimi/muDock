@@ -1,7 +1,6 @@
-#include <cuda_runtime.h>
-#include <mudock/cuda_implementation/cuda_check_error_macro.cuh>
 #include <mudock/grid.hpp>
-#include <mudock/type_alias.hpp>
+#include <mudock/hip_implementation/hip_check_error_macro.hpp>
+#include <mudock/utils.hpp>
 
 namespace mudock {
   __device__ __constant__ fp_type map_min_const[3];
@@ -15,13 +14,10 @@ namespace mudock {
     const auto l_map_max    = maximum_coord.get_component_p();
     const auto l_map_center = center.get_component_p();
 
+    MUDOCK_CHECK(hipMemcpyToSymbol(map_min_const, l_map_min, 3 * sizeof(fp_type), 0, hipMemcpyHostToDevice));
+    MUDOCK_CHECK(hipMemcpyToSymbol(map_max_const, l_map_max, 3 * sizeof(fp_type), 0, hipMemcpyHostToDevice));
     MUDOCK_CHECK(
-        cudaMemcpyToSymbol(map_min_const, l_map_min, 3 * sizeof(fp_type), 0, cudaMemcpyHostToDevice));
-    MUDOCK_CHECK(
-        cudaMemcpyToSymbol(map_max_const, l_map_max, 3 * sizeof(fp_type), 0, cudaMemcpyHostToDevice));
-    MUDOCK_CHECK(
-        cudaMemcpyToSymbol(map_center_const, l_map_center, 3 * sizeof(fp_type), 0, cudaMemcpyHostToDevice));
-    MUDOCK_CHECK(cudaDeviceSynchronize());
+        hipMemcpyToSymbol(map_center_const, l_map_center, 3 * sizeof(fp_type), 0, hipMemcpyHostToDevice));
+    MUDOCK_CHECK(hipDeviceSynchronize());
   }
-
 } // namespace mudock

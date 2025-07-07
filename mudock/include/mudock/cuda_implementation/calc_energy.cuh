@@ -43,28 +43,26 @@ namespace mudock {
   }
 
   template<int MAX_ATOMS>
-  __device__ inline fp_type calc_intra_energy(const fp_type* __restrict__ ligand_x,
-                                              const fp_type* __restrict__ ligand_y,
-                                              const fp_type* __restrict__ ligand_z,
-                                              const fp_type* __restrict__ ligand_vol,
-                                              const fp_type* __restrict__ ligand_solpar,
-                                              const fp_type* __restrict__ ligand_charge,
-                                              const int num_atoms,
-                                              const int num_rotamers,
-                                              const int ligand_num_nonbonds,
-                                              const int* __restrict__ ligand_nonbond_a1,
-                                              const int* __restrict__ ligand_nonbond_a2,
-                                              const fp_type* __restrict__ ligand_nonbond_cA,
-                                              const fp_type* __restrict__ ligand_nonbond_cB,
-                                              const int* __restrict__ ligand_nonbond_xB,
-                                              const cudaTexture_wrapper* __restrict__ atom_textures,
-                                              const int* __restrict__ atom_tex_indexes) {
+  __device__ inline fp_type calc_energy(const fp_type* __restrict__ ligand_x,
+                                        const fp_type* __restrict__ ligand_y,
+                                        const fp_type* __restrict__ ligand_z,
+                                        const fp_type* __restrict__ ligand_vol,
+                                        const fp_type* __restrict__ ligand_solpar,
+                                        const fp_type* __restrict__ ligand_charge,
+                                        const int num_atoms,
+                                        const int num_rotamers,
+                                        const int ligand_num_nonbonds,
+                                        const int* __restrict__ ligand_nonbond_a1,
+                                        const int* __restrict__ ligand_nonbond_a2,
+                                        const fp_type* __restrict__ ligand_nonbond_cA,
+                                        const fp_type* __restrict__ ligand_nonbond_cB,
+                                        const int* __restrict__ ligand_nonbond_xB,
+                                        const cudaTexture_wrapper* __restrict__ atom_textures,
+                                        const int* __restrict__ atom_tex_indexes) {
     const cudaTextureObject_t& electro_texture = atom_textures[static_cast<int>(autodock_grid_type::ELEC)]();
     const cudaTextureObject_t& desolv_texture = atom_textures[static_cast<int>(autodock_grid_type::DESOLV)]();
     // Calculate energy
-    fp_type elect_total_trilinear = 0;
-    fp_type emap_total_trilinear  = 0;
-    fp_type dmap_total_trilinear  = 0;
+    fp_type elect_total_trilinear = 0, emap_total_trilinear = 0, dmap_total_trilinear = 0;
 #pragma unroll
     for (int atom_index = threadIdx.x; atom_index < MAX_ATOMS; atom_index += blockDim.x) {
       if (atom_index < num_atoms) {
@@ -90,6 +88,8 @@ namespace mudock {
           coord_tex[2]       = (coord_tex[2] - map_min_const[2]) * inv_spacing;
           const auto& charge = ligand_charge[atom_index];
 
+          //  TODO check approximations with in hardware interpolation
+#ifdef MUDOCK_TEST
           const int u0      = coord_tex[0];
           const fp_type p0u = coord_tex[0] - static_cast<fp_type>(u0);
           const fp_type p1u = fp_type{1} - p0u;
@@ -116,8 +116,7 @@ namespace mudock {
                                      pu[1] * pv[1] * pw[0],
                                      pu[1] * pv[1] * pw[1]};
           const int int_coord[3]  = {u0, v0, w0};
-          //  TODO check approximations with in hardware interpolation
-#ifdef MUDOCK_TEST
+
           elect_total_trilinear += trilinear_interpolation_cuda(int_coord, electro_texture, coeffs) * charge;
           dmap_total_trilinear +=
               trilinear_interpolation_cuda(int_coord, desolv_texture, coeffs) * fabsf(charge);
@@ -139,7 +138,6 @@ namespace mudock {
       }
     }
 
-    fp_type total_trilinear_eintcal = elect_total_trilinear + dmap_total_trilinear + emap_total_trilinear;
     __syncwarp();
 
     fp_type elect_total_eintcal{0}, emap_total_eintcal{0}, dmap_total_eintcal{0};
@@ -191,7 +189,7 @@ namespace mudock {
         }
         emap_total_eintcal += e_vdW_Hb;
       }
-    return elect_total_eintcal + emap_total_eintcal + dmap_total_eintcal + total_trilinear_eintcal +
-           elect_total_trilinear + dmap_total_trilinear + emap_total_trilinear
+    return elect_total_eintcal + emap_total_eintcal + dmap_total_eintcal + elect_total_trilinear +
+           dmap_total_trilinear + emap_total_trilinear;
   }
 } // namespace mudock

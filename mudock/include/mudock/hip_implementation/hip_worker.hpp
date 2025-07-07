@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <mudock/compute.hpp>
+#include <mudock/hip_implementation/device.hpp>
 #include <mudock/hip_implementation/virtual_screen.hpp>
 #include <mudock/knobs.hpp>
 #include <mudock/molecule.hpp>
@@ -25,13 +26,10 @@ namespace mudock {
   public:
     // the constructor intialize the kernel and set the device affinity to the correct device
     hip_worker(const knobs knobs,
-               std::shared_ptr<const grid_atom_mapper>& grid_atom_maps,
-               std::shared_ptr<const grid_map>& electro_map,
-               std::shared_ptr<const grid_map>& desolv_map,
                std::shared_ptr<safe_stack<static_molecule>>& input_molecules,
                std::shared_ptr<safe_stack<static_molecule>>& output_molecules,
                std::shared_ptr<reorder_buffer> rb,
-               const std::size_t gpu_id);
+               const std::shared_ptr<const device> dev);
 
     // this is the thread "main" loop (it will fetch ligands from the queue and compute them)
     void main() override final;

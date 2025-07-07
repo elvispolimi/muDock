@@ -1,15 +1,13 @@
-#include "mudock/chem/autodock_ligand.hpp"
-#include "mudock/cpp_implementation/vectorization.hpp"
-
 #include <alloca.h>
 #include <cstddef>
 #include <cstring>
 #include <cuda_runtime.h>
-#include <iostream>
+#include <mudock/chem/autodock_ligand.hpp>
 #include <mudock/compute/reorder_buffer.hpp>
 #include <mudock/cpp_implementation/center_of_mass.hpp>
 #include <mudock/cpp_implementation/geometric_transformations.hpp>
 #include <mudock/cpp_implementation/mutate.hpp>
+#include <mudock/cpp_implementation/vectorization.hpp>
 #include <mudock/cpp_implementation/weed_bonds.hpp>
 #include <mudock/cuda_implementation/evaluate_fitness.cuh>
 #include <mudock/cuda_implementation/virtual_screen.cuh>
@@ -18,13 +16,13 @@
 #include <span>
 
 namespace mudock {
-  // TODO this can be removed, only need the nbmatrix
+  // TODO add to bucketizer
   static constexpr std::size_t max_non_bonds{1 << 26};
 
   virtual_screen_cuda::virtual_screen_cuda(const knobs k, const std::shared_ptr<const device> dev)
       : configuration(k),
         dev(dev),
-        stream(dev.get()->get_stream()),
+        stream(dev->get_stream()),
         original_ligand_x(stream),
         original_ligand_y(stream),
         original_ligand_z(stream),
@@ -216,7 +214,6 @@ namespace mudock {
         std::max(configuration.population_number, static_cast<std::size_t>(BLOCK_SIZE)) * sizeof(fp_type);
     const std::size_t shared_mem = min_energy_reduction_s_mem;
 
-    // TODO it should not be necessary, operations on the same stream are executed in order
     constexpr_for<0, reorder_buffer::atoms_clusters.size(), 1>([&](const auto atoms_index) {
       const auto n_atoms = reorder_buffer::atoms_clusters[atoms_index];
       constexpr_for<0, reorder_buffer::rotamer_clusters.size(), 1>([&](const auto rotamers_index) {
