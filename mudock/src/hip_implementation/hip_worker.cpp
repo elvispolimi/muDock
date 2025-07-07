@@ -8,20 +8,12 @@
 
 namespace mudock {
   hip_worker::hip_worker(const knobs knobs,
-                         std::shared_ptr<const grid_atom_mapper>& grid_atom_maps,
-                         std::shared_ptr<const grid_map>& electro_map,
-                         std::shared_ptr<const grid_map>& desolv_map,
+
                          std::shared_ptr<safe_stack<static_molecule>>& input_molecules,
                          std::shared_ptr<safe_stack<static_molecule>>& output_molecules,
                          std::shared_ptr<reorder_buffer> rb,
-                         const std::size_t gpu_id)
-      : input_stack(input_molecules),
-        output_stack(output_molecules),
-        rob(rb),
-        virtual_screen(knobs, grid_atom_maps, electro_map, desolv_map, gpu_id) {
-    MUDOCK_CHECK(hipSetDevice(static_cast<int>(gpu_id)));
-    info("Worker HIP on duty! Set affinity to GPU ", gpu_id);
-  }
+                         const std::shared_ptr<const device> dev)
+      : input_stack(input_molecules), output_stack(output_molecules), rob(rb), virtual_screen(knobs, dev) {}
 
   void hip_worker::process(batch& b) {
     try {

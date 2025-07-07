@@ -16,7 +16,9 @@ list(APPEND source_files "${header_path}/command_line_args.cpp"
 # ##############################################################################
 
 # declare the application executable
-add_executable("${CMAKE_PROJECT_NAME}" ${header_files} ${source_files})
+set(files ${header_files} ${source_files})
+add_executable_mudock("${CMAKE_PROJECT_NAME}" "${header_files}"
+                      "${source_files}")
 target_include_directories("${CMAKE_PROJECT_NAME}" PRIVATE "${header_path}")
 set_target_properties(
   "${CMAKE_PROJECT_NAME}"
@@ -24,6 +26,7 @@ set_target_properties(
              CXX_STANDARD_REQUIRED ON
              CXX_EXTENSIONS OFF
              POSITION_INDEPENDENT_CODE FALSE)
+# Required by OpenBabel dynamic plugin/libraries loading
 target_compile_options("${CMAKE_PROJECT_NAME}" PRIVATE -fno-plt)
 target_link_options("${CMAKE_PROJECT_NAME}" PRIVATE -Wl,-z,now)
 
@@ -34,7 +37,7 @@ if(MUDOCK_ENABLE_SYCL)
     target_link_libraries("${CMAKE_PROJECT_NAME}" omp)
   endif()
   target_link_libraries(
-    "${CMAKE_PROJECT_NAME}"
+    ${CMAKE_PROJECT_NAME}
     libmudock
     Boost::program_options
     Boost::context
@@ -44,7 +47,7 @@ if(MUDOCK_ENABLE_SYCL)
     stdc++)
 else()
   target_link_libraries(
-    "${CMAKE_PROJECT_NAME}"
+    ${CMAKE_PROJECT_NAME}
     libmudock
     Boost::program_options
     Boost::context
@@ -66,8 +69,8 @@ if(MUDOCK_ENABLE_OMP)
 endif()
 
 if(MUDOCK_ENABLE_TEST)
-  add_executable(test_grid
-                 "${CMAKE_CURRENT_SOURCE_DIR}/src/tests/grid_test.cpp")
+  add_executable_mudock(test_grid
+                        "${CMAKE_CURRENT_SOURCE_DIR}/src/tests/grid_test.cpp")
   target_include_directories(test_grid
                              PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/")
   set_target_properties(
@@ -75,10 +78,10 @@ if(MUDOCK_ENABLE_TEST)
     PROPERTIES CXX_STANDARD 20
                CXX_STANDARD_REQUIRED ON
                CXX_EXTENSIONS OFF)
-  target_link_libraries(test_grid PRIVATE libmudock Boost::program_options)
+  target_link_libraries(test_grid libmudock Boost::program_options)
 
-  add_executable(test_score_adt
-                 "${CMAKE_CURRENT_SOURCE_DIR}/src/tests/adt_score_test.cpp")
+  add_executable_mudock(
+    test_score_adt "${CMAKE_CURRENT_SOURCE_DIR}/src/tests/adt_score_test.cpp")
   target_include_directories(test_score_adt
                              PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/")
   set_target_properties(
@@ -86,10 +89,10 @@ if(MUDOCK_ENABLE_TEST)
     PROPERTIES CXX_STANDARD 20
                CXX_STANDARD_REQUIRED ON
                CXX_EXTENSIONS OFF)
-  target_link_libraries(test_score_adt PRIVATE libmudock Boost::program_options)
+  target_link_libraries(test_score_adt libmudock Boost::program_options)
 
-  add_executable(test_score
-                 "${CMAKE_CURRENT_SOURCE_DIR}/src/tests/score_test.cpp")
+  add_executable_mudock(test_score
+                        "${CMAKE_CURRENT_SOURCE_DIR}/src/tests/score_test.cpp")
   target_include_directories(test_score
                              PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/")
   set_target_properties(
@@ -97,8 +100,7 @@ if(MUDOCK_ENABLE_TEST)
     PROPERTIES CXX_STANDARD 20
                CXX_STANDARD_REQUIRED ON
                CXX_EXTENSIONS OFF)
-  target_link_libraries(test_score PRIVATE libmudock Boost::program_options)
-
+  target_link_libraries(test_score libmudock Boost::program_options)
 endif()
 
 if(MUDOCK_ENABLE_LIKWID)
@@ -113,13 +115,13 @@ endif()
 # ##############################################################################
 # ### Declare the install step
 # ##############################################################################
-add_executable(converter "${CMAKE_CURRENT_SOURCE_DIR}/src/converter.cpp")
+add_executable_mudock(converter "${CMAKE_CURRENT_SOURCE_DIR}/src/converter.cpp")
 set_target_properties(
   converter
   PROPERTIES CXX_STANDARD 20
              CXX_STANDARD_REQUIRED ON
              CXX_EXTENSIONS OFF)
-target_link_libraries(converter PRIVATE libmudock Boost::program_options)
+target_link_libraries(converter libmudock Boost::program_options)
 target_compile_options(converter PRIVATE -fno-plt)
 target_link_options(converter PRIVATE -Wl,-z,now)
 

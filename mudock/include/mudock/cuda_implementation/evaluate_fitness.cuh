@@ -188,22 +188,22 @@ namespace mudock {
                                             num_rotamers,
                                             num_atoms);
 
-        fp_type total_trilinear_eintcal = calc_intra_energy<MAX_ATOMS>(l_scratch_ligand_x,
-                                                                       l_scratch_ligand_y,
-                                                                       l_scratch_ligand_z,
-                                                                       l_ligand_vol,
-                                                                       l_ligand_solpar,
-                                                                       l_ligand_charge,
-                                                                       num_atoms,
-                                                                       num_rotamers,
-                                                                       num_nonbonds,
-                                                                       l_ligand_nonbond_a1,
-                                                                       l_ligand_nonbond_a2,
-                                                                       l_ligand_nonbond_cA,
-                                                                       l_ligand_nonbond_cB,
-                                                                       l_ligand_nonbond_xB,
-                                                                       atom_textures,
-                                                                       l_atom_tex_indexes);
+        fp_type total_trilinear_eintcal = calc_energy<MAX_ATOMS>(l_scratch_ligand_x,
+                                                                 l_scratch_ligand_y,
+                                                                 l_scratch_ligand_z,
+                                                                 l_ligand_vol,
+                                                                 l_ligand_solpar,
+                                                                 l_ligand_charge,
+                                                                 num_atoms,
+                                                                 num_rotamers,
+                                                                 num_nonbonds,
+                                                                 l_ligand_nonbond_a1,
+                                                                 l_ligand_nonbond_a2,
+                                                                 l_ligand_nonbond_cA,
+                                                                 l_ligand_nonbond_cB,
+                                                                 l_ligand_nonbond_xB,
+                                                                 atom_textures,
+                                                                 l_atom_tex_indexes);
 
 #pragma unroll
         for (int offset = BLOCK_SIZE / 2; offset > 0; offset /= 2) {

@@ -150,6 +150,8 @@ if(MUDOCK_ENABLE_HIP)
     "${header_path}/${header_prefix}/hip_implementation/hip_object.hpp"
     "${header_path}/${header_prefix}/hip_implementation/hip_worker.hpp"
     "${header_path}/${header_prefix}/hip_implementation/hip_wrapper.hpp"
+    "${header_path}/${header_prefix}/hip_implementation/device.hpp"
+    "${header_path}/${header_prefix}/hip_implementation/hip_texture.hpp"
     "${header_path}/${header_prefix}/hip_implementation/calc_energy.hpp"
     "${header_path}/${header_prefix}/hip_implementation/evaluate_fitness.hpp"
     "${header_path}/${header_prefix}/hip_implementation/geometric_transformations.hpp"
@@ -160,7 +162,8 @@ if(MUDOCK_ENABLE_HIP)
       "${source_path}/hip_implementation/hip_manager.cpp"
       "${source_path}/hip_implementation/hip_worker.cpp"
       "${source_path}/hip_implementation/hip_random.cpp"
-      "${source_path}/hip_implementation/evaluate_fitness.cpp"
+      "${source_path}/hip_implementation/device.cpp"
+      "${source_path}/hip_implementation/constant_memory.cpp"
       "${source_path}/hip_implementation/virtual_screen.cpp")
   list(APPEND source_files ${hip_source_files})
   set_source_files_properties(${hip_source_files} PROPERTIES LANGUAGE HIP)
@@ -242,6 +245,10 @@ target_compile_options(
   libmudock
   PUBLIC $<$<AND:$<CONFIG:RELEASE>,$<COMPILE_LANGUAGE:CXX>>:${release_flags}>)
 
+if(MUDOCK_ENABLE_BUCKET)
+  target_compile_definitions(libmudock PUBLIC MUDOCK_BUCKET_LARGE)
+endif()
+
 if(MUDOCK_ENABLE_GH)
   target_compile_definitions(libmudock PUBLIC MUDOCK_USE_GH)
   target_link_libraries(libmudock PRIVATE hwy::hwy)
@@ -271,7 +278,15 @@ if(MUDOCK_ENABLE_HIP)
     libmudock PRIVATE $<$<COMPILE_LANGUAGE:HIP>:${hip_INCLUDE_DIRS}>)
   target_link_libraries(libmudock PUBLIC hip::hiprand hip::host)
   target_compile_options(
-    libmudock PUBLIC $<$<COMPILE_LANGUAGE:HIP>:--expt-relaxed-constexpr>)
+    libmudock
+    PUBLIC
+      $<$<AND:$<COMPILE_LANGUAGE:HIP>,$<HIP_COMPILER_ID:NVIDIA>>:--expt-relaxed-constexpr
+      -rdc=true>)
+  target_compile_options(
+    libmudock
+    PUBLIC
+      $<$<AND:$<COMPILE_LANGUAGE:HIP>,$<CONFIG:RELEASE>,$<HIP_COMPILER_ID:NVIDIA>>:
+      -use_fast_math>)
   # FIXME target_compile_options( libmudock PUBLIC
   # $<$<AND:$<CONFIG:DEBUG>,$<COMPILE_LANGUAGE:CXX>>:-G -g -Xptxas -v
   # --expt-relaxed-constexpr>) target_compile_options( libmudock PUBLIC
