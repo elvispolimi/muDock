@@ -9,4 +9,6 @@ CompileFlags:
     - -Xlinker=*
     - -Xptxas
     - -G
+  Add:
+    - -D__HIP_PLATFORM_NVIDIA__
 

@@ -59,6 +59,7 @@ endif()
 # CPU
 project(muDock VERSION 1.0)
 enable_language(CXX)
+option(MUDOCK_ENABLE_BUCKET "Enable large bucket usage" OFF)
 option(MUDOCK_ENABLE_IPO "Enable IPO" OFF)
 if(MUDOCK_ENABLE_IPO)
   include(CheckIPOSupported)
@@ -158,7 +159,7 @@ if(MUDOCK_ENABLE_CUDA)
       # Get the part after the _
       string(SUBSTRING ${GPU_ARCHITECTURE} ${UNDER_POS} 1000 CMAKE_CUDA_TEMP)
       string(SUBSTRING ${CMAKE_CUDA_TEMP} 1 1000 CMAKE_CUDA_ARCHITECTURES
-      ) # Skip the colon
+      )# Skip the colon
     else()
       message(FATAL_ERROR "${MUDOCK_GPU_ARCHITECTURES} cannot get CUDA GPUs.")
     endif()
@@ -282,7 +283,7 @@ set(CMAKE_ENABLE_EXPORTS ON)
 
 # Third-party libraries that we download and compile
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/prerequisite.cmake")
-
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/mudock.cmake")
 # ##############################################################################
 # ### Enable global compiler flags
 # ##############################################################################
@@ -342,6 +343,10 @@ message(
 message(
   STATUS
     "Install prefix......................: ${CMAKE_INSTALL_PREFIX} (CMAKE_INSTALL_PREFIX)"
+)
+message(
+  STATUS
+    "Bucket usage........................: ${MUDOCK_ENABLE_BUCKET} (MUDOCK_ENABLE_BUCKET)"
 )
 message(
   STATUS

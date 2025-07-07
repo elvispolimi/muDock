@@ -4,6 +4,9 @@
 namespace mudock {
 
   using fp_type = float;
+#if defined(MUDOCK_USE_HIP)
+  static_assert(std::is_same_v<fp_type, float>, "HIP supports only float data type");
+#endif
 #if defined(MUDOCK_USE_CUDA)
   static_assert(std::is_same_v<fp_type, float>, "CUDA supports only float data type");
 #endif
