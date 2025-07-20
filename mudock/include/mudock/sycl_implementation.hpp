@@ -5,11 +5,7 @@
 #include <mudock/compute/threadpool.hpp>
 #include <mudock/knobs.hpp>
 #ifdef MUDOCK_USE_SYCL
-  #include <mudock/sycl_implementation/sycl_batch_sizer.hpp>
   #include <mudock/sycl_implementation/sycl_manager.hpp>
-  #include <mudock/sycl_implementation/sycl_object.hpp>
-  #include <mudock/sycl_implementation/sycl_wrapper.hpp>
-  #include <mudock/sycl_implementation/virtual_screen.hpp>
 #else
   #include <mudock/log.hpp>
 namespace mudock {

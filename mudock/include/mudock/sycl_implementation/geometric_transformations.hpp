@@ -9,6 +9,7 @@
 
 namespace mudock {
 
+  template<int MAX_ATOMS>
   void translate_molecule_sycl(fp_type* __restrict__ x,
                                fp_type* __restrict__ y,
                                fp_type* __restrict__ z,
@@ -17,13 +18,17 @@ namespace mudock {
                                const fp_type* offset_z,
                                const int num_atoms,
                                sycl::nd_item<1> it) {
-    for (int i = it.get_local_id(0); i < num_atoms; i += it.get_local_range(0)) {
-      x[i] += *offset_x;
-      y[i] += *offset_y;
-      z[i] += *offset_z;
+#pragma unroll
+    for (int i = it.get_local_id(0); i < MAX_ATOMS; i += it.get_local_range(0)) {
+      if (i < num_atoms) {
+        x[i] += *offset_x;
+        y[i] += *offset_y;
+        z[i] += *offset_z;
+      }
     }
   };
 
+  template<int MAX_ATOMS>
   void rotate_molecule_sycl(fp_type* __restrict__ x,
                             fp_type* __restrict__ y,
                             fp_type* __restrict__ z,
@@ -36,14 +41,17 @@ namespace mudock {
     const auto& sub_group = it.get_sub_group();
 
     fp_type c_x{0}, c_y{0}, c_z{0};
-    for (int i = it.get_local_id(0); i < num_atoms; i += it.get_local_range(0)) {
-      c_x += x[i];
-      c_y += y[i];
-      c_z += z[i];
+#pragma unroll
+    for (int i = it.get_local_id(0); i < MAX_ATOMS; i += it.get_local_range(0)) {
+      if (i < num_atoms) {
+        c_x += x[i];
+        c_y += y[i];
+        c_z += z[i];
+      }
     }
     c_x = sycl::reduce_over_group(sub_group, c_x, sycl::plus<fp_type>()) / num_atoms;
-    c_y = sycl::reduce_over_group(sub_group, c_x, sycl::plus<fp_type>()) / num_atoms;
-    c_z = sycl::reduce_over_group(sub_group, c_x, sycl::plus<fp_type>()) / num_atoms;
+    c_y = sycl::reduce_over_group(sub_group, c_y, sycl::plus<fp_type>()) / num_atoms;
+    c_z = sycl::reduce_over_group(sub_group, c_z, sycl::plus<fp_type>()) / num_atoms;
 
     const auto rad_x = deg_to_rad(*angle_x), rad_y = deg_to_rad(*angle_y), rad_z = deg_to_rad(*angle_z);
     const auto cx = sycl::cos(rad_x), sx = sycl::sin(rad_x);
@@ -62,14 +70,18 @@ namespace mudock {
     const auto m22 = cx * cy;
 
     // apply the rotation matrix
-    for (int i = it.get_local_id(0); i < num_atoms; i += it.get_local_range(0)) {
-      const auto translated_x = x[i] - c_x, translated_y = y[i] - c_y, translated_z = z[i] - c_z;
-      x[i] = translated_x * m00 + translated_y * m01 + translated_z * m02 + c_x;
-      y[i] = translated_x * m10 + translated_y * m11 + translated_z * m12 + c_y;
-      z[i] = translated_x * m20 + translated_y * m21 + translated_z * m22 + c_z;
+#pragma unroll
+    for (int i = it.get_local_id(0); i < MAX_ATOMS; i += it.get_local_range(0)) {
+      if (i < num_atoms) {
+        const auto translated_x = x[i] - c_x, translated_y = y[i] - c_y, translated_z = z[i] - c_z;
+        x[i] = translated_x * m00 + translated_y * m01 + translated_z * m02 + c_x;
+        y[i] = translated_x * m10 + translated_y * m11 + translated_z * m12 + c_y;
+        z[i] = translated_x * m20 + translated_y * m21 + translated_z * m22 + c_z;
+      }
     }
   };
 
+  template<int MAX_ATOMS>
   void rotate_fragment_sycl(fp_type* __restrict__ x,
                             fp_type* __restrict__ y,
                             fp_type* __restrict__ z,
@@ -120,8 +132,9 @@ namespace mudock {
         ((origz * (u2 + v2) - w * (origx * u + origy * v)) * one_minus_c + (origx * v - origy * u) * ls) / l2;
 
     // apply the rotation matrix
-    for (int i = it.get_local_id(0); i < num_atoms; i += it.get_local_range(0)) {
-      if (bitmask[i] != 0) {
+#pragma unroll
+    for (int i = it.get_local_id(0); i < MAX_ATOMS; i += it.get_local_range(0)) {
+      if (i < num_atoms && bitmask[i] != 0) {
         const auto prev_x = x[i], prev_y = y[i], prev_z = z[i];
         x[i] = prev_x * m00 + prev_y * m01 + prev_z * m02 + m03;
         y[i] = prev_x * m10 + prev_y * m11 + prev_z * m12 + m13;

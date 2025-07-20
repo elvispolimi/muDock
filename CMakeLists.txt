@@ -14,6 +14,11 @@ function(remove_version_from_filename input_filename version output_filename)
       PARENT_SCOPE)
 endfunction()
 
+# Inlude compialtios details and Third-party libraries that we download and
+# compile
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/prerequisite.cmake")
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/mudock.cmake")
+
 # ##############################################################################
 # ### Define the compile options
 # ##############################################################################
@@ -38,6 +43,8 @@ set(MUDOCK_CPU_TUNE
     "native"
     CACHE STRING
           "Tune for specific target CPU (default is empty, no optimizations")
+
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/sycl.cmake")
 
 if(NOT MUDOCK_GPU_ARCHITECTURES STREQUAL "none")
   # Find the position of the colon
@@ -79,12 +86,10 @@ if(MUDOCK_ENABLE_HIP)
      AND NOT MUDOCK_ENABLE_CUDA
      AND NOT MUDOCK_ENABLE_OMP)
     find_program(HIP_COMPILER hipcc)
-    # set(CMAKE_CXX_COMPILER "${HIP_COMPILER}")
 
     if(GPU_PLATFORM STREQUAL "cuda")
       set(HIP_PLATFORM "nvidia")
       find_package(CUDAToolkit REQUIRED COMPONENTS curand)
-      # add_compile_options($<$<COMPILE_LANGUAGE:HIP>:-arch=${GPU_ARCHITECTURE}>)
     elseif(GPU_PLATFORM STREQUAL "amd")
       set(HIP_PLATFORM "${GPU_PLATFORM}")
 
@@ -175,32 +180,37 @@ if(MUDOCK_ENABLE_SYCL)
   if(NOT MUDOCK_ENABLE_HIP
      AND NOT MUDOCK_ENABLE_CUDA
      AND NOT MUDOCK_ENABLE_OMP)
-    # handle AdaptiveCPP check if we need to enable the openmp backend for SYCL
-    if(MUDOCK_CPU_ARCHITECTURES STREQUAL "native") # TODO what to do with
-      # native?
-      if(MUDOCK_CPU_ARCHITECTURES STREQUAL "none")
-        list(APPEND sycl_targets "omp")
-      endif()
-    else()
-      list(APPEND sycl_targets "${MUDOCK_CPU_ARCHITECTURES}")
-    endif()
-
-    if(NOT MUDOCK_GPU_ARCHITECTURES STREQUAL "none")
+    # Only GPU targets supported for now prepare the option for the AdaptiveCPP
+    # package finder
+    if(${SYCL_COMPILER} STREQUAL "AdaptiveCpp")
+      # TODO add ACPP generic pass support and check performance
       list(APPEND sycl_targets "${MUDOCK_GPU_ARCHITECTURES}")
-    else()
-      list(APPEND sycl_targets "omp")
+      find_package(AdaptiveCpp CONFIG REQUIRED)
+    elseif(${SYCL_COMPILER} STREQUAL "oneAPI")
+      find_package(LLVM REQUIRED)
+      set(CMAKE_LINKER
+          clang++
+          CACHE STRING "C++ linker" FORCE)
+      string(FIND "${MUDOCK_GPU_ARCHITECTURES}" ":" COLON_INDEX)
+
+      # Check that a colon was found
+      if(NOT COLON_INDEX EQUAL -1)
+        math(EXPR VALUE_INDEX "${COLON_INDEX} + 1")
+        string(SUBSTRING "${MUDOCK_GPU_ARCHITECTURES}" ${VALUE_INDEX} -1
+                         VALUE_AFTER_COLON)
+        if(MUDOCK_GPU_ARCHITECTURES MATCHES "cuda")
+          list(APPEND sycl_targets "nvidia_gpu_${VALUE_AFTER_COLON}")
+        endif()
+        set(CMAKE_CXX_LINK_EXECUTABLE
+            "${LLVM_TOOLS_BINARY_DIR}/clang++ -fsycl -fsycl-targets=${sycl_targets} <FLAGS> <CMAKE_CXX_LINK_FLAGS> <LINK_FLAGS> <OBJECTS> -o <TARGET> <LINK_LIBRARIES>"
+        )
+
+      else()
+        message(WARNING "No colon found in string.")
+      endif()
     endif()
 
-    # check if we need to enable the AMD or NVIDIA backend for SYCL
-
-    # prepare the option for the AdaptiveCPP package finder
     set(SYCL_TARGETS ${sycl_targets})
-    set(ACPP_TARGETS
-        "${SYCL_TARGETS}"
-        CACHE STRING "AdaptiveCPP targets")
-    find_package(AdaptiveCpp CONFIG REQUIRED)
-
-    # TODO OneAPI
   else()
     message(FATAL_ERROR "Enable only one parallel framework at a time.")
   endif()
@@ -208,8 +218,15 @@ endif()
 
 # OpenMP
 option(MUDOCK_ENABLE_OMP "Enable the OpenMP kernel implementation" OFF)
-# OpenMP
-option(MUDOCK_ENABLE_OMP_SIMD "Enable the OpenMP SIMD optimizations" OFF)
+option(
+  MUDOCK_ENABLE_FAST
+  "Enable the various compilers optimizimization, like OpenMP SIMD optimizations and fast math"
+  OFF)
+
+# If user hasn't set it AND build type is Release, set it to ON
+if(NOT MUDOCK_ENABLE_FAST AND CMAKE_BUILD_TYPE STREQUAL "Release")
+  set(MUDOCK_ENABLE_FAST ON)
+endif()
 
 if(MUDOCK_ENABLE_OMP)
   if(NOT MUDOCK_ENABLE_HIP
@@ -281,9 +298,6 @@ find_package(Boost CONFIG REQUIRED COMPONENTS program_options graph fiber)
 find_package(OpenBabel3 REQUIRED)
 set(CMAKE_ENABLE_EXPORTS ON)
 
-# Third-party libraries that we download and compile
-include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/prerequisite.cmake")
-include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/mudock.cmake")
 # ##############################################################################
 # ### Enable global compiler flags
 # ##############################################################################
@@ -367,7 +381,7 @@ endif()
 
 message(
   STATUS
-    "OpenMP SIMD.........................: ${MUDOCK_ENABLE_OMP_SIMD} (MUDOCK_ENABLE_OMP_SIMD)"
+    "Fast mode ..........................: ${MUDOCK_ENABLE_FAST} (MUDOCK_ENABLE_FAST)"
 )
 
 if(MUDOCK_ENABLE_TEST)
@@ -433,7 +447,16 @@ message(
 if(MUDOCK_ENABLE_SYCL)
   message(
     STATUS
-      "Target SYCL architecture............: ${ACPP_TARGETS} (ACPP_TARGETS)")
+      "Target SYCL architecture............: ${SYCL_TARGETS} (SYCL_TARGETS)")
+  message(
+    STATUS
+      "SYCL Compiler.......................: ${SYCL_COMPILER} (SYCL_COMPILER)")
+  if(${SYCL_COMPILER} STREQUAL "oneAPI")
+    message(
+      STATUS
+        "oneAPI Compiler Path................: ${LLVM_TOOLS_BINARY_DIR} (LLVM_TOOLS_BINARY_DIR)"
+    )
+  endif()
 endif()
 
 message(

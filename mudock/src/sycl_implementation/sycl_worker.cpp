@@ -7,22 +7,11 @@
 
 namespace mudock {
   sycl_worker::sycl_worker(const knobs knobs,
-                           std::shared_ptr<const grid_atom_mapper>& grid_atom_maps,
-                           std::shared_ptr<const grid_map>& electro_map,
-                           std::shared_ptr<const grid_map>& desolv_map,
                            std::shared_ptr<safe_stack<static_molecule>>& input_molecules,
                            std::shared_ptr<safe_stack<static_molecule>>& output_molecules,
                            std::shared_ptr<reorder_buffer> rb,
-                           const std::size_t device_id,
-                           sycl::device _dev)
-      : input_stack(input_molecules),
-        output_stack(output_molecules),
-        rob(rb),
-        device(_dev),
-        queue(device, sycl::property::queue::in_order{}),
-        virtual_screen(knobs, grid_atom_maps, electro_map, desolv_map, queue) {
-    info("Worker SYCL on duty! Set affinity to device ", device_id);
-  }
+                           const std::shared_ptr<const mudock::device> dev)
+      : input_stack(input_molecules), output_stack(output_molecules), rob(rb), virtual_screen(knobs, dev) {}
 
   void sycl_worker::process(batch& b) {
     try {

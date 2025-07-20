@@ -12,7 +12,7 @@ function(hip_separable_compilation target)
 
     string(REPLACE ";" " " OBJECTS_CLEAN "${OBJECTS}")
     separate_arguments(OBJECTS_ARGS UNIX_COMMAND PROGRAM ${OBJECTS_CLEAN})
-
+    # FIXME check if -D defintions are correctly set
     add_custom_command(
       OUTPUT ${DEVICE_LINK_OBJ}
       COMMAND ${CMAKE_HIP_COMPILER} ${flags} -shared -dlink -o

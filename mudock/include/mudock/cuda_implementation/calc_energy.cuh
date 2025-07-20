@@ -9,6 +9,7 @@
 #include <mudock/type_alias.hpp>
 
 namespace mudock {
+  // FIXME with mehler solmajher header file
   __device__ static constexpr fp_type EINTCLAMP_CUDA{EINTCLAMP};
   __device__ static constexpr fp_type lambda{0.003627};
   __device__ static constexpr fp_type epsilon0{78.4};

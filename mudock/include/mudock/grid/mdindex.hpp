@@ -52,7 +52,7 @@ namespace mudock {
     template<Numeric... T>
     md_index(T&&... sizes) {
       static_assert(sizeof...(sizes) == n, "Mismatch between sizes and dimension numbers");
-      const auto size_list = std::initializer_list{static_cast<std::size_t>(sizes)...};
+      const auto size_list = std::initializer_list<std::size_t>{static_cast<std::size_t>(sizes)...};
       std::copy(std::cbegin(size_list), std::cend(size_list), std::begin(_sizes));
       _coefs[0] = std::size_t{1};
       for (std::size_t i = 1; i < num_dimensions; ++i) { _coefs[i] = _coefs[i - 1] * _sizes[i - 1]; }
@@ -63,7 +63,7 @@ namespace mudock {
     [[nodiscard]] std::size_t to1D(T&&... indexes) const {
       static_assert(sizeof...(indexes) == n, "Mismatch between indexes and dimension numbers");
       assert(is_inside(indexes...));
-      const auto index_list  = std::initializer_list{static_cast<std::size_t>(indexes)...};
+      const auto index_list  = std::initializer_list<std::size_t>{static_cast<std::size_t>(indexes)...};
       auto index_it          = std::begin(index_list);
       const auto begin_coefs = std::begin(_coefs);
       return std::accumulate(
@@ -115,7 +115,7 @@ namespace mudock {
     template<Numeric... T>
     [[nodiscard]] auto is_inside(T&&... indexes) const {
       static_assert(sizeof...(indexes) == n, "Mismatch between indexes and dimension numbers");
-      const auto index_list = std::initializer_list{static_cast<std::size_t>(indexes)...};
+      const auto index_list = std::initializer_list<std::size_t>{static_cast<std::size_t>(indexes)...};
       return std::none_of(
           std::begin(index_list),
           std::end(index_list),

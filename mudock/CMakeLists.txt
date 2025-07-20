@@ -173,7 +173,7 @@ endif()
 if(MUDOCK_ENABLE_SYCL)
   list(
     APPEND
-    header_files
+    header_files_sycl
     "${header_path}/${header_prefix}/sycl_implementation/sycl_manager.hpp"
     "${header_path}/${header_prefix}/sycl_implementation/calc_energy.hpp"
     "${header_path}/${header_prefix}/sycl_implementation/mutate.hpp"
@@ -185,14 +185,14 @@ if(MUDOCK_ENABLE_SYCL)
     "${header_path}/${header_prefix}/sycl_implementation/sycl_batch_sizer.hpp"
     "${header_path}/${header_prefix}/sycl_implementation/virtual_screen.hpp"
     "${header_path}/${header_prefix}/sycl_implementation/evaluate_fitness.hpp")
-  list(
-    APPEND
-    source_files
-    "${source_path}/sycl_implementation/sycl_manager.cpp"
-    "${source_path}/sycl_implementation/sycl_random.cpp"
-    "${source_path}/sycl_implementation/sycl_worker.cpp"
-    "${source_path}/sycl_implementation/sycl_batch_sizer.cpp"
-    "${source_path}/sycl_implementation/virtual_screen.cpp")
+  list(APPEND header_files "${header_files_sycl}")
+  set(sycl_source_files
+      "${source_path}/sycl_implementation/sycl_manager.cpp"
+      "${source_path}/sycl_implementation/sycl_random.cpp"
+      "${source_path}/sycl_implementation/device.cpp"
+      "${source_path}/sycl_implementation/sycl_worker.cpp"
+      "${source_path}/sycl_implementation/sycl_batch_sizer.cpp"
+      "${source_path}/sycl_implementation/virtual_screen.cpp")
 endif()
 
 # declare the OpenMP sources
@@ -249,6 +249,17 @@ if(MUDOCK_ENABLE_BUCKET)
   target_compile_definitions(libmudock PUBLIC MUDOCK_BUCKET_LARGE)
 endif()
 
+# Profiling
+if(MUDOCK_ENABLE_LIKWID)
+  target_include_directories(libmudock PUBLIC ${LIKWID_INCLUDE_DIR})
+  add_definitions(-DLIKWID_PERFMON)
+endif()
+
+# Test
+if(MUDOCK_ENABLE_TEST)
+  target_compile_definitions(libmudock PUBLIC MUDOCK_TEST)
+endif()
+
 if(MUDOCK_ENABLE_GH)
   target_compile_definitions(libmudock PUBLIC MUDOCK_USE_GH)
   target_link_libraries(libmudock PRIVATE hwy::hwy)
@@ -259,7 +270,7 @@ if(MUDOCK_ENABLE_XSIMD)
   target_include_directories(libmudock PUBLIC "${XSIMD_INCLUDE_DIR}")
 endif()
 
-if(MUDOCK_ENABLE_OMP_SIMD)
+if(MUDOCK_ENABLE_FAST)
   if(CMAKE_C_COMPILER_ID STREQUAL "GNU" OR CMAKE_C_COMPILER_ID STREQUAL "Clang")
     target_compile_options(
       libmudock PUBLIC $<$<COMPILE_LANGUAGE:CXX>:-fopenmp-simd -ffast-math>)
@@ -287,11 +298,6 @@ if(MUDOCK_ENABLE_HIP)
     PUBLIC
       $<$<AND:$<COMPILE_LANGUAGE:HIP>,$<CONFIG:RELEASE>,$<HIP_COMPILER_ID:NVIDIA>>:
       -use_fast_math>)
-  # FIXME target_compile_options( libmudock PUBLIC
-  # $<$<AND:$<CONFIG:DEBUG>,$<COMPILE_LANGUAGE:CXX>>:-G -g -Xptxas -v
-  # --expt-relaxed-constexpr>) target_compile_options( libmudock PUBLIC
-  # $<$<AND:$<CONFIG:RELEASE>,$<COMPILE_LANGUAGE:CXX>>:-O3 -use_fast_math
-  # --expt-relaxed-constexpr>)
 endif()
 
 # check if we need to activate the compilation flag that signals CUDA
@@ -364,39 +370,24 @@ endif()
 # check if we need to activate the compilation flag that signals SYCL
 if(MUDOCK_ENABLE_SYCL)
   target_compile_definitions(libmudock PUBLIC MUDOCK_USE_SYCL)
-
-  # Link runtime device libraries (if needed)
-  string(FIND "${ACPP_TARGETS}" "cuda" position)
-
-  if(${position} GREATER -1)
-    target_link_libraries(libmudock PUBLIC cudart)
+  set(sycl_generated_source)
+  set(sycl_objects"")
+  add_sycl_files("${sycl_source_files}" ${header_path} "${header_files}"
+                 sycl_objects)
+  target_sources(libmudock PRIVATE "${sycl_objects}")
+  add_dependencies(libmudock sycl_targets)
+  if(${SYCL_COMPILER} STREQUAL "AdaptiveCpp")
+    find_package(CUDAToolkit REQUIRED)
+    target_link_libraries(libmudock PRIVATE AdaptiveCpp::acpp-rt Boost::fiber
+                                            CUDA::cudart)
+  elseif(${SYCL_COMPILER} STREQUAL "oneAPI")
+    target_link_directories(libmudock PUBLIC "${LLVM_LIBRARY_DIRS}")
+    target_link_libraries(libmudock PRIVATE sycl)
   endif()
-
-  # TODO only with AdaptiveCpp Manually adding acpp library NOTE: the compiler
-  # should be a clang version with sycl target_link_libraries(libmudock PUBLIC
-  # acpp-rt) list(APPEND SYCL_FLAGS "-fsycl" "-fsycl-targets=${ACPP_TARGETS}")
-  # target_compile_options(libmudock PUBLIC
-  # $<$<COMPILE_LANGUAGE:CXX>:${SYCL_FLAGS}>) target_link_options(libmudock
-  # PUBLIC $<$<COMPILE_LANGUAGE:CXX>:${SYCL_FLAGS}>)
-
-  # Automatic configuration NOTE: the compiler will be set by default to the
-  # AdaptiveCpp one NOTE: AdaptiveCpp Single pass compiler optimizations are not
-  # required
-  add_sycl_to_target(TARGET libmudock SOURCES)
 endif()
 
-# Profiling
-if(MUDOCK_ENABLE_LIKWID)
-  target_include_directories(libmudock PUBLIC ${LIKWID_INCLUDE_DIR})
-  add_definitions(-DLIKWID_PERFMON)
-endif()
-
-# Profiling
-if(MUDOCK_ENABLE_TEST)
-  target_compile_definitions(libmudock PUBLIC MUDOCK_TEST)
-endif()
 # ##############################################################################
 # ### Declare the install step
 # ##############################################################################
 
-# at the moment we don't deploy the librar
+# at the moment wedon't deploy the librar
