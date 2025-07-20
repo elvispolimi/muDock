@@ -148,7 +148,6 @@ namespace mudock {
                   num_rotamers * sizeof(fp_type));
 
       const auto non_bond_size = adt_ligand.get_non_bond_size();
-      printf("NUM NON BONDS %d\n", non_bond_size);
       std::memcpy((void *) (nonbond_a1.host_pointer() + index_nonbonds.host_pointer()[index]),
                   adt_ligand.get_non_bond_A(),
                   non_bond_size * sizeof(int));
@@ -265,6 +264,7 @@ namespace mudock {
     MUDOCK_CHECK(hipStreamSynchronize(stream));
 
     // Copy back chromosomes and scores
+    // FIXME move before the synchronize
     best_chromosomes.copy_device2host();
     ligand_scores.copy_device2host();
 

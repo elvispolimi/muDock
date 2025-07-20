@@ -9,6 +9,7 @@
 #include <span>
 
 namespace mudock {
+  template<int MAX_ATOMS>
   void apply_sycl(fp_type* __restrict__ x,
                   fp_type* __restrict__ y,
                   fp_type* __restrict__ z,
@@ -21,21 +22,28 @@ namespace mudock {
                   const int num_atoms,
                   sycl::nd_item<1> it) {
     // apply rigid transformations
-    translate_molecule_sycl(x, y, z, &chromosome[0], &chromosome[1], &chromosome[2], num_atoms, it);
-    rotate_molecule_sycl(x, y, z, &chromosome[3], &chromosome[4], &chromosome[5], num_atoms, it);
+    translate_molecule_sycl<MAX_ATOMS>(x,
+                                       y,
+                                       z,
+                                       &chromosome[0],
+                                       &chromosome[1],
+                                       &chromosome[2],
+                                       num_atoms,
+                                       it);
+    rotate_molecule_sycl<MAX_ATOMS>(x, y, z, &chromosome[3], &chromosome[4], &chromosome[5], num_atoms, it);
 
     // change the molecule shape
     for (int i = 0; i < num_rotamers; ++i) {
-      const int* bitmask = fragments + i * stride_atoms;
-      rotate_fragment_sycl(x,
-                           y,
-                           z,
-                           bitmask,
-                           fragments_start_index[i],
-                           fragments_stop_index[i],
-                           &chromosome[6 + i],
-                           num_atoms,
-                           it);
+      const int* bitmask = fragments + i * num_atoms;
+      rotate_fragment_sycl<MAX_ATOMS>(x,
+                                      y,
+                                      z,
+                                      bitmask,
+                                      fragments_start_index[i],
+                                      fragments_stop_index[i],
+                                      &chromosome[6 + i],
+                                      num_atoms,
+                                      it);
     }
   }
 

@@ -26,7 +26,8 @@ namespace mudock {
 #else
     static constexpr int get_num_atom_clusters() { return 1; };
     // the description of how we generate the clusters
-    static constexpr std::array<int, 1> atoms_clusters   = {{256}};
+    static constexpr std::array<int, 1> atoms_clusters = {{256}};
+    // FIXME remove buffer on the rotamers
     static constexpr std::array<int, 1> rotamer_clusters = {{86}};
 #endif
 

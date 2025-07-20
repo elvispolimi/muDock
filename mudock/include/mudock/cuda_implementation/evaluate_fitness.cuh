@@ -77,6 +77,7 @@ namespace mudock {
                                    const int chromosome_stride,
                                    const int atom_stride,
                                    const int rotamers_stride,
+                                   // FIXE ME remove me
                                    const int nonbond_stride,
                                    const int map_index_xyz,
                                    const fp_type* __restrict__ original_ligand_x,
@@ -210,6 +211,7 @@ namespace mudock {
           total_trilinear_eintcal += __shfl_down_sync(0xffffffff, total_trilinear_eintcal, offset);
         }
 
+        // FIXME move this only at the end
         if (local_thread_id == 0) {
           const fp_type tors_free_energy        = num_rotamers * autodock_parameters::coeff_tors;
           s_chromosome_scores[chromosome_index] = total_trilinear_eintcal + tors_free_energy;
