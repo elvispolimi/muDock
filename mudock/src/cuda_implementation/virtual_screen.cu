@@ -250,6 +250,7 @@ namespace mudock {
                                                                   frag_start_atom_indices.dev_pointer(),
                                                                   frag_stop_atom_indices.dev_pointer(),
                                                                   chromosomes.dev_pointer(),
+                                                                  // FIXME with the reference
                                                                   dev.get()->atom_tex.dev_pointer(),
                                                                   map_texture_index.dev_pointer(),
                                                                   curand_states.dev_pointer(),
@@ -262,6 +263,7 @@ namespace mudock {
     MUDOCK_CHECK(cudaStreamSynchronize(stream));
 
     // Copy back chromosomes and scores
+    // FIXME move before the synchronize
     best_chromosomes.copy_device2host();
     ligand_scores.copy_device2host();
 

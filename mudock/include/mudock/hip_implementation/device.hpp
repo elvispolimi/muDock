@@ -13,6 +13,7 @@ namespace mudock {
     const std::size_t id;
     // Grid Maps
     const point<fp_type, 3> center_maps;
+    // FIXME remove from here and add to get_stream() moeve to private
     struct hipStream_wrapper {
       hipStream_t stream;
       hipStream_wrapper(const hipStream_t stream): stream(stream) {};

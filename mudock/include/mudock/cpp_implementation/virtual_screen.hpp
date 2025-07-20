@@ -72,7 +72,6 @@ namespace mudock {
                                                   offset.x(),
                                                   offset.y(),
                                                   offset.z());
-      // for (int a = 0; a < num_atoms; ++a) printf("%f %f %f\n", x[a], y[a], z[a]);
 
       auto adt_ligand = autodock_ligand{ligand};
       adt_ligand.update_offsets(adt_protein);

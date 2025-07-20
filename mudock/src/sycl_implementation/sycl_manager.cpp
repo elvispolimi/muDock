@@ -11,9 +11,7 @@ namespace mudock {
   void manage_sycl(const std::vector<std::string>& configurations,
                    threadpool& pool,
                    const knobs knobs,
-                   std::shared_ptr<const grid_atom_mapper>& grid_atom_maps,
-                   std::shared_ptr<const grid_map>& electro_map,
-                   std::shared_ptr<const grid_map>& desolv_map,
+                   const autodock_protein& adt_protein,
                    std::shared_ptr<safe_stack<static_molecule>>& input_molecules,
                    std::shared_ptr<safe_stack<static_molecule>>& output_molecules) {
     // single out the SYCL description
@@ -94,35 +92,16 @@ namespace mudock {
       // add the workers that we found parsing the configuration
       for (const auto id: device_ids) {
         if (device_name == gpu_token) {
+          const auto dev = std::make_shared<device>(gpu_devices[id], adt_protein);
+
           // we spawn two workers for each GPU to implement the double buffer
-          pool.add_worker<mudock::sycl_worker>(knobs,
-                                               grid_atom_maps,
-                                               electro_map,
-                                               desolv_map,
-                                               input_molecules,
-                                               output_molecules,
-                                               rob,
-                                               id,
-                                               gpu_devices[id]);
-          pool.add_worker<mudock::sycl_worker>(knobs,
-                                               grid_atom_maps,
-                                               electro_map,
-                                               desolv_map,
-                                               input_molecules,
-                                               output_molecules,
-                                               rob,
-                                               id,
-                                               gpu_devices[id]);
+          pool.add_worker<mudock::sycl_worker>(knobs, input_molecules, output_molecules, rob, dev);
+
+          pool.add_worker<mudock::sycl_worker>(knobs, input_molecules, output_molecules, rob, dev);
         } else if (device_name == cpu_token) {
-          pool.add_worker<mudock::sycl_worker>(knobs,
-                                               grid_atom_maps,
-                                               electro_map,
-                                               desolv_map,
-                                               input_molecules,
-                                               output_molecules,
-                                               rob,
-                                               id,
-                                               cpu_device.value());
+          const auto dev = std::make_shared<device>(cpu_device.value(), adt_protein);
+
+          pool.add_worker<mudock::sycl_worker>(knobs, input_molecules, output_molecules, rob, dev);
         }
       }
     }

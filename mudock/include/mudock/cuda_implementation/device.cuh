@@ -13,6 +13,7 @@ namespace mudock {
     const std::size_t id;
     // Grid Maps
     const point<fp_type, 3> center_maps;
+    // FIXME remove from here and add to get_stream()
     struct cudaStream_wrapper {
       cudaStream_t stream;
       cudaStream_wrapper(const cudaStream_t stream): stream(stream) {};
