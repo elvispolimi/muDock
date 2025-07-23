@@ -30,8 +30,10 @@ namespace mudock {
         ligand_num_atoms(queue),
         ligand_num_rotamers(queue),
         ligand_fragments(queue),
+        ligand_fragments_start(queue),
         frag_start_atom_indices(queue),
         frag_stop_atom_indices(queue),
+        frag_indices_start(queue),
         index_nonbonds(queue),
         nonbond_a1(queue),
         nonbond_a2(queue),
@@ -48,11 +50,11 @@ namespace mudock {
     const std::size_t batch_atoms   = incoming_batch.batch_max_atoms;
     const std::size_t batch_ligands = incoming_batch.num_ligands;
     // Resize data structures
-    const std::size_t tot_atoms_in_batch = batch_ligands * batch_atoms;
-    // const std::size_t tot_atoms_in_population     = tot_atoms_in_batch * configuration.population_number;
+    const std::size_t tot_atoms_in_batch          = batch_ligands * batch_atoms;
+    const std::size_t batch_rotamers              = batch_atoms - 3;
+    const std::size_t batch_non_bonds             = batch_ligands * batch_atoms * batch_atoms;
     const std::size_t tot_rotamers_atoms_in_batch = tot_atoms_in_batch * batch_rotamers;
-    const std::size_t tot_rotamers_in_batch       = batch_ligands * max_rotam\max_rotamers_per_ligand;
-    const std::size_t batch_nonbonds              = batch_ligands * max_non_bonds;
+    const std::size_t tot_rotamers_in_batch       = batch_ligands * batch_rotamers;
     // Use double buffering on the GPU for actual and next population at each iteration
     const std::size_t population_stride = configuration.population_number * 2;
     const auto &adt_protein             = (*dev).adt_protein;
@@ -63,8 +65,12 @@ namespace mudock {
     scratch_ligand_y.alloc(tot_atoms_in_batch);
     scratch_ligand_z.alloc(tot_atoms_in_batch);
     ligand_fragments.alloc(tot_rotamers_atoms_in_batch);
+    ligand_fragments_start.alloc(batch_ligands);
+    ligand_fragments_start()[0] = 0;
     frag_start_atom_indices.alloc(tot_rotamers_in_batch);
     frag_stop_atom_indices.alloc(tot_rotamers_in_batch);
+    frag_indices_start.alloc(batch_ligands);
+    frag_indices_start()[0] = 0;
     ligand_vol.alloc(tot_atoms_in_batch);
     ligand_solpar.alloc(tot_atoms_in_batch);
     ligand_charge.alloc(tot_atoms_in_batch);
@@ -75,12 +81,12 @@ namespace mudock {
     best_chromosomes.alloc(batch_ligands);
     // Bonds
     index_nonbonds.alloc(batch_ligands + 1);
-    index_nonbonds.host_pointer()[0] = 0;
-    nonbond_a1.alloc(max_non_bonds);
-    nonbond_a2.alloc(max_non_bonds);
-    nonbond_cA.alloc(max_non_bonds);
-    nonbond_cB.alloc(max_non_bonds);
-    nonbond_xB.alloc(max_non_bonds);
+    index_nonbonds()[0] = 0;
+    nonbond_a1.alloc(batch_non_bonds);
+    nonbond_a2.alloc(batch_non_bonds);
+    nonbond_cA.alloc(batch_non_bonds);
+    nonbond_cB.alloc(batch_non_bonds);
+    nonbond_xB.alloc(batch_non_bonds);
     // GA Data structures
     chromosomes.alloc(population_stride * batch_ligands);
     // Support data precomputation
@@ -95,8 +101,8 @@ namespace mudock {
       adt_ligand.update_offsets(adt_protein);
       const int stride_atoms = index * batch_atoms;
       // Atoms and bonds
-      const int num_atoms                    = adt_ligand.get_num_atoms();
-      ligand_num_atoms.host_pointer()[index] = num_atoms;
+      const int num_atoms       = adt_ligand.get_num_atoms();
+      ligand_num_atoms()[index] = num_atoms;
       // TODO bonds
       // Place the molecule to the center of the target protein
       const auto x = adt_ligand.get_ligand_x(), y = adt_ligand.get_ligand_y(), z = adt_ligand.get_ligand_z();
@@ -113,86 +119,86 @@ namespace mudock {
                                                   offset.y(),
                                                   offset.z());
 
-      std::memcpy((void *) (original_ligand_x.host_pointer() + stride_atoms),
-                  x_p,
-                  num_atoms * sizeof(fp_type));
-      std::memcpy((void *) (original_ligand_y.host_pointer() + stride_atoms),
-                  y_p,
-                  num_atoms * sizeof(fp_type));
-      std::memcpy((void *) (original_ligand_z.host_pointer() + stride_atoms),
-                  z_p,
-                  num_atoms * sizeof(fp_type));
+      std::memcpy((void *) (original_ligand_x() + stride_atoms), x_p, num_atoms * sizeof(fp_type));
+      std::memcpy((void *) (original_ligand_y() + stride_atoms), y_p, num_atoms * sizeof(fp_type));
+      std::memcpy((void *) (original_ligand_z() + stride_atoms), z_p, num_atoms * sizeof(fp_type));
 
       // Randomly initialize the population
-      const auto num_rotamers                   = adt_ligand.get_num_rotatable_bonds();
-      ligand_num_rotamers.host_pointer()[index] = num_rotamers;
-      const int stride_masks                    = index * max_rotam\max_rotamers_per_ligand * batch_atoms;
-      const int stride_rotamers                 = index * max_rotam\max_rotamers_per_ligand;
+      const auto num_rotamers      = adt_ligand.get_num_rotatable_bonds();
+      ligand_num_rotamers()[index] = num_rotamers;
       assert(max_rotam\max_rotamers_per_ligand > ligand.get()->num_rotamers());
 
-      std::memcpy((void *) (ligand_fragments.host_pointer() + stride_masks),
+      std::memcpy((void *) (ligand_fragments() + ligand_fragments_start()[index]),
                   adt_ligand.get_fragments_masks(),
                   num_atoms * num_rotamers * sizeof(fp_type));
-      std::memcpy((void *) (frag_start_atom_indices.host_pointer() + stride_rotamers),
+      ligand_fragments_start()[index + 1] = ligand_fragments_start()[index] + (num_atoms * num_rotamers);
+      std::memcpy((void *) (frag_start_atom_indices() + frag_indices_start()[index]),
                   adt_ligand.get_fragmets_starts(),
                   num_rotamers * sizeof(fp_type));
-      std::memcpy((void *) (frag_stop_atom_indices.host_pointer() + stride_rotamers),
+      std::memcpy((void *) (frag_stop_atom_indices() + frag_indices_start()[index]),
                   adt_ligand.get_fragments_stops(),
                   num_rotamers * sizeof(fp_type));
+      frag_indices_start()[index + 1] = frag_indices_start()[index] + num_rotamers;
 
       const auto non_bond_size = adt_ligand.get_non_bond_size();
-      std::memcpy((void *) (nonbond_a1.host_pointer() + index_nonbonds.host_pointer()[index]),
+      std::memcpy((void *) (nonbond_a1() + index_nonbonds()[index]),
                   adt_ligand.get_non_bond_A(),
                   non_bond_size * sizeof(int));
-      std::memcpy((void *) (nonbond_a2.host_pointer() + index_nonbonds.host_pointer()[index]),
+      std::memcpy((void *) (nonbond_a2() + index_nonbonds()[index]),
                   adt_ligand.get_non_bond_B(),
                   non_bond_size * sizeof(int));
-      std::memcpy((void *) (nonbond_cA.host_pointer() + index_nonbonds.host_pointer()[index]),
+      std::memcpy((void *) (nonbond_cA() + index_nonbonds()[index]),
                   adt_ligand.get_non_bond_cA(),
                   non_bond_size * sizeof(fp_type));
-      std::memcpy((void *) (nonbond_cB.host_pointer() + index_nonbonds.host_pointer()[index]),
+      std::memcpy((void *) (nonbond_cB() + index_nonbonds()[index]),
                   adt_ligand.get_non_bond_cB(),
                   non_bond_size * sizeof(fp_type));
-      std::memcpy((void *) (nonbond_xB.host_pointer() + index_nonbonds.host_pointer()[index]),
+      std::memcpy((void *) (nonbond_xB() + index_nonbonds()[index]),
                   adt_ligand.get_non_bond_xB(),
                   non_bond_size * sizeof(int));
-      index_nonbonds.host_pointer()[index + 1] = index_nonbonds.host_pointer()[index] + non_bond_size;
+      index_nonbonds()[index + 1] = index_nonbonds()[index] + non_bond_size;
 
       // Autodock typing
-      std::memcpy((void *) (ligand_vol.host_pointer() + stride_atoms),
+      std::memcpy((void *) (ligand_vol() + stride_atoms),
                   adt_ligand.get_ligand_vol(),
                   num_atoms * sizeof(fp_type));
-      std::memcpy((void *) (ligand_solpar.host_pointer() + stride_atoms),
+      std::memcpy((void *) (ligand_solpar() + stride_atoms),
                   adt_ligand.get_ligand_solpar(),
                   num_atoms * sizeof(fp_type));
-      std::memcpy((void *) (ligand_charge.host_pointer() + stride_atoms),
+      std::memcpy((void *) (ligand_charge() + stride_atoms),
                   adt_ligand.get_ligand_charge(),
                   num_atoms * sizeof(fp_type));
 
-      std::memcpy((void *) (map_texture_index.host_pointer() + stride_atoms),
+      std::memcpy((void *) (map_texture_index() + stride_atoms),
                   adt_ligand.get_atom_map_offsets(),
                   num_atoms * sizeof(int));
     }
 
     // Copy in
+    const auto copy_frag_size         = ligand_fragments_start()[batch_ligands];
+    const auto copy_frag_indices_size = frag_indices_start()[batch_ligands];
+    const auto copy_nonbond_size      = index_nonbonds()[batch_ligands];
+
     ligand_num_atoms.copy_host2device();
     original_ligand_x.copy_host2device();
     original_ligand_y.copy_host2device();
     original_ligand_z.copy_host2device();
-    ligand_fragments.copy_host2device();
+    ligand_fragments.copy_host2device(copy_frag_size);
+    ligand_fragments_start.copy_host2device();
     ligand_num_rotamers.copy_host2device();
-    frag_start_atom_indices.copy_host2device();
-    frag_stop_atom_indices.copy_host2device();
+    frag_start_atom_indices.copy_host2device(copy_frag_indices_size);
+    frag_stop_atom_indices.copy_host2device(copy_frag_indices_size);
+    frag_indices_start.copy_host2device();
     ligand_vol.copy_host2device();
     ligand_solpar.copy_host2device();
     ligand_charge.copy_host2device();
     map_texture_index.copy_host2device();
     index_nonbonds.copy_host2device();
-    nonbond_a1.copy_host2device();
-    nonbond_a2.copy_host2device();
-    nonbond_cA.copy_host2device();
-    nonbond_cB.copy_host2device();
-    nonbond_xB.copy_host2device();
+    nonbond_a1.copy_host2device(copy_nonbond_size);
+    nonbond_a2.copy_host2device(copy_nonbond_size);
+    nonbond_cA.copy_host2device(copy_nonbond_size);
+    nonbond_cB.copy_host2device(copy_nonbond_size);
+    nonbond_xB.copy_host2device(copy_nonbond_size);
 
     // Setup sycl random
     // A state for each thread
@@ -215,38 +221,40 @@ namespace mudock {
       const auto n_atoms = reorder_buffer::atoms_clusters[atoms_index];
       if (batch_atoms == n_atoms)
         queue.submit([&, this](sycl::handler &h) {
-          auto size_x      = adt_protein.get_size_x();
-          auto size_xy     = adt_protein.get_size_xy();
-          auto size_xyz    = adt_protein.get_size_xyz();
-          auto original_x  = original_ligand_x.dev_pointer();
-          auto original_y  = original_ligand_y.dev_pointer();
-          auto original_z  = original_ligand_z.dev_pointer();
-          auto scratch_x   = scratch_ligand_x.dev_pointer();
-          auto scratch_y   = scratch_ligand_y.dev_pointer();
-          auto scratch_z   = scratch_ligand_z.dev_pointer();
-          auto vol         = ligand_vol.dev_pointer();
-          auto solpar      = ligand_solpar.dev_pointer();
-          auto charge      = ligand_charge.dev_pointer();
-          auto nonbonds    = index_nonbonds.dev_pointer();
-          auto a1          = nonbond_a1.dev_pointer();
-          auto a2          = nonbond_a2.dev_pointer();
-          auto ca          = nonbond_cA.dev_pointer();
-          auto cb          = nonbond_cB.dev_pointer();
-          auto xb          = nonbond_xB.dev_pointer();
-          auto atoms       = ligand_num_atoms.dev_pointer();
-          auto rotamers    = ligand_num_rotamers.dev_pointer();
-          auto fragments   = ligand_fragments.dev_pointer();
-          auto start       = frag_start_atom_indices.dev_pointer();
-          auto stop        = frag_stop_atom_indices.dev_pointer();
-          auto chromo      = chromosomes.dev_pointer();
-          auto min         = adt_protein.get_min();
-          auto max         = adt_protein.get_max();
-          auto center      = adt_protein.get_center();
-          auto maps        = (*dev).get_tex_dev_pointer();
-          auto map_indexes = map_texture_index.dev_pointer();
-          auto rand        = random_states.dev_pointer();
-          auto l_scores    = ligand_scores.dev_pointer();
-          auto best_chromo = best_chromosomes.dev_pointer();
+          auto size_x          = adt_protein.get_size_x();
+          auto size_xy         = adt_protein.get_size_xy();
+          auto size_xyz        = adt_protein.get_size_xyz();
+          auto original_x      = original_ligand_x.dev_pointer();
+          auto original_y      = original_ligand_y.dev_pointer();
+          auto original_z      = original_ligand_z.dev_pointer();
+          auto scratch_x       = scratch_ligand_x.dev_pointer();
+          auto scratch_y       = scratch_ligand_y.dev_pointer();
+          auto scratch_z       = scratch_ligand_z.dev_pointer();
+          auto vol             = ligand_vol.dev_pointer();
+          auto solpar          = ligand_solpar.dev_pointer();
+          auto charge          = ligand_charge.dev_pointer();
+          auto nonbonds        = index_nonbonds.dev_pointer();
+          auto a1              = nonbond_a1.dev_pointer();
+          auto a2              = nonbond_a2.dev_pointer();
+          auto ca              = nonbond_cA.dev_pointer();
+          auto cb              = nonbond_cB.dev_pointer();
+          auto xb              = nonbond_xB.dev_pointer();
+          auto atoms           = ligand_num_atoms.dev_pointer();
+          auto rotamers        = ligand_num_rotamers.dev_pointer();
+          auto fragments       = ligand_fragments.dev_pointer();
+          auto fragments_start = ligand_fragments_start.dev_pointer();
+          auto start           = frag_start_atom_indices.dev_pointer();
+          auto stop            = frag_stop_atom_indices.dev_pointer();
+          auto indices_start   = frag_indices_start.dev_pointer();
+          auto chromo          = chromosomes.dev_pointer();
+          auto min             = adt_protein.get_min();
+          auto max             = adt_protein.get_max();
+          auto center          = adt_protein.get_center();
+          auto maps            = (*dev).get_tex_dev_pointer();
+          auto map_indexes     = map_texture_index.dev_pointer();
+          auto rand            = random_states.dev_pointer();
+          auto l_scores        = ligand_scores.dev_pointer();
+          auto best_chromo     = best_chromosomes.dev_pointer();
           sycl::local_accessor<fp_type> shm_acc(sycl::range<1>(shared_mem), h);
 
           h.parallel_for(sycl::nd_range<1>{batch_ligands * subgroup_size, subgroup_size},
@@ -257,7 +265,6 @@ namespace mudock {
                                                      configuration.population_number,
                                                      population_stride,
                                                      batch_atoms,
-                                                     max_rotamers_per_ligand,
                                                      size_x,
                                                      size_xy,
                                                      size_xyz,
@@ -279,8 +286,10 @@ namespace mudock {
                                                      atoms,
                                                      rotamers,
                                                      fragments,
+                                                     fragments_start,
                                                      start,
                                                      stop,
+                                                     indices_start,
                                                      chromo,
                                                      min,
                                                      max,
@@ -314,13 +323,13 @@ namespace mudock {
       apply<cpu_vectorization::AUTO>(adt_ligand.get_ligand_x_p(),
                                      adt_ligand.get_ligand_y_p(),
                                      adt_ligand.get_ligand_z_p(),
-                                     *(best_chromosomes.host_pointer() + index),
+                                     *(best_chromosomes() + index),
                                      num_atoms,
                                      num_rotamers,
                                      adt_ligand.get_fragments_masks(),
                                      adt_ligand.get_fragmets_starts(),
                                      adt_ligand.get_fragments_stops());
-      ligand->properties.assign(property_type::SCORE, std::to_string(ligand_scores.host_pointer()[index]));
+      ligand->properties.assign(property_type::SCORE, std::to_string(ligand_scores()[index]));
     }
   }
 } // namespace mudock

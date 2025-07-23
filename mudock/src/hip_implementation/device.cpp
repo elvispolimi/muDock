@@ -85,10 +85,5 @@ namespace mudock {
     MUDOCK_CHECK(hipDeviceGetAttribute(&wavefront_size, hipDeviceAttributeWarpSize, id));
   }
 
-  hipStream_t device::get_stream() const {
-    hipStream_t cs;
-    MUDOCK_CHECK(hipSetDevice(static_cast<int>(id)));
-    MUDOCK_CHECK(hipStreamCreate(&cs););
-    return cs;
-  }
+  hipStream_wrapper device::get_stream() const { return {static_cast<int>(id)}; }
 } // namespace mudock

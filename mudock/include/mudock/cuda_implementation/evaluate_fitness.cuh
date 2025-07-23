@@ -12,7 +12,8 @@
 #include <mudock/utils.hpp>
 
 // Keep it to 32 to enable warp optimizations
-#define BLOCK_SIZE 32
+#define BLOCK_SIZE          32
+#define PARALLEL_CHROMOSOME 20
 
 namespace mudock {
   static constexpr fp_type coordinate_step{0.2};
@@ -69,17 +70,13 @@ namespace mudock {
   // TODO check the syncwarp
   //TODO OPT: template parameter based on number of atoms, rotamers, chromosomes and population
   // Interesting the usage of the bucketizer
-  template<int MAX_ATOMS, int MAX_ROTAMERS>
+  template<int MAX_ATOMS>
   __global__ void evaluate_fitness(const int num_generations,
                                    const int tournament_length,
                                    const fp_type mutation_prob,
                                    const int chromosome_number,
                                    const int chromosome_stride,
                                    const int atom_stride,
-                                   const int rotamers_stride,
-                                   // FIXE ME remove me
-                                   const int nonbond_stride,
-                                   const int map_index_xyz,
                                    const fp_type* __restrict__ original_ligand_x,
                                    const fp_type* __restrict__ original_ligand_y,
                                    const fp_type* __restrict__ original_ligand_z,
@@ -98,8 +95,10 @@ namespace mudock {
                                    const int* __restrict__ ligand_num_atoms,
                                    const int* __restrict__ ligand_num_rotamers,
                                    const int* __restrict__ ligand_fragments,
+                                   const int* __restrict__ ligand_fragments_start,
                                    const int* __restrict__ frag_start_atom_index,
                                    const int* __restrict__ frag_stop_atom_index,
+                                   const int* __restrict__ frag_indices_start,
                                    chromosome* __restrict__ chromosomes,
                                    const cudaTexture_wrapper* __restrict__ atom_textures,
                                    const int* __restrict__ atom_tex_indexes,
@@ -127,9 +126,9 @@ namespace mudock {
     chromosome* l_chromosomes          = chromosomes + ligand_id * chromosome_stride;
     // Point to the next population buffer
     chromosome* l_next_chromosomes      = chromosomes + ligand_id * chromosome_stride + chromosome_number;
-    const auto* l_fragments             = ligand_fragments + ligand_id * atom_stride * rotamers_stride;
-    const auto* l_frag_start_atom_index = frag_start_atom_index + ligand_id * rotamers_stride;
-    const auto* l_frag_stop_atom_index  = frag_stop_atom_index + ligand_id * rotamers_stride;
+    const auto* l_fragments             = ligand_fragments + ligand_fragments_start[ligand_id];
+    const auto* l_frag_start_atom_index = frag_start_atom_index + frag_indices_start[ligand_id];
+    const auto* l_frag_stop_atom_index  = frag_stop_atom_index + frag_indices_start[ligand_id];
     const auto* l_atom_tex_indexes      = atom_tex_indexes + ligand_id * atom_stride;
     const int* l_ligand_nonbond_a1      = ligand_nonbond_a1 + ligand_num_nonbonds[ligand_id];
     const int* l_ligand_nonbond_a2      = ligand_nonbond_a2 + ligand_num_nonbonds[ligand_id];
@@ -162,14 +161,11 @@ namespace mudock {
       }
     }
     __syncwarp();
-    // TODO maybe template parameter?
     for (int generation = 0; generation < num_generations; ++generation) {
       for (int chromosome_index = 0; chromosome_index < chromosome_number; ++chromosome_index) {
 // Copy original coordinates
-// TODO OPT: shared memory for coordinate ?
 #pragma unroll
         for (int atom_index = local_thread_id; atom_index < MAX_ATOMS; atom_index += thread_per_block) {
-          // for (int atom_index = local_thread_id; atom_index < num_atoms; atom_index += thread_per_block) {
           if (atom_index < num_atoms) {
             l_scratch_ligand_x[atom_index] = l_original_ligand_x[atom_index];
             l_scratch_ligand_y[atom_index] = l_original_ligand_y[atom_index];
@@ -179,15 +175,15 @@ namespace mudock {
         __syncwarp();
 
         // Modify coordinates
-        apply_cuda<MAX_ATOMS, MAX_ROTAMERS>(l_scratch_ligand_x,
-                                            l_scratch_ligand_y,
-                                            l_scratch_ligand_z,
-                                            *(l_chromosomes + chromosome_index),
-                                            l_fragments,
-                                            l_frag_start_atom_index,
-                                            l_frag_stop_atom_index,
-                                            num_rotamers,
-                                            num_atoms);
+        apply_cuda<MAX_ATOMS>(l_scratch_ligand_x,
+                              l_scratch_ligand_y,
+                              l_scratch_ligand_z,
+                              *(l_chromosomes + chromosome_index),
+                              l_fragments,
+                              l_frag_start_atom_index,
+                              l_frag_stop_atom_index,
+                              num_rotamers,
+                              num_atoms);
 
         fp_type total_trilinear_eintcal = calc_energy<MAX_ATOMS>(l_scratch_ligand_x,
                                                                  l_scratch_ligand_y,
@@ -211,10 +207,8 @@ namespace mudock {
           total_trilinear_eintcal += __shfl_down_sync(0xffffffff, total_trilinear_eintcal, offset);
         }
 
-        // FIXME move this only at the end
         if (local_thread_id == 0) {
-          const fp_type tors_free_energy        = num_rotamers * autodock_parameters::coeff_tors;
-          s_chromosome_scores[chromosome_index] = total_trilinear_eintcal + tors_free_energy;
+          s_chromosome_scores[chromosome_index] = total_trilinear_eintcal;
         }
       }
 
@@ -284,7 +278,8 @@ namespace mudock {
       }
     }
     if (local_thread_id == 0) {
-      ligand_scores[ligand_id] = min_score;
+      const fp_type tors_free_energy = num_rotamers * autodock_parameters::coeff_tors;
+      ligand_scores[ligand_id]       = min_score + tors_free_energy;
       memcpy((best_chromosomes + ligand_id)->data(),
              (l_chromosomes + min_index)->data(),
              sizeof(fp_type) * (6 + num_rotamers));

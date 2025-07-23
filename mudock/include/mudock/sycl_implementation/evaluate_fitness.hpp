@@ -66,7 +66,6 @@ namespace mudock {
                         const int chromosome_number,
                         const int chromosome_stride,
                         const int atom_stride,
-                        const int rotamers_stride,
                         const int map_index_x,
                         const int map_index_xy,
                         const int map_index_xyz,
@@ -88,8 +87,10 @@ namespace mudock {
                         const int* __restrict__ ligand_num_atoms,
                         const int* __restrict__ ligand_num_rotamers,
                         const int* __restrict__ ligand_fragments,
+                        const int* __restrict__ ligand_fragments_start,
                         const int* __restrict__ frag_start_atom_index,
                         const int* __restrict__ frag_stop_atom_index,
+                        const int* __restrict__ frag_indices_start,
                         chromosome* __restrict__ chromosomes,
                         const point3D minimum,
                         const point3D maximum,
@@ -125,9 +126,9 @@ namespace mudock {
     chromosome* l_chromosomes          = chromosomes + ligand_id * chromosome_stride;
     // Point to the next population buffer
     chromosome* l_next_chromosomes      = chromosomes + ligand_id * chromosome_stride + chromosome_number;
-    const auto* l_fragments             = ligand_fragments + ligand_id * atom_stride * rotamers_stride;
-    const auto* l_frag_start_atom_index = frag_start_atom_index + ligand_id * rotamers_stride;
-    const auto* l_frag_stop_atom_index  = frag_stop_atom_index + ligand_id * rotamers_stride;
+    const auto* l_fragments             = ligand_fragments + ligand_fragments_start[ligand_id];
+    const auto* l_frag_start_atom_index = frag_start_atom_index + frag_indices_start[ligand_id];
+    const auto* l_frag_stop_atom_index  = frag_stop_atom_index + frag_indices_start[ligand_id];
     const auto* l_map_ligand_offsets    = map_ligand_offsets + ligand_id * atom_stride;
     const int* l_ligand_nonbond_a1      = ligand_nonbond_a1 + ligand_num_nonbonds[ligand_id];
     const int* l_ligand_nonbond_a2      = ligand_nonbond_a2 + ligand_num_nonbonds[ligand_id];

@@ -5,18 +5,19 @@
 #include <mudock/chem/autodock_parameters.hpp>
 #include <mudock/chem/autodock_types.hpp>
 #include <mudock/chem/grid_const.hpp>
+#include <mudock/chem/mehler_solmajer.hpp>
 #include <mudock/cuda_implementation/cuda_texture.cuh>
 #include <mudock/type_alias.hpp>
 
 namespace mudock {
   // FIXME with mehler solmajher header file
   __device__ static constexpr fp_type EINTCLAMP_CUDA{EINTCLAMP};
-  __device__ static constexpr fp_type lambda{0.003627};
-  __device__ static constexpr fp_type epsilon0{78.4};
-  __device__ static constexpr fp_type A{-8.5525};
-  __device__ static constexpr fp_type B = epsilon0 - A;
-  __device__ static constexpr fp_type rk{7.7839};
-  __device__ static constexpr fp_type lambda_B = -lambda * B;
+  __device__ static constexpr fp_type lambda{mehler_solmajer::lambda};
+  __device__ static constexpr fp_type epsilon0{mehler_solmajer::epsilon0};
+  __device__ static constexpr fp_type A{mehler_solmajer::A};
+  __device__ static constexpr fp_type B{mehler_solmajer::B};
+  __device__ static constexpr fp_type rk{mehler_solmajer::rk};
+  __device__ static constexpr fp_type lambda_B{mehler_solmajer::lambda_B};
 
   __device__ static constexpr fp_type RMIN_ELEC_SQUARE_CUDA = RMIN_ELEC_SQUARE;
   __device__ static constexpr fp_type sigma_square_cuda     = sigma_square;

@@ -11,16 +11,20 @@ namespace mudock {
     }
   }
 
-  void cuda_random_object::alloc(const std::size_t num_elements) {
+  void cuda_random_object::alloc(const std::size_t num_elements, const std::size_t seed) {
     const bool init = num_elements > cuda_object<curandState>::num_elements();
     cuda_object<curandState>::alloc(num_elements);
     if (init) {
       init_curand<<<4, 128, 0, cuda_object<curandState>::get_stream()>>>(
           cuda_object<curandState>::dev_pointer(),
-          std::chrono::high_resolution_clock::now().time_since_epoch().count(),
+          seed,
           cuda_object<curandState>::num_elements());
       MUDOCK_CHECK_KERNELCALL();
       MUDOCK_CHECK(cudaStreamSynchronize(cuda_object<curandState>::get_stream()));
     }
+  };
+
+  void cuda_random_object::alloc(const std::size_t num_elements) {
+    alloc(num_elements, std::chrono::high_resolution_clock::now().time_since_epoch().count());
   };
 } // namespace mudock
