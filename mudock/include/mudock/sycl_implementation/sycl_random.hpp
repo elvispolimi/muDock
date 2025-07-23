@@ -50,6 +50,7 @@ namespace mudock {
     sycl_random_object &operator=(sycl_random_object &&)      = delete;
 
     void alloc(const std::size_t num_elements);
+    void alloc(const std::size_t num_elements, const std::size_t seed);
 
     [[nodiscard]] inline auto dev_pointer() const {
       return sycl_wrapper<std::vector, XORWOWState>::dev_pointer();

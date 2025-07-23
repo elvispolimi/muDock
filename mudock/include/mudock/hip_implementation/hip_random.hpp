@@ -12,7 +12,9 @@ namespace mudock {
     hip_random_object &operator=(const hip_random_object &) = delete;
     hip_random_object &operator=(hip_random_object &&)      = delete;
 
+    void alloc(const std::size_t num_elements, const std::size_t seed);
     void alloc(const std::size_t num_elements);
+
     [[nodiscard]] inline auto dev_pointer() const { return hip_object<hiprandState>::dev_pointer(); }
   };
 

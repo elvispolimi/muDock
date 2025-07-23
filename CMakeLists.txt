@@ -163,8 +163,11 @@ if(MUDOCK_ENABLE_CUDA)
     if(UNDER_POS GREATER_EQUAL 0)
       # Get the part after the _
       string(SUBSTRING ${GPU_ARCHITECTURE} ${UNDER_POS} 1000 CMAKE_CUDA_TEMP)
-      string(SUBSTRING ${CMAKE_CUDA_TEMP} 1 1000 CMAKE_CUDA_ARCHITECTURES
-      )# Skip the colon
+      string(SUBSTRING ${CMAKE_CUDA_TEMP} 1 1000 CUDA_ARCHITECTURES)
+      set(CMAKE_CUDA_ARCHITECTURES
+          "${CUDA_ARCHITECTURES}"
+          CACHE STRING "CUDA architectures to target (e.g., 75 for Turing)"
+                FORCE)
     else()
       message(FATAL_ERROR "${MUDOCK_GPU_ARCHITECTURES} cannot get CUDA GPUs.")
     endif()

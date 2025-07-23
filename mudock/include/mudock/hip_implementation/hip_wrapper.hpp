@@ -29,14 +29,16 @@ namespace mudock {
       hip_object<T>::set_to_value(value);
     };
 
-    inline void copy_host2device() {
+    inline void copy_host2device(const std::size_t copy_size = 0) {
       hip_object<T>::alloc(host.size());
-      hip_object<T>::copy_host2device(host.data());
+      hip_object<T>::copy_host2device(host.data(), copy_size);
     };
     inline void copy_device2host() {
       host.resize(hip_object<T>::num_elements());
       hip_object<T>::copy_device2host(host.data());
     };
+
+    auto operator()() { return host_pointer(); };
 
     [[nodiscard]] inline auto dev_pointer() const { return hip_object<T>::dev_pointer(); }
     [[nodiscard]] inline auto host_pointer() const { return host.data(); }

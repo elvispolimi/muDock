@@ -41,7 +41,9 @@ namespace mudock {
     // 4.9.4.3. SYCL functions for explicit memory operations
     inline void set_to_value(const int value) { queue.memset(dev_ptr, value, sizeof(T) * size); }
 
-    inline void copy_host2device(const T* const host) { queue.memcpy(dev_ptr, host, sizeof(T) * size); }
+    inline void copy_host2device(const T* const host, const std::size_t copy_size = 0) {
+      queue.memcpy(dev_ptr, host, sizeof(T) * (copy_size ? copy_size : size));
+    }
     inline void copy_device2host(T* const host) const { queue.memcpy(host, dev_ptr, sizeof(T) * size); }
 
     [[nodiscard]] inline auto dev_pointer() const { return dev_ptr; }

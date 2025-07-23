@@ -10,7 +10,7 @@
 
 namespace mudock {
 
-  template<int MAX_ATOMS, int MAX_ROTAMERS>
+  template<int MAX_ATOMS>
   __device__ void apply_hip(fp_type* __restrict__ x,
                             fp_type* __restrict__ y,
                             fp_type* __restrict__ z,
@@ -26,18 +26,16 @@ namespace mudock {
 
     // change the molecule shape
 #pragma unroll
-    for (int i = 0; i < MAX_ROTAMERS; ++i) {
-      if (i < num_rotamers) {
-        const int* bitmask = fragments + i * num_atoms;
-        rotate_fragment_hip<MAX_ATOMS>(x,
-                                       y,
-                                       z,
-                                       bitmask,
-                                       fragments_start_index[i],
-                                       fragments_stop_index[i],
-                                       &chromosome[6 + i],
-                                       num_atoms);
-      }
+    for (int i = 0; i < num_rotamers; ++i) {
+      const int* bitmask = fragments + i * num_atoms;
+      rotate_fragment_hip<MAX_ATOMS>(x,
+                                     y,
+                                     z,
+                                     bitmask,
+                                     fragments_start_index[i],
+                                     fragments_stop_index[i],
+                                     &chromosome[6 + i],
+                                     num_atoms);
     }
   };
 

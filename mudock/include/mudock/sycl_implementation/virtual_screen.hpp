@@ -31,8 +31,8 @@ namespace mudock {
         scratch_ligand_x, scratch_ligand_y, scratch_ligand_z, ligand_vol, ligand_solpar, ligand_charge;
     sycl_wrapper<std::vector, int> ligand_num_atoms, ligand_num_rotamers;
     // Fragments
-    sycl_wrapper<std::vector, int> ligand_fragments;
-    sycl_wrapper<std::vector, int> frag_start_atom_indices, frag_stop_atom_indices;
+    sycl_wrapper<std::vector, int> ligand_fragments, ligand_fragments_start;
+    sycl_wrapper<std::vector, int> frag_start_atom_indices, frag_stop_atom_indices, frag_indices_start;
     // Non-bonds
     sycl_wrapper<std::vector, int> index_nonbonds, nonbond_a1, nonbond_a2, nonbond_xB;
     sycl_wrapper<std::vector, fp_type> nonbond_cA, nonbond_cB;

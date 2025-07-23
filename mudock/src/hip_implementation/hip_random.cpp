@@ -6,21 +6,24 @@ namespace mudock {
     const int id     = threadIdx.x + blockIdx.x * blockDim.x;
     const int stride = gridDim.x * blockDim.x;
     for (int index = id; index < num_elements; index += stride) {
-      // const int seed = hash(seed+index); // Create a unique seed for each thread
       hiprand_init(seed + index, index, 0, &state[index]);
     }
   }
 
-  void hip_random_object::alloc(const std::size_t num_elements) {
+  void hip_random_object::alloc(const std::size_t num_elements, const std::size_t seed) {
     const bool init = num_elements > hip_object<hiprandState>::num_elements();
     hip_object<hiprandState>::alloc(num_elements);
     if (init) {
       init_hiprand<<<4, 128, 0, hip_object<hiprandState>::get_stream()>>>(
           hip_object<hiprandState>::dev_pointer(),
-          std::chrono::high_resolution_clock::now().time_since_epoch().count(),
+          seed,
           hip_object<hiprandState>::num_elements());
       MUDOCK_CHECK_KERNELCALL();
       MUDOCK_CHECK(hipStreamSynchronize(hip_object<hiprandState>::get_stream()));
     }
+  };
+
+  void hip_random_object::alloc(const std::size_t num_elements) {
+    alloc(num_elements, std::chrono::high_resolution_clock::now().time_since_epoch().count());
   };
 } // namespace mudock
