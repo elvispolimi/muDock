@@ -298,6 +298,10 @@ if(MUDOCK_ENABLE_HIP)
     PUBLIC
       $<$<AND:$<COMPILE_LANGUAGE:HIP>,$<CONFIG:RELEASE>,$<HIP_COMPILER_ID:NVIDIA>>:
       -use_fast_math>)
+  # FIXME
+  if(HIP_PLATFORM STREQUAL "nvidia")
+    target_link_libraries(libmudock PUBLIC CUDA::curand)
+  endif()
 endif()
 
 # check if we need to activate the compilation flag that signals CUDA

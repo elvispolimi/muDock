@@ -6,7 +6,6 @@
 #include <mudock/molecule.hpp>
 #include <mudock/molecule/containers.hpp>
 #include <mudock/type_alias.hpp>
-#include <span>
 
 namespace mudock {
 

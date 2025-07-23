@@ -21,24 +21,21 @@ namespace mudock {
 #ifdef MUDOCK_BUCKET_LARGE
     static constexpr int get_num_atom_clusters() { return 6; };
     // the description of how we generate the clusters
-    static constexpr std::array<int, 6> atoms_clusters   = {{32, 64, 128, 160, 192, 256}};
-    static constexpr std::array<int, 9> rotamer_clusters = {{1, 2, 4, 8, 16, 32, 40, 64, 86}};
+    static constexpr std::array<int, 6> atoms_clusters = {{32, 64, 128, 160, 192, 256}};
 #else
     static constexpr int get_num_atom_clusters() { return 1; };
     // the description of how we generate the clusters
     static constexpr std::array<int, 1> atoms_clusters = {{256}};
-    // FIXME remove buffer on the rotamers
-    static constexpr std::array<int, 1> rotamer_clusters = {{86}};
 #endif
 
   private:
     // the actual containers of ligand batches, with the related maximum sizes
-    std::array<batch, atoms_clusters.size() * rotamer_clusters.size()> clusters;
-    std::array<int, atoms_clusters.size() * rotamer_clusters.size()> max_sizes;
+    std::array<int, atoms_clusters.size()> max_sizes;
+    std::array<batch, atoms_clusters.size()> clusters;
     std::mutex mutex;
 
     // helper functor that given a random ligand, it will find the index of its cluster
-    static constexpr auto get_flattened_index(const int num_atoms, const int num_rotamers) {
+    static constexpr auto get_flattened_index(const int num_atoms) {
       auto index_atoms = static_cast<std::size_t>(
           std::count_if(std::begin(atoms_clusters), std::end(atoms_clusters), [&num_atoms](const auto a) {
             return a <= num_atoms;
@@ -46,29 +43,21 @@ namespace mudock {
       if (index_atoms >= atoms_clusters.size()) {
         throw std::runtime_error("Molecule with " + std::to_string(num_atoms) + " atoms, it is too large");
       }
-      auto index_rotamers = static_cast<std::size_t>(
-          std::count_if(std::begin(rotamer_clusters),
-                        std::end(rotamer_clusters),
-                        [&num_rotamers](const auto r) { return r <= num_rotamers; }));
-      if (index_rotamers >= rotamer_clusters.size()) {
-        throw std::runtime_error("Molecule with " + std::to_string(num_rotamers) +
-                                 " rotamers, it is too flexible");
-      }
-      return (index_atoms * rotamer_clusters.size()) + index_rotamers;
+      return index_atoms;
     }
 
   public:
     // the constructor will initialize the max_sizes array. The input is a function that given the number of
     // atoms and rotamers, will provide the batch size
-    reorder_buffer(std::function<int(const int, const int)> get_size);
+    reorder_buffer(std::function<int(const int)> get_size);
 
     // add the molecule to a batch. If the batch is full, return it
     template<class container_type>
       requires is_container_specification<container_type>
     std::pair<batch, bool> add_ligand(std::unique_ptr<molecule<container_type>> new_molecule) {
       std::lock_guard lock{mutex};
-      const auto cluster_index = get_flattened_index(new_molecule->num_atoms(), new_molecule->num_rotamers());
-      auto& cluster            = clusters[cluster_index]; // take a ref (to update it)
+      const auto cluster_index               = get_flattened_index(new_molecule->num_atoms());
+      auto& cluster                          = clusters[cluster_index]; // take a ref (to update it)
       cluster.molecules[cluster.num_ligands] = std::move(new_molecule);
       ++cluster.num_ligands;
       return cluster.num_ligands < max_sizes[cluster_index] ? std::make_pair(batch{}, false)

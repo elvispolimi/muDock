@@ -1,3 +1,5 @@
+#include "mudock/cuda_implementation/cuda_texture.cuh"
+
 #include <mudock/chem/autodock_grid_types.hpp>
 #include <mudock/chem/autodock_protein.hpp>
 #include <mudock/cuda_implementation/cuda_check_error_macro.cuh>
@@ -60,11 +62,9 @@ namespace mudock {
   device::device(const std::size_t gpu_id, const autodock_protein& adt_protein)
       : id(gpu_id),
         center_maps(adt_protein.get_center()),
+        adt_protein(adt_protein),
         stream(get_stream()),
-        atom_tex(stream()),
-        adt_protein(adt_protein) {
-    // TODO move this part into the cuda_worker -> once per GPU
-    // TODO move this only to one for Device, DO NOT repeat the memory loading per each thread
+        atom_tex(stream()) {
     // Allocate grid maps
     const point<fp_type, 3>&minimum(adt_protein.get_min()), maximum(adt_protein.get_max()),
         center(adt_protein.get_center());
@@ -85,10 +85,5 @@ namespace mudock {
     MUDOCK_CHECK(cudaStreamSynchronize(stream()));
   }
 
-  cudaStream_t device::get_stream() const {
-    cudaStream_t cs;
-    MUDOCK_CHECK(cudaSetDevice(static_cast<int>(id)));
-    MUDOCK_CHECK(cudaStreamCreate(&cs););
-    return cs;
-  }
+  cudaStream_wrapper device::get_stream() const { return cudaStream_wrapper(id); }
 } // namespace mudock

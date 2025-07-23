@@ -41,8 +41,12 @@ namespace mudock {
       MUDOCK_CHECK(hipMemsetAsync(dev_ptr, value, sizeof(T) * size, stream));
     }
 
-    inline void copy_host2device(const T* const host) {
-      MUDOCK_CHECK(hipMemcpyAsync(dev_ptr, host, sizeof(T) * size, hipMemcpyHostToDevice, stream));
+    inline void copy_host2device(const T* const host, const std::size_t copy_size = 0) {
+      MUDOCK_CHECK(hipMemcpyAsync(dev_ptr,
+                                  host,
+                                  sizeof(T) * (copy_size ? copy_size : size),
+                                  hipMemcpyHostToDevice,
+                                  stream));
     }
     inline void copy_device2host(T* const host) const {
       MUDOCK_CHECK(hipMemcpyAsync(host, dev_ptr, sizeof(T) * size, hipMemcpyDeviceToHost, stream));

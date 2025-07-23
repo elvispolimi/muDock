@@ -1,3 +1,4 @@
+#include <cstddef>
 #include <cuda_runtime.h>
 #include <mudock/cpp_implementation/chromosome.hpp>
 #include <mudock/cuda_implementation/cuda_check_error_macro.cuh>
@@ -36,8 +37,12 @@ namespace mudock {
   }
 
   template<class T>
-  void cuda_object<T>::copy_host2device(const T* const host) {
-    MUDOCK_CHECK(cudaMemcpyAsync(dev_ptr, host, sizeof(T) * size, cudaMemcpyHostToDevice, stream));
+  void cuda_object<T>::copy_host2device(const T* const host, const std::size_t copy_size) {
+    MUDOCK_CHECK(cudaMemcpyAsync(dev_ptr,
+                                 host,
+                                 sizeof(T) * (copy_size ? copy_size : size),
+                                 cudaMemcpyHostToDevice,
+                                 stream));
   }
   template<class T>
   void cuda_object<T>::copy_device2host(T* const host) const {

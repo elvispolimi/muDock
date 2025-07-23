@@ -20,7 +20,7 @@ namespace mudock {
                       mehler_solmajer::B /
                           (fp_type{1} + mehler_solmajer::rk * std::exp(mehler_solmajer::lambda_B * distance));
 
-    // TODO check this check
+    // TODO
     //if (epsilon < mehler_solmajer::min_epsilon) [[unlikely]] {
     //  epsilon = fp_type{1.0};
     //}
