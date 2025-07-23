@@ -53,9 +53,6 @@ int main(int argc, char* argv[]) {
   parse(protein, protein_path);
 
   mudock::apply_autodock_forcefield(protein);
-  // auto grid_atom_maps    = std::make_shared<const mudock::grid_atom_mapper>(generate_atom_grid_maps(protein));
-  // auto electrostatic_map = std::make_shared<const mudock::grid_map>(generate_electrostatic_grid_map(protein));
-  // auto desolvation_map   = std::make_shared<const mudock::grid_map>(generate_desolvation_grid_map(protein));
 
   mudock::info("Reading and parsing ligand ", ligand_path, " ...");
   auto ligand = std::make_unique<mudock::static_molecule>();
