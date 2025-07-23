@@ -1,7 +1,9 @@
 #include "command_line_args.hpp"
 
 #include <boost/program_options.hpp>
+#include <cstddef>
 #include <iostream>
+#include <optional>
 
 command_line_arguments parse_command_line_arguments(const int argc, char* argv[]) {
   namespace po = boost::program_options;
@@ -9,6 +11,7 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
   // define the general command line arguments
   command_line_arguments args;
   po::options_description arguments_description("Available options");
+  std::size_t seed{};
   arguments_description.add_options()("help", "print this help message");
   arguments_description.add_options()("protein",
                                       po::value(&args.protein_path)->default_value(args.protein_path),
@@ -36,7 +39,7 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
       "mutation",
       po::value(&args.knobs.mutation_prob)->default_value(args.knobs.mutation_prob),
       "Probability of a mutation to happen during GA");
-
+  knobs_description.add_options()("seed", po::value(&seed), "Seed for random values generators");
   // parse them
   po::options_description all("Allowed Options");
   all.add(arguments_description).add(knobs_description);
@@ -72,5 +75,8 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
 
   // make sure that the arguments make sense before returning them
   po::notify(vm);
+  if (vm.count("seed")) {
+    args.knobs.seed = std::optional<size_t>{seed};
+  }
   return args;
 }

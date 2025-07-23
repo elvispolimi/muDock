@@ -11,6 +11,7 @@
 namespace mudock {
   // TODO create a single conf file for all implementations
   static constexpr std::size_t max_non_bonds{1 << 26};
+  static constexpr std::size_t max_rotamers_per_ligand{64};
 
   virtual_screen_sycl::virtual_screen_sycl(const knobs k, const std::shared_ptr<const device> dev)
       : configuration(k),
@@ -44,14 +45,13 @@ namespace mudock {
         random_states(queue) {}
 
   void virtual_screen_sycl::operator()(batch &incoming_batch) {
-    const std::size_t batch_atoms    = incoming_batch.batch_max_atoms;
-    const std::size_t batch_rotamers = incoming_batch.batch_max_rotamers;
-    const std::size_t batch_ligands  = incoming_batch.num_ligands;
+    const std::size_t batch_atoms   = incoming_batch.batch_max_atoms;
+    const std::size_t batch_ligands = incoming_batch.num_ligands;
     // Resize data structures
     const std::size_t tot_atoms_in_batch = batch_ligands * batch_atoms;
     // const std::size_t tot_atoms_in_population     = tot_atoms_in_batch * configuration.population_number;
     const std::size_t tot_rotamers_atoms_in_batch = tot_atoms_in_batch * batch_rotamers;
-    const std::size_t tot_rotamers_in_batch       = batch_ligands * batch_rotamers;
+    const std::size_t tot_rotamers_in_batch       = batch_ligands * max_rotam\max_rotamers_per_ligand;
     const std::size_t batch_nonbonds              = batch_ligands * max_non_bonds;
     // Use double buffering on the GPU for actual and next population at each iteration
     const std::size_t population_stride = configuration.population_number * 2;
@@ -126,9 +126,9 @@ namespace mudock {
       // Randomly initialize the population
       const auto num_rotamers                   = adt_ligand.get_num_rotatable_bonds();
       ligand_num_rotamers.host_pointer()[index] = num_rotamers;
-      const int stride_masks                    = index * batch_rotamers * batch_atoms;
-      const int stride_rotamers                 = index * batch_rotamers;
-      assert(batch_rotamers > ligand.get()->num_rotamers());
+      const int stride_masks                    = index * max_rotam\max_rotamers_per_ligand * batch_atoms;
+      const int stride_rotamers                 = index * max_rotam\max_rotamers_per_ligand;
+      assert(max_rotam\max_rotamers_per_ligand > ligand.get()->num_rotamers());
 
       std::memcpy((void *) (ligand_fragments.host_pointer() + stride_masks),
                   adt_ligand.get_fragments_masks(),
@@ -198,6 +198,10 @@ namespace mudock {
     // A state for each thread
     const int num_threads = batch_ligands * subgroup_size;
     random_states.alloc(num_threads);
+    if (configuration.seed.has_value())
+      random_states.alloc(num_threads, configuration.seed.value());
+    else
+      random_states.alloc(num_threads);
     // Simulate the population evolution for the given amount of time
     const auto num_generations = configuration.num_generations;
     // TODO checks if everything fit into shared memory
@@ -253,7 +257,7 @@ namespace mudock {
                                                      configuration.population_number,
                                                      population_stride,
                                                      batch_atoms,
-                                                     batch_rotamers,
+                                                     max_rotamers_per_ligand,
                                                      size_x,
                                                      size_xy,
                                                      size_xyz,
