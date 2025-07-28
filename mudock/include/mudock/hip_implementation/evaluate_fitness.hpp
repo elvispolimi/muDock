@@ -5,7 +5,6 @@
 #include <mudock/cpp_implementation/chromosome.hpp>
 #include <mudock/grid.hpp>
 #include <mudock/hip_implementation/calc_energy.hpp>
-#include <mudock/hip_implementation/hip_texture.hpp>
 #include <mudock/hip_implementation/hip_utils.hpp>
 #include <mudock/hip_implementation/mutate.hpp>
 #include <mudock/molecule/containers.hpp>
@@ -46,9 +45,9 @@ namespace mudock {
   };
 
   __device__ inline int tournament_selection_hip(hiprandState& state,
-                                          const int tournament_length,
-                                          const int chromosome_number,
-                                          const fp_type* __restrict__ scores) {
+                                                 const int tournament_length,
+                                                 const int chromosome_number,
+                                                 const fp_type* __restrict__ scores) {
     const int num_iterations = tournament_length;
     int best_individual      = get_selection_distribution(state, &chromosome_number);
     for (int i = 0; i < num_iterations; ++i) {
@@ -71,6 +70,9 @@ namespace mudock {
                                    const int chromosome_number,
                                    const int chromosome_stride,
                                    const int atom_stride,
+                                   const int map_index_x,
+                                   const int map_index_xy,
+                                   const int map_index_xyz,
                                    const fp_type* __restrict__ original_ligand_x,
                                    const fp_type* __restrict__ original_ligand_y,
                                    const fp_type* __restrict__ original_ligand_z,
@@ -94,8 +96,8 @@ namespace mudock {
                                    const int* __restrict__ frag_stop_atom_index,
                                    const int* __restrict__ frag_indices_start,
                                    chromosome* __restrict__ chromosomes,
-                                   const hipTexture_wrapper* __restrict__ atom_textures,
-                                   const int* __restrict__ atom_tex_indexes,
+                                   const fp_type* __restrict__ grid_maps,
+                                   const int* __restrict__ map_ligand_offsets,
                                    hiprandState* __restrict__ state,
                                    fp_type* __restrict__ ligand_scores,
                                    chromosome* __restrict__ best_chromosomes) {
@@ -123,7 +125,7 @@ namespace mudock {
     const auto* l_fragments             = ligand_fragments + ligand_fragments_start[ligand_id];
     const auto* l_frag_start_atom_index = frag_start_atom_index + frag_indices_start[ligand_id];
     const auto* l_frag_stop_atom_index  = frag_stop_atom_index + frag_indices_start[ligand_id];
-    const auto* l_atom_tex_indexes      = atom_tex_indexes + ligand_id * atom_stride;
+    const auto* l_map_ligand_offsets    = map_ligand_offsets + ligand_id * atom_stride;
     const int* l_ligand_nonbond_a1      = ligand_nonbond_a1 + ligand_num_nonbonds[ligand_id];
     const int* l_ligand_nonbond_a2      = ligand_nonbond_a2 + ligand_num_nonbonds[ligand_id];
     const fp_type* l_ligand_nonbond_cA  = ligand_nonbond_cA + ligand_num_nonbonds[ligand_id];
@@ -192,8 +194,11 @@ namespace mudock {
                                                 l_ligand_nonbond_cA,
                                                 l_ligand_nonbond_cB,
                                                 l_ligand_nonbond_xB,
-                                                atom_textures,
-                                                l_atom_tex_indexes);
+                                                map_index_x,
+                                                map_index_xy,
+                                                map_index_xyz,
+                                                grid_maps,
+                                                l_map_ligand_offsets);
 
         // Perform a tree reduction using __shfl_down_sync
         // TODO check performance

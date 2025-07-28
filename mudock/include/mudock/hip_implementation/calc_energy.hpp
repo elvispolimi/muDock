@@ -2,12 +2,13 @@
 
 #include <hip/hip_runtime.h>
 #include <mudock/chem/autodock_grid_types.hpp>
+#include <mudock/chem/autodock_parameters.hpp>
 #include <mudock/chem/autodock_types.hpp>
 #include <mudock/chem/grid_const.hpp>
 #include <mudock/chem/mehler_solmajer.hpp>
-#include <mudock/hip_implementation/hip_texture.hpp>
 #include <mudock/type_alias.hpp>
-#include <mudock/chem/autodock_parameters.hpp>
+
+#define FLATTENED_3D(x, y, z, index_x, index_xy) (index_xy * (z) + (y) * index_x + (x))
 
 namespace mudock {
   __device__ static constexpr fp_type EINTCLAMP_HIP{EINTCLAMP};
@@ -25,20 +26,20 @@ namespace mudock {
   extern __device__ __constant__ fp_type map_max_const[3];
   extern __device__ __constant__ fp_type map_center_const[3];
 
-  __device__ inline fp_type trilinear_interpolation_hip(const int coord[],
-                                                        const cudaTextureObject_t& tex,
-                                                        const fp_type* __restrict__ coeffs) {
-    // Interpolation CUDA
+  __device__ inline fp_type trilinear_interpolation_hip(const fp_type* __restrict__ map,
+                                                        const fp_type* __restrict__ coeffs,
+                                                        const int& map_index_x,
+                                                        const int& map_index_xy) {
     fp_type value{0};
 
-    value = coeffs[0] * tex3D<fp_type>(tex, coord[0], coord[1], coord[2]) + value;
-    value = coeffs[1] * tex3D<fp_type>(tex, coord[0], coord[1], coord[2] + 1) + value;
-    value = coeffs[2] * tex3D<fp_type>(tex, coord[0], coord[1] + 1, coord[2]) + value;
-    value = coeffs[3] * tex3D<fp_type>(tex, coord[0], coord[1] + 1, coord[2] + 1) + value;
-    value = coeffs[4] * tex3D<fp_type>(tex, coord[0] + 1, coord[1], coord[2]) + value;
-    value = coeffs[5] * tex3D<fp_type>(tex, coord[0] + 1, coord[1], coord[2] + 1) + value;
-    value = coeffs[6] * tex3D<fp_type>(tex, coord[0] + 1, coord[1] + 1, coord[2]) + value;
-    value = coeffs[7] * tex3D<fp_type>(tex, coord[0] + 1, coord[1] + 1, coord[2] + 1) + value;
+    value = coeffs[0] * map[0] + value;
+    value = coeffs[1] * map[map_index_xy] + value;
+    value = coeffs[2] * map[map_index_x] + value;
+    value = coeffs[3] * map[map_index_x + map_index_xy] + value;
+    value = coeffs[4] * map[1] + value;
+    value = coeffs[5] * map[1 + map_index_xy] + value;
+    value = coeffs[6] * map[1 + map_index_x] + value;
+    value = coeffs[7] * map[1 + map_index_x + map_index_xy] + value;
 
     return value;
   }
@@ -58,10 +59,13 @@ namespace mudock {
                                  const fp_type* __restrict__ ligand_nonbond_cA,
                                  const fp_type* __restrict__ ligand_nonbond_cB,
                                  const int* __restrict__ ligand_nonbond_xB,
-                                 const hipTexture_wrapper* __restrict__ atom_textures,
-                                 const int* __restrict__ atom_tex_indexes) {
-    const hipTextureObject_t& electro_texture = atom_textures[static_cast<int>(autodock_grid_type::ELEC)]();
-    const hipTextureObject_t& desolv_texture  = atom_textures[static_cast<int>(autodock_grid_type::DESOLV)]();
+                                 const int map_index_x,
+                                 const int map_index_xy,
+                                 const int map_index_xyz,
+                                 const fp_type* __restrict__ grid_maps,
+                                 const int* __restrict__ map_ligand_offsets) {
+    const fp_type* electro_map = grid_maps + map_index_xyz * static_cast<int>(autodock_grid_type::ELEC);
+    const fp_type* desolv_map  = grid_maps + map_index_xyz * static_cast<int>(autodock_grid_type::DESOLV);
 
     // Calculate energy
     fp_type elect_total_trilinear = 0, emap_total_trilinear = 0, dmap_total_trilinear = 0;
@@ -85,13 +89,12 @@ namespace mudock {
         } else {
           // Is inside
           // Center atom coordinates on the grid center
-          coord_tex[0]       = (coord_tex[0] - map_min_const[0]) * inv_spacing,
-          coord_tex[1]       = (coord_tex[1] - map_min_const[1]) * inv_spacing;
-          coord_tex[2]       = (coord_tex[2] - map_min_const[2]) * inv_spacing;
-          const auto& charge = ligand_charge[atom_index];
+          coord_tex[0]            = (coord_tex[0] - map_min_const[0]) * inv_spacing,
+          coord_tex[1]            = (coord_tex[1] - map_min_const[1]) * inv_spacing;
+          coord_tex[2]            = (coord_tex[2] - map_min_const[2]) * inv_spacing;
+          const auto& charge      = ligand_charge[atom_index];
+          const fp_type* atom_map = grid_maps + map_ligand_offsets[atom_index];
 
-          //  TODO check approximations with in hardware interpolation
-#ifdef MUDOCK_TEST
           const int u0      = coord_tex[0];
           const fp_type p0u = coord_tex[0] - static_cast<fp_type>(u0);
           const fp_type p1u = fp_type{1} - p0u;
@@ -117,24 +120,16 @@ namespace mudock {
                                      pu[1] * pv[0] * pw[1],
                                      pu[1] * pv[1] * pw[0],
                                      pu[1] * pv[1] * pw[1]};
-          const int int_coord[3]  = {u0, v0, w0};
-          elect_total_trilinear += trilinear_interpolation_hip(int_coord, electro_texture, coeffs) * charge;
-          dmap_total_trilinear +=
-              trilinear_interpolation_hip(int_coord, desolv_texture, coeffs) * fabsf(charge);
-          emap_total_trilinear +=
-              trilinear_interpolation_hip(int_coord, atom_textures[atom_tex_indexes[atom_index]](), coeffs);
-#else
+          // Precompute flattened indices
+          const int base_index = FLATTENED_3D(u0, v0, w0, map_index_x, map_index_xy);
           elect_total_trilinear +=
-              tex3D<fp_type>(electro_texture, coord_tex[0] + 0.5, coord_tex[1] + 0.5, coord_tex[2] + 0.5) *
+              trilinear_interpolation_hip(electro_map + base_index, coeffs, map_index_x, map_index_xy) *
               charge;
           dmap_total_trilinear +=
-              tex3D<fp_type>(desolv_texture, coord_tex[0] + 0.5, coord_tex[1] + 0.5, coord_tex[2] + 0.5) *
+              trilinear_interpolation_hip(desolv_map + base_index, coeffs, map_index_x, map_index_xy) *
               fabsf(charge);
-          emap_total_trilinear += tex3D<fp_type>(atom_textures[atom_tex_indexes[atom_index]](),
-                                                 coord_tex[0] + 0.5,
-                                                 coord_tex[1] + 0.5,
-                                                 coord_tex[2] + 0.5);
-#endif
+          emap_total_trilinear +=
+              trilinear_interpolation_hip(atom_map + base_index, coeffs, map_index_x, map_index_xy);
         }
       }
     }
