@@ -34,11 +34,11 @@ namespace mudock {
     hipStream_wrapper get_stream() const;
 
     int get_wavefront() const { return wavefront_size; };
-    const hipTexture_wrapper* get_tex_dev_pointer() const { return atom_tex.dev_pointer(); };
+    const fp_type* get_tex_dev_pointer() const { return atom_tex.tex.dev_pointer(); };
 
   private:
     int wavefront_size{0};
     hipStream_wrapper stream;
-    hip_wrapper<std::vector, hipTexture_wrapper> atom_tex;
+    hipTexture_wrapper atom_tex;
   };
 } // namespace mudock

@@ -22,7 +22,7 @@ namespace mudock {
       const int num_elements  = adt_protein.get_map_flat_size() * num_autodock_grids();
       tex.alloc(num_elements);
 
-      std::memcpy(tex.host_pointer(), grid_map, num_elements * sizeof(fp_type));
+      std::memcpy(tex(), grid_map, num_elements * sizeof(fp_type));
 
       tex.copy_host2device();
     }
