@@ -1,3 +1,4 @@
+#include <mudock/hip_implementation/hip_check_error_macro.hpp>
 #include <mudock/hip_implementation/hip_batch_sizer.hpp>
 #include <hip/hip_runtime.h>
 #include <mudock/hip_implementation/evaluate_fitness.hpp>

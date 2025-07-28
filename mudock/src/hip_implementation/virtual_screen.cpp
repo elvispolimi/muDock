@@ -14,9 +14,6 @@
 #include <mudock/utils.hpp>
 
 namespace mudock {
-  // TODO add to bucketizer
-  static constexpr std::size_t max_non_bonds{1 << 26};
-
   virtual_screen_hip::virtual_screen_hip(const knobs k, const std::shared_ptr<const device> dev)
       : configuration(k),
         dev(dev),
@@ -90,11 +87,11 @@ namespace mudock {
     // Bonds
     index_nonbonds.alloc(batch_ligands + 1);
     index_nonbonds()[0] = 0;
-    nonbond_a1.alloc(max_non_bonds);
-    nonbond_a2.alloc(max_non_bonds);
-    nonbond_cA.alloc(max_non_bonds);
-    nonbond_cB.alloc(max_non_bonds);
-    nonbond_xB.alloc(max_non_bonds);
+    nonbond_a1.alloc(batch_non_bonds);
+    nonbond_a2.alloc(batch_non_bonds);
+    nonbond_cA.alloc(batch_non_bonds);
+    nonbond_cB.alloc(batch_non_bonds);
+    nonbond_xB.alloc(batch_non_bonds);
     // GA Data structures
     chromosomes.alloc(population_stride * batch_ligands);
     // Support data precomputation
@@ -134,8 +131,6 @@ namespace mudock {
       // Randomly initialize the population
       const auto num_rotamers      = adt_ligand.get_num_rotatable_bonds();
       ligand_num_rotamers()[index] = num_rotamers;
-      const int stride_masks       = index * batch_rotamers * batch_atoms;
-      const int stride_rotamers    = index * batch_rotamers;
       assert(batch_rotamers > ligand.get()->num_rotamers());
 
       std::memcpy((void *) (ligand_fragments() + ligand_fragments_start()[index]),
@@ -180,7 +175,7 @@ namespace mudock {
                   num_atoms * sizeof(fp_type));
 
       std::memcpy((void *) (map_texture_index() + stride_atoms),
-                  adt_ligand.get_atom_map_index(),
+                  adt_ligand.get_atom_map_offsets(),
                   num_atoms * sizeof(int));
     }
 
@@ -238,6 +233,9 @@ namespace mudock {
                                                                       configuration.population_number,
                                                                       population_stride,
                                                                       batch_atoms,
+                                                                      adt_protein.get_size_x(),
+                                                                      adt_protein.get_size_xy(),
+                                                                      adt_protein.get_size_xyz(),
                                                                       original_ligand_x.dev_pointer(),
                                                                       original_ligand_y.dev_pointer(),
                                                                       original_ligand_z.dev_pointer(),
