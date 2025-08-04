@@ -296,6 +296,15 @@ if(MUDOCK_ENABLE_HIP)
   target_compile_options(
     libmudock
     PUBLIC
+    $<$<AND:$<COMPILE_LANGUAGE:HIP>,$<HIP_COMPILER_ID:Clang>>:-fgpu-rdc>)
+  target_link_options(
+    libmudock
+    PUBLIC
+    $<$<AND:$<COMPILE_LANGUAGE:HIP>,$<HIP_COMPILER_ID:Clang>>:-fgpu-rdc --hip-link>
+  )
+  target_compile_options(
+    libmudock
+    PUBLIC
       $<$<AND:$<COMPILE_LANGUAGE:HIP>,$<CONFIG:RELEASE>,$<HIP_COMPILER_ID:NVIDIA>>:
       -use_fast_math>)
   # FIXME
