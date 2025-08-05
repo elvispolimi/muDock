@@ -126,7 +126,7 @@ namespace mudock {
       // Randomly initialize the population
       const auto num_rotamers      = adt_ligand.get_num_rotatable_bonds();
       ligand_num_rotamers()[index] = num_rotamers;
-      assert(max_rotam\max_rotamers_per_ligand > ligand.get()->num_rotamers());
+      assert(max_rotamers_per_ligand > ligand.get()->num_rotamers());
 
       std::memcpy((void *) (ligand_fragments() + ligand_fragments_start()[index]),
                   adt_ligand.get_fragments_masks(),
