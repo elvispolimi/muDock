@@ -82,14 +82,8 @@ namespace mudock {
       if (hbond_value == std::size_t{2}) { // ----------------------------------  D1 hydrogen bond donor
         if (elements[atom_index] != element::H) [[unlikely]]
           throw std::runtime_error("Unexpected atom type");
-        // const auto num_neighs = boost::out_degree(*it, graph);
-        // if (num_neighs > std::size_t{1}) [[unlikely]]
-        //   throw std::runtime_error("Unsupported number of neighbors");
-        // const auto [neigh_begin, neigh_end] = boost::out_edges(*it, graph);
         for (int neigh_index = from_neighbor; neigh_index < to_neighbor; ++neigh_index)
           if (neigh_index != atom_index) {
-            // for (auto neigh = neigh_begin; neigh != neigh_end; ++neigh) {
-            // const auto neigh_index = graph[neigh->m_target].atom_index;
             const auto neigh_point = point3D{x[neigh_index], y[neigh_index], z[neigh_index]};
             const auto diff        = atom_point.difference(neigh_point);
             const auto d2          = diff.square().sum_components();
@@ -103,23 +97,15 @@ namespace mudock {
                 adt_protein.disorder[atom_index] = 1;
               }
               adt_protein.vector1[atom_index] = diff.normalize();
-              // }
             }
           }
       } else if (hbond_value == std::size_t{5}) { // ----------------------------------  A2 oxygen
-        // if (elements[atom_index] != element::O) [[unlikely]]
-        //   throw std::runtime_error("Unexpected atom type");
-        // const auto [neigh_begin, neigh_end] = boost::out_edges(*it, graph);
         auto bond_counter = 0;
-        // auto neigh1_vertex = std::size_t{0};
         auto neigh1_index = 0;
         auto neigh1_point = point3D{};
         auto neigh2_point = point3D{};
-        // for (auto neigh = neigh_begin; neigh != neigh_end; ++neigh) {
         for (int neigh_index = from_neighbor; neigh_index < to_neighbor; ++neigh_index)
           if (neigh_index != atom_index) {
-            // const auto neigh_vertex  = neigh->m_target;
-            // const auto neigh_index   = graph[neigh_vertex].atom_index;
             const auto neigh_point   = point3D{x[neigh_index], y[neigh_index], z[neigh_index]};
             const auto diff          = atom_point.difference(neigh_point);
             const auto d2            = diff.square().sum_components();
@@ -129,7 +115,6 @@ namespace mudock {
               switch (bond_counter) {
                 case std::size_t{0}:
                   bond_counter = 1;
-                  // neigh1_vertex = neigh_vertex;
                   neigh1_index = neigh_index;
                   neigh1_point = neigh_point;
                   break;
@@ -144,19 +129,13 @@ namespace mudock {
             }
           }
 
-        // if (bond_counter == std::size_t{0}) [[unlikely]]
-        //   throw std::runtime_error("Oxygen with no bonded atoms");
         if (bond_counter == std::size_t{1}) { // in this case we have lone pairs
           // so we need to explore the neighbor's neighbor for Carbonyl Oxygen O=C-X
           if (elements[neigh1_index] != element::C) [[unlikely]]
             throw std::runtime_error("The original autogrid was not expecting a non C atom with a O");
           adt_protein.vector1[atom_index] = atom_point.difference(std::as_const(neigh1_point)).normalize();
-          // auto found                      = false;
-          // const auto [c_neigh_begin, c_neigh_end] = boost::out_edges(neigh1_vertex, graph);
-          // for (auto c_neigh = c_neigh_begin; c_neigh != c_neigh_end; ++c_neigh) {
           for (int other_index = from_neighbor; other_index < to_neighbor; ++other_index) {
             if ((other_index != neigh1_index) && (other_index != atom_index)) {
-              // const auto c_neigh_index   = graph[c_neigh->m_target].atom_index;
               const auto c_neigh_point   = point3D{x[other_index], y[other_index], z[other_index]};
               const auto c_diff          = std::as_const(neigh1_point).difference(c_neigh_point);
               const auto c_d2            = c_diff.square().sum_components();
@@ -164,31 +143,13 @@ namespace mudock {
               const auto c_neigh_element = elements[other_index];
               if ((c_d2 < fp_type{2.89} && c_neigh_element != element::H) ||
                   (c_d2 < fp_type{1.69} && c_neigh_element == element::H)) {
-                // found = true;
                 // C=O cross C-X gives the lone pair plane normal
                 adt_protein.vector2[atom_index] =
                     std::as_const(adt_protein.vector1[atom_index]).product(c_norm).normalize();
               }
             }
-            // if (!found) [[unlikely]]
-            //   throw std::runtime_error("Unknown carbonyl oxygen");
           }
         } else if (bond_counter == std::size_t{2}) { // in this case we assume that we have either C and H or
-          // just two H, maybe it is due chemical rules
-          // const auto neigh1_element = elements[neigh1_index];
-          // const auto neigh2_element = elements[neigh2_index];
-          // if (neigh1_element == element::H && neigh2_element == element::C) {
-          //   adt_protein.vector1[atom_index] = normalize(difference(atom_point, neigh1_point));
-          // } else if (neigh1_element == element::C && neigh2_element == element::H) {
-          //   adt_protein.vector1[atom_index] = normalize(difference(atom_point, neigh2_point));
-          // } else if (neigh1_element == element::H && neigh2_element == element::H) {
-          //   adt_protein.vector2[atom_index] = normalize(difference(neigh2_point, neigh1_point));
-          //   const auto p                    = scale(std::as_const(adt_protein.vector2[atom_index]),
-          //                        sum_components(difference(atom_point, std::as_const(neigh1_point))));
-          //   adt_protein.vector1[atom_index] = normalize(add(p, atom_point));
-          // } else [[unlikely]]
-          //   throw std::runtime_error("The original autogrid was not expecting a non C atom");
-          // rvector2[index] = normalize(point3D{receptor.x(index_2), receptor.y(index_2), receptor.z(index_2)},
           adt_protein.vector2[atom_index] = neigh2_point.difference(neigh1_point).normalize();
 
           const point3D diff = atom_point.difference(neigh1_point);
@@ -201,17 +162,13 @@ namespace mudock {
       } else if (hbond_value == std::size_t{4}) { // ----------------------------------  A1 nitrogen
         if (elements[atom_index] != element::N) [[unlikely]]
           throw std::runtime_error("Unexpected atom type");
-        // const auto [neigh_begin, neigh_end] = boost::out_edges(*it, graph);
         auto bond_counter = std::size_t{0};
         auto neigh1_index = std::size_t{0};
         auto neigh1_point = point3D{};
         auto neigh2_point = point3D{};
         auto neigh3_point = point3D{};
-        // for (auto neigh = neigh_begin; neigh != neigh_end; ++neigh) {
         for (int neigh_index = from_neighbor; neigh_index < to_neighbor; ++neigh_index)
           if (neigh_index != atom_index) {
-            // const auto neigh_vertex  = neigh->m_target;
-            // const auto neigh_index   = graph[neigh_vertex].atom_index;
             const auto neigh_point   = point3D{x[neigh_index], y[neigh_index], z[neigh_index]};
             const auto diff          = atom_point.difference(neigh_point);
             const auto d2            = diff.square().sum_components();
