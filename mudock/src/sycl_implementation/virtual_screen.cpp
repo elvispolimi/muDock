@@ -221,48 +221,53 @@ namespace mudock {
       const auto n_atoms = reorder_buffer::atoms_clusters[atoms_index];
       if (batch_atoms == n_atoms)
         queue.submit([&, this](sycl::handler &h) {
-          auto size_x          = adt_protein.get_size_x();
-          auto size_xy         = adt_protein.get_size_xy();
-          auto size_xyz        = adt_protein.get_size_xyz();
-          auto original_x      = original_ligand_x.dev_pointer();
-          auto original_y      = original_ligand_y.dev_pointer();
-          auto original_z      = original_ligand_z.dev_pointer();
-          auto scratch_x       = scratch_ligand_x.dev_pointer();
-          auto scratch_y       = scratch_ligand_y.dev_pointer();
-          auto scratch_z       = scratch_ligand_z.dev_pointer();
-          auto vol             = ligand_vol.dev_pointer();
-          auto solpar          = ligand_solpar.dev_pointer();
-          auto charge          = ligand_charge.dev_pointer();
-          auto nonbonds        = index_nonbonds.dev_pointer();
-          auto a1              = nonbond_a1.dev_pointer();
-          auto a2              = nonbond_a2.dev_pointer();
-          auto ca              = nonbond_cA.dev_pointer();
-          auto cb              = nonbond_cB.dev_pointer();
-          auto xb              = nonbond_xB.dev_pointer();
-          auto atoms           = ligand_num_atoms.dev_pointer();
-          auto rotamers        = ligand_num_rotamers.dev_pointer();
-          auto fragments       = ligand_fragments.dev_pointer();
-          auto fragments_start = ligand_fragments_start.dev_pointer();
-          auto start           = frag_start_atom_indices.dev_pointer();
-          auto stop            = frag_stop_atom_indices.dev_pointer();
-          auto indices_start   = frag_indices_start.dev_pointer();
-          auto chromo          = chromosomes.dev_pointer();
-          auto min             = adt_protein.get_min();
-          auto max             = adt_protein.get_max();
-          auto center          = adt_protein.get_center();
-          auto maps            = (*dev).get_tex_dev_pointer();
-          auto map_indexes     = map_texture_index.dev_pointer();
-          auto rand            = random_states.dev_pointer();
-          auto l_scores        = ligand_scores.dev_pointer();
-          auto best_chromo     = best_chromosomes.dev_pointer();
+          const auto num_gen        = configuration.num_generations;
+          const auto tournament_len = configuration.tournament_length;
+          const auto mutation_prob  = configuration.mutation_prob;
+          const auto pop_num        = configuration.population_number;
+
+          const auto size_x          = adt_protein.get_size_x();
+          const auto size_xy         = adt_protein.get_size_xy();
+          const auto size_xyz        = adt_protein.get_size_xyz();
+          const auto original_x      = original_ligand_x.dev_pointer();
+          const auto original_y      = original_ligand_y.dev_pointer();
+          const auto original_z      = original_ligand_z.dev_pointer();
+          auto scratch_x             = scratch_ligand_x.dev_pointer();
+          auto scratch_y             = scratch_ligand_y.dev_pointer();
+          auto scratch_z             = scratch_ligand_z.dev_pointer();
+          const auto vol             = ligand_vol.dev_pointer();
+          const auto solpar          = ligand_solpar.dev_pointer();
+          const auto charge          = ligand_charge.dev_pointer();
+          const auto nonbonds        = index_nonbonds.dev_pointer();
+          const auto a1              = nonbond_a1.dev_pointer();
+          const auto a2              = nonbond_a2.dev_pointer();
+          const auto ca              = nonbond_cA.dev_pointer();
+          const auto cb              = nonbond_cB.dev_pointer();
+          const auto xb              = nonbond_xB.dev_pointer();
+          const auto atoms           = ligand_num_atoms.dev_pointer();
+          const auto rotamers        = ligand_num_rotamers.dev_pointer();
+          const auto fragments       = ligand_fragments.dev_pointer();
+          const auto fragments_start = ligand_fragments_start.dev_pointer();
+          const auto start           = frag_start_atom_indices.dev_pointer();
+          const auto stop            = frag_stop_atom_indices.dev_pointer();
+          const auto indices_start   = frag_indices_start.dev_pointer();
+          auto chromo                = chromosomes.dev_pointer();
+          const auto min             = adt_protein.get_min();
+          const auto max             = adt_protein.get_max();
+          const auto center          = adt_protein.get_center();
+          const auto maps            = (*dev).get_tex_dev_pointer();
+          const auto map_indexes     = map_texture_index.dev_pointer();
+          auto rand                  = random_states.dev_pointer();
+          auto l_scores              = ligand_scores.dev_pointer();
+          auto best_chromo           = best_chromosomes.dev_pointer();
           sycl::local_accessor<fp_type> shm_acc(sycl::range<1>(shared_mem), h);
 
           h.parallel_for(sycl::nd_range<1>{batch_ligands * subgroup_size, subgroup_size},
                          [=, this](sycl::nd_item<1> it) {
-                           evaluate_fitness<n_atoms>(configuration.num_generations,
-                                                     configuration.tournament_length,
-                                                     configuration.mutation_prob,
-                                                     configuration.population_number,
+                           evaluate_fitness<n_atoms>(num_gen,
+                                                     tournament_len,
+                                                     mutation_prob,
+                                                     pop_num,
                                                      population_stride,
                                                      batch_atoms,
                                                      size_x,
