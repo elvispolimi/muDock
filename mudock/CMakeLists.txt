@@ -93,9 +93,7 @@ list(
   "${source_path}/log.cpp"
   "${source_path}/cpp_implementation/geometric_transformations_cpp.cpp"
   "${source_path}/cpp_implementation/calc_energy_cpp.cpp")
-set_source_files_properties(
-  "${source_path}/chem/autodock_protein.cpp"
-  PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS} -O2 -g")
+
 if(MUDOCK_ENABLE_GH)
   list(APPEND source_files
        "${source_path}/gh_implementation/geometric_transformations_gh.cpp"
@@ -297,13 +295,11 @@ if(MUDOCK_ENABLE_HIP)
       -rdc=true>)
   target_compile_options(
     libmudock
-    PUBLIC
-    $<$<AND:$<COMPILE_LANGUAGE:HIP>,$<HIP_COMPILER_ID:Clang>>:-fgpu-rdc>)
+    PUBLIC $<$<AND:$<COMPILE_LANGUAGE:HIP>,$<HIP_COMPILER_ID:Clang>>:-fgpu-rdc>)
   target_link_options(
-    libmudock
-    PUBLIC
-    $<$<AND:$<COMPILE_LANGUAGE:HIP>,$<HIP_COMPILER_ID:Clang>>:-fgpu-rdc --hip-link>
-  )
+    libmudock PUBLIC
+    $<$<AND:$<COMPILE_LANGUAGE:HIP>,$<HIP_COMPILER_ID:Clang>>:-fgpu-rdc
+    --hip-link>)
   target_compile_options(
     libmudock
     PUBLIC
