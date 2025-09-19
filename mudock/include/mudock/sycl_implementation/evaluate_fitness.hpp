@@ -60,9 +60,6 @@ namespace mudock {
   }
 
   template<int MAX_ATOMS>
-  struct evaluate_fitness_kernel_tag {}; // just a name, no members
-
-  template<int MAX_ATOMS>
   void evaluate_fitness(const int num_generations,
                         const int tournament_length,
                         const fp_type mutation_prob,

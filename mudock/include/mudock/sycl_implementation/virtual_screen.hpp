@@ -55,4 +55,5 @@ namespace mudock {
 
     void operator()(batch& incoming_batch);
   };
+  int compute_batch_size_vs(const sycl::device& d, const int num_atoms);
 } // namespace mudock
