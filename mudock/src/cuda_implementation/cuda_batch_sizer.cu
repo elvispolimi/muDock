@@ -15,7 +15,7 @@ namespace mudock {
     MUDOCK_CHECK(cudaGetDeviceProperties(&props, device_id));
     int num_block_per_SM = 0;
     MUDOCK_CHECK(cudaOccupancyMaxActiveBlocksPerMultiprocessor(&num_block_per_SM,
-                                                               evaluate_fitness<MAX_ATOMS>,
+                                                               evaluate_fitness_tag<MAX_ATOMS>,
                                                                BLOCK_SIZE,
                                                                0));
     // TODO check the return value
@@ -33,7 +33,7 @@ namespace mudock {
     // TODO check if it can be made a compile error
     if (bucket_size == 0)
       throw std::runtime_error(
-          "Compilation error: there is a bucket of atoms and rotamers number which it is not handled.");
+          "Compilation error: there is a bucket of atoms number which it is not handled.");
     return bucket_size * BUCKET_MULTIPLIER;
   }
 } // namespace mudock
