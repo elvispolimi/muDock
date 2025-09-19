@@ -68,6 +68,7 @@ namespace mudock {
         }
       }
       // Check if the requested device index is valid
+      sycl::device dev_ook;
       if (device_name == gpu_token) {
         if (gpu_devices.empty()) {
           throw std::runtime_error(std::string{"No devices of type "} + std::string{device_name} +
@@ -78,16 +79,19 @@ namespace mudock {
               }))
             throw std::runtime_error(std::string{"Invalid SYCL device numbers."});
         }
+        dev_ook = gpu_devices[0];
       } else if (device_name == cpu_token) {
         if (!cpu_device.has_value())
           throw std::runtime_error(std::string{"No devices of type "} + std::string{device_name} +
                                    std::string{" found."});
+        dev_ook = cpu_device.value();
       }
 
       // now we need to allocate reorder buffers for all the SYCL wrappers. In theory we can use a single
       // reorder buffer for all of them, but it can become a bottleneck. In the current implementation we
       // go for this solution, but we need to investigate better approaches
-      auto rob = std::make_shared<reorder_buffer>(&compute_batch_size);
+      auto rob = std::make_shared<reorder_buffer>(
+          [dev_ook](const int num_atoms) { return compute_batch_size(dev_ook, num_atoms); });
 
       // add the workers that we found parsing the configuration
       for (const auto id: device_ids) {
