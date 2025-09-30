@@ -70,11 +70,11 @@ namespace mudock {
     scratch_ligand_y.alloc(tot_atoms_in_batch);
     scratch_ligand_z.alloc(tot_atoms_in_batch);
     ligand_fragments.alloc(tot_rotamers_atoms_in_batch);
-    ligand_fragments_start.alloc(batch_ligands);
+    ligand_fragments_start.alloc(batch_ligands + 1);
     ligand_fragments_start()[0] = 0;
     frag_start_atom_indices.alloc(tot_rotamers_in_batch);
     frag_stop_atom_indices.alloc(tot_rotamers_in_batch);
-    frag_indices_start.alloc(batch_ligands);
+    frag_indices_start.alloc(batch_ligands + 1);
     frag_indices_start()[0] = 0;
     ligand_vol.alloc(tot_atoms_in_batch);
     ligand_solpar.alloc(tot_atoms_in_batch);
@@ -131,7 +131,7 @@ namespace mudock {
       // Randomly initialize the population
       const auto num_rotamers      = adt_ligand.get_num_rotatable_bonds();
       ligand_num_rotamers()[index] = num_rotamers;
-      assert(max_rotamers_per_ligand > ligand.get()->num_rotamers());
+      assert(batch_rotamers > ligand.get()->num_rotamers());
 
       std::memcpy((void *) (ligand_fragments() + ligand_fragments_start()[index]),
                   adt_ligand.get_fragments_masks(),
