@@ -101,9 +101,9 @@ namespace mudock {
     const auto l2 = u * u + v * v + w * w;
     // Check if origin and dest coincide
     // No need to continue the intramolecular energy will be very high
-    if (std::isinf(l2) || l2 == fp_type{0} || std::isnan(l2))
-      // TODO print error?
-      return;
+    // if (std::isinf(l2) || l2 == fp_type{0} || std::isnan(l2))
+    //   // TODO print error?
+    //   return;
     const auto l = sycl::sqrt(l2);
 
     // compute the angle sine and cosine
