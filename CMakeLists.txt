@@ -190,7 +190,7 @@ if(MUDOCK_ENABLE_SYCL)
       list(APPEND sycl_targets "${MUDOCK_GPU_ARCHITECTURES}")
       find_package(AdaptiveCpp CONFIG REQUIRED)
     elseif(${SYCL_COMPILER} STREQUAL "oneAPI")
-      find_package(LLVM REQUIRED)
+      # find_package(LLVM REQUIRED)
       set(CMAKE_LINKER
           clang++
           CACHE STRING "C++ linker" FORCE)
@@ -203,6 +203,8 @@ if(MUDOCK_ENABLE_SYCL)
                          VALUE_AFTER_COLON)
         if(MUDOCK_GPU_ARCHITECTURES MATCHES "cuda")
           list(APPEND sycl_targets "nvidia_gpu_${VALUE_AFTER_COLON}")
+        elseif(MUDOCK_GPU_ARCHITECTURES MATCHES "intel")
+          list(APPEND sycl_targets "intel_gpu_${VALUE_AFTER_COLON}")
         endif()
         set(CMAKE_CXX_LINK_EXECUTABLE
             "${LLVM_TOOLS_BINARY_DIR}/clang++ -fsycl -fsycl-targets=${sycl_targets} <FLAGS> <CMAKE_CXX_LINK_FLAGS> <LINK_FLAGS> <OBJECTS> -o <TARGET> <LINK_LIBRARIES>"
