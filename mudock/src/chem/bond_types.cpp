@@ -1,4 +1,6 @@
+#include <algorithm>
 #include <mudock/chem/bond_types.hpp>
+#include <stdexcept>
 
 //===------------------------------------------------------------------------------------------------------
 // WARNING: This file has been automatically generated from chem/periodic_table.json
@@ -14,4 +16,13 @@ namespace mudock {
       {bond_type::AROMATIC, "Aromatic"},
   }};
 
+  bond_type parse_bond_type(const std::string_view symbol) {
+    const auto element_it = std::find_if(std::begin(BOND_DICTIONARY),
+                                         std::end(BOND_DICTIONARY),
+                                         [&symbol](const auto& e) { return e.name == symbol; });
+    if (element_it != std::end(BOND_DICTIONARY))
+      return element_it->value;
+    else
+      throw std::runtime_error("Missing autodock type");
+  }
 } // namespace mudock
