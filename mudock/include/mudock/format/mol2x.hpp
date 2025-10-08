@@ -59,7 +59,7 @@ namespace mudock {
       }
 
       out_s << std::endl;
-    };
+    }
 
     template<class molecule_type>
       requires is_molecule<molecule_type>
@@ -128,6 +128,6 @@ namespace mudock {
         }
       }
       assert(state == mol2x_state::NONE);
-    };
+    }
   };
 } // namespace mudock
