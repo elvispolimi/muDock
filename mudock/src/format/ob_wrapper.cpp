@@ -1,3 +1,6 @@
+#include "mudock/format/supported_format.hpp"
+#include "mudock/molecule.hpp"
+
 #include <algorithm>
 #include <cassert>
 #include <fstream>
@@ -16,23 +19,11 @@
 #include <string_view>
 
 namespace mudock {
-  ob_mol_wrapper parser(const std::filesystem::path file_path) {
-    const auto format = parse_supported_format(file_path);
-
-    ob_mol_wrapper mol;
-    const auto description = read_from_stream(std::ifstream(file_path));
-    constexpr_switch<0, FORMAT_EXTENSIONS.size(), 1>(
-        [&](const auto format_index) {
-          mol = format_parser<static_cast<supported_format>(format_index())>(description);
-        },
-        format);
-    return mol;
-  }
 
   void writer(const ob_mol_wrapper& mol, const std::filesystem::path out_path) {
     const auto format = parse_supported_format(out_path);
 
-    constexpr_switch<0, FORMAT_EXTENSIONS.size(), 1>(
+    constexpr_switch<0, get_num_supported_format(), 1>(
         [&](const auto format_index) {
           format_writer<static_cast<supported_format>(format_index())>(mol, out_path);
         },
@@ -41,6 +32,7 @@ namespace mudock {
 
   template<supported_format format>
   ob_mol_wrapper ob_parser(const std::string_view description) {
+    OpenBabel::obErrorLog.SetOutputLevel(OpenBabel::obMessageLevel::obError); // Silence everything
     OpenBabel::OBConversion conv;
     const std::string ext{parse_supported_format(format)};
     conv.SetInFormat(ext.c_str());
@@ -73,11 +65,33 @@ namespace mudock {
     auto mol = ob_parser<supported_format::MOL2>(description);
     return mol;
   }
+  template<>
+  ob_mol_wrapper format_parser<supported_format::MOL2X>(const std::string_view description) {
+    static_molecule mol;
+    mol2x::parse(mol, description);
+
+    std::ostringstream oss;
+    mol2::print(mol, oss);
+
+    std::string s = oss.str();
+    std::string_view mol2_description{s};
+    return format_parser<supported_format::MOL2>(mol2_description);
+  }
+  template<>
+  void format_parser<supported_format::MOL2X, static_molecule>(static_molecule& mol,
+                                                               const std::string_view description) {
+    mol2x::parse(mol, description);
+  }
+  template<>
+  void format_parser<supported_format::MOL2X, dynamic_molecule>(dynamic_molecule& mol,
+                                                                const std::string_view description) {
+    mol2x::parse(mol, description);
+  }
 
   void format_writer(const ob_mol_wrapper& mol, const std::filesystem::path out_path) {
     const auto format = parse_supported_format(out_path);
 
-    constexpr_switch<0, FORMAT_EXTENSIONS.size(), 1>(
+    constexpr_switch<0, get_num_supported_format(), 1>(
         [&](const auto format_index) {
           format_writer<static_cast<supported_format>(format_index())>(mol, out_path);
         },
@@ -85,12 +99,11 @@ namespace mudock {
   }
 
   template<supported_format format>
-  void ob_writer(const ob_mol_wrapper& mol, const std::filesystem::path out_path) {
+  void ob_writer(const ob_mol_wrapper& mol, std::ofstream& ofs) {
     OpenBabel::OBConversion conv;
     const std::string ext{parse_supported_format(format)};
     conv.SetOutFormat(ext.c_str());
 
-    std::ofstream ofs(out_path);
     if (!ofs) {
       throw std::runtime_error("Error: Cannot open file for writing!");
     }
@@ -101,8 +114,7 @@ namespace mudock {
   }
 
   template<>
-  void format_writer<supported_format::PDBQT>(const ob_mol_wrapper& mol,
-                                              const std::filesystem::path out_path) {
+  void format_writer<supported_format::PDBQT>(const ob_mol_wrapper& mol, std::ofstream& ofs) {
     // Add charges using the Gasteiger method
     OpenBabel::OBChargeModel* chargeModel = OpenBabel::OBChargeModel::FindType("gasteiger");
     if (!chargeModel) {
@@ -114,16 +126,51 @@ namespace mudock {
     mol.get()->ConnectTheDots();
     mol.get()->PerceiveBondOrders();
 
-    ob_writer<supported_format::PDBQT>(mol, out_path);
+    ob_writer<supported_format::PDBQT>(mol, ofs);
   }
+
+  template<>
+  void format_writer<supported_format::PDBQT>(const ob_mol_wrapper& mol,
+                                              const std::filesystem::path out_path) {
+    std::ofstream ofs(out_path, std::ios::out);
+    format_writer<supported_format::PDBQT>(mol, ofs);
+  }
+
   template<>
   void format_writer<supported_format::MOL2>(const ob_mol_wrapper& mol,
                                              const std::filesystem::path out_path) {
-    ob_writer<supported_format::MOL2>(mol, out_path);
+    std::ofstream ofs(out_path, std::ios::out);
+    ob_writer<supported_format::MOL2>(mol, ofs);
   }
   template<>
+  void format_writer<supported_format::MOL2>(const ob_mol_wrapper& mol, std::ofstream& ofs) {
+    ob_writer<supported_format::MOL2>(mol, ofs);
+  }
+
+  template<>
+  void format_writer<supported_format::MOL2X>(const ob_mol_wrapper& mol, std::ofstream& ofs) {
+    static_molecule s_mol;
+    convert<rotate_check>(s_mol, mol);
+    mudock::apply_autodock_forcefield(s_mol);
+    mol2x::print(s_mol, ofs);
+  }
+
+  template<>
+  void format_writer<supported_format::MOL2X>(const ob_mol_wrapper& mol,
+                                              const std::filesystem::path out_path) {
+    std::ofstream ofs(out_path, std::ios::out | std::ios::app);
+    format_writer<supported_format::MOL2X>(mol, ofs);
+  }
+
+  template<>
+  void format_writer<supported_format::PDB>(const ob_mol_wrapper& mol, std::ofstream& ofs) {
+    ob_writer<supported_format::PDB>(mol, ofs);
+  }
+
+  template<>
   void format_writer<supported_format::PDB>(const ob_mol_wrapper& mol, const std::filesystem::path out_path) {
-    ob_writer<supported_format::PDB>(mol, out_path);
+    std::ofstream ofs(out_path, std::ios::out);
+    ob_writer<supported_format::PDB>(mol, ofs);
   }
 
   bond_type parse_ob_bond_type(const OpenBabel::OBBond& bond) {

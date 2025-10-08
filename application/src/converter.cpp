@@ -1,10 +1,16 @@
+#include "mudock/format/pdbqt.hpp"
+#include "mudock/molecule.hpp"
+
 #include <boost/program_options.hpp>
 #include <boost/program_options/value_semantic.hpp>
 #include <cstdlib>
 #include <filesystem>
 #include <iostream>
+#include <mudock/compute/safe_stack.hpp>
 #include <mudock/format/ob_wrapper.hpp>
+#include <mudock/format/supported_format.hpp>
 #include <mudock/log.hpp>
+#include <mudock/splitter.hpp>
 #include <stdexcept>
 #include <string>
 
@@ -34,7 +40,37 @@ int main(int argc, char* argv[]) {
   }
 
   mudock::info("Reading and parsing ", input_file, " ...");
-  mudock::writer(mudock::parser(input_file), output_file);
+
+  const auto in_file_format  = mudock::parse_supported_format(input_file);
+  const auto out_file_format = mudock::parse_supported_format(output_file);
+  constexpr_switch<0, mudock::get_num_supported_format(), 1>(
+      [&](const auto format_index_in) {
+        constexpr mudock::supported_format in_format =
+            static_cast<mudock::supported_format>(format_index_in());
+        auto input_text = read_from_stream(std::ifstream(input_file));
+        mudock::splitter<mudock::type_of_format<in_format>> split;
+        auto ligands_description = split(std::move(input_text));
+        ligands_description.emplace_back(split.flush());
+        // parse the input ligands and put them in a stack that we can compute
+        mudock::info("Parsing ", ligands_description.size(), " ligand(s) ...");
+        constexpr_switch<0, mudock::get_num_supported_format(), 1>(
+            [&](const auto format_index_out) {
+              constexpr mudock::supported_format out_format =
+                  static_cast<mudock::supported_format>(format_index_out());
+
+              { std::ofstream ofs(output_file, std::ios::trunc); }
+              std::ofstream ofs(output_file, std::ios::out | std::ios::app);
+
+              for (const auto& description: ligands_description) {
+                try {
+                  mudock::format_writer<out_format>(mudock::format_parser<in_format>(description), ofs);
+                } catch (...) {}
+              }
+            },
+            out_file_format);
+      },
+      in_file_format);
+
   mudock::info("Converted into ", output_file);
 
   return EXIT_SUCCESS;

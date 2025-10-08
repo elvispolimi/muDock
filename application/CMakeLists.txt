@@ -60,10 +60,14 @@ if(MUDOCK_ENABLE_GH)
   target_link_libraries("${CMAKE_PROJECT_NAME}" hwy::hwy)
 endif()
 
-if(MUDOCK_ENABLE_OMP)
+if(MUDOCK_ENABLE_OMP OR MUDOCK_ENABLE_OMP_OFFLOAD)
+  target_link_libraries("${CMAKE_PROJECT_NAME}" OpenMP::OpenMP_CXX)
+endif()
+
+if(MUDOCK_ENABLE_OMP_OFFLOAD)
   target_compile_options("${CMAKE_PROJECT_NAME}"
                          PRIVATE "-fopenmp-targets=nvptx64")
-  target_link_options("${CMAKE_PROJECT_NAME}" PRIVATE "-fopenmp")
+  # target_link_options("${CMAKE_PROJECT_NAME}" PRIVATE "-fopenmp")
   target_link_options("${CMAKE_PROJECT_NAME}" PRIVATE
                       "-fopenmp-targets=nvptx64")
 endif()
