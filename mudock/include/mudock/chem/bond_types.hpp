@@ -34,4 +34,5 @@ namespace mudock {
     return BOND_DICTIONARY[static_cast<int>(b)];
   }
 
+  bond_type parse_bond_type(const std::string_view type);
 } // namespace mudock

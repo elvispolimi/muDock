@@ -1,12 +1,11 @@
 #pragma once
 
-#include "mudock/chem/autodock_babel_types.hpp"
-
 #include <cassert>
 #include <cmath>
 #include <filesystem>
 #include <memory>
 #include <mudock/chem.hpp>
+#include <mudock/chem/autodock_babel_types.hpp>
 #include <mudock/chem/autodock_types.hpp>
 #include <mudock/chem/elements.hpp>
 #include <mudock/format/pdbqt.hpp>
@@ -22,7 +21,9 @@
 #include <openbabel/generic.h>
 #include <openbabel/mol.h>
 #include <openbabel/obconversion.h>
+#include <openbabel/oberror.h>
 #include <sys/types.h>
+#include <utility>
 
 namespace mudock {
 
@@ -32,7 +33,6 @@ namespace mudock {
 
   using ob_mol_wrapper = std::unique_ptr<OpenBabel::OBMol>;
 
-  [[nodiscard]] ob_mol_wrapper parser(const std::filesystem::path file_path);
   void writer(const ob_mol_wrapper& mol, const std::filesystem::path out_path);
 
   //===------------------------------------------------------------------------------------------------------
@@ -48,18 +48,43 @@ namespace mudock {
   template<>
   ob_mol_wrapper format_parser<supported_format::MOL2>(const std::string_view description);
   template<>
+  ob_mol_wrapper format_parser<supported_format::MOL2X>(const std::string_view description);
+  template<>
   ob_mol_wrapper format_parser<supported_format::PDB>(const std::string_view description);
+
+  template<supported_format format, class molecule_type>
+    requires is_molecule<molecule_type>
+  void format_parser(molecule_type& mol, const std::string_view description);
+  template<>
+  void format_parser<supported_format::MOL2X, static_molecule>(static_molecule& mol,
+                                                               const std::string_view description);
+  template<>
+  void format_parser<supported_format::MOL2X, dynamic_molecule>(dynamic_molecule& mol,
+                                                                const std::string_view description);
 
   template<supported_format format>
   void format_writer(const ob_mol_wrapper& mol, const std::filesystem::path out_path);
-
   template<>
   void format_writer<supported_format::PDBQT>(const ob_mol_wrapper& mol,
                                               const std::filesystem::path out_path);
   template<>
   void format_writer<supported_format::MOL2>(const ob_mol_wrapper& mol, const std::filesystem::path out_path);
   template<>
+  void format_writer<supported_format::MOL2X>(const ob_mol_wrapper& mol,
+                                              const std::filesystem::path out_path);
+  template<>
   void format_writer<supported_format::PDB>(const ob_mol_wrapper& mol, const std::filesystem::path out_path);
+
+  template<supported_format format>
+  void format_writer(const ob_mol_wrapper& mol, std::ofstream& ofs);
+  template<>
+  void format_writer<supported_format::MOL2X>(const ob_mol_wrapper& mol, std::ofstream& ofs);
+  template<>
+  void format_writer<supported_format::PDB>(const ob_mol_wrapper& mol, std::ofstream& ofs);
+  template<>
+  void format_writer<supported_format::MOL2>(const ob_mol_wrapper& mol, std::ofstream& ofs);
+  template<>
+  void format_writer<supported_format::PDBQT>(const ob_mol_wrapper& mol, std::ofstream& ofs);
 
   [[nodiscard]] bond_type parse_ob_bond_type(const OpenBabel::OBBond& bond_type);
 
@@ -159,18 +184,40 @@ namespace mudock {
     }
   }
 
+  template<supported_format format, class molecule_type>
+    requires is_molecule<molecule_type>
+  void parse(molecule_type& molecule, const std::string_view description) {
+    if constexpr (format == supported_format::MOL2X) {
+      format_parser<format, molecule_type>(molecule, description);
+    } else {
+      const auto ob_mol = format_parser<format>(description);
+      convert<rotate_check>(molecule, ob_mol);
+    }
+  }
+
+  template<class molecule_type>
+    requires is_molecule<molecule_type>
+  void parser(molecule_type&& molecule, const std::filesystem::path file_path) {
+    const auto in_format = parse_supported_format(file_path);
+
+    const auto description = read_from_stream(std::ifstream(file_path));
+    constexpr_switch<0, get_num_supported_format(), 1>(
+        [&](const auto format_index) {
+          const auto format = static_cast<supported_format>(format_index());
+          parse<format>(molecule, description);
+          // if constexpr (format == supported_format::MOL2X) {
+          //   format_parser<format>(molecule, description);
+          // } else {
+          //   const auto mol = format_parser<format>(description);
+          //   convert<rotate_check>(molecule, mol);
+          // }
+        },
+        in_format);
+  }
+
   template<class molecule_type>
     requires is_molecule<molecule_type>
   void parse(molecule_type&& molecule, const std::filesystem::path input_path) {
-    const auto ob_mol = parser(input_path);
-    convert<rotate_check>(molecule, ob_mol);
+    parser(molecule, input_path);
   }
-
-  template<supported_format format, class molecule_type>
-    requires is_molecule<molecule_type>
-  void parse(molecule_type&& molecule, const std::string_view description) {
-    const auto ob_mol = format_parser<format>(description);
-    convert<rotate_check>(molecule, ob_mol);
-  }
-
 } // namespace mudock

@@ -85,7 +85,10 @@ list(
   "${source_path}/cpp_implementation/weed_bonds.cpp"
   "${source_path}/format/dot.cpp"
   "${source_path}/format/mol2.cpp"
+  "${source_path}/format/mol2x.cpp"
   "${source_path}/format/ob_wrapper.cpp"
+  "${source_path}/format/pdb.cpp"
+  "${source_path}/format/pdbqt.cpp"
   "${source_path}/format/supported_format.cpp"
   "${source_path}/molecule/fragments.cpp"
   "${source_path}/molecule/graph.cpp"
@@ -93,7 +96,9 @@ list(
   "${source_path}/log.cpp"
   "${source_path}/cpp_implementation/geometric_transformations_cpp.cpp"
   "${source_path}/cpp_implementation/calc_energy_cpp.cpp")
-
+set_source_files_properties(
+  "${source_path}/chem/autodock_protein.cpp"
+  PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS} -O2 -g")
 if(MUDOCK_ENABLE_GH)
   list(APPEND source_files
        "${source_path}/gh_implementation/geometric_transformations_gh.cpp"
@@ -196,7 +201,7 @@ if(MUDOCK_ENABLE_SYCL)
 endif()
 
 # declare the OpenMP sources
-if(MUDOCK_ENABLE_OMP)
+if(MUDOCK_ENABLE_OMP_OFFLOAD)
   list(
     APPEND
     header_files
@@ -341,7 +346,7 @@ if(MUDOCK_ENABLE_CUDA)
 endif()
 
 # check if we need to activate the compilation flag that signals OpenMP
-if(MUDOCK_ENABLE_OMP)
+if(MUDOCK_ENABLE_OMP_OFFLOAD)
   target_compile_definitions(libmudock PUBLIC MUDOCK_USE_OMP)
   target_link_libraries(libmudock PUBLIC OpenMP::OpenMP_CXX)
 
@@ -395,6 +400,10 @@ if(MUDOCK_ENABLE_SYCL)
     target_link_directories(libmudock PUBLIC "${LLVM_LIBRARY_DIRS}")
     target_link_libraries(libmudock PRIVATE sycl)
   endif()
+endif()
+
+if(MUDOCK_ENABLE_OMP)
+      target_link_libraries(libmudock PRIVATE OpenMP::OpenMP_CXX)
 endif()
 
 # ##############################################################################

@@ -16,6 +16,9 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
   arguments_description.add_options()("protein",
                                       po::value(&args.protein_path)->default_value(args.protein_path),
                                       "Path to the protein file (in PDB)");
+  arguments_description.add_options()("ligand",
+                                      po::value(&args.ligand_path)->default_value(args.ligand_path),
+                                      "Path to the ligands file (in MOL2)");
   arguments_description.add_options()(
       "use",
       po::value<std::vector<std::string>>(&args.device_confs)->multitoken()->composing(),
@@ -52,8 +55,8 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
               << std::endl;
     std::cout << "print on the standard output the score of each of them" << std::endl;
     std::cout << std::endl;
-    std::cout << "USAGE: " << argv[0] << " --protein " << args.protein_path << " --use " << use_cpu_conf
-              << " [KNOBS] < \"/path/to/ligands.mol2\"" << std::endl;
+    std::cout << "USAGE: " << argv[0] << " --protein " << args.protein_path << " --ligand "
+              << args.ligand_path << " --use " << use_cpu_conf << " [KNOBS] " << std::endl;
     std::cout << std::endl;
     std::cout << arguments_description << std::endl;
     std::cout << std::endl;

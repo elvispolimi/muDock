@@ -250,8 +250,6 @@ static inline mudock::static_molecule load_autogrid_ligand(const std::string& dp
       ss >> _ >> ligand_path;
 
       mudock::parse(ligand, ligand_path);
-      const auto ob_mol = mudock::parser(ligand_path);
-      convert<mudock::pdbqt_rotate_check>(ligand, ob_mol);
       mudock::apply_autodock_forcefield_pdbqt(ligand, ligand_path);
       break;
     }

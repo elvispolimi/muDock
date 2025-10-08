@@ -1,8 +1,8 @@
 #pragma once
 
+#include <filesystem>
 #include <fstream>
-#include <mudock/format/ob_wrapper.hpp>
-#include <mudock/format/supported_format.hpp>
+#include <mudock/chem/autodock_parameters.hpp>
 #include <mudock/molecule.hpp>
 #include <mudock/utils.hpp>
 
@@ -10,15 +10,16 @@ namespace mudock {
   struct pdbqt {
     static constexpr auto PDBQT_ATOM_TOKEN    = "ATOM";
     static constexpr auto PDBQT_HETATOM_TOKEN = "HETATOM";
+    static constexpr auto PDBQT_TORSDOF_TOKEN = "TORSDOF";
+    static constexpr auto PDBQT_START_TOKEN   = "REMARK  Name =";
+
+    std::string_view::size_type next_molecule_start_index(std::string_view text) const;
   };
   // The following function relies on the same order of atom loading and file
   // FIXME use the same approach as for the check rotor
   template<class molecule_type>
     requires is_molecule<molecule_type>
   void apply_autodock_forcefield_pdbqt(molecule_type&& molecule, const std::filesystem::path input_path) {
-    [[maybe_unused]] const auto format = parse_supported_format(input_path);
-    assert(format == supported_format::PDBQT);
-
     const auto desc = read_from_stream(std::ifstream(input_path));
     std::stringstream desc_s{desc};
 

@@ -84,7 +84,7 @@ option(MUDOCK_ENABLE_HIP "Enable the HIP kernel implementation" OFF)
 if(MUDOCK_ENABLE_HIP)
   if(NOT MUDOCK_ENABLE_SYCL
      AND NOT MUDOCK_ENABLE_CUDA
-     AND NOT MUDOCK_ENABLE_OMP)
+     AND NOT MUDOCK_ENABLE_OMP_OFFLOAD)
     find_program(HIP_COMPILER hipcc)
 
     if(GPU_PLATFORM STREQUAL "cuda")
@@ -148,7 +148,7 @@ option(MUDOCK_ENABLE_CUDA "Enable the CUDA kernel implementation" OFF)
 if(MUDOCK_ENABLE_CUDA)
   if(NOT MUDOCK_ENABLE_HIP
      AND NOT MUDOCK_ENABLE_SYCL
-     AND NOT MUDOCK_ENABLE_OMP)
+     AND NOT MUDOCK_ENABLE_OMP_OFFLOAD)
     enable_language(CUDA)
     # Compile commands for CUDA includes
     # https://discourse.cmake.org/t/cmake-target-include-directories-doesnt-export-to-compile-commands-json-when-using-cuda/10072/9
@@ -182,7 +182,7 @@ option(MUDOCK_ENABLE_SYCL "Enable the SYCL kernel implementation" OFF)
 if(MUDOCK_ENABLE_SYCL)
   if(NOT MUDOCK_ENABLE_HIP
      AND NOT MUDOCK_ENABLE_CUDA
-     AND NOT MUDOCK_ENABLE_OMP)
+     AND NOT MUDOCK_ENABLE_OMP_OFFLOAD)
     # Only GPU targets supported for now prepare the option for the AdaptiveCPP
     # package finder
     if(${SYCL_COMPILER} STREQUAL "AdaptiveCpp")
@@ -222,7 +222,8 @@ if(MUDOCK_ENABLE_SYCL)
 endif()
 
 # OpenMP
-option(MUDOCK_ENABLE_OMP "Enable the OpenMP kernel implementation" OFF)
+option(MUDOCK_ENABLE_OMP "Enable OpenMP" OFF)
+option(MUDOCK_ENABLE_OMP_OFFLOAD "Enable OpenMP kernel offload" OFF)
 option(
   MUDOCK_ENABLE_FAST
   "Enable the various compilers optimizimization, like OpenMP SIMD optimizations and fast math"
@@ -233,11 +234,14 @@ if(NOT MUDOCK_ENABLE_FAST AND CMAKE_BUILD_TYPE STREQUAL "Release")
   set(MUDOCK_ENABLE_FAST ON)
 endif()
 
-if(MUDOCK_ENABLE_OMP)
+if(MUDOCK_ENABLE_OMP OR MUDOCK_ENABLE_OMP_OFFLOAD)
+    find_package(OpenMP REQUIRED)
+endif()
+
+if(MUDOCK_ENABLE_OMP_OFFLOAD)
   if(NOT MUDOCK_ENABLE_HIP
      AND NOT MUDOCK_ENABLE_CUDA
      AND NOT MUDOCK_ENABLE_SYCL)
-    find_package(OpenMP REQUIRED)
     if(GPU_PLATFORM STREQUAL "cuda" OR GPU_PLATFORM STREQUAL "amd")
       set(OMP_TARGET "${MUDOCK_GPU_ARCHITECTURES}")
     else()
@@ -468,8 +472,12 @@ message(
   STATUS
     "Enable OpenMP.......................: ${MUDOCK_ENABLE_OMP} (MUDOCK_ENABLE_OMP)"
 )
+message(
+  STATUS
+    "Enable OpenMP Offload...............: ${MUDOCK_ENABLE_OMP_OFFLOAD} (MUDOCK_ENABLE_OMP_OFFLOAD)"
+)
 
-if(MUDOCK_ENABLE_OMP)
+if(MUDOCK_ENABLE_OMP_OFFLOAD)
   message(
     STATUS "Target OpenMP architecture..........: ${OMP_TARGET} (OMP_TARGET)")
 endif()
