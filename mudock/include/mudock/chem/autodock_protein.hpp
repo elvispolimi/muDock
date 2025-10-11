@@ -1,6 +1,7 @@
 #pragma once
 
 #include <mudock/chem/autodock_grid_types.hpp>
+#include <mudock/chem/autodock_molecule.hpp>
 #include <mudock/chem/autodock_parameters.hpp>
 #include <mudock/chem/autodock_types.hpp>
 #include <mudock/chem/grid_const.hpp>
@@ -194,7 +195,7 @@ namespace mudock {
    * represent electrostatic and desolvation components. Then, we can have a set of grid that represent a
    * contribution for different ligand's atom types.
    */
-  struct autodock_protein {
+  struct autodock_protein: public autodock_dynamic_molecule {
     inline auto get_atom_map(const autodock_grid_type type) {
       return space_grid_view<fp_type>{
           _min,
@@ -229,20 +230,24 @@ namespace mudock {
     [[nodiscard]] inline auto get_size_xy() const { return index.size_xy(); };
     [[nodiscard]] inline auto get_size_xyz() const { return index.flat_size(); };
 
-    autodock_protein(const point3D min, const point3D max, const fp_type resolution);
+    // autodock_protein(const point3D min, const point3D max, const fp_type resolution);
 
     const std::array<fp_type, num_radius_tick_elect> electrostatic_energies = {compute_electostatic_energy()};
     const std::array<fp_type, num_radius_tick_desolv> desolvation_energies  = {compute_desolvation_energy()};
     const md_vector<fp_type, 3> vdw_energies = {compute_vdw_interaction_energies()};
+
+    void prepare() {
+      autodock_dynamic_molecule::prepare();
+      make_autodock_protein();
+    };
 
     // private:
     md_index<3> index;
     md_container<std::vector<fp_type>, 4> data;
     fp_type _inv_resolution = 2;
     point<fp_type, 3> _min, _max, _center;
+
+  private:
+    void make_autodock_protein();
   };
-
-  // this function will generate the autodock grids from the parsed protein
-  autodock_protein make_autodock_protein(const dynamic_molecule& protein);
-
 } // namespace mudock

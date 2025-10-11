@@ -1,4 +1,5 @@
 #include "command_line_args.hpp"
+#include "mudock/molecule.hpp"
 
 #include <cassert>
 #include <fstream>
@@ -16,17 +17,17 @@ int main(int argc, char* argv[]) {
 
   // read and parse the target protein
   mudock::info("Reading and parsing protein ", args.protein_path, " ...");
-  auto protein_ptr = std::make_shared<mudock::dynamic_molecule>();
-  auto& protein    = *protein_ptr;
-  parse(protein, args.protein_path);
+  auto protein = std::make_shared<mudock::autodock_protein>();
+  parse(*protein, args.protein_path);
+  // TODO prepare protein
 
-  mudock::apply_autodock_forcefield(protein);
-  mudock::autodock_protein protein_adt = mudock::make_autodock_protein(protein);
+  // mudock::apply_autodock_forcefield(protein);
+  // mudock::autodock_protein protein_adt = mudock::make_autodock_protein(protein);
 
   // read  all the ligands description from the standard input and split them
   mudock::info("Reading ligand ", args.ligand_path, " ...");
   const auto in_format = mudock::parse_supported_format(args.ligand_path);
-  auto input_queue     = std::make_shared<mudock::safe_stack<mudock::static_molecule>>();
+  auto input_queue     = std::make_shared<mudock::safe_stack<mudock::autodock_ligand>>();
   constexpr_switch<0, mudock::get_num_supported_format(), 1>(
       [&](const auto format_index) {
         const auto format = static_cast<mudock::supported_format>(format_index());
@@ -40,18 +41,19 @@ int main(int argc, char* argv[]) {
         if constexpr (format == mudock::supported_format::MOL2X) {
 #pragma omp parallel for shared(input_queue)
           for (const auto& description: ligands_description) {
-            auto ligand = std::make_unique<mudock::static_molecule>();
+            auto ligand = std::make_unique<mudock::autodock_ligand>();
             mudock::parse<format>(*ligand, description);
-            mudock::apply_autodock_forcefield(*ligand);
-            input_queue->enqueue(std::move(ligand));
+            ligand->prepare();
+            // mudock::apply_autodock_forcefield(*ligand);
+            input_queue->enqueue(ligand);
           }
         } else {
           for (const auto& description: ligands_description) {
             try {
-              auto ligand = std::make_unique<mudock::static_molecule>();
-              mudock::parse<format>(*ligand, description);
-              mudock::apply_autodock_forcefield(*ligand);
-              input_queue->enqueue(std::move(ligand));
+              mudock::static_molecule ligand;
+              mudock::parse<format>(ligand, description);
+              // mudock::apply_autodock_forcefield(ligand);
+              input_queue->enqueue(std::make_unique<mudock::autodock_ligand>(ligand));
             } catch (...) {}
           }
         }
@@ -65,11 +67,11 @@ int main(int argc, char* argv[]) {
   auto output_queue = std::make_shared<mudock::safe_stack<mudock::static_molecule>>();
   {
     auto threadpool = mudock::threadpool();
-    mudock::manage_cpp(args.device_confs, threadpool, protein_adt, args.knobs, input_queue, output_queue);
-    mudock::manage_cuda(args.device_confs, threadpool, args.knobs, protein_adt, input_queue, output_queue);
-    mudock::manage_hip(args.device_confs, threadpool, args.knobs, protein_adt, input_queue, output_queue);
-    mudock::manage_sycl(args.device_confs, threadpool, args.knobs, protein_adt, input_queue, output_queue);
-    mudock::manage_omp(args.device_confs, threadpool, args.knobs, protein_adt, input_queue, output_queue);
+    mudock::manage_cpp(args.device_confs, threadpool, *protein, args.knobs, input_queue, output_queue);
+    // mudock::manage_cuda(args.device_confs, threadpool, args.knobs, protein_adt, input_queue, output_queue);
+    // mudock::manage_hip(args.device_confs, threadpool, args.knobs, protein_adt, input_queue, output_queue);
+    // mudock::manage_sycl(args.device_confs, threadpool, args.knobs, protein_adt, input_queue, output_queue);
+    // mudock::manage_omp(args.device_confs, threadpool, args.knobs, protein_adt, input_queue, output_queue);
     mudock::info("All workers have been created!");
   } // when we exit from this block the computation is complete
 

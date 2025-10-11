@@ -3,16 +3,16 @@
 #include <array>
 #include <cstdint>
 #include <memory>
-#include <mudock/molecule.hpp>
 
 namespace mudock {
 
   // this struct describes a bundle of ligands. To limit the number of dynamic mallocs, we use a static
   // allocation. For this reason we have a maximum number of ligands in a batch, and the actual size
+  template<class T>
   struct batch {
-    static constexpr auto max_batch_size = int{1000};
+    static constexpr auto max_batch_size = int{20000};
 
-    std::array<std::unique_ptr<static_molecule>, max_batch_size> molecules;
+    std::array<std::unique_ptr<T>, max_batch_size> molecules;
     int num_ligands        = 0;
     int batch_max_atoms    = 0;
     int batch_max_rotamers = 0;

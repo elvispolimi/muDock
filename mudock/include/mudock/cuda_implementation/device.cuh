@@ -6,6 +6,7 @@
 #include <mudock/cuda_implementation/cuda_texture.cuh>
 #include <mudock/cuda_implementation/cuda_wrapper.cuh>
 #include <mudock/grid.hpp>
+#include <mutex>
 
 namespace mudock {
   struct cudaStream_wrapper {
@@ -13,7 +14,7 @@ namespace mudock {
       MUDOCK_CHECK(cudaSetDevice(static_cast<int>(id)));
       MUDOCK_CHECK(cudaStreamCreate(&stream););
     };
-    ~cudaStream_wrapper() noexcept(false) { MUDOCK_CHECK(cudaStreamDestroy(stream)) };
+    ~cudaStream_wrapper() noexcept(false){MUDOCK_CHECK(cudaStreamDestroy(stream))};
     cudaStream_t& operator()() { return stream; };
 
   private:
@@ -30,11 +31,14 @@ namespace mudock {
 
     device(const std::size_t gpu_id, const autodock_protein& adt_protein);
 
+    [[nodiscard]] std::lock_guard<std::mutex> get_lock() { return std::lock_guard<std::mutex>(mutex); };
+
     cudaStream_wrapper get_stream() const;
     const auto* get_tex_dev_pointer() const { return atom_tex.dev_pointer(); };
 
   private:
     cudaStream_wrapper stream;
+    std::mutex mutex;
     cuda_wrapper<std::vector, cudaTexture_wrapper> atom_tex;
   };
 } // namespace mudock

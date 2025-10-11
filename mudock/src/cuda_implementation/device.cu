@@ -86,4 +86,5 @@ namespace mudock {
   }
 
   cudaStream_wrapper device::get_stream() const { return cudaStream_wrapper(id); }
+
 } // namespace mudock

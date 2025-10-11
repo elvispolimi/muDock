@@ -1,12 +1,15 @@
+#include "mudock/molecule.hpp"
+
+#include <mudock/chem/autodock_ligand.hpp>
 #include <mudock/cuda_implementation/cuda_worker.cuh>
 #include <mudock/log.hpp>
 
 namespace mudock {
   cuda_worker::cuda_worker(const knobs knobs,
-                           std::shared_ptr<safe_stack<static_molecule>>& input_molecules,
+                           std::shared_ptr<safe_stack<autodock_ligand>>& input_molecules,
                            std::shared_ptr<safe_stack<static_molecule>>& output_molecules,
                            std::shared_ptr<reorder_buffer> rb,
-                           const std::shared_ptr<const device> dev)
+                           std::shared_ptr<device> dev)
       : input_stack(input_molecules), output_stack(output_molecules), rob(rb), virtual_screen(knobs, dev) {}
 
   void cuda_worker::process(batch& b) {
@@ -15,7 +18,7 @@ namespace mudock {
     } catch (const std::runtime_error& e) { error("Unable to virtual screen a batch due to ", e.what()); }
 
     for (auto& batch_ligand: std::span(b.molecules.data(), b.num_ligands)) {
-      output_stack->enqueue(std::move(batch_ligand));
+      output_stack->enqueue(std::make_unique<static_molecule>(std::move(*batch_ligand)));
     }
   }
 
