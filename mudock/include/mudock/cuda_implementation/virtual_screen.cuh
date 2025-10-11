@@ -18,7 +18,7 @@ namespace mudock {
     // the configuration of the GA algorithm
     knobs configuration;
 
-    std::shared_ptr<const device> dev;
+    std::shared_ptr<device> dev;
     cudaStream_wrapper stream;
 
     // Data area
@@ -47,7 +47,7 @@ namespace mudock {
     cuda_random_object curand_states;
 
   public:
-    virtual_screen_cuda(const knobs k, const std::shared_ptr<const device> dev);
+    virtual_screen_cuda(const knobs k, std::shared_ptr<device> dev);
 
     void operator()(batch& incoming_batch);
   };

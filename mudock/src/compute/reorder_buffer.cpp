@@ -2,24 +2,26 @@
 #include <mudock/compute/reorder_buffer.hpp>
 
 namespace mudock {
-  reorder_buffer::reorder_buffer(std::function<int(const int)> get_size) {
+  reorder_buffer::reorder_buffer(std::function<int(const int, const int)> get_size) {
     // make sure to have a sizer function
     if (!get_size) {
-      get_size = [](const int) -> int { return int{1}; };
+      get_size = [](const int, const int) -> int { return int{1}; };
     }
 
     // populate the array of maximum sizes
     auto index = std::size_t{0};
     for (const auto& max_atom_value: atoms_clusters) {
-      // populate the max sizes (using the function)
-      max_sizes[index] = std::min(get_size(max_atom_value), batch::max_batch_size);
+      for (const auto& max_non_bond_value: non_bond_clusters) {
+        // populate the max sizes (using the function)
+        max_sizes[index] = std::min(get_size(max_atom_value, max_non_bond_value), batch::max_batch_size);
 
-      // populate the clusters' size
-      auto& cluster           = clusters[index]; // get a ref
-      cluster.batch_max_atoms = max_atom_value;
+        // populate the clusters' size
+        auto& cluster           = clusters[index]; // get a ref
+        cluster.batch_max_atoms = max_atom_value;
 
-      // update the global index on the clusters
-      ++index;
+        // update the global index on the clusters
+        ++index;
+      }
     }
   }
 

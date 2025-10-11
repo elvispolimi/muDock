@@ -14,7 +14,7 @@ namespace mudock {
   template<cpu_vectorization vect>
   class cpp_worker: public worker_interface {
     // this a reference to the input and output queues
-    std::shared_ptr<safe_stack<static_molecule>> input_stack;
+    std::shared_ptr<safe_stack<autodock_ligand>> input_stack;
     std::shared_ptr<safe_stack<static_molecule>> output_stack;
 
     // this is the functor tha actually implement the virtual screening
@@ -23,7 +23,7 @@ namespace mudock {
   public:
     cpp_worker(const knobs knobs,
                const autodock_protein& adt_protein,
-               std::shared_ptr<safe_stack<static_molecule>>& input_molecules,
+               std::shared_ptr<safe_stack<autodock_ligand>>& input_molecules,
                std::shared_ptr<safe_stack<static_molecule>>& output_molecules,
                const std::size_t cpu_id)
         : input_stack(input_molecules), output_stack(output_molecules), virtual_screen(adt_protein, knobs) {

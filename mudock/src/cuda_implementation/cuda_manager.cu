@@ -15,7 +15,7 @@ namespace mudock {
                    threadpool& pool,
                    const knobs knobs,
                    const autodock_protein& adt_protein,
-                   std::shared_ptr<safe_stack<static_molecule>>& input_molecules,
+                   std::shared_ptr<safe_stack<autodock_ligand>>& input_molecules,
                    std::shared_ptr<safe_stack<static_molecule>>& output_molecules) {
     // single out the CUDA description
     const auto it =
@@ -67,7 +67,8 @@ namespace mudock {
         // As to make the bucketizer more effective
         const auto dev = std::make_shared<device>(id, adt_protein);
 
-        pool.add_worker<mudock::cuda_worker>(knobs, input_molecules, output_molecules, rob, dev);
+        //pool.add_worker<mudock::cuda_worker>(knobs, input_molecules, output_molecules, rob, dev);
+        //pool.add_worker<mudock::cuda_worker>(knobs, input_molecules, output_molecules, rob, dev);
         pool.add_worker<mudock::cuda_worker>(knobs, input_molecules, output_molecules, rob, dev);
       }
     }

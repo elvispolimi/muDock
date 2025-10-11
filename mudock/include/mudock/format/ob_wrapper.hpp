@@ -1,7 +1,10 @@
 #pragma once
 
+#include "mudock/chem/autodock_ligand.hpp"
+
 #include <cassert>
 #include <cmath>
+#include <concepts>
 #include <filesystem>
 #include <memory>
 #include <mudock/chem.hpp>
@@ -97,7 +100,7 @@ namespace mudock {
   };
 
   template<auto rotor_check, class molecule_type>
-    requires is_molecule<molecule_type> && is_rotate_check<decltype(rotor_check)>
+    requires derived_from_molecule<molecule_type> && is_rotate_check<decltype(rotor_check)>
   void convert(molecule_type&& dest, const ob_mol_wrapper& source) {
     const size_t num_atoms = source->NumAtoms();
     const size_t num_bonds = source->NumBonds();
@@ -124,12 +127,14 @@ namespace mudock {
       const auto atom_type    = atom->GetType();
       const auto atom_element = parse_element_symbol(ttab.Translate(atom_type));
       // Get which atoms are aromatic
-      dest.elements(mudock_atom_index)    = atom_element;
-      dest.is_aromatic(mudock_atom_index) = atom->IsAromatic();
-      dest.x(mudock_atom_index)           = static_cast<fp_type>(atom->GetX());
-      dest.y(mudock_atom_index)           = static_cast<fp_type>(atom->GetY());
-      dest.z(mudock_atom_index)           = static_cast<fp_type>(atom->GetZ());
-      dest.charge(mudock_atom_index)      = atom->GetPartialCharge();
+      dest.elements(mudock_atom_index) = atom_element;
+      dest.x(mudock_atom_index)        = static_cast<fp_type>(atom->GetX());
+      dest.y(mudock_atom_index)        = static_cast<fp_type>(atom->GetY());
+      dest.z(mudock_atom_index)        = static_cast<fp_type>(atom->GetZ());
+      if constexpr (std::derived_from<molecule_type, autodock_ligand>) {
+        dest.charge(mudock_atom_index)      = atom->GetPartialCharge();
+        dest.is_aromatic(mudock_atom_index) = atom->IsAromatic();
+      }
       index_translator.emplace(atom_id, mudock_atom_index);
       ++mudock_atom_index;
       max_atom_index = std::max(max_atom_index, atom_id);

@@ -12,7 +12,7 @@ namespace mudock {
                   threadpool& pool,
                   const autodock_protein& adt_protein,
                   const knobs knobs,
-                  std::shared_ptr<safe_stack<static_molecule>>& input_molecules,
+                  std::shared_ptr<safe_stack<autodock_ligand>>& input_molecules,
                   std::shared_ptr<safe_stack<static_molecule>>& output_molecules) {
     constexpr_for<0, num_vectorization_type(), 1>([&](const auto index) {
       constexpr cpu_vectorization vect = static_cast<cpu_vectorization>(index());

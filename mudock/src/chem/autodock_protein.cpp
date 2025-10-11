@@ -1,3 +1,5 @@
+#include "mudock/chem/autodock_molecule.hpp"
+
 #include <algorithm>
 #include <array>
 #include <cassert>
@@ -19,17 +21,17 @@
 
 namespace mudock {
 
-  autodock_protein::autodock_protein(const point3D min, const point3D max, const fp_type resolution)
-      : index(min.difference(max)
-                  .apply(std::abs<fp_type>)
-                  .divide({resolution})
-                  .apply(static_cast<fp_type (*)(fp_type)>(std::ceil))
-                  .add({fp_type{1}})),
-        data(index.size_x(), index.size_y(), index.size_z(), num_autodock_grids()),
-        _inv_resolution(1 / resolution),
-        _min(min),
-        _max(max),
-        _center{max.difference(min).divide({fp_type{2}}).add(min)} {};
+  // autodock_protein::autodock_protein(const point3D min, const point3D max, const fp_type resolution)
+  //     : index(min.difference(max)
+  //                 .apply(std::abs<fp_type>)
+  //                 .divide({resolution})
+  //                 .apply(static_cast<fp_type (*)(fp_type)>(std::ceil))
+  //                 .add({fp_type{1}})),
+  //       data(index.size_x(), index.size_y(), index.size_z(), num_autodock_grids()),
+  //       _inv_resolution(1 / resolution),
+  //       _min(min),
+  //       _max(max),
+  //       _center{max.difference(min).divide({fp_type{2}}).add(min)} {};
 
   //===------------------------------------------------------------------------------------------------------
   // Global parameters for deriving the pre-computation grid
@@ -230,9 +232,18 @@ namespace mudock {
   // Implementation of the actual function that computes the grid
   //===------------------------------------------------------------------------------------------------------
 
-  autodock_protein make_autodock_protein(const dynamic_molecule& protein) {
+  void autodock_protein::make_autodock_protein() {
+    // index(min.difference(max)
+    //           .apply(std::abs<fp_type>)
+    //           .divide({resolution})
+    //           .apply(static_cast<fp_type (*)(fp_type)>(std::ceil))
+    //           .add({fp_type{1}})),
+    //     data(index.size_x(), index.size_y(), index.size_z(), num_autodock_grids()),
+    //     _inv_resolution(1 / resolution), _min(min), _max(max), _center {
+    //   max.difference(min).divide({fp_type{2}}).add(min)
+    // }
     static const auto vdw_shapes = compute_vdw_interaction_shapes();
-    auto graph                   = make_graph(protein.get_bonds(), protein.num_atoms());
+    auto graph                   = make_graph(this->get_bonds(), protein.num_atoms());
 
     // get the protein's atoms coordinate
     const auto x = protein.get_x();
@@ -265,7 +276,7 @@ namespace mudock {
     autodock_protein adt_protein{min, max, resolution};
 
     // get the remaining protein information
-    const auto charge         = protein.get_charge();
+    const auto charge         = autodock_dynamic_molecule::get_charge();
     const auto volume         = protein.get_vol();
     const auto num_hbonds     = protein.get_num_hbond();
     const auto autodock_types = protein.get_autodock_type();

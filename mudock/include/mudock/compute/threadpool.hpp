@@ -33,10 +33,14 @@ namespace mudock {
     }
 
     template<class worker_type, class... T>
-    inline void add_worker(T&&... args) {
-      workers.emplace_back(std::make_unique<worker_type>(args...));
-      auto* pointer = workers.back().get();
-      threads.emplace_back(std::thread([pointer]() { pointer->main(); }));
+    inline void add_worker(T&... args) {
+      // workers.emplace_back(std::make_unique<worker_type>(args...));
+      // auto* pointer = workers.back().get();
+      // threads.emplace_back(std::thread([pointer]() { pointer->main(); }));
+      threads.emplace_back(std::thread([args...]() mutable {
+        auto wt = worker_type(args...);
+        wt.main();
+      }));
     }
   };
 
