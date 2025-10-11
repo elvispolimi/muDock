@@ -2,8 +2,10 @@
 
 #include <filesystem>
 #include <fstream>
+#include <mudock/chem/autodock_ligand.hpp>
 #include <mudock/chem/autodock_parameters.hpp>
-#include <mudock/molecule.hpp>
+#include <mudock/chem/autodock_protein.hpp>
+#include <mudock/chem/autodock_types.hpp>
 #include <mudock/utils.hpp>
 
 namespace mudock {
@@ -18,8 +20,9 @@ namespace mudock {
   // The following function relies on the same order of atom loading and file
   // FIXME use the same approach as for the check rotor
   template<class molecule_type>
-    requires is_molecule<molecule_type>
-  void apply_autodock_forcefield_pdbqt(molecule_type&& molecule, const std::filesystem::path input_path) {
+    requires std::derived_from<molecule_type, autodock_static_molecule> ||
+             std::derived_from<molecule_type, autodock_dynamic_molecule>
+  void apply_autodock_forcefield_pdbqt(molecule_type& molecule, const std::filesystem::path input_path) {
     const auto desc = read_from_stream(std::ifstream(input_path));
     std::stringstream desc_s{desc};
 

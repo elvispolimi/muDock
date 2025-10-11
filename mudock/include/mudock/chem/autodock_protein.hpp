@@ -230,24 +230,29 @@ namespace mudock {
     [[nodiscard]] inline auto get_size_xy() const { return index.size_xy(); };
     [[nodiscard]] inline auto get_size_xyz() const { return index.flat_size(); };
 
-    // autodock_protein(const point3D min, const point3D max, const fp_type resolution);
+    autodock_protein(const point3D min, const point3D max, const fp_type resolution)
+        : index(min.difference(max)
+                    .apply(std::abs<fp_type>)
+                    .divide({resolution})
+                    .apply(static_cast<fp_type (*)(fp_type)>(std::ceil))
+                    .add({fp_type{1}})),
+          data(index.size_x(), index.size_y(), index.size_z(), num_autodock_grids()),
+          _inv_resolution(1 / resolution),
+          _min(min),
+          _max(max),
+          _center{max.difference(min).divide({fp_type{2}}).add(min)} {};
+    autodock_protein() {};
 
     const std::array<fp_type, num_radius_tick_elect> electrostatic_energies = {compute_electostatic_energy()};
     const std::array<fp_type, num_radius_tick_desolv> desolvation_energies  = {compute_desolvation_energy()};
     const md_vector<fp_type, 3> vdw_energies = {compute_vdw_interaction_energies()};
 
-    void prepare() {
-      autodock_dynamic_molecule::prepare();
-      make_autodock_protein();
-    };
+    void prepare();
 
     // private:
     md_index<3> index;
     md_container<std::vector<fp_type>, 4> data;
     fp_type _inv_resolution = 2;
     point<fp_type, 3> _min, _max, _center;
-
-  private:
-    void make_autodock_protein();
   };
 } // namespace mudock

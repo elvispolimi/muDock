@@ -1,9 +1,9 @@
 #include <cstdint>
+#include <mudock/chem/autodock_molecule.hpp>
 #include <mudock/chem/grid_const.hpp>
 #include <mudock/cpp_implementation/weed_bonds.hpp>
 #include <mudock/grid/mdspan.hpp>
 #include <mudock/log.hpp>
-#include <mudock/molecule.hpp>
 #include <mudock/molecule/fragments.hpp>
 #include <vector>
 
@@ -199,7 +199,7 @@ namespace mudock {
                                 std::vector<fp_type>& cA_v,
                                 std::vector<fp_type>& cB_v,
                                 std::vector<int>& xB_v,
-                                const static_molecule& ligand,
+                                const autodock_static_molecule& ligand,
                                 const std::vector<int>& non_bond_list_a1,
                                 const std::vector<int>& non_bond_list_a2) {
     cA_v.resize(non_bond_size);

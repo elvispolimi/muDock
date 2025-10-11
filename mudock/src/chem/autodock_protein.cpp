@@ -20,19 +20,6 @@
 #include <vector>
 
 namespace mudock {
-
-  // autodock_protein::autodock_protein(const point3D min, const point3D max, const fp_type resolution)
-  //     : index(min.difference(max)
-  //                 .apply(std::abs<fp_type>)
-  //                 .divide({resolution})
-  //                 .apply(static_cast<fp_type (*)(fp_type)>(std::ceil))
-  //                 .add({fp_type{1}})),
-  //       data(index.size_x(), index.size_y(), index.size_z(), num_autodock_grids()),
-  //       _inv_resolution(1 / resolution),
-  //       _min(min),
-  //       _max(max),
-  //       _center{max.difference(min).divide({fp_type{2}}).add(min)} {};
-
   //===------------------------------------------------------------------------------------------------------
   // Global parameters for deriving the pre-computation grid
   //===------------------------------------------------------------------------------------------------------
@@ -232,23 +219,15 @@ namespace mudock {
   // Implementation of the actual function that computes the grid
   //===------------------------------------------------------------------------------------------------------
 
-  void autodock_protein::make_autodock_protein() {
-    // index(min.difference(max)
-    //           .apply(std::abs<fp_type>)
-    //           .divide({resolution})
-    //           .apply(static_cast<fp_type (*)(fp_type)>(std::ceil))
-    //           .add({fp_type{1}})),
-    //     data(index.size_x(), index.size_y(), index.size_z(), num_autodock_grids()),
-    //     _inv_resolution(1 / resolution), _min(min), _max(max), _center {
-    //   max.difference(min).divide({fp_type{2}}).add(min)
-    // }
+  void autodock_protein::prepare() {
+    autodock_dynamic_molecule::prepare();
     static const auto vdw_shapes = compute_vdw_interaction_shapes();
-    auto graph                   = make_graph(this->get_bonds(), protein.num_atoms());
+    auto graph                   = make_graph(this->get_bonds(), num_atoms());
 
     // get the protein's atoms coordinate
-    const auto x = protein.get_x();
-    const auto y = protein.get_y();
-    const auto z = protein.get_z();
+    const auto x = get_x();
+    const auto y = get_y();
+    const auto z = get_z();
     assert(x.size() == y.size());
     assert(x.size() == z.size());
     const auto num_atoms = x.size();
@@ -270,27 +249,37 @@ namespace mudock {
 
     // find out the geometries of HBonds from the protein
     const auto [vector1, vector2, exp, disorder] =
-        compute_hbon_geometries(x, y, z, protein.get_num_hbond(), protein.get_elements(), graph);
+        compute_hbon_geometries(x, y, z, get_num_hbond(), get_elements(), graph);
 
     // declare the maps that will describe the protein
-    autodock_protein adt_protein{min, max, resolution};
+    // autodock_protein adt_protein{min, max, resolution};
+    index           = {min.difference(max)
+                           .apply(std::abs<fp_type>)
+                           .divide({resolution})
+                           .apply(static_cast<fp_type (*)(fp_type)>(std::ceil))
+                           .add({fp_type{1}})};
+    data            = {index.size_x(), index.size_y(), index.size_z(), num_autodock_grids()};
+    _inv_resolution = (1 / resolution);
+    _min            = min;
+    _max            = max;
+    _center         = {max.difference(min).divide({fp_type{2}}).add(min)};
 
     // get the remaining protein information
     const auto charge         = autodock_dynamic_molecule::get_charge();
-    const auto volume         = protein.get_vol();
-    const auto num_hbonds     = protein.get_num_hbond();
-    const auto autodock_types = protein.get_autodock_type();
-    const auto size_x         = adt_protein.get_eletrostatic().size<0>();
-    const auto size_y         = adt_protein.get_eletrostatic().size<1>();
-    const auto size_z         = adt_protein.get_eletrostatic().size<2>();
+    const auto volume         = get_vol();
+    const auto num_hbonds     = get_num_hbond();
+    const auto autodock_types = get_autodock_type();
+    const auto size_x         = get_eletrostatic().size<0>();
+    const auto size_y         = get_eletrostatic().size<1>();
+    const auto size_z         = get_eletrostatic().size<2>();
     for (std::size_t index_z = 0; index_z < size_z; ++index_z) {
       for (std::size_t index_y = 0; index_y < size_y; ++index_y) {
         for (std::size_t index_x = 0; index_x < size_x; ++index_x) {
           std::array<voxel_scratchpad, num_autodock_ff_grids()> voxel_scratchs;
           // get the voxel point
-          const auto voxel_point = adt_protein.get_eletrostatic().to_coord(static_cast<fp_type>(index_x),
-                                                                           static_cast<fp_type>(index_y),
-                                                                           static_cast<fp_type>(index_z));
+          const auto voxel_point = get_eletrostatic().to_coord(static_cast<fp_type>(index_x),
+                                                               static_cast<fp_type>(index_y),
+                                                               static_cast<fp_type>(index_z));
 
           // add electrostatic and desolvation energy + find the nearest Hbond
           auto nearest_H_index      = std::size_t{0};
@@ -307,8 +296,8 @@ namespace mudock {
             const auto indx_r   = std::min<int>(std::floor(d * lookup_resolution), num_radius_tick_elect);
 
             // add the electrostatic constribution
-            electrostatic_energy += charge[i] * inv_dmax * adt_protein.electrostatic_energies[indx_r] *
-                                    autodock_parameters::coeff_estat;
+            electrostatic_energy +=
+                charge[i] * inv_dmax * electrostatic_energies[indx_r] * autodock_parameters::coeff_estat;
 
             // find the nearest Hbond
             const auto is_valid = num_hbonds[i] == 1 || num_hbonds[i] == 2;
@@ -322,14 +311,13 @@ namespace mudock {
             if (d <= energy_cutoff) {
               const auto radius_index = std::min(num_radius_tick_desolv - std::size_t{1},
                                                  static_cast<std::size_t>(d * lookup_resolution));
-              desolvation_energy +=
-                  fp_type{0.01097} * volume[i] * adt_protein.desolvation_energies[radius_index];
+              desolvation_energy += fp_type{0.01097} * volume[i] * desolvation_energies[radius_index];
             }
           }
 
           // commit the values in the actual grid maps
-          adt_protein.get_eletrostatic().get(index_x, index_y, index_z) = electrostatic_energy;
-          adt_protein.get_desolvation().get(index_x, index_y, index_z)  = desolvation_energy;
+          get_eletrostatic().get(index_x, index_y, index_z) = electrostatic_energy;
+          get_desolvation().get(index_x, index_y, index_z)  = desolvation_energy;
 
           // find out the Hbond parameters
           if (nearest_H_valid) {
@@ -419,7 +407,7 @@ namespace mudock {
 
                   const auto vdw_shape = vdw_shapes.get(static_cast<int>(autodock_types[i]), grid_index);
                   const auto vdw_hb_value =
-                      adt_protein.vdw_energies.get(indx_n, static_cast<int>(autodock_types[i]), grid_index);
+                      vdw_energies.get(indx_n, static_cast<int>(autodock_types[i]), grid_index);
 
                   if (vdw_shape.hbonder) {
                     fp_type rsph = vdw_hb_value / fp_type{100};
@@ -448,9 +436,9 @@ namespace mudock {
                   } /* end hbonder tests */
 
                   voxel_scratch.energy +=
-                      ligand_desc.solpar * protein_desc.vol * adt_protein.desolvation_energies[indx_r] +
+                      ligand_desc.solpar * protein_desc.vol * desolvation_energies[indx_r] +
                       (protein_desc.solpar + solpar_q * std::fabs(charge[i])) * ligand_desc.vol *
-                          adt_protein.desolvation_energies[indx_r];
+                          desolvation_energies[indx_r];
                 }
               }
             }
@@ -461,13 +449,12 @@ namespace mudock {
 
               if (std::fabs(energy) < precision)
                 energy = 0;
-              adt_protein.get_atom_map(static_cast<autodock_grid_type>(grid_index))
-                  .get(index_x, index_y, index_z) = energy;
+              get_atom_map(static_cast<autodock_grid_type>(grid_index)).get(index_x, index_y, index_z) =
+                  energy;
             }
           }
         }
       }
     }
-    return adt_protein;
   }
 } // namespace mudock

@@ -60,7 +60,28 @@ namespace mudock {
   public:
     // the constructor will initialize the max_sizes array. The input is a function that given the number of
     // atoms and rotamers, will provide the batch size
-    reorder_buffer(std::function<int(const int, const int)> get_size);
+    reorder_buffer(std::function<int(const int, const int)> get_size) {
+      // make sure to have a sizer function
+      if (!get_size) {
+        get_size = [](const int, const int) -> int { return int{1}; };
+      }
+
+      // populate the array of maximum sizes
+      auto index = std::size_t{0};
+      for (const auto& max_atom_value: atoms_clusters) {
+        for (const auto& max_non_bond_value: non_bond_clusters) {
+          // populate the max sizes (using the function)
+          max_sizes[index] = std::min(get_size(max_atom_value, max_non_bond_value), batch<T>::max_batch_size);
+
+          // populate the clusters' size
+          auto& cluster           = clusters[index]; // get a ref
+          cluster.batch_max_atoms = max_atom_value;
+
+          // update the global index on the clusters
+          ++index;
+        }
+      }
+    }
 
     // add the molecule to a batch. If the batch is full, return it
     std::pair<batch<T>, bool> add_ligand(std::unique_ptr<T> new_molecule) {
@@ -75,7 +96,16 @@ namespace mudock {
     }
 
     // get the first half-empty butches inside this buffer
-    std::pair<batch<T>, bool> flush_one();
+    std::pair<batch<T>, bool> flush_one() {
+      std::lock_guard lock{mutex};
+      for (auto& cluster: clusters) {
+        const std::size_t num_ligands = cluster.num_ligands;
+        if (num_ligands > std::size_t{0}) {
+          return std::make_pair(std::move(cluster), true);
+        }
+      }
+      return std::make_pair(batch<T>{}, false);
+    }
   };
 
 } // namespace mudock
