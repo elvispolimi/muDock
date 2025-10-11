@@ -53,7 +53,7 @@ namespace mudock {
           next_population(knobs.population_number),
           configuration(knobs) {}
 
-    void operator()(static_molecule& ligand) {
+    void operator()(autodock_ligand& ligand) {
       const auto seed =
           configuration.seed.has_value()
               ? configuration.seed.value()
@@ -62,39 +62,32 @@ namespace mudock {
       const int num_atoms     = ligand.num_atoms();
       const auto num_rotamers = ligand.num_rotamers();
 
-      auto x = ligand.get_x(), y = ligand.get_y(), z = ligand.get_z();
-      const auto ligand_center_of_mass = compute_center_of_mass(x, y, z);
+      auto x = ligand.x(), y = ligand.y(), z = ligand.z();
+      const auto ligand_center_of_mass = compute_center_of_mass(x, y, z, num_atoms);
       const auto offset                = adt_protein.get_center() - ligand_center_of_mass;
-      translate_molecule<cpu_vectorization::AUTO>(x.data(),
-                                                  y.data(),
-                                                  z.data(),
-                                                  num_atoms,
-                                                  offset.x(),
-                                                  offset.y(),
-                                                  offset.z());
+      translate_molecule<cpu_vectorization::AUTO>(x, y, z, num_atoms, offset.x(), offset.y(), offset.z());
 
-      auto adt_ligand = autodock_ligand{ligand};
-      adt_ligand.update_offsets(adt_protein);
+      ligand.update_offsets(adt_protein);
 
       // Simulate the population evolution for the given amount of time
-      evaluate_fitness<vect>(adt_ligand.get_ligand_x_p(),
-                             adt_ligand.get_ligand_y_p(),
-                             adt_ligand.get_ligand_z_p(),
-                             adt_ligand.get_ligand_vol(),
-                             adt_ligand.get_ligand_solpar(),
-                             adt_ligand.get_ligand_charge(),
-                             adt_ligand.get_atom_map_offsets(),
+      evaluate_fitness<vect>(ligand.x(),
+                             ligand.y(),
+                             ligand.z(),
+                             ligand.vol(),
+                             ligand.solpar(),
+                             ligand.charge(),
+                             ligand.atom_map_offsets(),
                              num_atoms,
                              num_rotamers,
-                             adt_ligand.get_fragments_masks(),
-                             adt_ligand.get_fragmets_starts(),
-                             adt_ligand.get_fragments_stops(),
-                             adt_ligand.get_non_bond_size(),
-                             adt_ligand.get_non_bond_A(),
-                             adt_ligand.get_non_bond_B(),
-                             adt_ligand.get_non_bond_cA(),
-                             adt_ligand.get_non_bond_cB(),
-                             adt_ligand.get_non_bond_xB(),
+                             ligand.fragments_masks(),
+                             ligand.fragmets_starts(),
+                             ligand.fragments_stops(),
+                             ligand.non_bond_size(),
+                             ligand.non_bond_A(),
+                             ligand.non_bond_B(),
+                             ligand.non_bond_cA(),
+                             ligand.non_bond_cB(),
+                             ligand.non_bond_xB(),
                              adt_protein.get_maps_pointer(),
                              configuration.num_generations,
                              configuration.population_number,
@@ -118,15 +111,15 @@ namespace mudock {
           std::min_element(std::begin(last_population),
                            std::end(last_population),
                            [](const auto a, const auto b) { return a.score < b.score; });
-      apply<cpu_vectorization::AUTO>(x.data(),
-                                     y.data(),
-                                     z.data(),
+      apply<cpu_vectorization::AUTO>(x,
+                                     y,
+                                     z,
                                      best_individual_it->genes,
                                      num_atoms,
                                      num_rotamers,
-                                     adt_ligand.get_fragments_masks(),
-                                     adt_ligand.get_fragmets_starts(),
-                                     adt_ligand.get_fragments_stops());
+                                     ligand.fragments_masks(),
+                                     ligand.fragmets_starts(),
+                                     ligand.fragments_stops());
       ligand.properties.assign(property_type::SCORE, std::to_string(best_individual_it->score));
     }
   };

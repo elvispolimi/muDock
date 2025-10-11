@@ -20,7 +20,7 @@ namespace mudock {
   // static constexpr std::size_t max_non_bonds{1 << 26};
   // static constexpr std::size_t max_rotamers_per_ligand{64};
 
-  virtual_screen_cuda::virtual_screen_cuda(const knobs k, const std::shared_ptr<const device> dev)
+  virtual_screen_cuda::virtual_screen_cuda(const knobs k, std::shared_ptr<device> dev)
       : configuration(k),
         dev(dev),
         stream(dev->get_stream()),
@@ -100,84 +100,72 @@ namespace mudock {
     map_texture_index.alloc(tot_atoms_in_batch);
 
     // Copy data
-    std::vector<autodock_ligand> vector_adt_ligands;
+    // std::vector<autodock_ligand> vector_adt_ligands;
     for (std::size_t index{0}; index < batch_ligands; ++index) {
-      auto &ligand = incoming_batch.molecules[index];
-      vector_adt_ligands.emplace_back(*ligand);
-      auto &adt_ligand = vector_adt_ligands.back();
-      adt_ligand.update_offsets(adt_protein);
+      auto &ligand = *incoming_batch.molecules[index];
+      // vector_adt_ligands.emplace_back(*ligand);
+      // auto &adt_ligand = ligand.back();
+      ligand.update_offsets(adt_protein);
       const int stride_atoms = index * batch_atoms;
       // Atoms and bonds
-      const int num_atoms       = adt_ligand.get_num_atoms();
+      const int num_atoms       = ligand.num_atoms();
       ligand_num_atoms()[index] = num_atoms;
       // TODO bonds
       // Place the molecule to the center of the target protein
-      const auto x = adt_ligand.get_ligand_x(), y = adt_ligand.get_ligand_y(), z = adt_ligand.get_ligand_z();
-      auto x_p = adt_ligand.get_ligand_x_p(), y_p = adt_ligand.get_ligand_y_p(),
-           z_p = adt_ligand.get_ligand_z_p();
+      const auto x = ligand.x(), y = ligand.y(), z = ligand.z();
+      // auto x_p = ligand.x_p(), y_p = ligand.y_p(),
+      //     z_p = ligand.z_p();
 
-      const auto ligand_center_of_mass = compute_center_of_mass(x, y, z);
+      const auto ligand_center_of_mass = compute_center_of_mass(x, y, z, num_atoms);
       const auto offset                = adt_protein.get_center() - ligand_center_of_mass;
-      translate_molecule<cpu_vectorization::AUTO>(x_p,
-                                                  y_p,
-                                                  z_p,
-                                                  num_atoms,
-                                                  offset.x(),
-                                                  offset.y(),
-                                                  offset.z());
+      translate_molecule<cpu_vectorization::AUTO>(x, y, z, num_atoms, offset.x(), offset.y(), offset.z());
 
-      std::memcpy((void *) (original_ligand_x() + stride_atoms), x_p, num_atoms * sizeof(fp_type));
-      std::memcpy((void *) (original_ligand_y() + stride_atoms), y_p, num_atoms * sizeof(fp_type));
-      std::memcpy((void *) (original_ligand_z() + stride_atoms), z_p, num_atoms * sizeof(fp_type));
+      std::memcpy((void *) (original_ligand_x() + stride_atoms), x, num_atoms * sizeof(fp_type));
+      std::memcpy((void *) (original_ligand_y() + stride_atoms), y, num_atoms * sizeof(fp_type));
+      std::memcpy((void *) (original_ligand_z() + stride_atoms), z, num_atoms * sizeof(fp_type));
 
       // Randomly initialize the population
-      const auto num_rotamers      = adt_ligand.get_num_rotatable_bonds();
+      const auto num_rotamers      = ligand.num_rotamers();
       ligand_num_rotamers()[index] = num_rotamers;
-      assert(batch_rotamers > ligand.get()->num_rotamers());
+      assert(batch_rotamers > ligand.num_rotamers());
 
       std::memcpy((void *) (ligand_fragments() + ligand_fragments_start()[index]),
-                  adt_ligand.get_fragments_masks(),
+                  ligand.fragments_masks(),
                   num_atoms * num_rotamers * sizeof(fp_type));
       ligand_fragments_start()[index + 1] = ligand_fragments_start()[index] + (num_atoms * num_rotamers);
       std::memcpy((void *) (frag_start_atom_indices() + frag_indices_start()[index]),
-                  adt_ligand.get_fragmets_starts(),
+                  ligand.fragmets_starts(),
                   num_rotamers * sizeof(fp_type));
       std::memcpy((void *) (frag_stop_atom_indices() + frag_indices_start()[index]),
-                  adt_ligand.get_fragments_stops(),
+                  ligand.fragments_stops(),
                   num_rotamers * sizeof(fp_type));
       frag_indices_start()[index + 1] = frag_indices_start()[index] + num_rotamers;
 
-      const auto non_bond_size = adt_ligand.get_non_bond_size();
+      const auto non_bond_size = ligand.non_bond_size();
       std::memcpy((void *) (nonbond_a1() + index_nonbonds()[index]),
-                  adt_ligand.get_non_bond_A(),
+                  ligand.non_bond_A(),
                   non_bond_size * sizeof(int));
       std::memcpy((void *) (nonbond_a2() + index_nonbonds()[index]),
-                  adt_ligand.get_non_bond_B(),
+                  ligand.non_bond_B(),
                   non_bond_size * sizeof(int));
       std::memcpy((void *) (nonbond_cA() + index_nonbonds()[index]),
-                  adt_ligand.get_non_bond_cA(),
+                  ligand.non_bond_cA(),
                   non_bond_size * sizeof(fp_type));
       std::memcpy((void *) (nonbond_cB() + index_nonbonds()[index]),
-                  adt_ligand.get_non_bond_cB(),
+                  ligand.non_bond_cB(),
                   non_bond_size * sizeof(fp_type));
       std::memcpy((void *) (nonbond_xB() + index_nonbonds()[index]),
-                  adt_ligand.get_non_bond_xB(),
+                  ligand.non_bond_xB(),
                   non_bond_size * sizeof(int));
       index_nonbonds()[index + 1] = index_nonbonds()[index] + non_bond_size;
 
       // Autodock typing
-      std::memcpy((void *) (ligand_vol() + stride_atoms),
-                  adt_ligand.get_ligand_vol(),
-                  num_atoms * sizeof(fp_type));
-      std::memcpy((void *) (ligand_solpar() + stride_atoms),
-                  adt_ligand.get_ligand_solpar(),
-                  num_atoms * sizeof(fp_type));
-      std::memcpy((void *) (ligand_charge() + stride_atoms),
-                  adt_ligand.get_ligand_charge(),
-                  num_atoms * sizeof(fp_type));
+      std::memcpy((void *) (ligand_vol() + stride_atoms), ligand.vol(), num_atoms * sizeof(fp_type));
+      std::memcpy((void *) (ligand_solpar() + stride_atoms), ligand.solpar(), num_atoms * sizeof(fp_type));
+      std::memcpy((void *) (ligand_charge() + stride_atoms), ligand.charge(), num_atoms * sizeof(fp_type));
 
       std::memcpy((void *) (map_texture_index() + stride_atoms),
-                  adt_ligand.get_atom_map_index(),
+                  ligand.atom_map_index(),
                   num_atoms * sizeof(int));
     }
     // Copy in
@@ -226,7 +214,8 @@ namespace mudock {
 
     constexpr_for<0, reorder_buffer::atoms_clusters.size(), 1>([&](const auto atoms_index) {
       const auto n_atoms = reorder_buffer::atoms_clusters[atoms_index];
-      if (batch_atoms == n_atoms)
+      if (batch_atoms == n_atoms) {
+        auto lg = dev->get_lock();
         evaluate_fitness<n_atoms>
             <<<batch_ligands, BLOCK_SIZE, shared_mem, stream()>>>(num_generations,
                                                                   configuration.tournament_length,
@@ -262,6 +251,9 @@ namespace mudock {
                                                                   curand_states.dev_pointer(),
                                                                   ligand_scores.dev_pointer(),
                                                                   best_chromosomes.dev_pointer());
+        MUDOCK_CHECK_KERNELCALL();
+        MUDOCK_CHECK(cudaStreamSynchronize(stream()));
+      }
     });
 
     // Copy back chromosomes and scores
@@ -273,23 +265,23 @@ namespace mudock {
 
     // update the ligand position with the best one that we found
     for (std::size_t index{0}; index < batch_ligands; ++index) {
-      auto &adt_ligand        = vector_adt_ligands[index];
-      auto &ligand            = incoming_batch.molecules[index];
-      const int num_atoms     = adt_ligand.get_num_atoms();
-      const auto num_rotamers = adt_ligand.get_num_rotatable_bonds();
+      // auto &adt_ligand        = vector_adt_ligands[index];
+      auto &ligand            = *incoming_batch.molecules[index];
+      const int num_atoms     = ligand.num_atoms();
+      const auto num_rotamers = ligand.num_rotamers();
 
       // for (auto &ligand: std::span(incoming_batch.molecules.data(), incoming_batch.num_ligands)) {
       // Reset the random number generator to improve consistency
-      apply<cpu_vectorization::AUTO>(adt_ligand.get_ligand_x_p(),
-                                     adt_ligand.get_ligand_y_p(),
-                                     adt_ligand.get_ligand_z_p(),
+      apply<cpu_vectorization::AUTO>(ligand.x(),
+                                     ligand.y(),
+                                     ligand.z(),
                                      *(best_chromosomes() + index),
                                      num_atoms,
                                      num_rotamers,
-                                     adt_ligand.get_fragments_masks(),
-                                     adt_ligand.get_fragmets_starts(),
-                                     adt_ligand.get_fragments_stops());
-      ligand->properties.assign(property_type::SCORE, std::to_string(ligand_scores.host_pointer()[index]));
+                                     ligand.fragments_masks(),
+                                     ligand.fragmets_starts(),
+                                     ligand.fragments_stops());
+      ligand.properties.assign(property_type::SCORE, std::to_string(ligand_scores.host_pointer()[index]));
     }
   }
 } // namespace mudock

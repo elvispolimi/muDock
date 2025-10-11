@@ -1,7 +1,7 @@
 #pragma once
 
 #include <memory>
-#include <mudock/chem/autodock_protein.hpp>
+#include <mudock/chem/autodock_ligand.hpp>
 #include <mudock/compute.hpp>
 #include <mudock/grid.hpp>
 #include <mudock/knobs.hpp>
@@ -14,6 +14,6 @@ namespace mudock {
                   threadpool& pool,
                   const autodock_protein& adt_protein,
                   const knobs knobs,
-                  std::shared_ptr<safe_stack<static_molecule>>& input_molecules,
+                  std::shared_ptr<safe_stack<autodock_ligand>>& input_molecules,
                   std::shared_ptr<safe_stack<static_molecule>>& output_molecules);
 } // namespace mudock
