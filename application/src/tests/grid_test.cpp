@@ -5,6 +5,7 @@
 #include <filesystem>
 #include <memory>
 #include <mudock/chem/autodock_grid_types.hpp>
+#include <mudock/chem/autodock_protein.hpp>
 #include <mudock/format.hpp>
 #include <mudock/format/pdbqt.hpp>
 #include <mudock/log.hpp>
@@ -44,20 +45,16 @@ int main(int argc, char* argv[]) {
 
     po::notify(vm);
 
-    auto protein_ptr = std::make_shared<mudock::dynamic_molecule>();
-    auto& protein    = *protein_ptr;
-
-    parse(protein, pdbqt_path);
-
-    mudock::apply_autodock_forcefield_pdbqt(protein, pdbqt_path);
-
-    mudock::autodock_protein protein_adt = mudock::make_autodock_protein(protein);
+    auto protein = std::make_shared<mudock::autodock_protein>();
+    parse(*protein, pdbqt_path);
+    mudock::apply_autodock_forcefield_pdbqt(*protein, pdbqt_path);
+    protein->prepare();
 
     mudock::autodock_protein protein_autogrid = load_autogrid_map_fld(fld_path);
 
     for (int map_index = 0; map_index < mudock::num_autodock_grids(); ++map_index) {
       const auto map_type           = static_cast<mudock::autodock_grid_type>(map_index);
-      const auto reference_grid_map = protein_adt.get_atom_map(map_type);
+      const auto reference_grid_map = protein->get_atom_map(map_type);
       const auto autogrid_map       = protein_autogrid.get_atom_map(map_type);
 
       for (size_t k = 0; k < std::min(reference_grid_map.z(), autogrid_map.z()); ++k)

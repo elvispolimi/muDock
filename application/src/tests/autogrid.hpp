@@ -5,9 +5,11 @@
 #include <filesystem>
 #include <fstream>
 #include <mudock/chem/autodock_grid_types.hpp>
+#include <mudock/chem/autodock_ligand.hpp>
 #include <mudock/chem/autodock_protein.hpp>
 #include <mudock/chem/grid_const.hpp>
 #include <mudock/format/ob_wrapper.hpp>
+#include <mudock/format/pdbqt.hpp>
 #include <mudock/grid/mdindex.hpp>
 #include <mudock/grid/point3D.hpp>
 #include <mudock/grid/space_grid.hpp>
@@ -231,13 +233,13 @@ static inline mudock::fp_type load_autodock_error_score(const std::string& dpf_p
   return adt_error_score;
 }
 
-static inline mudock::static_molecule load_autogrid_ligand(const std::string& dpf_path) {
+static inline mudock::autodock_ligand load_autogrid_ligand(const std::string& dpf_path) {
   mudock::info("Reading and parsing DPF file ", dpf_path, " for ligand ...");
   const auto desc = read_from_stream(std::ifstream(dpf_path));
   std::stringstream desc_s{desc};
 
   std::string line;
-  mudock::static_molecule ligand;
+  mudock::autodock_ligand ligand;
   // TODO check if you can get rid of this and use mudock autogrid maps
   while (std::getline(desc_s, line)) {
     // Skip empty lines

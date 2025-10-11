@@ -1,3 +1,5 @@
+#include "mudock/chem/autodock_ligand.hpp"
+
 #include <memory>
 #include <mudock/chem/autodock_protein.hpp>
 #include <mudock/compute.hpp>
@@ -58,7 +60,7 @@ namespace mudock {
       // now we need to allocate reorder buffers for all the CUDA wrappers. In theory we can use a single
       // reorder buffer for all of them, but it can become a bottleneck. In the current implementation we
       // go for this solution, but we need to investigate better approaches
-      auto rob = std::make_shared<reorder_buffer>(&compute_batch_size);
+      auto rob = std::make_shared<reorder_buffer<autodock_ligand>>(&compute_batch_size);
 
       // add the workers that we found parsing the configuration
       for (const auto id: gpu_ids) {

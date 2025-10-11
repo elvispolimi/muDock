@@ -1,6 +1,7 @@
 #pragma once
 
 #include "mudock/chem/autodock_ligand.hpp"
+#include "mudock/chem/autodock_protein.hpp"
 
 #include <cassert>
 #include <cmath>
@@ -9,6 +10,7 @@
 #include <memory>
 #include <mudock/chem.hpp>
 #include <mudock/chem/autodock_babel_types.hpp>
+#include <mudock/chem/autodock_molecule.hpp>
 #include <mudock/chem/autodock_types.hpp>
 #include <mudock/chem/elements.hpp>
 #include <mudock/format/pdbqt.hpp>
@@ -56,13 +58,13 @@ namespace mudock {
   ob_mol_wrapper format_parser<supported_format::PDB>(const std::string_view description);
 
   template<supported_format format, class molecule_type>
-    requires is_molecule<molecule_type>
+    requires derived_from_molecule<molecule_type>
   void format_parser(molecule_type& mol, const std::string_view description);
   template<>
-  void format_parser<supported_format::MOL2X, static_molecule>(static_molecule& mol,
+  void format_parser<supported_format::MOL2X, autodock_ligand>(autodock_ligand& mol,
                                                                const std::string_view description);
   template<>
-  void format_parser<supported_format::MOL2X, dynamic_molecule>(dynamic_molecule& mol,
+  void format_parser<supported_format::MOL2X, autodock_protein>(autodock_protein& mol,
                                                                 const std::string_view description);
 
   template<supported_format format>
@@ -101,7 +103,7 @@ namespace mudock {
 
   template<auto rotor_check, class molecule_type>
     requires derived_from_molecule<molecule_type> && is_rotate_check<decltype(rotor_check)>
-  void convert(molecule_type&& dest, const ob_mol_wrapper& source) {
+  void convert(molecule_type& dest, const ob_mol_wrapper& source) {
     const size_t num_atoms = source->NumAtoms();
     const size_t num_bonds = source->NumBonds();
     // set the molecule geometry
@@ -131,7 +133,8 @@ namespace mudock {
       dest.x(mudock_atom_index)        = static_cast<fp_type>(atom->GetX());
       dest.y(mudock_atom_index)        = static_cast<fp_type>(atom->GetY());
       dest.z(mudock_atom_index)        = static_cast<fp_type>(atom->GetZ());
-      if constexpr (std::derived_from<molecule_type, autodock_ligand>) {
+      if constexpr (std::derived_from<molecule_type, autodock_static_molecule> ||
+                    std::derived_from<molecule_type, autodock_dynamic_molecule>) {
         dest.charge(mudock_atom_index)      = atom->GetPartialCharge();
         dest.is_aromatic(mudock_atom_index) = atom->IsAromatic();
       }
@@ -190,7 +193,7 @@ namespace mudock {
   }
 
   template<supported_format format, class molecule_type>
-    requires is_molecule<molecule_type>
+    requires derived_from_molecule<molecule_type>
   void parse(molecule_type& molecule, const std::string_view description) {
     if constexpr (format == supported_format::MOL2X) {
       format_parser<format, molecule_type>(molecule, description);
@@ -201,8 +204,8 @@ namespace mudock {
   }
 
   template<class molecule_type>
-    requires is_molecule<molecule_type>
-  void parser(molecule_type&& molecule, const std::filesystem::path file_path) {
+    requires derived_from_molecule<molecule_type>
+  void parser(molecule_type& molecule, const std::filesystem::path file_path) {
     const auto in_format = parse_supported_format(file_path);
 
     const auto description = read_from_stream(std::ifstream(file_path));
@@ -210,19 +213,13 @@ namespace mudock {
         [&](const auto format_index) {
           const auto format = static_cast<supported_format>(format_index());
           parse<format>(molecule, description);
-          // if constexpr (format == supported_format::MOL2X) {
-          //   format_parser<format>(molecule, description);
-          // } else {
-          //   const auto mol = format_parser<format>(description);
-          //   convert<rotate_check>(molecule, mol);
-          // }
         },
         in_format);
   }
 
   template<class molecule_type>
-    requires is_molecule<molecule_type>
-  void parse(molecule_type&& molecule, const std::filesystem::path input_path) {
+    requires derived_from_molecule<molecule_type>
+  void parse(molecule_type& molecule, const std::filesystem::path input_path) {
     parser(molecule, input_path);
   }
 } // namespace mudock
