@@ -1,11 +1,14 @@
-#include "mudock/format/supported_format.hpp"
-#include "mudock/molecule.hpp"
+#include "mudock/chem/autodock_protein.hpp"
 
 #include <algorithm>
 #include <cassert>
 #include <fstream>
 #include <memory>
+#include <mudock/chem/autodock_ligand.hpp>
+#include <mudock/chem/autodock_molecule.hpp>
 #include <mudock/format/ob_wrapper.hpp>
+#include <mudock/format/supported_format.hpp>
+#include <mudock/molecule.hpp>
 #include <mudock/utils.hpp>
 #include <openbabel/atom.h>
 #include <openbabel/babelconfig.h>
@@ -67,7 +70,7 @@ namespace mudock {
   }
   template<>
   ob_mol_wrapper format_parser<supported_format::MOL2X>(const std::string_view description) {
-    static_molecule mol;
+    autodock_ligand mol;
     mol2x::parse(mol, description);
 
     std::ostringstream oss;
@@ -78,12 +81,12 @@ namespace mudock {
     return format_parser<supported_format::MOL2>(mol2_description);
   }
   template<>
-  void format_parser<supported_format::MOL2X, static_molecule>(static_molecule& mol,
+  void format_parser<supported_format::MOL2X, autodock_ligand>(autodock_ligand& mol,
                                                                const std::string_view description) {
     mol2x::parse(mol, description);
   }
   template<>
-  void format_parser<supported_format::MOL2X, dynamic_molecule>(dynamic_molecule& mol,
+  void format_parser<supported_format::MOL2X, autodock_protein>(autodock_protein& mol,
                                                                 const std::string_view description) {
     mol2x::parse(mol, description);
   }
@@ -149,9 +152,9 @@ namespace mudock {
 
   template<>
   void format_writer<supported_format::MOL2X>(const ob_mol_wrapper& mol, std::ofstream& ofs) {
-    static_molecule s_mol;
+    autodock_ligand s_mol;
     convert<rotate_check>(s_mol, mol);
-    mudock::apply_autodock_forcefield(s_mol);
+    s_mol.prepare();
     mol2x::print(s_mol, ofs);
   }
 

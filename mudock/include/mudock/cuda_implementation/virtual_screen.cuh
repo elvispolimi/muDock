@@ -1,5 +1,7 @@
 #pragma once
 
+#include "mudock/chem/autodock_ligand.hpp"
+
 #include <mudock/batch.hpp>
 #include <mudock/chem/autodock_grid_types.hpp>
 #include <mudock/cpp_implementation/chromosome.hpp>
@@ -49,6 +51,6 @@ namespace mudock {
   public:
     virtual_screen_cuda(const knobs k, std::shared_ptr<device> dev);
 
-    void operator()(batch& incoming_batch);
+    void operator()(batch<autodock_ligand>& incoming_batch);
   };
 } // namespace mudock

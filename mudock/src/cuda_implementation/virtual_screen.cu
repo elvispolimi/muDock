@@ -52,7 +52,7 @@ namespace mudock {
         best_chromosomes(stream()),
         curand_states(stream()) {}
 
-  void virtual_screen_cuda::operator()(batch &incoming_batch) {
+  void virtual_screen_cuda::operator()(batch<autodock_ligand> &incoming_batch) {
     const std::size_t batch_atoms   = incoming_batch.batch_max_atoms;
     const std::size_t batch_ligands = incoming_batch.num_ligands;
     // Resize data structures
@@ -212,8 +212,8 @@ namespace mudock {
         std::max(configuration.population_number, static_cast<std::size_t>(BLOCK_SIZE)) * sizeof(fp_type);
     const std::size_t shared_mem = min_energy_reduction_s_mem;
 
-    constexpr_for<0, reorder_buffer::atoms_clusters.size(), 1>([&](const auto atoms_index) {
-      const auto n_atoms = reorder_buffer::atoms_clusters[atoms_index];
+    constexpr_for<0, reorder_buffer<autodock_ligand>::atoms_clusters.size(), 1>([&](const auto atoms_index) {
+      const auto n_atoms = reorder_buffer<autodock_ligand>::atoms_clusters[atoms_index];
       if (batch_atoms == n_atoms) {
         auto lg = dev->get_lock();
         evaluate_fitness<n_atoms>

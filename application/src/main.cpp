@@ -19,10 +19,7 @@ int main(int argc, char* argv[]) {
   mudock::info("Reading and parsing protein ", args.protein_path, " ...");
   auto protein = std::make_shared<mudock::autodock_protein>();
   parse(*protein, args.protein_path);
-  // TODO prepare protein
-
-  // mudock::apply_autodock_forcefield(protein);
-  // mudock::autodock_protein protein_adt = mudock::make_autodock_protein(protein);
+  protein->prepare();
 
   // read  all the ligands description from the standard input and split them
   mudock::info("Reading ligand ", args.ligand_path, " ...");
@@ -44,16 +41,15 @@ int main(int argc, char* argv[]) {
             auto ligand = std::make_unique<mudock::autodock_ligand>();
             mudock::parse<format>(*ligand, description);
             ligand->prepare();
-            // mudock::apply_autodock_forcefield(*ligand);
-            input_queue->enqueue(ligand);
+            input_queue->enqueue(std::move(ligand));
           }
         } else {
           for (const auto& description: ligands_description) {
             try {
-              mudock::static_molecule ligand;
-              mudock::parse<format>(ligand, description);
-              // mudock::apply_autodock_forcefield(ligand);
-              input_queue->enqueue(std::make_unique<mudock::autodock_ligand>(ligand));
+              auto ligand = std::make_unique<mudock::autodock_ligand>();
+              mudock::parse<format>(*ligand, description);
+              ligand->prepare();
+              input_queue->enqueue(std::move(ligand));
             } catch (...) {}
           }
         }
@@ -68,10 +64,10 @@ int main(int argc, char* argv[]) {
   {
     auto threadpool = mudock::threadpool();
     mudock::manage_cpp(args.device_confs, threadpool, *protein, args.knobs, input_queue, output_queue);
-    // mudock::manage_cuda(args.device_confs, threadpool, args.knobs, protein_adt, input_queue, output_queue);
-    // mudock::manage_hip(args.device_confs, threadpool, args.knobs, protein_adt, input_queue, output_queue);
-    // mudock::manage_sycl(args.device_confs, threadpool, args.knobs, protein_adt, input_queue, output_queue);
-    // mudock::manage_omp(args.device_confs, threadpool, args.knobs, protein_adt, input_queue, output_queue);
+    mudock::manage_cuda(args.device_confs, threadpool, args.knobs, *protein, input_queue, output_queue);
+    mudock::manage_hip(args.device_confs, threadpool, args.knobs, *protein, input_queue, output_queue);
+    mudock::manage_sycl(args.device_confs, threadpool, args.knobs, *protein, input_queue, output_queue);
+    mudock::manage_omp(args.device_confs, threadpool, args.knobs, *protein, input_queue, output_queue);
     mudock::info("All workers have been created!");
   } // when we exit from this block the computation is complete
 

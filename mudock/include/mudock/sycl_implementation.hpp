@@ -1,13 +1,13 @@
 #pragma once
 
-#include <mudock/chem/autodock_ligand.hpp>
-#include <mudock/chem/autodock_protein.hpp>
 #include <mudock/compute/safe_stack.hpp>
 #include <mudock/compute/threadpool.hpp>
 #include <mudock/knobs.hpp>
 #ifdef MUDOCK_USE_SYCL
   #include <mudock/sycl_implementation/sycl_manager.hpp>
 #else
+  #include <mudock/chem/autodock_ligand.hpp>
+  #include <mudock/chem/autodock_protein.hpp>
   #include <mudock/log.hpp>
 namespace mudock {
   inline void manage_sycl(const std::vector<std::string>&,

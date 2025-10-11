@@ -56,7 +56,7 @@ namespace mudock {
 
   static auto handleC([[maybe_unused]] const std::span<element>& elements,
                       const molecule_graph_type& graph,
-                      const std::span<int> is_aromatic,
+                      const std::span<const int> is_aromatic,
                       const molecule_graph_type::vertex_descriptor v) -> autodock_ff {
     assert(elements[graph[v].atom_index] == element::C);
     if (is_aromatic[graph[v].atom_index])
