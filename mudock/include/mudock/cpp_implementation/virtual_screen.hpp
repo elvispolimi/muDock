@@ -9,7 +9,6 @@
 #include <mudock/cpp_implementation/evaluate_fitness_cpp.hpp>
 #include <mudock/cpp_implementation/geometric_transformations.hpp>
 #include <mudock/cpp_implementation/vectorization.hpp>
-#include <mudock/cpp_implementation/weed_bonds.hpp>
 #include <mudock/grid.hpp>
 #include <mudock/knobs.hpp>
 #include <mudock/molecule.hpp>

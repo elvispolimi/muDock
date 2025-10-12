@@ -8,7 +8,6 @@
 #include <mudock/cpp_implementation/geometric_transformations.hpp>
 #include <mudock/cpp_implementation/mutate.hpp>
 #include <mudock/cpp_implementation/vectorization.hpp>
-#include <mudock/cpp_implementation/weed_bonds.hpp>
 #include <mudock/cuda_implementation/evaluate_fitness.cuh>
 #include <mudock/cuda_implementation/virtual_screen.cuh>
 #include <mudock/grid.hpp>

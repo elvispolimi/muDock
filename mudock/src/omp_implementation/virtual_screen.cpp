@@ -4,7 +4,6 @@
 #include <mudock/cpp_implementation/center_of_mass.hpp>
 #include <mudock/cpp_implementation/geometric_transformations.hpp>
 #include <mudock/cpp_implementation/mutate.hpp>
-#include <mudock/cpp_implementation/weed_bonds.hpp>
 #include <mudock/grid.hpp>
 #include <mudock/omp_implementation/evaluate_fitness.hpp>
 #include <mudock/omp_implementation/virtual_screen.hpp>

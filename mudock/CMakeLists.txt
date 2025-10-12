@@ -14,6 +14,8 @@ list(
   "${header_path}/${header_prefix}/chem/autodock_babel_types.hpp"
   "${header_path}/${header_prefix}/chem/autodock_parameters.hpp"
   "${header_path}/${header_prefix}/chem/autodock_protein.hpp"
+  "${header_path}/${header_prefix}/chem/autodock_molecule.hpp"
+  "${header_path}/${header_prefix}/chem/autodock_ligand.hpp"
   "${header_path}/${header_prefix}/chem/autodock_types.hpp"
   "${header_path}/${header_prefix}/chem/bond_types.hpp"
   "${header_path}/${header_prefix}/chem/autodock_grid_types.hpp"
@@ -29,7 +31,7 @@ list(
   "${header_path}/${header_prefix}/cpp_implementation/chromosome.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/mutate.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/center_of_mass.hpp"
-  "${header_path}/${header_prefix}/cpp_implementation/weed_bonds.hpp"
+  "${header_path}/${header_prefix}/cpp_implementation/non_bonds.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/calc_energy_cpp.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/evaluate_fitness_cpp.hpp"
   "${header_path}/${header_prefix}/format/concept.hpp"
@@ -75,6 +77,7 @@ list(
   "${source_path}/chem/assign_autodock_types.cpp"
   "${source_path}/chem/autodock_babel_types.cpp"
   "${source_path}/chem/autodock_protein.cpp"
+  "${source_path}/chem/autodock_ligand.cpp"
   "${source_path}/chem/autodock_types.cpp"
   "${source_path}/chem/bond_types.cpp"
   "${source_path}/chem/autodock_grid_types.cpp"
@@ -82,7 +85,6 @@ list(
   "${source_path}/compute/parse_ids.cpp"
   "${source_path}/compute/reorder_buffer.cpp"
   "${source_path}/cpp_implementation/cpp_manager.cpp"
-  "${source_path}/cpp_implementation/weed_bonds.cpp"
   "${source_path}/format/dot.cpp"
   "${source_path}/format/mol2.cpp"
   "${source_path}/format/mol2x.cpp"
@@ -403,7 +405,7 @@ if(MUDOCK_ENABLE_SYCL)
 endif()
 
 if(MUDOCK_ENABLE_OMP)
-      target_link_libraries(libmudock PRIVATE OpenMP::OpenMP_CXX)
+  target_link_libraries(libmudock PRIVATE OpenMP::OpenMP_CXX)
 endif()
 
 # ##############################################################################
