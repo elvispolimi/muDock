@@ -139,6 +139,8 @@ static inline mudock::autodock_protein load_autogrid_map_fld(const std::string& 
   assert(adt_protein.index == static_cast<mudock::md_index<3>>(sizes));
 
   for (int map_index = 0; map_index < mudock::num_autodock_grids(); ++map_index) {
+    if (grids_filepath[map_index].empty())
+      continue;
     auto map = adt_protein.get_atom_map(static_cast<mudock::autodock_grid_type>(map_index));
 
     const auto map_desc = read_from_stream(std::ifstream(grids_filepath[map_index]));
@@ -252,6 +254,7 @@ static inline mudock::autodock_ligand load_autogrid_ligand(const std::string& dp
       ss >> _ >> ligand_path;
 
       mudock::parse(ligand, ligand_path);
+      ligand.prepare();
       mudock::apply_autodock_forcefield_pdbqt(ligand, ligand_path);
       break;
     }
