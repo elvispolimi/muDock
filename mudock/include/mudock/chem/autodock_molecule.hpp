@@ -6,9 +6,8 @@
 #include <mudock/chem/autodock_babel_types.hpp>
 #include <mudock/chem/autodock_grid_types.hpp>
 #include <mudock/chem/autodock_parameters.hpp>
-#include <mudock/cpp_implementation/weed_bonds.hpp>
+#include <mudock/grid/mdspan.hpp>
 #include <mudock/molecule.hpp>
-#include <mudock/molecule/containers.hpp>
 #include <mudock/type_alias.hpp>
 
 namespace mudock {

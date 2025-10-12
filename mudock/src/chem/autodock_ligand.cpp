@@ -1,17 +1,18 @@
+#include "mudock/chem/autodock_molecule.hpp"
+
 #include <cstdint>
-#include <mudock/chem/autodock_molecule.hpp>
+#include <mudock/chem/autodock_ligand.hpp>
 #include <mudock/chem/grid_const.hpp>
-#include <mudock/cpp_implementation/weed_bonds.hpp>
-#include <mudock/grid/mdspan.hpp>
 #include <mudock/log.hpp>
+#include <mudock/molecule/containers.hpp>
 #include <mudock/molecule/fragments.hpp>
 #include <vector>
 
 namespace mudock {
   // nonbonds.cc for nbmatrix required by weed_bonds
-  void nonbonds(md_container<std::vector<uint_fast8_t>, 2>& nbmatrix,
-                const std::span<const bond> ligand_bond,
-                const int num_atoms) {
+  void autodock_ligand::nonbonds(md_container<std::vector<uint_fast8_t>, 2>& nbmatrix,
+                                 const std::span<const bond> ligand_bond,
+                                 const int num_atoms) {
     //
     // in "nbmatrix", the values 1 (and 4) mean this pair of atoms will be included in the internal, non-bonded list
     //                           0                                         ignored
@@ -91,11 +92,9 @@ namespace mudock {
   | Weed out bonds in rigid pieces,                                            |
   |____________________________________________________________________________|
   */
-  void weed_bonds(md_container<std::vector<uint_fast8_t>, 2>& nbmatrix,
-                  std::vector<int>& non_bond_list_a1,
-                  std::vector<int>& non_bond_list_a2,
-                  const int num_atoms,
-                  const fragments<static_containers>& ligand_fragments) {
+  void autodock_ligand::weed_bonds(md_container<std::vector<uint_fast8_t>, 2>& nbmatrix,
+                                   const int num_atoms,
+                                   const fragments<static_containers>& ligand_fragments) {
     const auto& ligand_rigid_pieces = ligand_fragments.get_rigid_pieces();
 
     for (int j = 0; j < num_atoms; ++j) {
@@ -178,30 +177,23 @@ namespace mudock {
     } // i
   }
 
-  void non_bond_list(const static_molecule& ligand,
-                     std::vector<int>& non_bond_list_a1,
-                     std::vector<int>& non_bond_list_a2) {
-    const auto num_atoms = ligand.num_atoms();
+  void autodock_ligand::non_bond_list() {
+    const auto num_atoms = autodock_static_molecule::num_atoms();
 
-    auto graph = make_graph(ligand.get_bonds(), ligand.num_atoms());
+    auto graph = make_graph(autodock_static_molecule::get_bonds(), num_atoms);
     const auto ligand_fragments =
         std::make_unique<mudock::fragments<mudock::static_containers>>(graph,
-                                                                       ligand.get_bonds(),
-                                                                       ligand.num_atoms());
+                                                                       autodock_static_molecule::get_bonds(),
+                                                                       num_atoms);
 
     md_container<std::vector<uint_fast8_t>, 2> nbmatrix{num_atoms, num_atoms};
     // grid<uint_fast8_t, index2D> nbmatrix{{num_atoms, num_atoms}};
-    nonbonds(nbmatrix, ligand.get_bonds(), num_atoms);
-    weed_bonds(nbmatrix, non_bond_list_a1, non_bond_list_a2, num_atoms, *ligand_fragments);
+    nonbonds(nbmatrix, autodock_static_molecule::get_bonds(), num_atoms);
+    weed_bonds(nbmatrix, num_atoms, *ligand_fragments);
   }
 
-  void precompute_lennard_jones(const size_t non_bond_size,
-                                std::vector<fp_type>& cA_v,
-                                std::vector<fp_type>& cB_v,
-                                std::vector<int>& xB_v,
-                                const autodock_static_molecule& ligand,
-                                const std::vector<int>& non_bond_list_a1,
-                                const std::vector<int>& non_bond_list_a2) {
+  void autodock_ligand::precompute_lennard_jones() {
+    const auto non_bond_size = non_bond_list_a1.size();
     cA_v.resize(non_bond_size);
     cB_v.resize(non_bond_size);
     xB_v.resize(non_bond_size);
@@ -209,16 +201,16 @@ namespace mudock {
       const int& a1 = non_bond_list_a1[index];
       const int& a2 = non_bond_list_a2[index];
 
-      const auto& hbond_i    = ligand.num_hbond(a1);
-      const auto& hbond_j    = ligand.num_hbond(a2);
-      const auto& Rij_hb_i   = ligand.Rij_hb(a1);
-      const auto& Rij_hb_j   = ligand.Rij_hb(a2);
-      const auto& Rii_i      = ligand.Rii(a1);
-      const auto& Rii_j      = ligand.Rii(a2);
-      const auto& epsij_hb_i = ligand.epsij_hb(a1);
-      const auto& epsij_hb_j = ligand.epsij_hb(a2);
-      const auto& epsii_i    = ligand.epsii(a1);
-      const auto& epsii_j    = ligand.epsii(a2);
+      const auto& hbond_i    = num_hbond(a1);
+      const auto& hbond_j    = num_hbond(a2);
+      const auto& Rij_hb_i   = Rij_hb(a1);
+      const auto& Rij_hb_j   = Rij_hb(a2);
+      const auto& Rii_i      = Rii(a1);
+      const auto& Rii_j      = Rii(a2);
+      const auto& epsij_hb_i = epsij_hb(a1);
+      const auto& epsij_hb_j = epsij_hb(a2);
+      const auto& epsii_i    = epsii(a1);
+      const auto& epsii_j    = epsii(a2);
 
       // we need to determine the correct xA and xB exponents
       const int xA = xA_default; // for both LJ, 12-6 and HB, 12-10, xA is 12

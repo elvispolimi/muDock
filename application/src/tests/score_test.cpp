@@ -7,7 +7,6 @@
 #include <mudock/chem/autodock_ligand.hpp>
 #include <mudock/chem/autodock_protein.hpp>
 #include <mudock/cpp_implementation/vectorization.hpp>
-#include <mudock/cpp_implementation/weed_bonds.hpp>
 #include <mudock/format/ob_wrapper.hpp>
 #include <mudock/format/pdbqt.hpp>
 #include <mudock/knobs.hpp>
