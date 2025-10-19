@@ -29,7 +29,7 @@ namespace mudock {
                std::shared_ptr<safe_stack<autodock_ligand>>& input_molecules,
                std::shared_ptr<safe_stack<static_molecule>>& output_molecules,
                std::shared_ptr<reorder_buffer<autodock_ligand>> rb,
-               const std::shared_ptr<const device> dev);
+               std::shared_ptr<device> dev);
 
     // this is the thread "main" loop (it will fetch ligands from the queue and compute them)
     void main() override final;

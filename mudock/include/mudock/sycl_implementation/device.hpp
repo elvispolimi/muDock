@@ -13,6 +13,8 @@ namespace mudock {
 
     device(const sycl::device& dev, const autodock_protein& adt_protein);
 
+    [[nodiscard]] std::lock_guard<std::mutex> get_lock() { return std::lock_guard<std::mutex>(mutex); };
+
     sycl::queue get_queue() const;
     int get_sub_group_size() const;
 
@@ -21,6 +23,7 @@ namespace mudock {
   private:
     // Device ID
     const sycl::device dev;
+    std::mutex mutex;
     sycl::queue queue;
     syclTexture_wrapper atom_tex;
   };
