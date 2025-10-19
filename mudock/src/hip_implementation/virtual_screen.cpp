@@ -248,7 +248,7 @@ namespace mudock {
                                                                       ligand_scores.dev_pointer(),
                                                                       best_chromosomes.dev_pointer());
         MUDOCK_CHECK_KERNELCALL();
-        MUDOCK_CHECK(cudaStreamSynchronize(stream()));
+        MUDOCK_CHECK(hipStreamSynchronize(stream()));
       }
     });
     // Copy back chromosomes and scores
