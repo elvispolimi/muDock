@@ -192,19 +192,19 @@ namespace mudock {
     }
   }
 
-  template<supported_format format, class molecule_type>
-    requires derived_from_molecule<molecule_type>
+  template<supported_format format, class molecule_type, auto rotor_check = rotate_check>
+    requires derived_from_molecule<molecule_type> && is_rotate_check<decltype(rotor_check)>
   void parse(molecule_type& molecule, const std::string_view description) {
     if constexpr (format == supported_format::MOL2X) {
       format_parser<format, molecule_type>(molecule, description);
     } else {
       const auto ob_mol = format_parser<format>(description);
-      convert<rotate_check>(molecule, ob_mol);
+      convert<rotor_check>(molecule, ob_mol);
     }
   }
 
-  template<class molecule_type>
-    requires derived_from_molecule<molecule_type>
+  template<class molecule_type, auto rotor_check = rotate_check>
+    requires derived_from_molecule<molecule_type> && is_rotate_check<decltype(rotor_check)>
   void parser(molecule_type& molecule, const std::filesystem::path file_path) {
     const auto in_format = parse_supported_format(file_path);
 
@@ -212,14 +212,14 @@ namespace mudock {
     constexpr_switch<0, get_num_supported_format(), 1>(
         [&](const auto format_index) {
           const auto format = static_cast<supported_format>(format_index());
-          parse<format>(molecule, description);
+          parse<format, molecule_type, rotor_check>(molecule, description);
         },
         in_format);
   }
 
-  template<class molecule_type>
-    requires derived_from_molecule<molecule_type>
+  template<class molecule_type, auto rotor_check = rotate_check>
+    requires derived_from_molecule<molecule_type> && is_rotate_check<decltype(rotor_check)>
   void parse(molecule_type& molecule, const std::filesystem::path input_path) {
-    parser(molecule, input_path);
+    parser<molecule_type, rotor_check>(molecule, input_path);
   }
 } // namespace mudock

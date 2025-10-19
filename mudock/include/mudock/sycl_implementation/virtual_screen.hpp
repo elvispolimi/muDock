@@ -1,6 +1,7 @@
 #pragma once
 
 #include <mudock/batch.hpp>
+#include <mudock/chem/autodock_ligand.hpp>
 #include <mudock/cpp_implementation/chromosome.hpp>
 #include <mudock/grid.hpp>
 #include <mudock/knobs.hpp>
@@ -9,12 +10,6 @@
 #include <mudock/sycl_implementation/sycl_wrapper.hpp>
 
 namespace mudock {
-  // struct wrappers_container {
-  //   std::vector<sycl_object<fp_type>> wrappers;
-  //   sycl_wrapper<std::vector, fp_type*> wrappers_pointer;
-  //
-  //   wrappers_container(sycl::queue& queue): wrappers_pointer(queue) {};
-  // };
 
   class virtual_screen_sycl {
     // the configuration of the GA algorithm
@@ -53,7 +48,7 @@ namespace mudock {
   public:
     virtual_screen_sycl(const knobs k, const std::shared_ptr<const device> dev);
 
-    void operator()(batch& incoming_batch);
+    void operator()(batch<autodock_ligand>& incoming_batch);
   };
-  int compute_batch_size_vs(const sycl::device& d, const int num_atoms);
+  int compute_batch_size_vs(const sycl::device& d, const int num_atoms, const int num_non_bonds);
 } // namespace mudock

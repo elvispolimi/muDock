@@ -1,4 +1,11 @@
-#include <mudock/chem/assign_autodock_types.hpp>
+#include "mudock/chem/autodock_babel_types.hpp"
+#include "mudock/chem/autodock_molecule.hpp"
+#include "mudock/chem/autodock_types.hpp"
+#include "mudock/chem/elements.hpp"
+#include "mudock/molecule/graph.hpp"
+
+#include <mudock/chem/assign_autodock_babel_types.hpp>
+#include <span>
 
 namespace mudock {
 
@@ -64,11 +71,29 @@ namespace mudock {
     return autodock_ff::C;
   }
 
-  void assign_autodock_types(std::span<autodock_ff> types,
-                             const std::span<element> elements,
-                             const std::span<const int> is_aromatic,
-                             const std::span<autodock_babel_ff> babel_type,
-                             const molecule_graph_type& graph) {
+  template<class molecule_type>
+    requires derived_from_autodock_molecule<molecule_type>
+  void assign_autodock_types_impl(molecule_type& mol) {
+    // allocate memory for the support vectors required to allocate the atoms type
+    const std::size_t num_atoms = mol.num_atoms();
+    const auto elements         = mol.get_elements();
+    const auto is_aromatic      = mol.get_is_aromatic();
+    auto types                  = mol.get_autodock_type();
+
+    typename molecule_type::template atoms_array_type<autodock_babel_ff> babel_types;
+    mudock::resize(babel_types, num_atoms);
+
+    // create the graph of the molecule
+    const auto graph = make_graph(mol.get_bonds(), num_atoms);
+
+    // assign the autodock babel type
+    assign_autodock_babel_types(make_span(babel_types, num_atoms),
+                                mol.get_x(),
+                                mol.get_y(),
+                                mol.get_z(),
+                                mol.get_elements(),
+                                graph);
+
     // It basically is a porting from:
     // AutoDockTools/atomTypeTools.py
     assert(types.size() == elements.size());
@@ -81,7 +106,7 @@ namespace mudock {
         case (element::Be): return autodock_ff::Be;
         case (element::B): return autodock_ff::B; // the original code is dead code
         case (element::C): return handleC(elements, graph, is_aromatic, v);
-        case (element::N): return handleN(elements, babel_type, graph, v);
+        case (element::N): return handleN(elements, babel_types, graph, v);
         case (element::O): return autodock_ff::OA;
         // TODO missing OS case
         case (element::F): return autodock_ff::F;
@@ -91,7 +116,7 @@ namespace mudock {
         case (element::Al): return autodock_ff::Al;
         case (element::Si): return autodock_ff::Si;
         case (element::P): return autodock_ff::P;
-        case (element::S): return handleS(elements, babel_type, graph, v);
+        case (element::S): return handleS(elements, babel_types, graph, v);
         case (element::Cl): return autodock_ff::Cl;
         case (element::Ar): return autodock_ff::Ar;
         case (element::K): return autodock_ff::K;
@@ -204,5 +229,20 @@ namespace mudock {
       types[graph[*it].atom_index] = elements2autodock(*it);
     }
   }
+
+  template<>
+  void autodock_static_molecule::assign_autodock_types(std::function<void(autodock_static_molecule&)> f) {
+    if (f)
+      f(*this);
+    else
+      assign_autodock_types_impl(*this);
+  };
+  template<>
+  void autodock_dynamic_molecule::assign_autodock_types(std::function<void(autodock_dynamic_molecule&)> f) {
+    if (f)
+      f(*this);
+    else
+      assign_autodock_types_impl(*this);
+  };
 
 } // namespace mudock

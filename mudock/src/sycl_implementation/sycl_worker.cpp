@@ -7,13 +7,13 @@
 
 namespace mudock {
   sycl_worker::sycl_worker(const knobs knobs,
-                           std::shared_ptr<safe_stack<static_molecule>>& input_molecules,
+                           std::shared_ptr<safe_stack<autodock_ligand>>& input_molecules,
                            std::shared_ptr<safe_stack<static_molecule>>& output_molecules,
-                           std::shared_ptr<reorder_buffer> rb,
+                           std::shared_ptr<reorder_buffer<autodock_ligand>> rb,
                            const std::shared_ptr<const mudock::device> dev)
       : input_stack(input_molecules), output_stack(output_molecules), rob(rb), virtual_screen(knobs, dev) {}
 
-  void sycl_worker::process(batch& b) {
+  void sycl_worker::process(batch<autodock_ligand>& b) {
     try {
       virtual_screen(b);
     } catch (const std::runtime_error& e) { error("Unable to virtual screen a batch due to ", e.what()); }

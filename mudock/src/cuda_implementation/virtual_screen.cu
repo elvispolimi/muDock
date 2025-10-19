@@ -15,9 +15,6 @@
 #include <span>
 
 namespace mudock {
-  // TODO add to bucketizer
-  // static constexpr std::size_t max_non_bonds{1 << 26};
-  // static constexpr std::size_t max_rotamers_per_ligand{64};
 
   virtual_screen_cuda::virtual_screen_cuda(const knobs k, std::shared_ptr<device> dev)
       : configuration(k),
@@ -99,21 +96,15 @@ namespace mudock {
     map_texture_index.alloc(tot_atoms_in_batch);
 
     // Copy data
-    // std::vector<autodock_ligand> vector_adt_ligands;
     for (std::size_t index{0}; index < batch_ligands; ++index) {
       auto &ligand = *incoming_batch.molecules[index];
-      // vector_adt_ligands.emplace_back(*ligand);
-      // auto &adt_ligand = ligand.back();
       ligand.update_offsets(adt_protein);
       const int stride_atoms = index * batch_atoms;
       // Atoms and bonds
       const int num_atoms       = ligand.num_atoms();
       ligand_num_atoms()[index] = num_atoms;
-      // TODO bonds
       // Place the molecule to the center of the target protein
       const auto x = ligand.x(), y = ligand.y(), z = ligand.z();
-      // auto x_p = ligand.x_p(), y_p = ligand.y_p(),
-      //     z_p = ligand.z_p();
 
       const auto ligand_center_of_mass = compute_center_of_mass(x, y, z, num_atoms);
       const auto offset                = adt_protein.get_center() - ligand_center_of_mass;
@@ -264,12 +255,10 @@ namespace mudock {
 
     // update the ligand position with the best one that we found
     for (std::size_t index{0}; index < batch_ligands; ++index) {
-      // auto &adt_ligand        = vector_adt_ligands[index];
       auto &ligand            = *incoming_batch.molecules[index];
       const int num_atoms     = ligand.num_atoms();
       const auto num_rotamers = ligand.num_rotamers();
 
-      // for (auto &ligand: std::span(incoming_batch.molecules.data(), incoming_batch.num_ligands)) {
       // Reset the random number generator to improve consistency
       apply<cpu_vectorization::AUTO>(ligand.x(),
                                      ligand.y(),

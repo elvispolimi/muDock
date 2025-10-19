@@ -7,7 +7,7 @@
 #include <sycl/sycl.hpp>
 
 namespace mudock {
-  int compute_batch_size(const sycl::device& d, const int num_atoms) {
-    return compute_batch_size_vs(d, num_atoms);
+  int compute_batch_size(const sycl::device& d, const int num_atoms, const int num_non_bonds) {
+    return compute_batch_size_vs(d, num_atoms, num_non_bonds);
   }
 } // namespace mudock

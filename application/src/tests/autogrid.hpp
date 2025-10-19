@@ -6,6 +6,7 @@
 #include <fstream>
 #include <mudock/chem/autodock_grid_types.hpp>
 #include <mudock/chem/autodock_ligand.hpp>
+#include <mudock/chem/autodock_molecule.hpp>
 #include <mudock/chem/autodock_protein.hpp>
 #include <mudock/chem/grid_const.hpp>
 #include <mudock/format/ob_wrapper.hpp>
@@ -20,6 +21,7 @@
 #include <regex>
 #include <sstream>
 #include <string>
+using namespace std::placeholders;
 
 struct fld_tokens {
   static constexpr auto FILE_REGEX     = "(file=([^\\s]+))";
@@ -253,9 +255,12 @@ static inline mudock::autodock_ligand load_autogrid_ligand(const std::string& dp
       std::string ligand_path, _;
       ss >> _ >> ligand_path;
 
-      mudock::parse(ligand, ligand_path);
-      ligand.prepare();
-      mudock::apply_autodock_forcefield_pdbqt(ligand, ligand_path);
+      mudock::parse<mudock::autodock_ligand, mudock::pdbqt_rotate_check>(ligand, ligand_path);
+      // mudock::apply_autodock_forcefield_pdbqt(ligand, ligand_path);
+      ligand.prepare(std::function<void(mudock::autodock_static_molecule&)>{
+          [ligand_path](mudock::autodock_static_molecule& l) {
+            mudock::apply_autodock_forcefield_pdbqt(l, ligand_path);
+          }});
       break;
     }
   }
