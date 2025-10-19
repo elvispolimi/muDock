@@ -190,7 +190,7 @@ if(MUDOCK_ENABLE_SYCL)
       list(APPEND sycl_targets "${MUDOCK_GPU_ARCHITECTURES}")
       find_package(AdaptiveCpp CONFIG REQUIRED)
     elseif(${SYCL_COMPILER} STREQUAL "oneAPI")
-      # find_package(LLVM REQUIRED)
+      find_package(LLVM REQUIRED)
       set(CMAKE_LINKER
           clang++
           CACHE STRING "C++ linker" FORCE)

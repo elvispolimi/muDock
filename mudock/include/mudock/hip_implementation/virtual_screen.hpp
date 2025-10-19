@@ -2,6 +2,7 @@
 
 #include <mudock/batch.hpp>
 #include <mudock/chem/autodock_grid_types.hpp>
+#include <mudock/chem/autodock_ligand.hpp>
 #include <mudock/cpp_implementation/chromosome.hpp>
 #include <mudock/grid.hpp>
 #include <mudock/hip_implementation/device.hpp>
@@ -49,6 +50,6 @@ namespace mudock {
   public:
     virtual_screen_hip(const knobs k, const std::shared_ptr<const device> dev);
 
-    void operator()(batch& incoming_batch);
+    void operator()(batch<autodock_ligand>& incoming_batch);
   };
 } // namespace mudock

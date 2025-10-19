@@ -8,9 +8,7 @@ set(header_prefix "mudock")
 list(
   APPEND
   header_files
-  "${header_path}/${header_prefix}/chem/apply_autodock_force_field.hpp"
   "${header_path}/${header_prefix}/chem/assign_autodock_babel_types.hpp"
-  "${header_path}/${header_prefix}/chem/assign_autodock_types.hpp"
   "${header_path}/${header_prefix}/chem/autodock_babel_types.hpp"
   "${header_path}/${header_prefix}/chem/autodock_parameters.hpp"
   "${header_path}/${header_prefix}/chem/autodock_protein.hpp"
@@ -98,9 +96,7 @@ list(
   "${source_path}/log.cpp"
   "${source_path}/cpp_implementation/geometric_transformations_cpp.cpp"
   "${source_path}/cpp_implementation/calc_energy_cpp.cpp")
-set_source_files_properties(
-  "${source_path}/chem/autodock_protein.cpp"
-  PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS} -O2 -g")
+
 if(MUDOCK_ENABLE_GH)
   list(APPEND source_files
        "${source_path}/gh_implementation/geometric_transformations_gh.cpp"
@@ -314,6 +310,7 @@ if(MUDOCK_ENABLE_HIP)
       -use_fast_math>)
   # FIXME
   if(HIP_PLATFORM STREQUAL "nvidia")
+    # FIX ME some platform requires -Wl,-rpath to link the correct CUDA rand lib
     target_link_libraries(libmudock PUBLIC CUDA::curand)
   endif()
 endif()
