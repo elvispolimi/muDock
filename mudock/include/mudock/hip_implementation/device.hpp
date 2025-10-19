@@ -31,6 +31,8 @@ namespace mudock {
 
     device(const std::size_t gpu_id, const autodock_protein& adt_protein);
 
+    [[nodiscard]] std::lock_guard<std::mutex> get_lock() { return std::lock_guard<std::mutex>(mutex); };
+
     hipStream_wrapper get_stream() const;
 
     int get_wavefront() const { return wavefront_size; };
@@ -39,6 +41,7 @@ namespace mudock {
   private:
     int wavefront_size{0};
     hipStream_wrapper stream;
+    std::mutex mutex;
     hipTexture_wrapper atom_tex;
   };
 } // namespace mudock
