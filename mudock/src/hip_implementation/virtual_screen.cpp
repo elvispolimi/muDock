@@ -13,7 +13,7 @@
 #include <mudock/utils.hpp>
 
 namespace mudock {
-  virtual_screen_hip::virtual_screen_hip(const knobs k, const std::shared_ptr<const device> dev)
+  virtual_screen_hip::virtual_screen_hip(const knobs k, std::shared_ptr<device> dev)
       : configuration(k),
         dev(dev),
         stream(dev->get_stream()),
@@ -207,7 +207,8 @@ namespace mudock {
 
     constexpr_for<0, reorder_buffer<autodock_ligand>::atoms_clusters.size(), 1>([&](const auto atoms_index) {
       const auto n_atoms = reorder_buffer<autodock_ligand>::atoms_clusters[atoms_index];
-      if (batch_atoms == n_atoms)
+      if (batch_atoms == n_atoms) {
+        auto lg = dev->get_lock();
         evaluate_fitness<n_atoms>
             <<<batch_ligands, wavefront_size, shared_mem, stream()>>>(num_generations,
                                                                       configuration.tournament_length,
@@ -246,6 +247,9 @@ namespace mudock {
                                                                       hiprand_states.dev_pointer(),
                                                                       ligand_scores.dev_pointer(),
                                                                       best_chromosomes.dev_pointer());
+        MUDOCK_CHECK_KERNELCALL();
+        MUDOCK_CHECK(cudaStreamSynchronize(stream()));
+      }
     });
     // Copy back chromosomes and scores
     best_chromosomes.copy_device2host();

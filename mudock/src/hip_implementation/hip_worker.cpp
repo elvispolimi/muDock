@@ -11,7 +11,7 @@ namespace mudock {
                          std::shared_ptr<safe_stack<autodock_ligand>>& input_molecules,
                          std::shared_ptr<safe_stack<static_molecule>>& output_molecules,
                          std::shared_ptr<reorder_buffer<autodock_ligand>> rb,
-                         const std::shared_ptr<const device> dev)
+                         std::shared_ptr<device> dev)
       : input_stack(input_molecules), output_stack(output_molecules), rob(rb), virtual_screen(knobs, dev) {}
 
   void hip_worker::process(batch<autodock_ligand>& b) {

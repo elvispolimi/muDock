@@ -16,7 +16,7 @@ namespace mudock {
     knobs configuration;
 
     // SYCL queue
-    std::shared_ptr<const device> dev;
+    std::shared_ptr<device> dev;
     sycl::queue queue;
     int subgroup_size;
 
@@ -46,7 +46,7 @@ namespace mudock {
     sycl_random_object random_states;
 
   public:
-    virtual_screen_sycl(const knobs k, const std::shared_ptr<const device> dev);
+    virtual_screen_sycl(const knobs k, std::shared_ptr<device> dev);
 
     void operator()(batch<autodock_ligand>& incoming_batch);
   };

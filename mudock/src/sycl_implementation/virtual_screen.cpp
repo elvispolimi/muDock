@@ -12,7 +12,7 @@
 
 namespace mudock {
 
-  virtual_screen_sycl::virtual_screen_sycl(const knobs k, const std::shared_ptr<const device> dev)
+  virtual_screen_sycl::virtual_screen_sycl(const knobs k, std::shared_ptr<device> dev)
       : configuration(k),
         dev(dev),
         queue(dev->get_queue()),
@@ -204,7 +204,8 @@ namespace mudock {
     constexpr_for<0, reorder_buffer<autodock_ligand>::atoms_clusters.size(), 1>(
         [&, this](const auto atoms_index) {
           const auto n_atoms = reorder_buffer<autodock_ligand>::atoms_clusters[atoms_index];
-          if (batch_atoms == n_atoms)
+          if (batch_atoms == n_atoms) {
+            auto lg = dev->get_lock();
             queue.submit([&, this](sycl::handler &h) {
               const auto num_gen        = configuration.num_generations;
               const auto tournament_len = configuration.tournament_length;
@@ -294,6 +295,8 @@ namespace mudock {
                                               it);
                   });
             });
+            queue.wait();
+          }
         });
 
     // Copy back chromosomes and scores

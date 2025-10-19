@@ -18,7 +18,7 @@ namespace mudock {
   class virtual_screen_hip {
     // the configuration of the GA algorithm
     knobs configuration;
-    std::shared_ptr<const device> dev;
+    std::shared_ptr<device> dev;
     hipStream_wrapper stream;
 
     // Data area
@@ -48,7 +48,7 @@ namespace mudock {
     hip_random_object hiprand_states;
 
   public:
-    virtual_screen_hip(const knobs k, const std::shared_ptr<const device> dev);
+    virtual_screen_hip(const knobs k, std::shared_ptr<device> dev);
 
     void operator()(batch<autodock_ligand>& incoming_batch);
   };
