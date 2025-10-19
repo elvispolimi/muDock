@@ -1,5 +1,6 @@
 #pragma once
 
+#include <functional>
 #include <mudock/chem/autodock_molecule.hpp>
 #include <mudock/chem/autodock_protein.hpp>
 #include <mudock/molecule/fragments.hpp>
@@ -28,8 +29,8 @@ namespace mudock {
 
     // TODO missing remove atom etc...
 
-    void prepare() {
-      autodock_static_molecule::prepare();
+    void prepare(std::function<void(autodock_static_molecule&)> f = {}) {
+      autodock_static_molecule::prepare(f);
       non_bond_list();
       precompute_lennard_jones();
       for (int i = 0; i < (*this).num_atoms(); i++)

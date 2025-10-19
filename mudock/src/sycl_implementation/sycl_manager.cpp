@@ -1,3 +1,4 @@
+#include <mudock/chem/autodock_ligand.hpp>
 #include <mudock/sycl_implementation/sycl_batch_sizer.hpp>
 #include <mudock/sycl_implementation/sycl_manager.hpp>
 #include <mudock/sycl_implementation/sycl_worker.hpp>
@@ -12,7 +13,7 @@ namespace mudock {
                    threadpool& pool,
                    const knobs knobs,
                    const autodock_protein& adt_protein,
-                   std::shared_ptr<safe_stack<static_molecule>>& input_molecules,
+                   std::shared_ptr<safe_stack<autodock_ligand>>& input_molecules,
                    std::shared_ptr<safe_stack<static_molecule>>& output_molecules) {
     // single out the SYCL description
     const auto it =
@@ -90,8 +91,10 @@ namespace mudock {
       // now we need to allocate reorder buffers for all the SYCL wrappers. In theory we can use a single
       // reorder buffer for all of them, but it can become a bottleneck. In the current implementation we
       // go for this solution, but we need to investigate better approaches
-      auto rob = std::make_shared<reorder_buffer>(
-          [dev_ook](const int num_atoms) { return compute_batch_size(dev_ook, num_atoms); });
+      auto rob = std::make_shared<reorder_buffer<autodock_ligand>>(
+          [dev_ook](const int num_atoms, const int num_non_bonds) {
+            return compute_batch_size(dev_ook, num_atoms, num_non_bonds);
+          });
 
       // add the workers that we found parsing the configuration
       for (const auto id: device_ids) {

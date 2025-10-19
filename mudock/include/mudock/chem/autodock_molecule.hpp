@@ -1,8 +1,5 @@
 #pragma once
 
-#include <mudock/chem/apply_autodock_force_field.hpp>
-#include <mudock/chem/assign_autodock_babel_types.hpp>
-#include <mudock/chem/assign_autodock_types.hpp>
 #include <mudock/chem/autodock_babel_types.hpp>
 #include <mudock/chem/autodock_grid_types.hpp>
 #include <mudock/chem/autodock_parameters.hpp>
@@ -108,49 +105,21 @@ namespace mudock {
       molecule<container_aliases>::remove_atom(index);
     }
 
-    void prepare() {
-      // mudock::apply_autodock_forcefield(*this);
-      // allocate memory for the support vectors required to allocate the atoms type
-      const std::size_t num_atoms = molecule<container_aliases>::num_atoms();
-      typename container_aliases::template atoms_size<autodock_ff> mol_autodock_types;
-      mudock::resize(mol_autodock_types, num_atoms);
-
-      std::span<autodock_ff> adt_types;
-      typename container_aliases::template atoms_size<autodock_babel_ff> mol_autodock_babel_types;
-      mudock::resize(mol_autodock_babel_types, num_atoms);
-
-      // create the graph of the molecule
-      const auto graph = make_graph(molecule<container_aliases>::get_bonds(), num_atoms);
-
-      // assign the autodock babel type
-      auto babel_type_span = make_span(mol_autodock_babel_types, num_atoms);
-      assign_autodock_babel_types(babel_type_span,
-                                  molecule<container_aliases>::get_x(),
-                                  molecule<container_aliases>::get_y(),
-                                  molecule<container_aliases>::get_z(),
-                                  molecule<container_aliases>::get_elements(),
-                                  graph);
-
-      // assign the autodock type
-      assign_autodock_types(make_span(mol_autodock_types, num_atoms),
-                            molecule<container_aliases>::get_elements(),
-                            get_is_aromatic(),
-                            babel_type_span,
-                            graph);
-      adt_types = mol_autodock_types;
+    void prepare(std::function<void(autodock_molecule<container_aliases>&)> f = {}) {
+      assign_autodock_types(f);
       // fill the atom properties using the autodock force field
-      for (std::size_t index{0}; index < num_atoms; ++index) {
-        const auto& ff_entry = get_description(mol_autodock_types[index]);
-        autodock_type(index) = ff_entry.value;
-        Rii(index)           = ff_entry.Rii;
-        epsii(index)         = ff_entry.epsii * autodock_parameters::coeff_vdW;
-        vol(index)           = ff_entry.vol;
-        solpar(index)        = ff_entry.solpar;
-        Rij_hb(index)        = ff_entry.Rij_hb;
-        epsij_hb(index)      = ff_entry.epsij_hb * autodock_parameters::coeff_hbond;
-        num_hbond(index)     = ff_entry.hbond;
+      for (int index{0}; index < this->num_atoms(); ++index) {
+        const auto& ff_entry = get_description(atom_autodock_type[index]);
+        // autodock_type(index) = ff_entry.value;
+        Rii(index)       = ff_entry.Rii;
+        epsii(index)     = ff_entry.epsii * autodock_parameters::coeff_vdW;
+        vol(index)       = ff_entry.vol;
+        solpar(index)    = ff_entry.solpar;
+        Rij_hb(index)    = ff_entry.Rij_hb;
+        epsij_hb(index)  = ff_entry.epsij_hb * autodock_parameters::coeff_hbond;
+        num_hbond(index) = ff_entry.hbond;
       }
-    };
+    }
 
   private:
     molecule<container_aliases>::template atoms_array_type<autodock_ff> atom_autodock_type;
@@ -164,8 +133,16 @@ namespace mudock {
     molecule<container_aliases>::template atoms_array_type<fp_type> atom_epsij_hb;
     molecule<container_aliases>::template atoms_array_type<fp_type> atom_charge;
     molecule<container_aliases>::template atoms_array_type<int> atom_num_hbond;
+    void assign_autodock_types(std::function<void(autodock_molecule<container_aliases>&)> f = {});
   };
 
   using autodock_dynamic_molecule = autodock_molecule<dynamic_containers>;
   using autodock_static_molecule  = autodock_molecule<static_containers>;
+
+  template<class T>
+  concept is_autodock_molecule = (std::same_as<std::remove_cvref_t<T>, autodock_static_molecule> ||
+                                  std::same_as<std::remove_cvref_t<T>, autodock_dynamic_molecule>);
+  template<class T>
+  concept derived_from_autodock_molecule =
+      (std::derived_from<T, autodock_static_molecule> || std::derived_from<T, autodock_dynamic_molecule>);
 } // namespace mudock
