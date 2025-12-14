@@ -1,10 +1,9 @@
-#include "mudock/type_alias.hpp"
-
 #include <cassert>
 #include <mudock/cpp_implementation/center_of_mass.hpp>
-#include <mudock/cpp_implementation/geometric_transformations_cpp.hpp>
+#include <mudock/cpp_implementation/mutate_cpp.hpp>
 #include <mudock/cpp_implementation/vectorization.hpp>
 #include <mudock/grid.hpp>
+#include <mudock/type_alias.hpp>
 
 namespace mudock {
   template<>
