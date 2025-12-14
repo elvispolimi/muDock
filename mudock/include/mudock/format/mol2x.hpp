@@ -3,9 +3,8 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
-#include <mudock/chem/autodock_ligand.hpp>
-#include <mudock/chem/autodock_protein.hpp>
 #include <mudock/chem/autodock_types.hpp>
+#include <mudock/molecule.hpp>
 #include <string>
 #include <string_view>
 
@@ -23,8 +22,7 @@ namespace mudock {
     std::string_view::size_type next_molecule_start_index(std::string_view text) const;
 
     template<class molecule_type>
-      requires std::derived_from<molecule_type, autodock_static_molecule> ||
-               std::derived_from<molecule_type, autodock_dynamic_molecule>
+      requires is_molecule<molecule_type>
     static void print(const molecule_type& molecule, std::ostream& out_s) {
       // Header
       out_s << "@<TRIPOS>MOLECULE" << std::endl;
@@ -65,8 +63,7 @@ namespace mudock {
     }
 
     template<class molecule_type>
-      requires std::derived_from<molecule_type, autodock_static_molecule> ||
-               std::derived_from<molecule_type, autodock_dynamic_molecule>
+      requires is_molecule<molecule_type>
     static void parse(molecule_type& molecule, const std::string_view description) {
       std::string line;
       std::istringstream desc{std::string(description)};
