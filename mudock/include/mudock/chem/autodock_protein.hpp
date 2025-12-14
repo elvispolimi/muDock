@@ -1,7 +1,7 @@
 #pragma once
 
 #include <mudock/chem/autodock_grid_types.hpp>
-#include <mudock/chem/autodock_molecule.hpp>
+#include <mudock/chem/autodock_layer.hpp>
 #include <mudock/chem/autodock_parameters.hpp>
 #include <mudock/chem/autodock_types.hpp>
 #include <mudock/chem/grid_const.hpp>
@@ -189,13 +189,20 @@ namespace mudock {
     return adt_protein;
   }
 
-  /**
-   * This data structure represents how autodock encode the target protein. The idea is to represent different
-   * the 3D space using a set discretized grids. Each grid model one property. We always have two grid to
-   * represent electrostatic and desolvation components. Then, we can have a set of grid that represent a
-   * contribution for different ligand's atom types.
-   */
-  struct autodock_protein: public autodock_dynamic_molecule {
+  struct autodock_grid {
+    autodock_grid(const point3D min, const point3D max, const fp_type resolution)
+        : index(min.difference(max)
+                    .apply(std::abs<fp_type>)
+                    .divide({resolution})
+                    .apply(static_cast<fp_type (*)(fp_type)>(std::ceil))
+                    .add({fp_type{1}})),
+          data(index.size_x(), index.size_y(), index.size_z(), num_autodock_grids()),
+          _inv_resolution(1 / resolution),
+          _min(min),
+          _max(max),
+          _center{max.difference(min).divide({fp_type{2}}).add(min)} {};
+    autodock_grid() {};
+
     inline auto get_atom_map(const autodock_grid_type type) {
       return space_grid_view<fp_type>{
           _min,
@@ -215,8 +222,7 @@ namespace mudock {
           data.get_slice(md_index<4>{index.size_x(), index.size_y(), index.size_z(), static_cast<int>(type)},
                          index)};
     };
-    [[nodiscard]] inline auto get_eletrostatic() { return get_atom_map(autodock_grid_type::ELEC); };
-    [[nodiscard]] inline auto get_desolvation() { return get_atom_map(autodock_grid_type::DESOLV); };
+
     [[nodiscard]] inline auto get_map_flat_size() const { return index.flat_size(); };
     [[nodiscard]] inline const auto* get_maps_pointer() const { return data.data(); };
     [[nodiscard]] inline auto* get_min_p() const { return _min.data(); };
@@ -230,29 +236,56 @@ namespace mudock {
     [[nodiscard]] inline auto get_size_xy() const { return index.size_xy(); };
     [[nodiscard]] inline auto get_size_xyz() const { return index.flat_size(); };
 
-    autodock_protein(const point3D min, const point3D max, const fp_type resolution)
-        : index(min.difference(max)
-                    .apply(std::abs<fp_type>)
-                    .divide({resolution})
-                    .apply(static_cast<fp_type (*)(fp_type)>(std::ceil))
-                    .add({fp_type{1}})),
-          data(index.size_x(), index.size_y(), index.size_z(), num_autodock_grids()),
-          _inv_resolution(1 / resolution),
-          _min(min),
-          _max(max),
-          _center{max.difference(min).divide({fp_type{2}}).add(min)} {};
-    autodock_protein() {};
+    md_index<3> index;
+    md_container<std::vector<fp_type>, 4> data;
+    fp_type _inv_resolution = 2;
+    point<fp_type, 3> _min, _max, _center;
+  };
+
+  /**
+   * This data structure represents how autodock encode the target protein. The idea is to represent different
+   * the 3D space using a set discretized grids. Each grid model one property. We always have two grid to
+   * represent electrostatic and desolvation components. Then, we can have a set of grid that represent a
+   * contribution for different ligand's atom types.
+   */
+  struct autodock_protein: public autodock_dynamic_layer {
+    inline auto get_atom_map(const autodock_grid_type type) { return adt_grid.get_atom_map(type); };
+
+    inline auto get_atom_map(const autodock_grid_type type) const { return adt_grid.get_atom_map(type); };
+    [[nodiscard]] inline auto get_eletrostatic() { return get_atom_map(autodock_grid_type::ELEC); };
+    [[nodiscard]] inline auto get_desolvation() { return get_atom_map(autodock_grid_type::DESOLV); };
+    [[nodiscard]] inline auto get_map_flat_size() const { return adt_grid.get_map_flat_size(); };
+    [[nodiscard]] inline const auto* get_maps_pointer() const { return adt_grid.get_maps_pointer(); };
+    [[nodiscard]] inline auto* get_min_p() const { return adt_grid.get_min_p(); };
+    [[nodiscard]] inline auto* get_max_p() const { return adt_grid.get_max_p(); };
+    [[nodiscard]] inline auto* get_center_p() const { return adt_grid.get_center_p(); };
+    [[nodiscard]] inline auto get_center() const { return adt_grid.get_center(); };
+    [[nodiscard]] inline auto get_min() const { return adt_grid.get_min(); };
+    [[nodiscard]] inline auto get_max() const { return adt_grid.get_max(); };
+
+    [[nodiscard]] inline auto get_size_x() const { return adt_grid.get_size_x(); };
+    [[nodiscard]] inline auto get_size_xy() const { return adt_grid.get_size_xy(); };
+    [[nodiscard]] inline auto get_size_xyz() const { return adt_grid.get_map_flat_size(); };
+
+    autodock_protein(const point3D min,
+                     const point3D max,
+                     const fp_type resolution,
+                     dynamic_molecule& _molecule,
+                     std::function<void(autodock_dynamic_layer&)> f = {})
+        : autodock_dynamic_layer(_molecule, f), adt_grid(min, max, resolution) {
+      autodock_protein::prepare();
+    };
+    autodock_protein(dynamic_molecule& _molecule, std::function<void(autodock_dynamic_layer&)> f = {})
+        : autodock_dynamic_layer(_molecule, f) {
+      autodock_protein::prepare();
+    };
 
     const std::array<fp_type, num_radius_tick_elect> electrostatic_energies = {compute_electostatic_energy()};
     const std::array<fp_type, num_radius_tick_desolv> desolvation_energies  = {compute_desolvation_energy()};
     const md_vector<fp_type, 3> vdw_energies = {compute_vdw_interaction_energies()};
 
+  private:
+    autodock_grid adt_grid;
     void prepare();
-
-    // private:
-    md_index<3> index;
-    md_container<std::vector<fp_type>, 4> data;
-    fp_type _inv_resolution = 2;
-    point<fp_type, 3> _min, _max, _center;
   };
 } // namespace mudock
