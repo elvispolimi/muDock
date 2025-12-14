@@ -95,16 +95,16 @@ if(MUDOCK_ENABLE_TEST)
                CXX_EXTENSIONS OFF)
   target_link_libraries(test_score_adt libmudock Boost::program_options)
 
-  add_executable_mudock(test_score
-                        "${CMAKE_CURRENT_SOURCE_DIR}/src/tests/score_test.cpp")
-  target_include_directories(test_score
+  add_executable_mudock(test_score_adt_impl
+                        "${CMAKE_CURRENT_SOURCE_DIR}/src/tests/adt_impl_score_test.cpp")
+  target_include_directories(test_score_adt_impl
                              PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/")
   set_target_properties(
-    test_score
+    test_score_adt_impl
     PROPERTIES CXX_STANDARD 20
                CXX_STANDARD_REQUIRED ON
                CXX_EXTENSIONS OFF)
-  target_link_libraries(test_score libmudock Boost::program_options)
+  target_link_libraries(test_score_adt_impl libmudock Boost::program_options)
 endif()
 
 if(MUDOCK_ENABLE_LIKWID)

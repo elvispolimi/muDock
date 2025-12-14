@@ -6,7 +6,6 @@
 #include <fstream>
 #include <mudock/chem/autodock_grid_types.hpp>
 #include <mudock/chem/autodock_ligand.hpp>
-#include <mudock/chem/autodock_molecule.hpp>
 #include <mudock/chem/autodock_protein.hpp>
 #include <mudock/chem/grid_const.hpp>
 #include <mudock/format/ob_wrapper.hpp>
@@ -20,6 +19,7 @@
 #include <mudock/utils.hpp>
 #include <regex>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 using namespace std::placeholders;
 
@@ -47,7 +47,7 @@ struct dpf_tokens {
 static constexpr auto SCORE_TOKEN       = "AUTODOCK_SCORE";
 static constexpr auto ERROR_SCORE_TOKEN = "AUTODOCK_ERROR_CORRECTION";
 
-static inline mudock::autodock_protein load_autogrid_map_fld(const std::string& fld_path) {
+static inline mudock::autodock_grid load_autogrid_map_fld(const std::string& fld_path) {
   mudock::info("Reading and parsing FLD file ", fld_path, " for autogrid maps ...");
 
   std::string line;
@@ -137,13 +137,13 @@ static inline mudock::autodock_protein load_autogrid_map_fld(const std::string& 
   }
   sizes = {x, y, z};
 
-  mudock::autodock_protein adt_protein{min, max, mudock::grid_spacing};
-  assert(adt_protein.index == static_cast<mudock::md_index<3>>(sizes));
+  mudock::autodock_grid adt_grid{min, max, mudock::grid_spacing};
+  assert(adt_grid.index == static_cast<mudock::md_index<3>>(sizes));
 
   for (int map_index = 0; map_index < mudock::num_autodock_grids(); ++map_index) {
     if (grids_filepath[map_index].empty())
       continue;
-    auto map = adt_protein.get_atom_map(static_cast<mudock::autodock_grid_type>(map_index));
+    auto map = adt_grid.get_atom_map(static_cast<mudock::autodock_grid_type>(map_index));
 
     const auto map_desc = read_from_stream(std::ifstream(grids_filepath[map_index]));
     std::stringstream map_desc_s{map_desc};
@@ -166,11 +166,11 @@ static inline mudock::autodock_protein load_autogrid_map_fld(const std::string& 
     assert(line.empty());
   }
 
-  return adt_protein;
+  return adt_grid;
 }
 
 // Function to read AutoDock map file and load it into GridMap
-static inline mudock::autodock_protein load_autogrid_map_dpf(const std::string& dpf_path) {
+static inline mudock::autodock_grid load_autogrid_map_dpf(const std::string& dpf_path) {
   mudock::info("Reading and parsing DPF file ", dpf_path, " for autogrid maps ...");
   const auto desc = read_from_stream(std::ifstream(dpf_path));
   std::stringstream desc_s{desc};
@@ -237,13 +237,12 @@ static inline mudock::fp_type load_autodock_error_score(const std::string& dpf_p
   return adt_error_score;
 }
 
-static inline mudock::autodock_ligand load_autogrid_ligand(const std::string& dpf_path) {
+static inline std::string get_ligand_path(const std::string& dpf_path) {
   mudock::info("Reading and parsing DPF file ", dpf_path, " for ligand ...");
   const auto desc = read_from_stream(std::ifstream(dpf_path));
   std::stringstream desc_s{desc};
 
   std::string line;
-  mudock::autodock_ligand ligand;
   // TODO check if you can get rid of this and use mudock autogrid maps
   while (std::getline(desc_s, line)) {
     // Skip empty lines
@@ -255,14 +254,8 @@ static inline mudock::autodock_ligand load_autogrid_ligand(const std::string& dp
       std::string ligand_path, _;
       ss >> _ >> ligand_path;
 
-      mudock::parse<mudock::autodock_ligand, mudock::pdbqt_rotate_check>(ligand, ligand_path);
-      // mudock::apply_autodock_forcefield_pdbqt(ligand, ligand_path);
-      ligand.prepare(std::function<void(mudock::autodock_static_molecule&)>{
-          [ligand_path](mudock::autodock_static_molecule& l) {
-            mudock::apply_autodock_forcefield_pdbqt(l, ligand_path);
-          }});
-      break;
+      return ligand_path;
     }
   }
-  return ligand;
+  throw std::runtime_error("Cannot file ligand path inside given PDF file");
 }
