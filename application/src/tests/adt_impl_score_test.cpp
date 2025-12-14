@@ -3,22 +3,22 @@
 #include <cstdlib>
 #include <filesystem>
 #include <memory>
-#include <mudock/chem/autodock_grid_types.hpp>
 #include <mudock/chem/autodock_ligand.hpp>
 #include <mudock/chem/autodock_protein.hpp>
-#include <mudock/cpp_implementation/vectorization.hpp>
-#include <mudock/format/ob_wrapper.hpp>
-#include <mudock/format/pdbqt.hpp>
+#include <mudock/compute/adt_score.hpp>
+#include <mudock/compute/manager.hpp>
+#include <mudock/compute/pipeline.hpp>
+#include <mudock/compute/scratchpad.hpp>
+#include <mudock/format/reader.hpp>
 #include <mudock/knobs.hpp>
 #include <mudock/log.hpp>
-#include <mudock/molecule.hpp>
-#include <mudock/molecule/fragments.hpp>
 #include <mudock/mudock.hpp>
 #include <mudock/type_alias.hpp>
 #include <mudock/utils.hpp>
 #include <sstream>
 #include <string>
 #include <tests/autogrid.hpp>
+#include <utility>
 
 int main(int argc, char* argv[]) {
   namespace po                          = boost::program_options;
@@ -49,22 +49,22 @@ int main(int argc, char* argv[]) {
   po::notify(vm);
 
   mudock::info("Reading and parsing protein ", protein_path, " ...");
-  auto protein = std::make_shared<mudock::autodock_protein>();
-  parse(*protein, protein_path);
-  protein->prepare();
+  auto protein =
+      std::make_shared<mudock::dynamic_molecule>(mudock::parser<mudock::dynamic_molecule>(protein_path));
 
   mudock::info("Reading and parsing ligand ", ligand_path, " ...");
-  auto ligand = std::make_unique<mudock::autodock_ligand>();
-  mudock::parse(*ligand, ligand_path);
-  ligand->prepare();
+  auto ligand =
+      std::make_shared<mudock::static_molecule>(mudock::parser<mudock::static_molecule>(ligand_path));
+
+  mudock::adt_score_pipeline pipe{protein};
 
   mudock::info("Generating score reference ...");
   auto output_queue = std::make_shared<mudock::safe_stack<mudock::static_molecule>>();
-  auto input_queue  = std::make_shared<mudock::safe_stack<mudock::autodock_ligand>>();
-  input_queue->enqueue(std::make_unique<mudock::autodock_ligand>(mudock::autodock_ligand(*ligand)));
+  auto input_queue  = std::make_shared<mudock::safe_stack<mudock::static_molecule>>();
+  input_queue->enqueue(std::make_unique<mudock::static_molecule>(*ligand));
   {
     auto threadpool = mudock::threadpool();
-    mudock::manage_cpp({std::string{use_cpu_conf}}, threadpool, *protein, knobs, input_queue, output_queue);
+    mudock::manager({std::string{use_cpu_conf}}, threadpool, knobs, input_queue, output_queue, pipe);
   }
   auto ligand_out = output_queue->dequeue();
   std::stringstream ss(ligand_out->properties.get(mudock::property_type::SCORE));
@@ -73,14 +73,10 @@ int main(int argc, char* argv[]) {
 
   for (auto& conf: device_confs) {
     mudock::info("Comparing reference with ", conf, " ...");
-    input_queue->enqueue(std::make_unique<mudock::autodock_ligand>(mudock::autodock_ligand(*ligand)));
+    input_queue->enqueue(std::make_unique<mudock::static_molecule>(*ligand));
     {
       auto threadpool = mudock::threadpool();
-      mudock::manage_cpp({conf}, threadpool, *protein, knobs, input_queue, output_queue);
-      mudock::manage_cuda({conf}, threadpool, knobs, *protein, input_queue, output_queue);
-      mudock::manage_hip({conf}, threadpool, knobs, *protein, input_queue, output_queue);
-      mudock::manage_sycl({conf}, threadpool, knobs, *protein, input_queue, output_queue);
-      mudock::manage_omp({conf}, threadpool, knobs, *protein, input_queue, output_queue);
+      mudock::manager({std::string{conf}}, threadpool, knobs, input_queue, output_queue, pipe);
     }
     ligand_out = output_queue->dequeue();
     std::stringstream sss(ligand_out->properties.get(mudock::property_type::SCORE));
@@ -89,7 +85,7 @@ int main(int argc, char* argv[]) {
     const auto diff = std::abs(score - reference_score);
     // const auto error        = std::max(reference_score * mudock::fp_type{0.001}, mudock::fp_type{0.1});
     const auto max_absolute = std::max(std::fabs(score), std::fabs(reference_score)) / 100;
-    const auto error        = std::clamp(max_absolute, float{0.001}, float{5});
+    const auto error        = std::clamp(max_absolute, mudock::fp_type{0.001}, mudock::fp_type{5});
     if (diff > error) {
       mudock::error(std::format(
           "Difference betweem scores of {} on {} ( CPU {} vs {} {} with an error threshold of {})",

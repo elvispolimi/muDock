@@ -8,6 +8,7 @@
 #include <mudock/chem/autodock_protein.hpp>
 #include <mudock/format.hpp>
 #include <mudock/format/pdbqt.hpp>
+#include <mudock/format/reader.hpp>
 #include <mudock/log.hpp>
 #include <mudock/mudock.hpp>
 #include <mudock/type_alias.hpp>
@@ -15,6 +16,7 @@
 #include <stdexcept>
 #include <string>
 #include <tests/autogrid.hpp>
+#include <utility>
 
 template<class T>
 inline T round3dp(const T x) {
@@ -45,16 +47,18 @@ int main(int argc, char* argv[]) {
 
     po::notify(vm);
 
-    auto protein = std::make_shared<mudock::autodock_protein>();
-    parse(*protein, pdbqt_path);
-    mudock::apply_autodock_forcefield_pdbqt(*protein, pdbqt_path);
-    protein->prepare();
+    mudock::dynamic_molecule protein = mudock::parser<mudock::dynamic_molecule>(pdbqt_path);
+    auto f =
+        std::function<void(mudock::autodock_dynamic_layer&)>{[pdbqt_path](mudock::autodock_dynamic_layer& l) {
+          mudock::apply_autodock_forcefield_pdbqt(l, pdbqt_path);
+        }};
+    mudock::autodock_protein adt_protein{protein, f};
 
-    mudock::autodock_protein protein_autogrid = load_autogrid_map_fld(fld_path);
+    mudock::autodock_grid protein_autogrid = load_autogrid_map_fld(fld_path);
 
     for (int map_index = 0; map_index < mudock::num_autodock_grids(); ++map_index) {
       const auto map_type           = static_cast<mudock::autodock_grid_type>(map_index);
-      const auto reference_grid_map = protein->get_atom_map(map_type);
+      const auto reference_grid_map = adt_protein.get_atom_map(map_type);
       const auto autogrid_map       = protein_autogrid.get_atom_map(map_type);
 
       for (size_t k = 0; k < std::min(reference_grid_map.z(), autogrid_map.z()); ++k)

@@ -1,4 +1,3 @@
-#include "mudock/format/pdbqt.hpp"
 #include "mudock/molecule.hpp"
 
 #include <boost/program_options.hpp>
@@ -7,8 +6,8 @@
 #include <filesystem>
 #include <iostream>
 #include <mudock/compute/safe_stack.hpp>
-#include <mudock/format/ob_wrapper.hpp>
-#include <mudock/format/supported_format.hpp>
+#include <mudock/format/reader.hpp>
+#include <mudock/format/writer.hpp>
 #include <mudock/log.hpp>
 #include <mudock/splitter.hpp>
 #include <stdexcept>
@@ -52,7 +51,7 @@ int main(int argc, char* argv[]) {
         auto ligands_description = split(std::move(input_text));
         ligands_description.emplace_back(split.flush());
         // parse the input ligands and put them in a stack that we can compute
-        mudock::info("Parsing ", ligands_description.size(), " ligand(s) ...");
+        mudock::info("Parsing ", ligands_description.size(), " compound(s) ...");
         constexpr_switch<0, mudock::get_num_supported_format(), 1>(
             [&](const auto format_index_out) {
               constexpr mudock::supported_format out_format =
@@ -63,7 +62,9 @@ int main(int argc, char* argv[]) {
 
               for (const auto& description: ligands_description) {
                 try {
-                  mudock::format_writer<out_format>(mudock::format_parser<in_format>(description), ofs);
+                  mudock::writer<out_format, mudock::dynamic_molecule>(
+                      mudock::parser<in_format, mudock::dynamic_molecule>(description),
+                      ofs);
                 } catch (...) {}
               }
             },
