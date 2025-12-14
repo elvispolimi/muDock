@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <fstream>
+#include <mudock/chem/autodock_layer.hpp>
 #include <mudock/chem/autodock_ligand.hpp>
 #include <mudock/chem/autodock_parameters.hpp>
 #include <mudock/chem/autodock_protein.hpp>
@@ -20,8 +21,8 @@ namespace mudock {
   // The following function relies on the same order of atom loading and file
   // FIXME use the same approach as for the check rotor
   template<class molecule_type>
-    requires std::derived_from<molecule_type, autodock_static_molecule> ||
-             std::derived_from<molecule_type, autodock_dynamic_molecule>
+    requires std::derived_from<molecule_type, autodock_static_layer> ||
+             std::derived_from<molecule_type, autodock_dynamic_layer>
   void apply_autodock_forcefield_pdbqt(molecule_type& molecule, const std::filesystem::path input_path) {
     const auto desc = read_from_stream(std::ifstream(input_path));
     std::stringstream desc_s{desc};
@@ -44,17 +45,17 @@ namespace mudock {
           adt_value.pop_back();
         // FIX ME add check that the order of atoms is the same
 
-        const auto adt                = parse_autodock_type(adt_value);
-        molecule.autodock_type(index) = adt;
-        const auto& ff_entry          = get_description(adt);
-        molecule.autodock_type(index) = ff_entry.value;
-        molecule.Rii(index)           = ff_entry.Rii;
-        molecule.epsii(index)         = ff_entry.epsii * autodock_parameters::coeff_vdW;
-        molecule.vol(index)           = ff_entry.vol;
-        molecule.solpar(index)        = ff_entry.solpar;
-        molecule.Rij_hb(index)        = ff_entry.Rij_hb;
-        molecule.epsij_hb(index)      = ff_entry.epsij_hb * autodock_parameters::coeff_hbond;
-        molecule.num_hbond(index)     = ff_entry.hbond;
+        const auto adt                  = parse_autodock_type(adt_value);
+        molecule().autodock_type(index) = adt;
+        const auto& ff_entry            = get_description(adt);
+        // molecule.autodock_type(index)   = ff_entry.value;
+        molecule.Rii(index)         = ff_entry.Rii;
+        molecule.epsii(index)       = ff_entry.epsii * autodock_parameters::coeff_vdW;
+        molecule.vol(index)         = ff_entry.vol;
+        molecule.solpar(index)      = ff_entry.solpar;
+        molecule.Rij_hb(index)      = ff_entry.Rij_hb;
+        molecule.epsij_hb(index)    = ff_entry.epsij_hb * autodock_parameters::coeff_hbond;
+        molecule().num_hbond(index) = ff_entry.hbond;
         ++index;
       }
     }
