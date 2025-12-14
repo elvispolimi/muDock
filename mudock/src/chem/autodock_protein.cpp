@@ -1,4 +1,3 @@
-#include "mudock/chem/autodock_molecule.hpp"
 
 #include <algorithm>
 #include <array>
@@ -133,8 +132,18 @@ namespace mudock {
               if ((c_d2 < fp_type{2.89} && c_neigh_element != element::H) ||
                   (c_d2 < fp_type{1.69} && c_neigh_element == element::H)) {
                 // C=O cross C-X gives the lone pair plane normal
+                // adt_protein.vector2[atom_index] =
+                //     std::as_const(adt_protein.vector1[atom_index]).product(c_norm).normalize();
                 adt_protein.vector2[atom_index] =
-                    std::as_const(adt_protein.vector1[atom_index]).product(c_norm).normalize();
+                    point3D{
+                        adt_protein.vector1[atom_index].y() * c_norm.z() -
+                            adt_protein.vector1[atom_index].z() * c_norm.y(),
+                        adt_protein.vector1[atom_index].z() * c_norm.x() -
+                            adt_protein.vector1[atom_index].x() * c_norm.z(),
+                        adt_protein.vector1[atom_index].x() * c_norm.y() -
+                            adt_protein.vector1[atom_index].y() * c_norm.x(),
+                    }
+                        .normalize();
               }
             }
           }
@@ -220,7 +229,7 @@ namespace mudock {
   //===------------------------------------------------------------------------------------------------------
 
   void autodock_protein::prepare() {
-    autodock_dynamic_molecule::prepare();
+    // autodock_dynamic_layer::prepare();
     static const auto vdw_shapes = compute_vdw_interaction_shapes();
     auto graph                   = make_graph(this->get_bonds(), num_atoms());
 
@@ -249,26 +258,16 @@ namespace mudock {
 
     // find out the geometries of HBonds from the protein
     const auto [vector1, vector2, exp, disorder] =
-        compute_hbon_geometries(x, y, z, get_num_hbond(), get_elements(), graph);
+        compute_hbon_geometries(x, y, z, this->get_base_molecule().get_num_hbond(), get_elements(), graph);
 
     // declare the maps that will describe the protein
-    // autodock_protein adt_protein{min, max, resolution};
-    index           = {min.difference(max)
-                           .apply(std::abs<fp_type>)
-                           .divide({resolution})
-                           .apply(static_cast<fp_type (*)(fp_type)>(std::ceil))
-                           .add({fp_type{1}})};
-    data            = {index.size_x(), index.size_y(), index.size_z(), num_autodock_grids()};
-    _inv_resolution = (1 / resolution);
-    _min            = min;
-    _max            = max;
-    _center         = {max.difference(min).divide({fp_type{2}}).add(min)};
+    adt_grid = {min, max, resolution};
 
     // get the remaining protein information
-    const auto charge         = autodock_dynamic_molecule::get_charge();
+    const auto charge         = this->get_base_molecule().get_charge();
     const auto volume         = get_vol();
-    const auto num_hbonds     = get_num_hbond();
-    const auto autodock_types = get_autodock_type();
+    const auto num_hbonds     = this->get_base_molecule().get_num_hbond();
+    const auto autodock_types = this->get_base_molecule().get_autodock_type();
     const auto size_x         = get_eletrostatic().size<0>();
     const auto size_y         = get_eletrostatic().size<1>();
     const auto size_z         = get_eletrostatic().size<2>();
@@ -434,7 +433,6 @@ namespace mudock {
                   } else {
                     voxel_scratch.energy += vdw_hb_value;
                   } /* end hbonder tests */
-
                   voxel_scratch.energy +=
                       ligand_desc.solpar * protein_desc.vol * desolvation_energies[indx_r] +
                       (protein_desc.solpar + solpar_q * std::fabs(charge[i])) * ligand_desc.vol *

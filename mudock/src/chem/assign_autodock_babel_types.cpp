@@ -25,11 +25,12 @@ namespace mudock {
   }
 
   class is_heavy_edge {
-    const std::span<element>& elements;
+    const std::span<const element>& elements;
     const molecule_graph_type& graph;
 
   public:
-    inline is_heavy_edge(const std::span<element>& e, const molecule_graph_type& g): elements(e), graph(g) {}
+    inline is_heavy_edge(const std::span<const element>& e, const molecule_graph_type& g)
+        : elements(e), graph(g) {}
 
     inline auto operator()(const molecule_graph_type::edge_descriptor edge) {
       return elements[graph[boost::target(edge, graph)].atom_index] != element::H;
@@ -37,11 +38,12 @@ namespace mudock {
   };
 
   class is_free_ox {
-    const std::span<element>& elements;
+    const std::span<const element>& elements;
     const molecule_graph_type& graph;
 
   public:
-    inline is_free_ox(const std::span<element>& e, const molecule_graph_type& g): elements(e), graph(g) {}
+    inline is_free_ox(const std::span<const element>& e, const molecule_graph_type& g)
+        : elements(e), graph(g) {}
 
     inline auto operator()(const molecule_graph_type::edge_descriptor edge) {
       const auto vertex = boost::target(edge, graph);
@@ -53,10 +55,10 @@ namespace mudock {
   template<class callable>
   static auto is_any_neigh_close(const molecule_graph_type::vertex_descriptor v,
                                  const molecule_graph_type& graph,
-                                 const std::span<element>& elements,
-                                 const std::span<fp_type>& x,
-                                 const std::span<fp_type>& y,
-                                 const std::span<fp_type>& z,
+                                 const std::span<const element>& elements,
+                                 const std::span<const fp_type>& x,
+                                 const std::span<const fp_type>& y,
+                                 const std::span<const fp_type>& z,
                                  callable&& op) {
     const auto [neigh_begin, neigh_end] = boost::out_edges(v, graph);
     const auto vertex_index             = graph[v].atom_index;
@@ -71,9 +73,9 @@ namespace mudock {
 
   static auto find_mean_angle_3_neighbors(const molecule_graph_type::vertex_descriptor v,
                                           const molecule_graph_type& graph,
-                                          const std::span<fp_type>& x,
-                                          const std::span<fp_type>& y,
-                                          const std::span<fp_type>& z) {
+                                          const std::span<const fp_type>& x,
+                                          const std::span<const fp_type>& y,
+                                          const std::span<const fp_type>& z) {
     const auto origin_index = graph[v].atom_index;
     std::array<int, 3> neighbors_index;
     const auto [begin, end] = boost::out_edges(v, graph);
@@ -92,9 +94,9 @@ namespace mudock {
 
   static auto find_angle_2_neighbors(const molecule_graph_type::vertex_descriptor v,
                                      const molecule_graph_type& graph,
-                                     const std::span<fp_type>& x,
-                                     const std::span<fp_type>& y,
-                                     const std::span<fp_type>& z) {
+                                     const std::span<const fp_type>& x,
+                                     const std::span<const fp_type>& y,
+                                     const std::span<const fp_type>& z) {
     const auto origin_index = graph[v].atom_index;
     std::array<int, 2> neighbors_index;
     const auto [begin, end] = boost::out_edges(v, graph);
@@ -114,7 +116,7 @@ namespace mudock {
   // Utility function to set the initial atom type
   //===------------------------------------------------------------------------------------------------------
 
-  static auto handleH(const std::span<element>& elements,
+  static auto handleH(const std::span<const element>& elements,
                       const molecule_graph_type& graph,
                       const molecule_graph_type::vertex_descriptor v) -> autodock_babel_ff {
     assert(elements[graph[v].atom_index] == element::H);
@@ -125,10 +127,10 @@ namespace mudock {
     return std::all_of(begin, end, is_not_carbon) ? autodock_babel_ff::H : autodock_babel_ff::HC;
   }
 
-  static auto handleC(const std::span<element>& elements,
-                      const std::span<fp_type>& x,
-                      const std::span<fp_type>& y,
-                      const std::span<fp_type>& z,
+  static auto handleC(const std::span<const element>& elements,
+                      const std::span<const fp_type>& x,
+                      const std::span<const fp_type>& y,
+                      const std::span<const fp_type>& z,
                       const molecule_graph_type& graph,
                       const molecule_graph_type::vertex_descriptor v) -> autodock_babel_ff {
     const auto num_neighbors = boost::out_degree(v, graph);
@@ -182,10 +184,10 @@ namespace mudock {
     return autodock_babel_ff::C;
   }
 
-  static auto handleN(const std::span<element>& elements,
-                      const std::span<fp_type>& x,
-                      const std::span<fp_type>& y,
-                      const std::span<fp_type>& z,
+  static auto handleN(const std::span<const element>& elements,
+                      const std::span<const fp_type>& x,
+                      const std::span<const fp_type>& y,
+                      const std::span<const fp_type>& z,
                       const molecule_graph_type& graph,
                       const molecule_graph_type::vertex_descriptor v) -> autodock_babel_ff {
     const auto num_neighbors = boost::out_degree(v, graph);
@@ -243,7 +245,7 @@ namespace mudock {
     return autodock_babel_ff::O;
   }
 
-  static auto handleP(const std::span<element>& elements,
+  static auto handleP(const std::span<const element>& elements,
                       const molecule_graph_type& graph,
                       const molecule_graph_type::vertex_descriptor v) -> autodock_babel_ff {
     const auto num_neighbors = boost::out_degree(v, graph);
@@ -260,7 +262,7 @@ namespace mudock {
     return autodock_babel_ff::P;
   }
 
-  static auto handleS(const std::span<element>& elements,
+  static auto handleS(const std::span<const element>& elements,
                       const molecule_graph_type& graph,
                       const molecule_graph_type::vertex_descriptor v) -> autodock_babel_ff {
     const auto num_neighbors = boost::out_degree(v, graph);

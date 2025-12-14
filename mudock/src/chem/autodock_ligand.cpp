@@ -1,4 +1,3 @@
-#include "mudock/chem/autodock_molecule.hpp"
 
 #include <cstdint>
 #include <mudock/chem/autodock_ligand.hpp>
@@ -178,17 +177,17 @@ namespace mudock {
   }
 
   void autodock_ligand::non_bond_list() {
-    const auto num_atoms = autodock_static_molecule::num_atoms();
+    const auto num_atoms = this->get_base_molecule().num_atoms();
 
-    auto graph = make_graph(autodock_static_molecule::get_bonds(), num_atoms);
+    auto graph = make_graph(this->get_base_molecule().get_bonds(), num_atoms);
     const auto ligand_fragments =
         std::make_unique<mudock::fragments<mudock::static_containers>>(graph,
-                                                                       autodock_static_molecule::get_bonds(),
+                                                                       this->get_base_molecule().get_bonds(),
                                                                        num_atoms);
 
     md_container<std::vector<uint_fast8_t>, 2> nbmatrix{num_atoms, num_atoms};
     // grid<uint_fast8_t, index2D> nbmatrix{{num_atoms, num_atoms}};
-    nonbonds(nbmatrix, autodock_static_molecule::get_bonds(), num_atoms);
+    nonbonds(nbmatrix, this->get_base_molecule().get_bonds(), num_atoms);
     weed_bonds(nbmatrix, num_atoms, *ligand_fragments);
   }
 
@@ -201,8 +200,8 @@ namespace mudock {
       const int& a1 = non_bond_list_a1[index];
       const int& a2 = non_bond_list_a2[index];
 
-      const auto& hbond_i    = num_hbond(a1);
-      const auto& hbond_j    = num_hbond(a2);
+      const auto& hbond_i    = this->get_base_molecule().num_hbond(a1);
+      const auto& hbond_j    = this->get_base_molecule().num_hbond(a2);
       const auto& Rij_hb_i   = Rij_hb(a1);
       const auto& Rij_hb_j   = Rij_hb(a2);
       const auto& Rii_i      = Rii(a1);
