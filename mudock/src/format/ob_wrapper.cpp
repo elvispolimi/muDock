@@ -1,11 +1,4 @@
-#include "mudock/chem/autodock_protein.hpp"
-
-#include <algorithm>
 #include <cassert>
-#include <fstream>
-#include <memory>
-#include <mudock/chem/autodock_ligand.hpp>
-#include <mudock/chem/autodock_molecule.hpp>
 #include <mudock/format/ob_wrapper.hpp>
 #include <mudock/format/supported_format.hpp>
 #include <mudock/molecule.hpp>
@@ -19,163 +12,8 @@
 #include <openbabel/obutil.h>
 #include <openbabel/plugin.h>
 #include <stdexcept>
-#include <string_view>
 
 namespace mudock {
-
-  void writer(const ob_mol_wrapper& mol, const std::filesystem::path out_path) {
-    const auto format = parse_supported_format(out_path);
-
-    constexpr_switch<0, get_num_supported_format(), 1>(
-        [&](const auto format_index) {
-          format_writer<static_cast<supported_format>(format_index())>(mol, out_path);
-        },
-        format);
-  }
-
-  template<supported_format format>
-  ob_mol_wrapper ob_parser(const std::string_view description) {
-    OpenBabel::obErrorLog.SetOutputLevel(OpenBabel::obMessageLevel::obError); // Silence everything
-    OpenBabel::OBConversion conv;
-    const std::string ext{parse_supported_format(format)};
-    conv.SetInFormat(ext.c_str());
-
-    std::istringstream desc{std::string(description)};
-    auto mol = std::make_unique<OpenBabel::OBMol>();
-    if (!conv.Read(mol.get(), &desc)) {
-      mudock::error(std::format("Couldn't open {} file", ext));
-      throw std::runtime_error(std::format("{} Parser failed, look to logs for details", ext));
-    }
-    return mol;
-  }
-
-  template<>
-  ob_mol_wrapper format_parser<supported_format::PDBQT>(const std::string_view description) {
-    auto mol = ob_parser<supported_format::PDBQT>(description);
-
-    return mol;
-  }
-
-  template<>
-  ob_mol_wrapper format_parser<supported_format::PDB>(const std::string_view description) {
-    auto mol = ob_parser<supported_format::PDB>(description);
-
-    return mol;
-  }
-
-  template<>
-  ob_mol_wrapper format_parser<supported_format::MOL2>(const std::string_view description) {
-    auto mol = ob_parser<supported_format::MOL2>(description);
-    return mol;
-  }
-  template<>
-  ob_mol_wrapper format_parser<supported_format::MOL2X>(const std::string_view description) {
-    autodock_ligand mol;
-    mol2x::parse(mol, description);
-
-    std::ostringstream oss;
-    mol2::print(mol, oss);
-
-    std::string s = oss.str();
-    std::string_view mol2_description{s};
-    return format_parser<supported_format::MOL2>(mol2_description);
-  }
-  template<>
-  void format_parser<supported_format::MOL2X, autodock_ligand>(autodock_ligand& mol,
-                                                               const std::string_view description) {
-    mol2x::parse(mol, description);
-  }
-  template<>
-  void format_parser<supported_format::MOL2X, autodock_protein>(autodock_protein& mol,
-                                                                const std::string_view description) {
-    mol2x::parse(mol, description);
-  }
-
-  void format_writer(const ob_mol_wrapper& mol, const std::filesystem::path out_path) {
-    const auto format = parse_supported_format(out_path);
-
-    constexpr_switch<0, get_num_supported_format(), 1>(
-        [&](const auto format_index) {
-          format_writer<static_cast<supported_format>(format_index())>(mol, out_path);
-        },
-        format);
-  }
-
-  template<supported_format format>
-  void ob_writer(const ob_mol_wrapper& mol, std::ofstream& ofs) {
-    OpenBabel::OBConversion conv;
-    const std::string ext{parse_supported_format(format)};
-    conv.SetOutFormat(ext.c_str());
-
-    if (!ofs) {
-      throw std::runtime_error("Error: Cannot open file for writing!");
-    }
-
-    if (!conv.Write(mol.get(), &ofs)) {
-      throw std::runtime_error("Error: Failed to write molecule!");
-    }
-  }
-
-  template<>
-  void format_writer<supported_format::PDBQT>(const ob_mol_wrapper& mol, std::ofstream& ofs) {
-    // Add charges using the Gasteiger method
-    OpenBabel::OBChargeModel* chargeModel = OpenBabel::OBChargeModel::FindType("gasteiger");
-    if (!chargeModel) {
-      mudock::error("Error: Unable to find charge model.");
-      throw std::runtime_error("Error in OpenBabel transformations");
-    }
-    chargeModel->ComputeCharges(*mol.get());
-
-    mol.get()->ConnectTheDots();
-    mol.get()->PerceiveBondOrders();
-
-    ob_writer<supported_format::PDBQT>(mol, ofs);
-  }
-
-  template<>
-  void format_writer<supported_format::PDBQT>(const ob_mol_wrapper& mol,
-                                              const std::filesystem::path out_path) {
-    std::ofstream ofs(out_path, std::ios::out);
-    format_writer<supported_format::PDBQT>(mol, ofs);
-  }
-
-  template<>
-  void format_writer<supported_format::MOL2>(const ob_mol_wrapper& mol,
-                                             const std::filesystem::path out_path) {
-    std::ofstream ofs(out_path, std::ios::out);
-    ob_writer<supported_format::MOL2>(mol, ofs);
-  }
-  template<>
-  void format_writer<supported_format::MOL2>(const ob_mol_wrapper& mol, std::ofstream& ofs) {
-    ob_writer<supported_format::MOL2>(mol, ofs);
-  }
-
-  template<>
-  void format_writer<supported_format::MOL2X>(const ob_mol_wrapper& mol, std::ofstream& ofs) {
-    autodock_ligand s_mol;
-    convert<rotate_check>(s_mol, mol);
-    s_mol.prepare();
-    mol2x::print(s_mol, ofs);
-  }
-
-  template<>
-  void format_writer<supported_format::MOL2X>(const ob_mol_wrapper& mol,
-                                              const std::filesystem::path out_path) {
-    std::ofstream ofs(out_path, std::ios::out | std::ios::app);
-    format_writer<supported_format::MOL2X>(mol, ofs);
-  }
-
-  template<>
-  void format_writer<supported_format::PDB>(const ob_mol_wrapper& mol, std::ofstream& ofs) {
-    ob_writer<supported_format::PDB>(mol, ofs);
-  }
-
-  template<>
-  void format_writer<supported_format::PDB>(const ob_mol_wrapper& mol, const std::filesystem::path out_path) {
-    std::ofstream ofs(out_path, std::ios::out);
-    ob_writer<supported_format::PDB>(mol, ofs);
-  }
-
   bond_type parse_ob_bond_type(const OpenBabel::OBBond& bond) {
     if (bond.IsAromatic())
       return bond_type::AROMATIC;
@@ -190,8 +28,8 @@ namespace mudock {
       }
   }
 
-  bool rotate_check(OpenBabel::OBBond& bond) { return bond.IsRotor(); }
-  bool pdbqt_rotate_check(OpenBabel::OBBond& bond) {
+  bool ob_rotate_check(OpenBabel::OBBond& bond) { return bond.IsRotor(); }
+  bool pdbqt_rotate_check(OpenBabel::OBBond& b) {
     auto IsImide = [](OpenBabel::OBBond* querybond) {
       if (querybond->GetBondOrder() != 2)
         return (false);
@@ -238,10 +76,8 @@ namespace mudock {
       // Return
       return (false);
     };
-    if ((bond.GetBondOrder() != 1 || bond.IsAromatic() || bond.IsAmide() || IsAmidine(&bond) ||
-         bond.IsInRing()) ||
-        (((bond.GetBeginAtom())->GetExplicitDegree() == 1) ||
-         ((bond.GetEndAtom())->GetExplicitDegree() == 1))) {
+    if ((b.GetBondOrder() != 1 || b.IsAromatic() || b.IsAmide() || IsAmidine(&b) || b.IsInRing()) ||
+        (((b.GetBeginAtom())->GetExplicitDegree() == 1) || ((b.GetEndAtom())->GetExplicitDegree() == 1))) {
       return false;
     }
     return true;
