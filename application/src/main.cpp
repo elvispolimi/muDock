@@ -1,14 +1,15 @@
 #include "command_line_args.hpp"
-#include "mudock/molecule.hpp"
 
 #include <cassert>
 #include <fstream>
 #include <iostream>
 #include <memory>
 #include <mudock/chem/autodock_grid_types.hpp>
-#include <mudock/chem/autodock_protein.hpp>
+#include <mudock/compute/manager.hpp>
+#include <mudock/format/reader.hpp>
 #include <mudock/format/supported_format.hpp>
 #include <mudock/likwid_utils.hpp>
+#include <mudock/molecule.hpp>
 #include <mudock/mudock.hpp>
 #include <string>
 
@@ -17,14 +18,13 @@ int main(int argc, char* argv[]) {
 
   // read and parse the target protein
   mudock::info("Reading and parsing protein ", args.protein_path, " ...");
-  auto protein = std::make_shared<mudock::autodock_protein>();
-  parse(*protein, args.protein_path);
-  protein->prepare();
+  auto protein =
+      std::make_shared<mudock::dynamic_molecule>(mudock::parser<mudock::dynamic_molecule>(args.protein_path));
 
   // read  all the ligands description from the standard input and split them
   mudock::info("Reading ligand ", args.ligand_path, " ...");
   const auto in_format = mudock::parse_supported_format(args.ligand_path);
-  auto input_queue     = std::make_shared<mudock::safe_stack<mudock::autodock_ligand>>();
+  auto input_queue     = std::make_shared<mudock::safe_stack<mudock::static_molecule>>();
   constexpr_switch<0, mudock::get_num_supported_format(), 1>(
       [&](const auto format_index) {
         const auto format = static_cast<mudock::supported_format>(format_index());
@@ -38,17 +38,15 @@ int main(int argc, char* argv[]) {
         if constexpr (format == mudock::supported_format::MOL2X) {
 #pragma omp parallel for shared(input_queue)
           for (const auto& description: ligands_description) {
-            auto ligand = std::make_unique<mudock::autodock_ligand>();
-            mudock::parse<format>(*ligand, description);
-            ligand->prepare();
+            auto ligand = std::make_unique<mudock::static_molecule>(
+                mudock::parser<mudock::supported_format::MOL2X, mudock::static_molecule>(description));
             input_queue->enqueue(std::move(ligand));
           }
         } else {
           for (const auto& description: ligands_description) {
             try {
-              auto ligand = std::make_unique<mudock::autodock_ligand>();
-              mudock::parse<format>(*ligand, description);
-              ligand->prepare();
+              auto ligand = std::make_unique<mudock::static_molecule>(
+                  mudock::parser<format, mudock::static_molecule>(description));
               input_queue->enqueue(std::move(ligand));
             } catch (...) {}
           }
@@ -60,14 +58,12 @@ int main(int argc, char* argv[]) {
   mudock::info("Virtual screening the ligands ...");
   LIKWID_MARKER_INIT;
 
+  mudock::genetic_adt_pipeline pipe{protein};
+
   auto output_queue = std::make_shared<mudock::safe_stack<mudock::static_molecule>>();
   {
     auto threadpool = mudock::threadpool();
-    mudock::manage_cpp(args.device_confs, threadpool, *protein, args.knobs, input_queue, output_queue);
-    mudock::manage_cuda(args.device_confs, threadpool, args.knobs, *protein, input_queue, output_queue);
-    mudock::manage_hip(args.device_confs, threadpool, args.knobs, *protein, input_queue, output_queue);
-    mudock::manage_sycl(args.device_confs, threadpool, args.knobs, *protein, input_queue, output_queue);
-    mudock::manage_omp(args.device_confs, threadpool, args.knobs, *protein, input_queue, output_queue);
+    mudock::manager(args.device_confs, threadpool, args.knobs, input_queue, output_queue, pipe);
     mudock::info("All workers have been created!");
   } // when we exit from this block the computation is complete
 
