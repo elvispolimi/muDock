@@ -36,3 +36,12 @@ constexpr auto is_debug() {
   return false;
 #endif
 }
+
+template<class T>
+constexpr T big_bound() {
+  if constexpr (std::is_same_v<T, float>)
+    return T(1e30f); // safe for adds/mults in many cases
+  if constexpr (std::is_same_v<T, double>)
+    return T(1e300);
+  return std::numeric_limits<T>::max() / T(4); // fallback
+}

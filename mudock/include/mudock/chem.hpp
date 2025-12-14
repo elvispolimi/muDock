@@ -3,8 +3,15 @@
 #include <mudock/chem/assign_autodock_babel_types.hpp>
 #include <mudock/chem/autodock_babel_types.hpp>
 #include <mudock/chem/autodock_grid_types.hpp>
+#include <mudock/chem/autodock_layer.hpp>
+#include <mudock/chem/autodock_ligand.hpp>
 #include <mudock/chem/autodock_parameters.hpp>
 #include <mudock/chem/autodock_protein.hpp>
+#include <mudock/chem/autodock_types.hpp>
 #include <mudock/chem/bond_types.hpp>
+#include <mudock/chem/cleanup.hpp>
 #include <mudock/chem/elements.hpp>
+#include <mudock/chem/geom_ligand.hpp>
 #include <mudock/chem/grid_const.hpp>
+#include <mudock/chem/mehler_solmajer.hpp>
+#include <mudock/chem/molecule_layer.hpp>
