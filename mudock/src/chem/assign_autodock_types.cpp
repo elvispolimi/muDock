@@ -1,10 +1,10 @@
-#include "mudock/chem/autodock_babel_types.hpp"
-#include "mudock/chem/autodock_molecule.hpp"
-#include "mudock/chem/autodock_types.hpp"
-#include "mudock/chem/elements.hpp"
-#include "mudock/molecule/graph.hpp"
-
 #include <mudock/chem/assign_autodock_babel_types.hpp>
+#include <mudock/chem/autodock_babel_types.hpp>
+#include <mudock/chem/autodock_layer.hpp>
+#include <mudock/chem/autodock_types.hpp>
+#include <mudock/chem/elements.hpp>
+#include <mudock/molecule.hpp>
+#include <mudock/molecule/graph.hpp>
 #include <span>
 
 namespace mudock {
@@ -71,16 +71,16 @@ namespace mudock {
     return autodock_ff::C;
   }
 
-  template<class molecule_type>
-    requires derived_from_autodock_molecule<molecule_type>
-  void assign_autodock_types_impl(molecule_type& mol) {
+  template<class adt_layer>
+    requires is_autodock_layer<adt_layer>
+  void assign_autodock_types_impl(adt_layer& mol) {
     // allocate memory for the support vectors required to allocate the atoms type
     const std::size_t num_atoms = mol.num_atoms();
     const auto elements         = mol.get_elements();
-    const auto is_aromatic      = mol.get_is_aromatic();
-    auto types                  = mol.get_autodock_type();
+    const auto is_aromatic      = mol().get_is_aromatic();
+    auto types                  = mol().get_autodock_type();
 
-    typename molecule_type::template atoms_array_type<autodock_babel_ff> babel_types;
+    typename adt_layer::template atoms_array_type<autodock_babel_ff> babel_types;
     mudock::resize(babel_types, num_atoms);
 
     // create the graph of the molecule
@@ -231,14 +231,14 @@ namespace mudock {
   }
 
   template<>
-  void autodock_static_molecule::assign_autodock_types(std::function<void(autodock_static_molecule&)> f) {
+  void autodock_static_layer::assign_autodock_types(std::function<void(autodock_static_layer&)> f) {
     if (f)
       f(*this);
     else
       assign_autodock_types_impl(*this);
   };
   template<>
-  void autodock_dynamic_molecule::assign_autodock_types(std::function<void(autodock_dynamic_molecule&)> f) {
+  void autodock_dynamic_layer::assign_autodock_types(std::function<void(autodock_dynamic_layer&)> f) {
     if (f)
       f(*this);
     else
