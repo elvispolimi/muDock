@@ -1,6 +1,6 @@
 #pragma once
 
-#include <mudock/cpp_implementation/geometric_transformations.hpp>
+#include <mudock/cpp_implementation/mutate.hpp>
 #include <mudock/cpp_implementation/vectorization.hpp>
 #include <mudock/molecule.hpp>
 #include <mudock/molecule/fragments.hpp>
