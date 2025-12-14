@@ -7,11 +7,12 @@
 namespace mudock {
 
   struct knobs {
-    std::size_t population_number   = 100;
-    std::size_t num_generations     = 200;
-    std::size_t tournament_length   = 10;
-    fp_type mutation_prob           = fp_type{0.01};
-    std::optional<std::size_t> seed = std::optional<std::size_t>{};
+    std::size_t population_number          = 100;
+    std::size_t max_chromosomes_per_ligand = population_number;
+    std::size_t num_generations            = 1000;
+    std::size_t tournament_length          = 10;
+    fp_type mutation_prob                  = fp_type{0.01};
+    std::optional<std::size_t> seed        = std::optional<std::size_t>{};
   };
 
 } // namespace mudock
