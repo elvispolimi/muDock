@@ -1,0 +1,279 @@
+#pragma once
+
+#include <concepts>
+#include <memory>
+#include <mudock/chem/geom_ligand.hpp>
+#include <mudock/compute/buffer.hpp>
+#include <mudock/compute/queue.hpp>
+#include <mudock/compute/scratchpad.hpp>
+#include <mudock/compute/transform.hpp>
+#include <mudock/cpp_implementation/center_of_mass.hpp>
+#include <mudock/cpp_implementation/chromosome.hpp>
+#include <mudock/cpp_implementation/mutate_cpp.hpp>
+#include <mudock/grid/point3D.hpp>
+#include <mudock/molecule.hpp>
+
+namespace mudock {
+  template<typename queue_type>
+    requires std::derived_from<queue_type, queue>
+  struct geom_kernel {
+    geom_kernel(int batch_ligands_,
+                int batch_atoms_,
+                int chromsomes_per_ligand_,
+                chromosome* __restrict__ chromosomes_b_,
+                const int* __restrict__ num_atoms_b_,
+                const int* __restrict__ num_rotamers_b_,
+                const fp_type* __restrict__ x_coords_b_,
+                const fp_type* __restrict__ y_coords_b_,
+                const fp_type* __restrict__ z_coords_b_,
+                fp_type* __restrict__ x_scratch_b_,
+                fp_type* __restrict__ y_scratch_b_,
+                fp_type* __restrict__ z_scratch_b_,
+                int* __restrict__ ligand_fragments_b_,
+                int* __restrict__ ligand_fragments_start_b_,
+                int* __restrict__ frag_indices_start_b_,
+                int* __restrict__ frag_start_indices_b_,
+                int* __restrict__ frag_stop_indices_b_)
+        : batch_ligands(batch_ligands_),
+          batch_atoms(batch_atoms_),
+          chromsomes_per_ligand(chromsomes_per_ligand_),
+          chromosomes_b(chromosomes_b_),
+          num_atoms_b(num_atoms_b_),
+          num_rotamers_b(num_rotamers_b_),
+          x_coords_b(x_coords_b_),
+          y_coords_b(y_coords_b_),
+          z_coords_b(z_coords_b_),
+          x_scratch_b(x_scratch_b_),
+          y_scratch_b(y_scratch_b_),
+          z_scratch_b(z_scratch_b_),
+          ligand_fragments_b(ligand_fragments_b_),
+          ligand_fragments_start_b(ligand_fragments_start_b_),
+          frag_indices_start_b(frag_indices_start_b_),
+          frag_start_indices_b(frag_start_indices_b_),
+          frag_stop_indices_b(frag_stop_indices_b_) {}
+
+    void operator()();
+
+    geom_kernel(const geom_kernel&)            = default;
+    geom_kernel(geom_kernel&&)                 = default;
+    geom_kernel& operator=(const geom_kernel&) = delete;
+    geom_kernel& operator=(geom_kernel&&)      = delete;
+
+    ~geom_kernel() = default;
+
+  private:
+    const int batch_ligands;
+    const int batch_atoms;
+    const int chromsomes_per_ligand;
+    chromosome* __restrict__ chromosomes_b;
+    const int* __restrict__ num_atoms_b;
+    const int* __restrict__ num_rotamers_b;
+    const fp_type* __restrict__ x_coords_b;
+    const fp_type* __restrict__ y_coords_b;
+    const fp_type* __restrict__ z_coords_b;
+    fp_type* __restrict__ x_scratch_b;
+    fp_type* __restrict__ y_scratch_b;
+    fp_type* __restrict__ z_scratch_b;
+    int* __restrict__ ligand_fragments_b;
+    int* __restrict__ ligand_fragments_start_b;
+    int* __restrict__ frag_indices_start_b;
+    int* __restrict__ frag_start_indices_b;
+    int* __restrict__ frag_stop_indices_b;
+  };
+
+  template<typename queue_t>
+    requires std::derived_from<queue_t, queue>
+  struct geometric: public transform<queue_t> {
+    geometric(std::shared_ptr<scratchpad<queue_t>> _scratch, dynamic_molecule& protein)
+        : transform<queue_t>(_scratch),
+          ligand_fragments(_scratch->get_queue()),
+          ligand_fragments_start(_scratch->get_queue()),
+          frag_start_atom_indices(_scratch->get_queue()),
+          frag_stop_atom_indices(_scratch->get_queue()),
+          frag_indices_start(_scratch->get_queue()),
+          protein_center(protein.get_center()) {};
+
+    void prepare(batch<static_molecule>& batch) {
+      batch_ligands                           = batch.num_ligands;
+      const knobs& configuration              = (*this->scratch).configuration;
+      const auto chromsomes_per_ligand        = configuration.max_chromosomes_per_ligand;
+      batch_atoms                             = batch.batch_max_atoms;
+      const int batch_rotamers                = batch_atoms - 3;
+      const int tot_atoms_in_batch            = batch_ligands * batch_atoms;
+      const int tot_rotamers_atoms_in_batch   = tot_atoms_in_batch * batch_rotamers;
+      const std::size_t tot_rotamers_in_batch = batch_ligands * batch_rotamers;
+
+      auto& num_atoms_b = (*this->scratch).template get<buffer_data_type::NUM_ATOMS>();
+      auto& x_coords_b  = (*this->scratch).template get<buffer_data_type::X_COORDS>();
+      auto& y_coords_b  = (*this->scratch).template get<buffer_data_type::Y_COORDS>();
+      auto& z_coords_b  = (*this->scratch).template get<buffer_data_type::Z_COORDS>();
+
+      auto& x_scratch_b = (*this->scratch).template get<buffer_data_type::X_SCRATCH>();
+      auto& y_scratch_b = (*this->scratch).template get<buffer_data_type::Y_SCRATCH>();
+      auto& z_scratch_b = (*this->scratch).template get<buffer_data_type::Z_SCRATCH>();
+
+      num_atoms_b.alloc(batch_ligands);
+      x_coords_b.alloc(batch_atoms * batch_ligands);
+      y_coords_b.alloc(batch_atoms * batch_ligands);
+      z_coords_b.alloc(batch_atoms * batch_ligands);
+      x_scratch_b.alloc(tot_atoms_in_batch * chromsomes_per_ligand);
+      y_scratch_b.alloc(tot_atoms_in_batch * chromsomes_per_ligand);
+      z_scratch_b.alloc(tot_atoms_in_batch * chromsomes_per_ligand);
+      ligand_fragments.alloc(tot_rotamers_atoms_in_batch);
+      ligand_fragments_start.alloc(batch_ligands + 1);
+      ligand_fragments_start()[0] = 0;
+      frag_start_atom_indices.alloc(tot_rotamers_in_batch);
+      frag_stop_atom_indices.alloc(tot_rotamers_in_batch);
+      frag_indices_start.alloc(batch_ligands + 1);
+      frag_indices_start()[0] = 0;
+
+      for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
+        auto& ligand = *batch.molecules[ligand_index];
+        geom_ligand geom_lig{ligand};
+        const int stride_atoms = ligand_index * batch_atoms;
+        // Atoms and bonds
+        const int num_atoms         = ligand.num_atoms();
+        num_atoms_b()[ligand_index] = num_atoms;
+        // Place the molecule to the center of the target protein
+        const auto x = ligand.x(), y = ligand.y(), z = ligand.z();
+
+        const auto ligand_center_of_mass = compute_center_of_mass(x, y, z, num_atoms);
+        const auto offset                = protein_center - ligand_center_of_mass;
+        translate_molecule<cpu_vectorization::AUTO>(x, y, z, num_atoms, offset.x(), offset.y(), offset.z());
+
+        std::memcpy((void*) (x_coords_b() + stride_atoms), x, num_atoms * sizeof(fp_type));
+        std::memcpy((void*) (y_coords_b() + stride_atoms), y, num_atoms * sizeof(fp_type));
+        std::memcpy((void*) (z_coords_b() + stride_atoms), z, num_atoms * sizeof(fp_type));
+
+        const auto num_rotamers = ligand.num_rotamers();
+        assert(batch_rotamers > num_rotamers);
+
+        std::memcpy((void*) (ligand_fragments() + ligand_fragments_start()[ligand_index]),
+                    geom_lig.fragments_masks(),
+                    num_atoms * num_rotamers * sizeof(int));
+        ligand_fragments_start()[ligand_index + 1] =
+            ligand_fragments_start()[ligand_index] + (num_atoms * num_rotamers);
+        std::memcpy((void*) (frag_start_atom_indices() + frag_indices_start()[ligand_index]),
+                    geom_lig.fragmets_starts(),
+                    num_rotamers * sizeof(int));
+        std::memcpy((void*) (frag_stop_atom_indices() + frag_indices_start()[ligand_index]),
+                    geom_lig.fragments_stops(),
+                    num_rotamers * sizeof(int));
+        frag_indices_start()[ligand_index + 1] = frag_indices_start()[ligand_index] + num_rotamers;
+      }
+      num_atoms_b.copy_host2device();
+      x_coords_b.copy_host2device();
+      y_coords_b.copy_host2device();
+      z_coords_b.copy_host2device();
+      ligand_fragments.copy_host2device();
+      ligand_fragments_start.copy_host2device();
+      frag_start_atom_indices.copy_host2device();
+      frag_stop_atom_indices.copy_host2device();
+      frag_indices_start.copy_host2device();
+
+      auto& num_rotamers_b = (*this->scratch).template get<buffer_data_type::NUM_ROTAMERS>();
+      if (!num_rotamers_b.is_valid()) {
+        num_rotamers_b.alloc(batch_ligands);
+        for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
+          auto& ligand                   = *batch.molecules[ligand_index];
+          const int num_rotamers         = ligand.num_rotamers();
+          num_rotamers_b()[ligand_index] = num_rotamers;
+        }
+        num_rotamers_b.copy_host2device();
+      }
+
+      // TODO
+      // if (!(*scratch).exists<buffer_data_type::CHROMOSOMES>()) {
+      //   throw std::runtime_error(
+      //       "CHROMOSOMES buffer not allocated before excuting applying geometric transformation");
+      // }
+
+      // Binding
+      chromosome* chromosomes_p =
+          (*this->scratch).template get<buffer_data_type::CHROMOSOMES>().dev_pointer();
+      int* num_atoms_p          = num_atoms_b.dev_pointer();
+      int* num_rotamers_p       = num_rotamers_b.dev_pointer();
+      const fp_type* x_coords_p = x_coords_b.dev_pointer();
+      const fp_type* y_coords_p = y_coords_b.dev_pointer();
+      const fp_type* z_coords_p = z_coords_b.dev_pointer();
+
+      fp_type* x_scratch_p = x_scratch_b.dev_pointer();
+      fp_type* y_scratch_p = y_scratch_b.dev_pointer();
+      fp_type* z_scratch_p = z_scratch_b.dev_pointer();
+
+      int* ligand_fragments_p       = ligand_fragments.dev_pointer();
+      int* ligand_fragments_start_p = ligand_fragments_start.dev_pointer();
+      int* frag_indices_start_p     = frag_indices_start.dev_pointer();
+      int* frag_start_indices_p     = frag_start_atom_indices.dev_pointer();
+      int* frag_stop_indices_p      = frag_stop_atom_indices.dev_pointer();
+
+      kernel = std::make_unique<geom_kernel<queue_t>>(batch_ligands,
+                                                      batch_atoms,
+                                                      chromsomes_per_ligand,
+                                                      chromosomes_p,
+                                                      num_atoms_p,
+                                                      num_rotamers_p,
+                                                      x_coords_p,
+                                                      y_coords_p,
+                                                      z_coords_p,
+                                                      x_scratch_p,
+                                                      y_scratch_p,
+                                                      z_scratch_p,
+                                                      ligand_fragments_p,
+                                                      ligand_fragments_start_p,
+                                                      frag_indices_start_p,
+                                                      frag_start_indices_p,
+                                                      frag_stop_indices_p);
+    }
+
+    void operator()() {
+      assert(
+          ((*this->scratch).template get<buffer_data_type::CHROMOSOMES>().num_elements() % batch_ligands ==
+           0) &&
+          "Number of chromosomes per ligand is not a multiple of the number of ligands expected to be docked");
+
+      assert(kernel && "Kernel method not yet prepared");
+      // TODO
+      // assert((*this->scratch).template get<buffer_data_type::X_SCRATCH>().num_elements() !=
+      //            (chromsomes_per_ligand * batch_ligands) &&
+      //        "Number docked ligands does not match the allocated coordinates space");
+      (*kernel)();
+    };
+
+  private:
+    buffer_vector<int, queue_t> ligand_fragments;
+    buffer_vector<int, queue_t> ligand_fragments_start;
+    buffer_vector<int, queue_t> frag_start_atom_indices;
+    buffer_vector<int, queue_t> frag_stop_atom_indices;
+    buffer_vector<int, queue_t> frag_indices_start;
+
+    int batch_ligands;
+    int batch_atoms;
+    point<fp_type, 3> protein_center;
+    std::unique_ptr<geom_kernel<queue_t>> kernel;
+
+    void teardown_impl(batch<static_molecule>& batch) {
+      assert(batch.num_ligands ==
+                 static_cast<int>(
+                     (*this->scratch).template get<buffer_data_type::CHROMOSOMES>().num_elements()) &&
+             "Number of chromosomes and ligands in batch are different");
+
+      auto& x_scratch_b = (*this->scratch).template get<buffer_data_type::X_SCRATCH>();
+      auto& y_scratch_b = (*this->scratch).template get<buffer_data_type::Y_SCRATCH>();
+      auto& z_scratch_b = (*this->scratch).template get<buffer_data_type::Z_SCRATCH>();
+      x_scratch_b.copy_host2device();
+      x_scratch_b.copy_host2device();
+      x_scratch_b.copy_host2device();
+
+      for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
+        auto& ligand           = *batch.molecules[ligand_index];
+        const int num_atoms    = ligand.num_atoms();
+        const int stride_atoms = ligand_index * batch_atoms;
+        std::memcpy(ligand.x(), x_scratch_b.host_pointer() + stride_atoms, num_atoms * sizeof(fp_type));
+        std::memcpy(ligand.y(), y_scratch_b.host_pointer() + stride_atoms, num_atoms * sizeof(fp_type));
+        std::memcpy(ligand.z(), z_scratch_b.host_pointer() + stride_atoms, num_atoms * sizeof(fp_type));
+      }
+    };
+  };
+
+} // namespace mudock
