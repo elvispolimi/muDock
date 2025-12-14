@@ -11,7 +11,8 @@ namespace mudock {
   public:
     virtual void main() = 0;
 
-    virtual ~worker_interface() noexcept(false) {}
+    // TODO ask Gadio
+    virtual ~worker_interface() {}
   };
 
   class threadpool {
@@ -32,15 +33,14 @@ namespace mudock {
       }
     }
 
-    template<class worker_type, class... T>
-    inline void add_worker(T&... args) {
+    template<class worker_type>
+    inline void add_worker(worker_type wt) {
       // workers.emplace_back(std::make_unique<worker_type>(args...));
       // auto* pointer = workers.back().get();
       // threads.emplace_back(std::thread([pointer]() { pointer->main(); }));
-      threads.emplace_back(std::thread([args...]() mutable {
-        auto wt = worker_type(args...);
-        wt.main();
-      }));
+      // TODO check me if it works
+      // threads.emplace_back(std::thread([&wt]() mutable { wt.main(); }));
+      threads.emplace_back(&worker_type::main, std::move(wt));
     }
   };
 
