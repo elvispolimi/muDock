@@ -10,38 +10,65 @@ list(
   header_files
   "${header_path}/${header_prefix}/chem/assign_autodock_babel_types.hpp"
   "${header_path}/${header_prefix}/chem/autodock_babel_types.hpp"
+  "${header_path}/${header_prefix}/chem/autodock_grid_types.hpp"
+  "${header_path}/${header_prefix}/chem/autodock_layer.hpp"
+  "${header_path}/${header_prefix}/chem/autodock_ligand.hpp"
   "${header_path}/${header_prefix}/chem/autodock_parameters.hpp"
   "${header_path}/${header_prefix}/chem/autodock_protein.hpp"
-  "${header_path}/${header_prefix}/chem/autodock_molecule.hpp"
-  "${header_path}/${header_prefix}/chem/autodock_ligand.hpp"
   "${header_path}/${header_prefix}/chem/autodock_types.hpp"
   "${header_path}/${header_prefix}/chem/bond_types.hpp"
-  "${header_path}/${header_prefix}/chem/autodock_grid_types.hpp"
+  "${header_path}/${header_prefix}/chem/cleanup.hpp"
   "${header_path}/${header_prefix}/chem/elements.hpp"
+  "${header_path}/${header_prefix}/chem/geom_ligand.hpp"
+  "${header_path}/${header_prefix}/chem/grid_const.hpp"
+  "${header_path}/${header_prefix}/chem/mehler_solmajer.hpp"
+  "${header_path}/${header_prefix}/chem/molecule_layer.hpp"
   "${header_path}/${header_prefix}/compute/device_names.hpp"
+  "${header_path}/${header_prefix}/compute/safe_stack.hpp"
   "${header_path}/${header_prefix}/compute/parse_ids.hpp"
   "${header_path}/${header_prefix}/compute/reorder_buffer.hpp"
-  "${header_path}/${header_prefix}/compute/safe_stack.hpp"
   "${header_path}/${header_prefix}/compute/threadpool.hpp"
-  "${header_path}/${header_prefix}/cpp_implementation/cpp_manager.hpp"
-  "${header_path}/${header_prefix}/cpp_implementation/cpp_worker.hpp"
-  "${header_path}/${header_prefix}/cpp_implementation/virtual_screen.hpp"
+  "${header_path}/${header_prefix}/compute/worker.hpp"
+  "${header_path}/${header_prefix}/compute/queue.hpp"
+  "${header_path}/${header_prefix}/compute/object.hpp"
+  "${header_path}/${header_prefix}/compute/scratchpad.hpp"
+  "${header_path}/${header_prefix}/compute/manager.hpp"
+  "${header_path}/${header_prefix}/compute/buffer.hpp"
+  "${header_path}/${header_prefix}/compute/stage.hpp"
+  "${header_path}/${header_prefix}/compute/scoring.hpp"
+  "${header_path}/${header_prefix}/compute/adt_score.hpp"
+  "${header_path}/${header_prefix}/compute/pipeline.hpp"
+  "${header_path}/${header_prefix}/compute/docking.hpp"
+  "${header_path}/${header_prefix}/compute/genetic.hpp"
+  "${header_path}/${header_prefix}/compute/transform.hpp"
+  "${header_path}/${header_prefix}/compute/geometric_transform.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/chromosome.hpp"
-  "${header_path}/${header_prefix}/cpp_implementation/mutate.hpp"
+  "${header_path}/${header_prefix}/cpp_implementation/vectorization.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/center_of_mass.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/non_bonds.hpp"
-  "${header_path}/${header_prefix}/cpp_implementation/calc_energy_cpp.hpp"
-  "${header_path}/${header_prefix}/cpp_implementation/evaluate_fitness_cpp.hpp"
+  "${header_path}/${header_prefix}/cpp_implementation/buffer_cpp.hpp"
+  "${header_path}/${header_prefix}/cpp_implementation/queue_cpp.hpp"
+  "${header_path}/${header_prefix}/cpp_implementation/adt_score_cpp.hpp"
+  "${header_path}/${header_prefix}/cpp_implementation/geom_transform_cpp.hpp"
+  "${header_path}/${header_prefix}/cpp_implementation/genetic_cpp.hpp"
+  "${header_path}/${header_prefix}/cpp_implementation/cpp_implementation.hpp"
+  "${header_path}/${header_prefix}/cpp_implementation/mutate_cpp.hpp"
+  "${header_path}/${header_prefix}/cpp_implementation/mutate.hpp"
   "${header_path}/${header_prefix}/format/concept.hpp"
   "${header_path}/${header_prefix}/format/dot.hpp"
   "${header_path}/${header_prefix}/format/mol2.hpp"
-  "${header_path}/${header_prefix}/format/pdbqt.hpp"
-  "${header_path}/${header_prefix}/format/ob_wrapper.hpp"
+  "${header_path}/${header_prefix}/format/pdb.hpp"
   "${header_path}/${header_prefix}/format/supported_format.hpp"
-  "${header_path}/${header_prefix}/grid/mdindex.hpp"
+  "${header_path}/${header_prefix}/format/mol2x.hpp"
+  "${header_path}/${header_prefix}/format/writer.hpp"
+  "${header_path}/${header_prefix}/format/pdbqt.hpp"
+  "${header_path}/${header_prefix}/format/reader.hpp"
+  "${header_path}/${header_prefix}/format/ob_wrapper.hpp"
   "${header_path}/${header_prefix}/grid/pi.hpp"
-  "${header_path}/${header_prefix}/grid/point3D.hpp"
+  "${header_path}/${header_prefix}/grid/mdindex.hpp"
+  "${header_path}/${header_prefix}/grid/mdspan.hpp"
   "${header_path}/${header_prefix}/grid/space_grid.hpp"
+  "${header_path}/${header_prefix}/grid/point3D.hpp"
   "${header_path}/${header_prefix}/molecule/bond.hpp"
   "${header_path}/${header_prefix}/molecule/constraints.hpp"
   "${header_path}/${header_prefix}/molecule/containers.hpp"
@@ -52,12 +79,8 @@ list(
   "${header_path}/${header_prefix}/batch.hpp"
   "${header_path}/${header_prefix}/chem.hpp"
   "${header_path}/${header_prefix}/compute.hpp"
-  "${header_path}/${header_prefix}/cpp_implementation.hpp"
-  "${header_path}/${header_prefix}/cuda_implementation.hpp"
-  "${header_path}/${header_prefix}/sycl_implementation.hpp"
   "${header_path}/${header_prefix}/format.hpp"
   "${header_path}/${header_prefix}/grid.hpp"
-  "${header_path}/${header_prefix}/cpp_implementation/vectorization.hpp"
   "${header_path}/${header_prefix}/knobs.hpp"
   "${header_path}/${header_prefix}/log.hpp"
   "${header_path}/${header_prefix}/molecule.hpp"
@@ -82,7 +105,6 @@ list(
   "${source_path}/chem/elements.cpp"
   "${source_path}/compute/parse_ids.cpp"
   "${source_path}/compute/reorder_buffer.cpp"
-  "${source_path}/cpp_implementation/cpp_manager.cpp"
   "${source_path}/format/dot.cpp"
   "${source_path}/format/mol2.cpp"
   "${source_path}/format/mol2x.cpp"
@@ -90,23 +112,30 @@ list(
   "${source_path}/format/pdb.cpp"
   "${source_path}/format/pdbqt.cpp"
   "${source_path}/format/supported_format.cpp"
+  "${source_path}/format/reader.cpp"
+  "${source_path}/format/writer.cpp"
   "${source_path}/molecule/fragments.cpp"
   "${source_path}/molecule/graph.cpp"
   "${source_path}/molecule/property_table.cpp"
   "${source_path}/log.cpp"
-  "${source_path}/cpp_implementation/geometric_transformations_cpp.cpp"
-  "${source_path}/cpp_implementation/calc_energy_cpp.cpp")
+  "${source_path}/cpp_implementation/mutate_cpp.cpp"
+  "${source_path}/cpp_implementation/geom_transform_cpp.cpp"
+  "${source_path}/cpp_implementation/adt_score_cpp.cpp"
+  "${source_path}/cpp_implementation/genetic_cpp.cpp"
+)
 
 if(MUDOCK_ENABLE_GH)
   list(APPEND source_files
-       "${source_path}/gh_implementation/geometric_transformations_gh.cpp"
-       "${source_path}/gh_implementation/calc_energy_gh.cpp")
+       "${source_path}/gh_implementation/geom_transform_gh.cpp"
+       "${source_path}/gh_implementation/mutate_gh.cpp"
+       "${source_path}/gh_implementation/adt_score_gh.cpp")
 endif()
 
 if(MUDOCK_ENABLE_XSIMD)
   list(APPEND source_files
-       "${source_path}/xsimd_implementation/geometric_transformations_xsimd.cpp"
-       "${source_path}/xsimd_implementation/calc_energy_xsimd.cpp")
+       "${source_path}/xsimd_implementation/geom_transform_xsimd.cpp"
+       "${source_path}/xsimd_implementation/mutate_xsimd.cpp"
+       "${source_path}/xsimd_implementation/adt_score_xsimd.cpp")
 endif()
 
 # declare the CUDA sources
@@ -159,7 +188,8 @@ if(MUDOCK_ENABLE_HIP)
     "${header_path}/${header_prefix}/hip_implementation/evaluate_fitness.hpp"
     "${header_path}/${header_prefix}/hip_implementation/geometric_transformations.hpp"
     "${header_path}/${header_prefix}/hip_implementation/mutate.hpp"
-    "${header_path}/${header_prefix}/hip_implementation/virtual_screen.hpp")
+    # "${header_path}/${header_prefix}/hip_implementation/virtual_screen.hpp"
+  )
   set(hip_source_files
       "${source_path}/hip_implementation/hip_batch_sizer.cpp"
       "${source_path}/hip_implementation/hip_manager.cpp"
@@ -167,7 +197,8 @@ if(MUDOCK_ENABLE_HIP)
       "${source_path}/hip_implementation/hip_random.cpp"
       "${source_path}/hip_implementation/device.cpp"
       "${source_path}/hip_implementation/constant_memory.cpp"
-      "${source_path}/hip_implementation/virtual_screen.cpp")
+      # "${source_path}/hip_implementation/virtual_screen.cpp"
+  )
   list(APPEND source_files ${hip_source_files})
   set_source_files_properties(${hip_source_files} PROPERTIES LANGUAGE HIP)
 endif()
@@ -234,7 +265,7 @@ add_library(libmudock STATIC ${source_files} ${header_files})
 add_library(mudock::libmudock ALIAS libmudock)
 set_target_properties(libmudock PROPERTIES PUBLIC_HEADER "${headers}")
 target_include_directories(libmudock PUBLIC "${header_path}")
-target_include_directories(libmudock PUBLIC ${OpenBabel3_INCLUDE_DIRS})
+target_include_directories(libmudock SYSTEM PUBLIC ${OpenBabel3_INCLUDE_DIRS})
 set_target_properties(libmudock PROPERTIES PREFIX "" OUTPUT_NAME "libmudock")
 set_target_properties(
   libmudock
@@ -409,4 +440,4 @@ endif()
 # ### Declare the install step
 # ##############################################################################
 
-# at the moment wedon't deploy the librar
+# at the moment wedon't deploy the library
