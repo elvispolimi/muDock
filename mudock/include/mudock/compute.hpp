@@ -1,7 +1,21 @@
 #pragma once
 
+#include <mudock/compute/adt_score.hpp>
+#include <mudock/compute/buffer.hpp>
 #include <mudock/compute/device_names.hpp>
+#include <mudock/compute/docking.hpp>
+#include <mudock/compute/genetic.hpp>
+#include <mudock/compute/geometric_transform.hpp>
+#include <mudock/compute/manager.hpp>
+#include <mudock/compute/object.hpp>
 #include <mudock/compute/parse_ids.hpp>
+#include <mudock/compute/pipeline.hpp>
+#include <mudock/compute/queue.hpp>
 #include <mudock/compute/reorder_buffer.hpp>
 #include <mudock/compute/safe_stack.hpp>
+#include <mudock/compute/scoring.hpp>
+#include <mudock/compute/scratchpad.hpp>
+#include <mudock/compute/stage.hpp>
 #include <mudock/compute/threadpool.hpp>
+#include <mudock/compute/transform.hpp>
+#include <mudock/compute/worker.hpp>
