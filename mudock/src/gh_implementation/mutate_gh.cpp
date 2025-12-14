@@ -1,5 +1,5 @@
 #include <hwy/highway.h>
-#include <mudock/cpp_implementation/geometric_transformations_gh.hpp>
+#include <mudock/gh_implementation/mutate_gh.hpp>
 #include <mudock/grid/pi.hpp>
 
 namespace mudock {
