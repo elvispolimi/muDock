@@ -16,6 +16,11 @@ namespace mudock {
     stage<queue_type>
         get_pipeline(const knobs&, const int, std::shared_ptr<scratchpad<queue_type>>, dynamic_molecule&) {}
 
+    template<typename queue_type>
+    static int get_batch_size(const int) {
+      return 1;
+    }
+
   protected:
     std::shared_ptr<dynamic_molecule> protein;
   };
@@ -29,6 +34,11 @@ namespace mudock {
                                            device_scratch,
                                            *protein);
     }
+
+    template<typename queue_type>
+    static int get_batch_size(const int atoms) {
+      return get_adt_score_batch<queue_type>(atoms);
+    }
   };
 
   struct genetic_adt_pipeline: pipeline {
@@ -40,6 +50,11 @@ namespace mudock {
       return genetic<queue_type, adt_score>(q,
                                             *protein,
                                             mudock::adt_score<queue_type>(q, device_scratch, *protein));
+    }
+
+    template<typename queue_type>
+    static int get_batch_size(const int atoms) {
+      return get_adt_score_batch<queue_type>(atoms);
     }
   };
 } // namespace mudock

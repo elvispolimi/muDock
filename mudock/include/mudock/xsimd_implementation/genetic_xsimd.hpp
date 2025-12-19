@@ -26,7 +26,8 @@ namespace mudock {
                    int* __restrict__ num_rotamers_b_,
                    fp_type* __restrict__ scores_b_,
                    fp_type* __restrict__ best_scores_b_,
-                   chromosome* __restrict__ best_chromosomes_b_)
+                   chromosome* __restrict__ best_chromosomes_b_,
+                   std::shared_ptr<queue_xsimd> q_)
         : genetic_kernel<queue_cpp>(batch_ligands_,
                                     population_number_,
                                     num_generations_,
@@ -38,7 +39,8 @@ namespace mudock {
                                     num_rotamers_b_,
                                     scores_b_,
                                     best_scores_b_,
-                                    best_chromosomes_b_) {};
+                                    best_chromosomes_b_,
+                                    q_) {};
     genetic_kernel() {};
   };
 } // namespace mudock
