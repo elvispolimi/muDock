@@ -29,6 +29,9 @@ set_target_properties(
 # Required by OpenBabel dynamic plugin/libraries loading
 target_compile_options("${CMAKE_PROJECT_NAME}" PRIVATE -fno-plt)
 target_link_options("${CMAKE_PROJECT_NAME}" PRIVATE -Wl,-z,now)
+if(NOT MUDOCK_ENABLE_OMP)
+  target_compile_options("${CMAKE_PROJECT_NAME}" PRIVATE -Wno-unknown-pragmas)
+endif()
 
 # add the dependencies
 if(MUDOCK_ENABLE_SYCL)
