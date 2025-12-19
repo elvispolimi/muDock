@@ -22,6 +22,17 @@ constexpr void constexpr_switch(F&& f, T value) {
   }
 }
 
+// TODO fix me: there is no real need to have them separated, it could be template for the type of comparison
+template<auto Start, auto End, auto Inc, class T, class V, class F>
+constexpr void constexpr_switch_bucket(F&& f, T value, V* values) {
+  if constexpr (Start < End) {
+    if (static_cast<T>(values[Start]) <= value)
+      f(std::integral_constant<decltype(Start), Start>());
+    else
+      constexpr_switch<Start + Inc, End, Inc>(f, value);
+  }
+}
+
 // utility function that reads the whole content of a stream
 template<class stream_type>
 inline auto read_from_stream(stream_type&& in) {
