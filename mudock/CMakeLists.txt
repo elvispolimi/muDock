@@ -23,7 +23,6 @@ list(
   "${header_path}/${header_prefix}/chem/grid_const.hpp"
   "${header_path}/${header_prefix}/chem/mehler_solmajer.hpp"
   "${header_path}/${header_prefix}/chem/molecule_layer.hpp"
-  "${header_path}/${header_prefix}/compute/device_names.hpp"
   "${header_path}/${header_prefix}/compute/safe_stack.hpp"
   "${header_path}/${header_prefix}/compute/parse_ids.hpp"
   "${header_path}/${header_prefix}/compute/reorder_buffer.hpp"
@@ -143,31 +142,15 @@ if(MUDOCK_ENABLE_CUDA)
   list(
     APPEND
     header_files
-    "${header_path}/${header_prefix}/cuda_implementation/calc_energy.cuh"
-    "${header_path}/${header_prefix}/cuda_implementation/cuda_batch_sizer.cuh"
-    "${header_path}/${header_prefix}/cuda_implementation/cuda_check_error_macro.cuh"
-    "${header_path}/${header_prefix}/cuda_implementation/cuda_manager.cuh"
-    "${header_path}/${header_prefix}/cuda_implementation/cuda_random.cuh"
-    "${header_path}/${header_prefix}/cuda_implementation/cuda_texture.cuh"
-    "${header_path}/${header_prefix}/cuda_implementation/cuda_object.cuh"
-    "${header_path}/${header_prefix}/cuda_implementation/cuda_worker.cuh"
-    "${header_path}/${header_prefix}/cuda_implementation/cuda_wrapper.cuh"
-    "${header_path}/${header_prefix}/cuda_implementation/evaluate_fitness.cuh"
-    "${header_path}/${header_prefix}/cuda_implementation/geometric_transformations.cuh"
-    "${header_path}/${header_prefix}/cuda_implementation/mutate.cuh"
-    "${header_path}/${header_prefix}/cuda_implementation/virtual_screen.cuh"
-    "${header_path}/${header_prefix}/cuda_implementation/device.cuh")
+    "${header_path}/${header_prefix}/cuda_implementation/queue_cuda.cuh"
+    "${header_path}/${header_prefix}/cuda_implementation/adt_score_cuda.cuh"
+    )
   list(
     APPEND
     source_files
-    "${source_path}/cuda_implementation/cuda_object.cu"
-    "${source_path}/cuda_implementation/cuda_batch_sizer.cu"
-    "${source_path}/cuda_implementation/cuda_manager.cu"
-    "${source_path}/cuda_implementation/cuda_worker.cu"
-    "${source_path}/cuda_implementation/cuda_random.cu"
-    "${source_path}/cuda_implementation/virtual_screen.cu"
-    "${source_path}/cuda_implementation/device.cu"
-    "${source_path}/cuda_implementation/constant_memory.cu")
+    "${source_path}/cuda_implementation/queue_cuda.cu"
+    "${source_path}/cuda_implementation/adt_score_cuda.cu"
+)
 endif()
 
 # declare the HIP sources
@@ -275,6 +258,11 @@ set_target_properties(
              POSITION_INDEPENDENT_CODE ON)
 target_link_libraries(libmudock PUBLIC Microsoft.GSL::GSL Boost::graph
                                        ${OpenBabel3_LIBRARIES})
+target_include_directories(libmudock SYSTEM PRIVATE ${Boost_INCLUDE_DIR})
+if(NOT MUDOCK_ENABLE_OMP)
+  target_compile_options(libmudock PRIVATE -Wno-unknown-pragmas)
+endif()
+
 target_compile_options(
   libmudock
   PUBLIC $<$<AND:$<CONFIG:RELEASE>,$<COMPILE_LANGUAGE:CXX>>:${release_flags}>)
