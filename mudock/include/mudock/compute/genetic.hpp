@@ -35,7 +35,8 @@ namespace mudock {
                    int* __restrict__ num_rotamers_b_,
                    fp_type* __restrict__ scores_b_,
                    fp_type* __restrict__ best_scores_b_,
-                   chromosome* __restrict__ best_chromosomes_b_)
+                   chromosome* __restrict__ best_chromosomes_b_,
+                   std::shared_ptr<queue_type> q_)
         : batch_ligands(batch_ligands_),
           population_number(population_number_),
           num_generations(num_generations_),
@@ -47,7 +48,8 @@ namespace mudock {
           scores_b(scores_b_),
           best_scores_b(best_scores_b_),
           best_chromosomes_b(best_chromosomes_b_),
-          rand(seed_) {};
+          rand(seed_),
+          q(q_) {};
     genetic_kernel() {};
 
     void operator()();
@@ -67,6 +69,7 @@ namespace mudock {
     fp_type* __restrict__ best_scores_b;
     chromosome* __restrict__ best_chromosomes_b;
     rand_type rand;
+    std::shared_ptr<queue_type> q;
   };
 
   template<typename queue_t, template<typename> typename scoring_t>
@@ -86,6 +89,7 @@ namespace mudock {
       batch_ligands               = batch.num_ligands;
       num_generations             = configuration.num_generations;
       const int population_number = configuration.population_number;
+      auto q                      = (*this->scratch).get_queue();
 
       auto& num_rotamers_b = (*this->scratch).template get<buffer_data_type::NUM_ROTAMERS>();
       auto& chromosomes_b  = (*this->scratch).template get<buffer_data_type::CHROMOSOMES>();
@@ -126,7 +130,8 @@ namespace mudock {
                                                          num_rotamers_p,
                                                          scores_p,
                                                          best_scores_p,
-                                                         best_chromosomes_p);
+                                                         best_chromosomes_p,
+                                                         q);
 
       geom_trans.prepare(batch);
       score_stage.prepare(batch);

@@ -2,7 +2,7 @@
 
 #include <mudock/compute/adt_score.hpp>
 #include <mudock/compute/buffer.hpp>
-#include <mudock/compute/device_names.hpp>
+#include <mudock/compute/devices_memory.hpp>
 #include <mudock/compute/docking.hpp>
 #include <mudock/compute/genetic.hpp>
 #include <mudock/compute/geometric_transform.hpp>

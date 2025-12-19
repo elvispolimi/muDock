@@ -33,7 +33,8 @@ namespace mudock {
                 int* __restrict__ ligand_fragments_start_b_,
                 int* __restrict__ frag_indices_start_b_,
                 int* __restrict__ frag_start_indices_b_,
-                int* __restrict__ frag_stop_indices_b_)
+                int* __restrict__ frag_stop_indices_b_,
+                std::shared_ptr<queue_type> q_)
         : batch_ligands(batch_ligands_),
           batch_atoms(batch_atoms_),
           chromsomes_per_ligand(chromsomes_per_ligand_),
@@ -50,7 +51,8 @@ namespace mudock {
           ligand_fragments_start_b(ligand_fragments_start_b_),
           frag_indices_start_b(frag_indices_start_b_),
           frag_start_indices_b(frag_start_indices_b_),
-          frag_stop_indices_b(frag_stop_indices_b_) {}
+          frag_stop_indices_b(frag_stop_indices_b_),
+          q(q_) {}
 
     void operator()();
 
@@ -79,6 +81,7 @@ namespace mudock {
     int* __restrict__ frag_indices_start_b;
     int* __restrict__ frag_start_indices_b;
     int* __restrict__ frag_stop_indices_b;
+    std::shared_ptr<queue_type> q;
   };
 
   template<typename queue_t>
@@ -102,6 +105,7 @@ namespace mudock {
       const int tot_atoms_in_batch            = batch_ligands * batch_atoms;
       const int tot_rotamers_atoms_in_batch   = tot_atoms_in_batch * batch_rotamers;
       const std::size_t tot_rotamers_in_batch = batch_ligands * batch_rotamers;
+      auto q                                  = (*this->scratch).get_queue();
 
       auto& num_atoms_b = (*this->scratch).template get<buffer_data_type::NUM_ATOMS>();
       auto& x_coords_b  = (*this->scratch).template get<buffer_data_type::X_COORDS>();
@@ -127,6 +131,7 @@ namespace mudock {
       frag_indices_start.alloc(batch_ligands + 1);
       frag_indices_start()[0] = 0;
 
+      // TODO check what happens if coordinates are already available
       for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
         auto& ligand = *batch.molecules[ligand_index];
         geom_ligand geom_lig{ligand};
@@ -223,7 +228,8 @@ namespace mudock {
                                                       ligand_fragments_start_p,
                                                       frag_indices_start_p,
                                                       frag_start_indices_p,
-                                                      frag_stop_indices_p);
+                                                      frag_stop_indices_p,
+                                                      q);
     }
 
     void operator()() {
