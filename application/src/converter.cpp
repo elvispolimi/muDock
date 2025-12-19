@@ -1,5 +1,3 @@
-#include "mudock/molecule.hpp"
-
 #include <boost/program_options.hpp>
 #include <boost/program_options/value_semantic.hpp>
 #include <cstdlib>
@@ -9,6 +7,7 @@
 #include <mudock/format/reader.hpp>
 #include <mudock/format/writer.hpp>
 #include <mudock/log.hpp>
+#include <mudock/molecule.hpp>
 #include <mudock/splitter.hpp>
 #include <stdexcept>
 #include <string>
