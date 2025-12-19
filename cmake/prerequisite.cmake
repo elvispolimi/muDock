@@ -2,6 +2,7 @@
 # Grab the GSL library
 # ##############################################################################
 
+# TODO remove GSL depndencies
 include(FetchContent)
 FetchContent_Declare(
   GSL
