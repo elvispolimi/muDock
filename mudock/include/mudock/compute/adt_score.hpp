@@ -8,9 +8,11 @@
 #include <mudock/chem/autodock_grid_types.hpp>
 #include <mudock/chem/autodock_ligand.hpp>
 #include <mudock/chem/autodock_protein.hpp>
-#include <mudock/compute/buffer.hpp>
-#include <mudock/compute/scoring.hpp>
-#include <mudock/compute/scratchpad.hpp>
+#include <mudock/compute/adt_score_kernel.hpp>
+#ifndef __CUDACC__
+  #include <mudock/compute/scoring.hpp>
+  #include <mudock/compute/scratchpad.hpp>
+#endif
 #include <mudock/molecule.hpp>
 #include <mudock/type_alias.hpp>
 
@@ -18,98 +20,9 @@ namespace mudock {
 
   template<typename queue_type>
     requires std::derived_from<queue_type, queue>
-  struct adt_score_kernel {
-    adt_score_kernel(int scores_per_ligand_,
-                     int batch_ligands_,
-                     int batch_atoms_,
-                     const int *__restrict__ num_atoms_b_,
-                     const int *__restrict__ num_rotamers_b_,
-                     const int *__restrict__ num_nonbonds_b_,
-                     const fp_type *__restrict__ x_scratch_b_,
-                     const fp_type *__restrict__ y_scratch_b_,
-                     const fp_type *__restrict__ z_scratch_b_,
-                     const fp_type *__restrict__ vols_b_,
-                     const fp_type *__restrict__ solpars_b_,
-                     const fp_type *__restrict__ charges_b_,
-                     const int *__restrict__ map_offsets_b_,
-                     const int *__restrict__ nonbond_a1_b_,
-                     const int *__restrict__ nonbond_a2_b_,
-                     const fp_type *__restrict__ nonbond_cA_b_,
-                     const fp_type *__restrict__ nonbond_cB_b_,
-                     const int *__restrict__ nonbond_xB_b_,
-                     const fp_type *__restrict__ grid_maps_,
-                     const fp_type *__restrict__ minimum_,
-                     const fp_type *__restrict__ maximum_,
-                     const fp_type *__restrict__ center_,
-                     int map_index_x_,
-                     int map_index_xy_,
-                     int map_index_xyz_,
-                     fp_type *__restrict__ scores_b_)
-        : scores_per_ligand(scores_per_ligand_),
-          batch_ligands(batch_ligands_),
-          batch_atoms(batch_atoms_),
-          num_atoms_b(num_atoms_b_),
-          num_rotamers_b(num_rotamers_b_),
-          num_nonbonds_b(num_nonbonds_b_),
-          x_scratch_b(x_scratch_b_),
-          y_scratch_b(y_scratch_b_),
-          z_scratch_b(z_scratch_b_),
-          vols_b(vols_b_),
-          solpars_b(solpars_b_),
-          charges_b(charges_b_),
-          map_offsets_b(map_offsets_b_),
-          nonbond_a1_b(nonbond_a1_b_),
-          nonbond_a2_b(nonbond_a2_b_),
-          nonbond_cA_b(nonbond_cA_b_),
-          nonbond_cB_b(nonbond_cB_b_),
-          nonbond_xB_b(nonbond_xB_b_),
-          grid_maps(grid_maps_),
-          minimum(minimum_),
-          maximum(maximum_),
-          center(center_),
-          map_index_x(map_index_x_),
-          map_index_xy(map_index_xy_),
-          map_index_xyz(map_index_xyz_),
-          scores_b(scores_b_) {}
+  int get_adt_score_batch(const int);
 
-    void operator()();
-
-    adt_score_kernel(const adt_score_kernel &)            = default;
-    adt_score_kernel(adt_score_kernel &&)                 = default;
-    adt_score_kernel &operator=(const adt_score_kernel &) = delete;
-    adt_score_kernel &operator=(adt_score_kernel &&)      = delete;
-
-    ~adt_score_kernel() = default;
-
-  private:
-    int scores_per_ligand;
-    int batch_ligands;
-    int batch_atoms;
-    const int *__restrict__ num_atoms_b;
-    const int *__restrict__ num_rotamers_b;
-    const int *__restrict__ num_nonbonds_b;
-    const fp_type *__restrict__ x_scratch_b;
-    const fp_type *__restrict__ y_scratch_b;
-    const fp_type *__restrict__ z_scratch_b;
-    const fp_type *__restrict__ vols_b;
-    const fp_type *__restrict__ solpars_b;
-    const fp_type *__restrict__ charges_b;
-    const int *__restrict__ map_offsets_b;
-    const int *__restrict__ nonbond_a1_b;
-    const int *__restrict__ nonbond_a2_b;
-    const fp_type *__restrict__ nonbond_cA_b;
-    const fp_type *__restrict__ nonbond_cB_b;
-    const int *__restrict__ nonbond_xB_b;
-    const fp_type *__restrict__ grid_maps;
-    const fp_type *__restrict__ minimum;
-    const fp_type *__restrict__ maximum;
-    const fp_type *__restrict__ center;
-    int map_index_x;
-    int map_index_xy;
-    int map_index_xyz;
-    fp_type *__restrict__ scores_b;
-  };
-
+#ifndef __CUDACC__
   // TODO check that the object type and the kernel impl are the same
   template<typename queue_type>
   struct adt_score: public scoring<queue_type> {
@@ -156,6 +69,15 @@ namespace mudock {
         std::memcpy(prot_grid_maps(),
                     adt_prot.get_maps_pointer(),
                     adt_prot.get_map_flat_size() * num_autodock_grids() * sizeof(fp_type));
+
+        prot_min.copy_host2device();
+        prot_max.copy_host2device();
+        prot_center.copy_host2device();
+        prot_index_x.copy_host2device();
+        prot_index_xy.copy_host2device();
+        prot_index_xyz.copy_host2device();
+        // On CPU is not required and on GPUS we have probably to laod texture memory etc...
+        // prot_grid_maps.copy_host2device();
       }
     }
 
@@ -164,6 +86,7 @@ namespace mudock {
       batch_atoms                  = batch.batch_max_atoms;
       const int batch_non_bonds    = batch_ligands * batch_atoms * batch_atoms;
       const int tot_atoms_in_batch = batch_ligands * batch_atoms;
+      auto q                       = (*this->scratch).get_queue();
 
       // TODO issue here if another batch arrives
       // Or any of the other buffers containing ligands info
@@ -174,6 +97,9 @@ namespace mudock {
       auto &num_rotamers_b = (*this->scratch).template get<buffer_data_type::NUM_ROTAMERS>();
       auto &score_b        = (*this->scratch).template get<buffer_data_type::SCORES>();
 
+      // TODO improve here
+      // the same stuff is done by other steps
+      // improve the protocol for sharing buffer data as to reuse the same logic
       if (!scratch_x.is_valid()) {
         score_b.alloc(batch_ligands);
         scratch_x.alloc(tot_atoms_in_batch);
@@ -288,8 +214,9 @@ namespace mudock {
       const fp_type *nonbond_cB_b = nonbond_cB.dev_pointer();
       const int *nonbond_xB_b     = nonbond_xB.dev_pointer();
 
+      // Use host pointer as on CPP you can use it, on GPU they will load their own memory
       const fp_type *grid_maps =
-          (*device_scratch).template get<buffer_data_type::PROT_GRID_MAPS>().dev_pointer();
+          (*device_scratch).template get<buffer_data_type::PROT_GRID_MAPS>().host_pointer();
       const fp_type *minimum = (*device_scratch).template get<buffer_data_type::PROT_MIN>().dev_pointer();
       const fp_type *maximum = (*device_scratch).template get<buffer_data_type::PROT_MAX>().dev_pointer();
       const fp_type *center  = (*device_scratch).template get<buffer_data_type::PROT_CENTER>().dev_pointer();
@@ -327,7 +254,8 @@ namespace mudock {
                                                               map_index_x,
                                                               map_index_xy,
                                                               map_index_xyz,
-                                                              scores_b);
+                                                              scores_b,
+                                                              q);
     }
 
     void operator()() {
@@ -371,4 +299,5 @@ namespace mudock {
       }
     };
   };
+#endif
 } // namespace mudock

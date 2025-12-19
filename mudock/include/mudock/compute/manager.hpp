@@ -29,10 +29,37 @@ namespace mudock {
                                 std::shared_ptr<safe_stack<static_molecule>>& input_molecules,
                                 std::shared_ptr<safe_stack<static_molecule>>& output_molecules,
                                 pipeline_t& pipe) {
-    auto rob            = std::make_shared<reorder_buffer<static_molecule>>();
-    auto device_scratch = std::make_shared<scratchpad<queue_type>>(knobs, 0);
+    auto device_scratch                    = std::make_shared<scratchpad<queue_type>>(knobs, 0);
+    std::function<int(const int)> get_size = pipeline_t::template get_batch_size<queue_type>;
+    auto rob                               = std::make_shared<reorder_buffer<static_molecule>>(get_size);
 
     for (const auto id: parse_ids(parts[2])) {
+      pool.add_worker(worker(input_molecules,
+                             output_molecules,
+                             rob,
+                             // static_cast<size_t>(id),
+                             pipe.template get_pipeline<queue_type>(knobs, id, device_scratch)));
+    }
+  };
+
+  template<typename queue_type, typename pipeline_t>
+    requires std::derived_from<queue_type, queue>
+  inline void launch_worker_gpu(const knobs& knobs,
+                                const std::vector<std::string>& parts,
+                                threadpool& pool,
+                                std::shared_ptr<safe_stack<static_molecule>>& input_molecules,
+                                std::shared_ptr<safe_stack<static_molecule>>& output_molecules,
+                                pipeline_t& pipe) {
+    std::function<int(const int)> get_size = pipeline_t::template get_batch_size<queue_type>;
+    auto rob                               = std::make_shared<reorder_buffer<static_molecule>>(get_size);
+
+    for (const auto id: parse_ids(parts[2])) {
+      auto device_scratch = std::make_shared<scratchpad<queue_type>>(knobs, id);
+      pool.add_worker(worker(input_molecules,
+                             output_molecules,
+                             rob,
+                             // static_cast<size_t>(id),
+                             pipe.template get_pipeline<queue_type>(knobs, id, device_scratch)));
       pool.add_worker(worker(input_molecules,
                              output_molecules,
                              rob,
@@ -69,7 +96,13 @@ namespace mudock {
           break;
         }
         case device_type::GPU: {
-          //TODO
+          constexpr_for<0, num_gpu_kernel_type(), 1>([&](const auto kernel) {
+            constexpr auto kernel_type = gpu_kernel_type[kernel];
+            if (kernel_type == impl_t) {
+              using k_t = typename kernel_type_traits<kernel_type>::type;
+              launch_worker_gpu<k_t, pipeline_t>(knobs, parts, pool, input_molecules, output_molecules, pipe);
+            }
+          });
           break;
         }
         default: throw std::runtime_error("Not supported device type"); break;

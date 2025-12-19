@@ -1,6 +1,7 @@
 #pragma once
 
 #include <mudock/cpp_implementation/cpp_implementation.hpp>
+#include <mudock/cuda_implementation/cuda_implementation.hpp>
 #include <mudock/gh_implementation/gh_implementation.hpp>
 #include <mudock/xsimd_implementation/xsimd_implementation.hpp>
 #include <string_view>
@@ -14,6 +15,9 @@ namespace mudock {
 #ifdef MUDOCK_USE_XSIMD
     static constexpr auto xsimd_token = "XSIMD";
 #endif
+#ifdef MUDOCK_USE_CUDA
+    static constexpr auto cuda_token = "CUDA";
+#endif
   };
 
   enum class implementation_type {
@@ -25,6 +29,10 @@ namespace mudock {
 #ifdef MUDOCK_USE_XSIMD
     ,
     XSIMD
+#endif
+#ifdef MUDOCK_USE_CUDA
+    ,
+    CUDA
 #endif
   };
 
@@ -38,6 +46,10 @@ namespace mudock {
 #ifdef MUDOCK_USE_XSIMD
     if (impl == implementation_type_desc::xsimd_token)
       return implementation_type::XSIMD;
+#endif
+#ifdef MUDOCK_USE_CUDA
+    if (impl == implementation_type_desc::cuda_token)
+      return implementation_type::CUDA;
 #endif
     throw std::runtime_error("Requested implementation not available");
   };
@@ -74,6 +86,12 @@ namespace mudock {
     using type = kernel_type_traits_impl<implementation_type::XSIMD, queue_xsimd>::type;
   };
 #endif
+#ifdef MUDOCK_USE_CUDA
+  template<>
+  struct kernel_type_traits<implementation_type::CUDA> {
+    using type = kernel_type_traits_impl<implementation_type::CUDA, queue_cuda>::type;
+  };
+#endif
 
   static constexpr int num_cpu_kernel_type() {
     return 1
@@ -94,6 +112,19 @@ namespace mudock {
 #ifdef MUDOCK_USE_XSIMD
       ,
       implementation_type::XSIMD
+#endif
+  };
+
+  static constexpr int num_gpu_kernel_type() {
+    return 0
+#ifdef MUDOCK_USE_CUDA
+           + 1
+#endif
+        ;
+  }
+  static constexpr std::array<implementation_type, num_gpu_kernel_type()> gpu_kernel_type{
+#ifdef MUDOCK_USE_CUDA
+      implementation_type::CUDA,
 #endif
   };
 
