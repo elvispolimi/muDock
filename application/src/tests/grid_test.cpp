@@ -6,6 +6,7 @@
 #include <memory>
 #include <mudock/chem/autodock_grid_types.hpp>
 #include <mudock/chem/autodock_protein.hpp>
+#include <mudock/cpp_implementation/queue_cpp.hpp>
 #include <mudock/format.hpp>
 #include <mudock/format/pdbqt.hpp>
 #include <mudock/format/reader.hpp>
@@ -25,8 +26,6 @@ inline T round3dp(const T x) {
 
 int main(int argc, char* argv[]) {
   if constexpr (std::is_same<mudock::fp_type, double>::value) {
-    // static_assert(std::is_same<mudock::fp_type, double>::value,
-    //               "Grid test requires mudock::fp_type to be double");
     namespace po                     = boost::program_options;
     std::filesystem::path pdbqt_path = std::filesystem::path{"protein.pdbqt"};
     std::filesystem::path fld_path   = std::filesystem::path{"maps.fld"};

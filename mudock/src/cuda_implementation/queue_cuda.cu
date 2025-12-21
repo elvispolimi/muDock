@@ -21,8 +21,7 @@ namespace mudock {
   queue_cuda::queue_cuda(const int _id): queue(_id), impl_(std::make_unique<impl>(_id)) {};
   queue_cuda::~queue_cuda() = default; // unique_ptr will destroy Impl
 
-  queue_cuda::queue_cuda(queue_cuda&&) noexcept            = default;
-  queue_cuda& queue_cuda::operator=(queue_cuda&&) noexcept = default;
+  queue_cuda::queue_cuda(queue_cuda&&) noexcept = default;
 
   void queue_cuda::launch_kernel(void* f, const int batch_ligands, void* args[]) {
     // const std::size_t shared_mem =
