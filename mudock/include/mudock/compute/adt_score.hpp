@@ -1,15 +1,13 @@
 #pragma once
 
-#include <concepts>
 #include <cstring>
-#include <functional>
-#include <memory>
 #include <mudock/batch.hpp>
 #include <mudock/chem/autodock_grid_types.hpp>
 #include <mudock/chem/autodock_ligand.hpp>
 #include <mudock/chem/autodock_protein.hpp>
 #include <mudock/compute/adt_score_kernel.hpp>
 #ifndef __CUDACC__
+  #include <mudock/compute/buffer_utils.hpp>
   #include <mudock/compute/scoring.hpp>
   #include <mudock/compute/scratchpad.hpp>
 #endif
@@ -88,44 +86,13 @@ namespace mudock {
       const int tot_atoms_in_batch = batch_ligands * batch_atoms;
       auto q                       = (*this->scratch).get_queue();
 
-      // TODO issue here if another batch arrives
-      // Or any of the other buffers containing ligands info
-      auto &scratch_x      = (*this->scratch).template get<buffer_data_type::X_SCRATCH>();
-      auto &scratch_y      = (*this->scratch).template get<buffer_data_type::Y_SCRATCH>();
-      auto &scratch_z      = (*this->scratch).template get<buffer_data_type::Z_SCRATCH>();
-      auto &num_atoms_b    = (*this->scratch).template get<buffer_data_type::NUM_ATOMS>();
-      auto &num_rotamers_b = (*this->scratch).template get<buffer_data_type::NUM_ROTAMERS>();
-      auto &score_b        = (*this->scratch).template get<buffer_data_type::SCORES>();
+      load_num_rotamers(batch, this->scratch);
+      load_num_atoms(batch, this->scratch);
 
-      // TODO improve here
-      // the same stuff is done by other steps
-      // improve the protocol for sharing buffer data as to reuse the same logic
-      if (!scratch_x.is_valid()) {
+      auto &score_b = (*this->scratch).template get<buffer_data_type::SCORES>();
+      if (load_scratchs<queue_type>(batch, this->scratch)) {
         score_b.alloc(batch_ligands);
-        scratch_x.alloc(tot_atoms_in_batch);
-        scratch_y.alloc(tot_atoms_in_batch);
-        scratch_z.alloc(tot_atoms_in_batch);
-        num_atoms_b.alloc(batch_ligands);
-        num_rotamers_b.alloc(batch_ligands);
-        for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
-          auto &ligand = *batch.molecules[ligand_index];
-
-          const int stride_atoms         = ligand_index * batch_atoms;
-          const int num_atoms            = ligand.num_atoms();
-          num_atoms_b()[ligand_index]    = num_atoms;
-          num_rotamers_b()[ligand_index] = ligand.num_rotamers();
-
-          const auto x = ligand.x(), y = ligand.y(), z = ligand.z();
-          std::memcpy((void *) (scratch_x() + stride_atoms), x, num_atoms * sizeof(fp_type));
-          std::memcpy((void *) (scratch_y() + stride_atoms), y, num_atoms * sizeof(fp_type));
-          std::memcpy((void *) (scratch_z() + stride_atoms), z, num_atoms * sizeof(fp_type));
-        }
-        scratch_x.copy_host2device();
-        scratch_y.copy_host2device();
-        scratch_z.copy_host2device();
-        num_atoms_b.copy_host2device();
-        num_rotamers_b.copy_host2device();
-        score_b.is_valid();
+        score_b.set_valid();
       }
 
       vols.alloc(tot_atoms_in_batch);
@@ -194,11 +161,14 @@ namespace mudock {
 
       // TODO ask Davide about this performance
       // Bind to the kernel function
-      const auto scores_per_ligand =
-          (*this->scratch).template get<buffer_data_type::SCORES>().num_elements() / batch_ligands;
+      const auto scores_per_ligand = score_b.num_elements() / batch_ligands;
       assert((*this->scratch).template get<buffer_data_type::X_SCRATCH>().num_elements() !=
                  (scores_per_ligand * batch_ligands) &&
              "Number of scores per ligands does not match the allocated coordinates space");
+
+      const int *num_atoms_b = (*this->scratch).template get<buffer_data_type::NUM_ATOMS>().dev_pointer();
+      const int *num_rotamers_b =
+          (*this->scratch).template get<buffer_data_type::NUM_ROTAMERS>().dev_pointer();
       const int *num_nonbonds_b  = num_nonbond.dev_pointer();
       const fp_type *x_scratch_b = (*this->scratch).template get<buffer_data_type::X_SCRATCH>().dev_pointer();
       const fp_type *y_scratch_b = (*this->scratch).template get<buffer_data_type::Y_SCRATCH>().dev_pointer();
@@ -227,13 +197,13 @@ namespace mudock {
       const int map_index_xyz =
           (*device_scratch).template get<buffer_data_type::PROT_SIZE_XYZ>().host_pointer()[0];
 
-      fp_type *scores_b = (*this->scratch).template get<buffer_data_type::SCORES>().dev_pointer();
+      fp_type *scores_b = score_b.dev_pointer();
 
       kernel = std::make_unique<adt_score_kernel<queue_type>>(scores_per_ligand,
                                                               batch_ligands,
                                                               batch_atoms,
-                                                              num_atoms_b.dev_pointer(),
-                                                              num_rotamers_b.dev_pointer(),
+                                                              num_atoms_b,
+                                                              num_rotamers_b,
                                                               num_nonbonds_b,
                                                               x_scratch_b,
                                                               y_scratch_b,

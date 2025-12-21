@@ -1,5 +1,7 @@
 #pragma once
 
+#include "mudock/compute/buffer_utils.hpp"
+
 #include <concepts>
 #include <memory>
 #include <mudock/chem/geom_ligand.hpp>
@@ -107,22 +109,6 @@ namespace mudock {
       const std::size_t tot_rotamers_in_batch = batch_ligands * batch_rotamers;
       auto q                                  = (*this->scratch).get_queue();
 
-      auto& num_atoms_b = (*this->scratch).template get<buffer_data_type::NUM_ATOMS>();
-      auto& x_coords_b  = (*this->scratch).template get<buffer_data_type::X_COORDS>();
-      auto& y_coords_b  = (*this->scratch).template get<buffer_data_type::Y_COORDS>();
-      auto& z_coords_b  = (*this->scratch).template get<buffer_data_type::Z_COORDS>();
-
-      auto& x_scratch_b = (*this->scratch).template get<buffer_data_type::X_SCRATCH>();
-      auto& y_scratch_b = (*this->scratch).template get<buffer_data_type::Y_SCRATCH>();
-      auto& z_scratch_b = (*this->scratch).template get<buffer_data_type::Z_SCRATCH>();
-
-      num_atoms_b.alloc(batch_ligands);
-      x_coords_b.alloc(batch_atoms * batch_ligands);
-      y_coords_b.alloc(batch_atoms * batch_ligands);
-      z_coords_b.alloc(batch_atoms * batch_ligands);
-      x_scratch_b.alloc(tot_atoms_in_batch * chromsomes_per_ligand);
-      y_scratch_b.alloc(tot_atoms_in_batch * chromsomes_per_ligand);
-      z_scratch_b.alloc(tot_atoms_in_batch * chromsomes_per_ligand);
       ligand_fragments.alloc(tot_rotamers_atoms_in_batch);
       ligand_fragments_start.alloc(batch_ligands + 1);
       ligand_fragments_start()[0] = 0;
@@ -135,20 +121,14 @@ namespace mudock {
       for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
         auto& ligand = *batch.molecules[ligand_index];
         geom_ligand geom_lig{ligand};
-        const int stride_atoms = ligand_index * batch_atoms;
         // Atoms and bonds
-        const int num_atoms         = ligand.num_atoms();
-        num_atoms_b()[ligand_index] = num_atoms;
+        const int num_atoms = ligand.num_atoms();
         // Place the molecule to the center of the target protein
         const auto x = ligand.x(), y = ligand.y(), z = ligand.z();
 
         const auto ligand_center_of_mass = compute_center_of_mass(x, y, z, num_atoms);
         const auto offset                = protein_center - ligand_center_of_mass;
         translate_molecule<cpu_vectorization::AUTO>(x, y, z, num_atoms, offset.x(), offset.y(), offset.z());
-
-        std::memcpy((void*) (x_coords_b() + stride_atoms), x, num_atoms * sizeof(fp_type));
-        std::memcpy((void*) (y_coords_b() + stride_atoms), y, num_atoms * sizeof(fp_type));
-        std::memcpy((void*) (z_coords_b() + stride_atoms), z, num_atoms * sizeof(fp_type));
 
         const auto num_rotamers = ligand.num_rotamers();
         assert(batch_rotamers > num_rotamers);
@@ -166,41 +146,34 @@ namespace mudock {
                     num_rotamers * sizeof(int));
         frag_indices_start()[ligand_index + 1] = frag_indices_start()[ligand_index] + num_rotamers;
       }
-      num_atoms_b.copy_host2device();
-      x_coords_b.copy_host2device();
-      y_coords_b.copy_host2device();
-      z_coords_b.copy_host2device();
       ligand_fragments.copy_host2device();
       ligand_fragments_start.copy_host2device();
       frag_start_atom_indices.copy_host2device();
       frag_stop_atom_indices.copy_host2device();
       frag_indices_start.copy_host2device();
 
-      auto& num_rotamers_b = (*this->scratch).template get<buffer_data_type::NUM_ROTAMERS>();
-      if (!num_rotamers_b.is_valid()) {
-        num_rotamers_b.alloc(batch_ligands);
-        for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
-          auto& ligand                   = *batch.molecules[ligand_index];
-          const int num_rotamers         = ligand.num_rotamers();
-          num_rotamers_b()[ligand_index] = num_rotamers;
-        }
-        num_rotamers_b.copy_host2device();
+      load_num_rotamers<queue_t>(batch, this->scratch);
+      load_num_atoms<queue_t>(batch, this->scratch);
+      auto& x_scratch_b = (*this->scratch).template get<buffer_data_type::X_SCRATCH>();
+      auto& y_scratch_b = (*this->scratch).template get<buffer_data_type::Y_SCRATCH>();
+      auto& z_scratch_b = (*this->scratch).template get<buffer_data_type::Z_SCRATCH>();
+      if (load_coords<queue_t>(batch, this->scratch)) {
+        x_scratch_b.alloc(tot_atoms_in_batch * chromsomes_per_ligand);
+        y_scratch_b.alloc(tot_atoms_in_batch * chromsomes_per_ligand);
+        z_scratch_b.alloc(tot_atoms_in_batch * chromsomes_per_ligand);
+        x_scratch_b.set_valid();
+        y_scratch_b.set_valid();
+        z_scratch_b.set_valid();
       }
-
-      // TODO
-      // if (!(*scratch).exists<buffer_data_type::CHROMOSOMES>()) {
-      //   throw std::runtime_error(
-      //       "CHROMOSOMES buffer not allocated before excuting applying geometric transformation");
-      // }
 
       // Binding
       chromosome* chromosomes_p =
           (*this->scratch).template get<buffer_data_type::CHROMOSOMES>().dev_pointer();
-      int* num_atoms_p          = num_atoms_b.dev_pointer();
-      int* num_rotamers_p       = num_rotamers_b.dev_pointer();
-      const fp_type* x_coords_p = x_coords_b.dev_pointer();
-      const fp_type* y_coords_p = y_coords_b.dev_pointer();
-      const fp_type* z_coords_p = z_coords_b.dev_pointer();
+      int* num_atoms_p    = (*this->scratch).template get<buffer_data_type::NUM_ATOMS>().dev_pointer();
+      int* num_rotamers_p = (*this->scratch).template get<buffer_data_type::NUM_ROTAMERS>().dev_pointer();
+      const fp_type* x_coords_p = (*this->scratch).template get<buffer_data_type::X_COORDS>().dev_pointer();
+      const fp_type* y_coords_p = (*this->scratch).template get<buffer_data_type::Y_COORDS>().dev_pointer();
+      const fp_type* z_coords_p = (*this->scratch).template get<buffer_data_type::Z_COORDS>().dev_pointer();
 
       fp_type* x_scratch_p = x_scratch_b.dev_pointer();
       fp_type* y_scratch_p = y_scratch_b.dev_pointer();
@@ -239,10 +212,6 @@ namespace mudock {
           "Number of chromosomes per ligand is not a multiple of the number of ligands expected to be docked");
 
       assert(kernel && "Kernel method not yet prepared");
-      // TODO
-      // assert((*this->scratch).template get<buffer_data_type::X_SCRATCH>().num_elements() !=
-      //            (chromsomes_per_ligand * batch_ligands) &&
-      //        "Number docked ligands does not match the allocated coordinates space");
       (*kernel)();
     };
 
