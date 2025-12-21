@@ -6,6 +6,7 @@
 
 // TODO check -Wterminate
 // TODO add check if DEBUG mode is enable
+// TODO add better checks if function invoked after driver teardown
 #define MUDOCK_CHECK(call)                                                             \
   {                                                                                    \
     const cudaError_t err = call;                                                      \
