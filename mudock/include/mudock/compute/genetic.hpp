@@ -138,6 +138,8 @@ namespace mudock {
     };
     void operator()() {
       auto& chromosomes_b = (*this->scratch).template get<buffer_data_type::CHROMOSOMES>();
+
+      assert(kernel && "Kernel method not yet prepared");
       kernel->initialize();
 
       for (int generation = 0; generation < num_generations; ++generation) {
@@ -168,12 +170,13 @@ namespace mudock {
       auto& best_chromosomes_b = best_chromosomes;
 
       // TODO check if the copy can be changed with a swap
-      // population_b.swap(best_chromosomes_b);
       population_b.copy_device2device(best_chromosomes_b);
 
       geom_trans();
-      // geom_trans.teardown(batch);
       score_stage();
+
+      //TODO geom teardown with genetic
+      // geom_trans.teardown(batch);
       score_stage.teardown(batch);
 
       for (int index{0}; index < batch_ligands; ++index) {

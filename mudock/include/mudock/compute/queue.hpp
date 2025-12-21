@@ -9,12 +9,11 @@ namespace mudock {
     queue(const int _id): id(_id) {};
     virtual ~queue() = default;
 
-    // non-copyable, but movable (optional)
     queue(const queue&)            = delete;
     queue& operator=(const queue&) = delete;
 
-    queue(queue&&) noexcept;
-    queue& operator=(queue&&) noexcept;
+    queue(queue&&) noexcept            = default; // OK
+    queue& operator=(queue&&) noexcept = delete;  // const id prevents assignment
 
     virtual void launch_kernel(void*, const int, void*[])             = 0;
     virtual void alloc(void**, const size_t)                          = 0;
@@ -28,7 +27,7 @@ namespace mudock {
 
     virtual bool obj_required() = 0;
 
-    virtual void synchronize();
+    virtual void synchronize() = 0;
 
     int get_id() { return id; };
 

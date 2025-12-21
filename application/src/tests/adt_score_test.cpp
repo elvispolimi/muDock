@@ -3,10 +3,10 @@
 #include <boost/program_options.hpp>
 #include <cstdlib>
 #include <filesystem>
+#include <memory>
 #include <mudock/chem/autodock_ligand.hpp>
 #include <mudock/chem/autodock_protein.hpp>
 #include <mudock/compute/adt_score.hpp>
-#include <mudock/cpp_implementation/queue_cpp.hpp>
 #include <mudock/format/ob_wrapper.hpp>
 #include <mudock/format/pdbqt.hpp>
 #include <mudock/format/reader.hpp>
@@ -63,6 +63,7 @@ int main(int argc, char *argv[]) {
   std::vector<int> num_rotamers_b{static_cast<int>(num_rotamers)};
   std::vector<int> num_nonbonds_b{0, static_cast<int>(adt_ligand.non_bond_size())};
   std::vector<mudock::fp_type> scores_b{0};
+  auto q = std::make_shared<mudock::queue_cpp>(0);
   mudock::adt_score_kernel<mudock::queue_cpp> adt_kernel{1,
                                                          1,
                                                          num_atoms,
@@ -88,7 +89,8 @@ int main(int argc, char *argv[]) {
                                                          static_cast<int>(adt_grid.get_size_x()),
                                                          static_cast<int>(adt_grid.get_size_xy()),
                                                          static_cast<int>(adt_grid.get_size_xyz()),
-                                                         scores_b.data()};
+                                                         scores_b.data(),
+                                                         q};
 
   adt_kernel();
   const mudock::fp_type energy = scores_b[0];
@@ -102,8 +104,8 @@ int main(int argc, char *argv[]) {
                                 energy));
       throw std::runtime_error("Error in score");
     }
-
-    mudock::info(std::format("Succesfully verified the score in {}", dpf_path.string()));
-    return EXIT_SUCCESS;
   }
+
+  mudock::info(std::format("Succesfully verified the score in {}", dpf_path.string()));
+  return EXIT_SUCCESS;
 }
