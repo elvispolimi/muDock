@@ -139,6 +139,7 @@ namespace mudock {
       }
     }
   }
+
   template<>
   void genetic_kernel<queue_cpp>::finalize() {
     for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
