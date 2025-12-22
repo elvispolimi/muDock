@@ -17,6 +17,7 @@ namespace mudock {
     void init(Args... args) {
       std::call_once(once, [&] { data = std::make_unique<T>(args...); });
     }
+    T* get_data() { return data.get(); }
   };
 
   template<int max_num_devices, typename T>

@@ -1,14 +1,14 @@
 #pragma once
 
-#include "mudock/compute/buffer_utils.hpp"
-
 #include <concepts>
 #include <memory>
 #include <mudock/chem/geom_ligand.hpp>
-#include <mudock/compute/buffer.hpp>
 #include <mudock/compute/queue.hpp>
-#include <mudock/compute/scratchpad.hpp>
-#include <mudock/compute/transform.hpp>
+#ifndef __CUDACC__
+  #include <mudock/compute/buffer_utils.hpp>
+  #include <mudock/compute/scratchpad.hpp>
+  #include <mudock/compute/transform.hpp>
+#endif
 #include <mudock/cpp_implementation/center_of_mass.hpp>
 #include <mudock/cpp_implementation/chromosome.hpp>
 #include <mudock/cpp_implementation/mutate_cpp.hpp>
@@ -86,6 +86,7 @@ namespace mudock {
     std::shared_ptr<queue_type> q;
   };
 
+#ifndef __CUDACC__
   template<typename queue_t>
     requires std::derived_from<queue_t, queue>
   struct geometric: public transform<queue_t> {
@@ -250,5 +251,5 @@ namespace mudock {
       }
     };
   };
-
+#endif
 } // namespace mudock

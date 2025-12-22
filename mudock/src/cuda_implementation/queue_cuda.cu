@@ -23,6 +23,8 @@ namespace mudock {
 
   queue_cuda::queue_cuda(queue_cuda&&) noexcept = default;
 
+  //TODO find a better way to specific grid and block dimensions
+  //TODO what about shared mem?
   void queue_cuda::launch_kernel(void* f, const int batch_ligands, void* args[]) {
     // const std::size_t shared_mem =
     //     std::max(configuration.population_number, static_cast<std::size_t>(BLOCK_SIZE)) * sizeof(fp_type);

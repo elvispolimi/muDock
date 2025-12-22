@@ -52,6 +52,7 @@ namespace mudock {
     };
 
     [[nodiscard]] T* dev_pointer() const { return ptr; };
+    [[nodiscard]] T** dev_pointer_ref() { return &ptr; };
     [[nodiscard]] std::size_t num_elements() const { return size; };
   };
 } // namespace mudock
