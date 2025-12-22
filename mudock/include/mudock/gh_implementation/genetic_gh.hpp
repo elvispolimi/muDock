@@ -2,7 +2,6 @@
 
 #include <mudock/batch.hpp>
 #include <mudock/compute/genetic.hpp>
-#include <mudock/compute/scratchpad.hpp>
 #include <mudock/cpp_implementation/genetic_cpp.hpp>
 #include <mudock/gh_implementation/queue_gh.hpp>
 #include <random>
