@@ -1,7 +1,6 @@
 #pragma once
 
-#include <functional>
-#include <memory>
+#include <cstddef>
 
 namespace mudock {
 
@@ -15,7 +14,12 @@ namespace mudock {
     queue(queue&&) noexcept            = default; // OK
     queue& operator=(queue&&) noexcept = delete;  // const id prevents assignment
 
-    virtual void launch_kernel(void*, const int, void*[])             = 0;
+    // TODO would be nice to unify launch kernel interface yet again
+    // virtual void launch_kernel(void*, void*[] = nullptr, const int = 0) = 0;
+    // template<const char* Region>
+    // void launch_kernel(void* f, void* args[] = nullptr, int batch = 0) {
+    //   this->launch_kernel_impl(f, args, std::string_view{Region}, batch);
+    // }
     virtual void alloc(void**, const size_t)                          = 0;
     virtual void free(void**)                                         = 0;
     virtual void set_to_value(void*, const size_t, const char)        = 0;
@@ -33,5 +37,7 @@ namespace mudock {
 
   protected:
     const int id;
+
+    // virtual void launch_kernel_impl(void*, void*[] = nullptr, const std::string_view = {}, const int = 0) = 0;
   };
 } // namespace mudock

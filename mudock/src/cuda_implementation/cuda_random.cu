@@ -17,9 +17,9 @@ namespace mudock {
     const bool init = num_elements > num_el;
     state.alloc(num_elements);
     if (init) {
-      void *args[] = {(void *) &state.dev_pointer_ref(), (void *) &seed, (void *) &num_el};
+      void *args[] = {(void *) state.dev_pointer_ref(), (void *) &seed, (void *) &num_el};
       //TODO check grid/dimensions
-      q->launch_kernel((void *) init_curand, 128, args);
+      q->launch_kernel((void *) init_curand, args, 128);
       q->synchronize();
     }
   };
