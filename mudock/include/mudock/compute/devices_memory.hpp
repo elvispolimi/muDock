@@ -18,6 +18,8 @@ namespace mudock {
       std::call_once(once, [&] { data = std::make_unique<T>(args...); });
     }
     T* get_data() { return data.get(); }
+
+    T& operator()() { return *data; }
   };
 
   template<int max_num_devices, typename T>

@@ -235,7 +235,7 @@ if(NOT MUDOCK_ENABLE_FAST AND CMAKE_BUILD_TYPE STREQUAL "Release")
 endif()
 
 if(MUDOCK_ENABLE_OMP OR MUDOCK_ENABLE_OMP_OFFLOAD)
-    find_package(OpenMP REQUIRED)
+  find_package(OpenMP REQUIRED)
 endif()
 
 if(MUDOCK_ENABLE_OMP_OFFLOAD)
@@ -258,8 +258,32 @@ endif()
 # ### Profiling
 # ##############################################################################
 option(MUDOCK_ENABLE_LIKWID "Enable profiling using likwid" OFF)
+option(MUDOCK_LIKWID_CPP "Enable profiling CPP using likwid" OFF)
+option(MUDOCK_LIKWID_CUDA "Enable profiling CUDA using likwid" OFF)
+set(_MUDOCK_LIKWID_BACKENDS 0)
 if(MUDOCK_ENABLE_LIKWID)
   find_package(likwid REQUIRED)
+  if (MUDOCK_LIKWID_CPP)
+    math(EXPR _MUDOCK_LIKWID_BACKENDS "${_MUDOCK_LIKWID_BACKENDS}+1")
+  endif()
+  if (MUDOCK_LIKWID_CUDA)
+    message(FATAL_ERROR "CUDA LIKWID profiler not supported yet")
+    math(EXPR _MUDOCK_LIKWID_BACKENDS "${_MUDOCK_LIKWID_BACKENDS}+1")
+  endif()
+  if (_MUDOCK_LIKWID_BACKENDS EQUAL 0)
+    message(STATUS
+    "No LIKWID backend defined, switching to CPP default"
+  )
+    set(MUDOCK_LIKWID_CPP ON)
+  endif()
+  if (_MUDOCK_LIKWID_BACKENDS GREATER 1)
+    message(FATAL_ERROR
+    "Only one LIKWID backend may be enabled at a time.\n"
+    "Enable exactly one of:\n"
+    "  MUDOCK_LIKWID_CPU\n"
+    "  MUDOCK_LIKWID_CUDA"
+  )
+  endif()
 endif()
 
 # ##############################################################################
@@ -409,6 +433,16 @@ message(
   STATUS
     "Likwid Profiling....................: ${MUDOCK_ENABLE_LIKWID} (MUDOCK_ENABLE_LIKWID)"
 )
+if(MUDOCK_ENABLE_LIKWID)
+  message(
+  STATUS
+    "Likwid CPP Profiling................: ${MUDOCK_LIKWID_CPP} (MUDOCK_LIKWID_CPP)"
+)
+  message(
+  STATUS
+    "Likwid CUDA Profiling...............: ${MUDOCK_LIKWID_CUDA} (MUDOCK_LIKWID_CUDA)"
+)
+endif()
 
 message(
   STATUS

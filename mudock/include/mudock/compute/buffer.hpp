@@ -190,7 +190,7 @@ namespace mudock {
         std::runtime_error("Copy device to host on an empy object");
     };
     inline void copy_device2device(const buffer_impl<container_type, T, queue_t, args...>& other,
-                                   const int n = -1) {
+                                   const int n = 0) {
       valid = true;
       if (obj && other.obj) {
         (*obj).alloc(other.num_elements());

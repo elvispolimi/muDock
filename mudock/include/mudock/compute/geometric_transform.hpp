@@ -19,10 +19,11 @@ namespace mudock {
   template<typename queue_type>
     requires std::derived_from<queue_type, queue>
   struct geom_kernel {
-    geom_kernel(int batch_ligands_,
-                int batch_atoms_,
-                int chromsomes_per_ligand_,
-                chromosome* __restrict__ chromosomes_b_,
+    static constexpr char geom_region_name[] = "geometric_trasformation";
+    geom_kernel(const int batch_ligands_,
+                const int batch_atoms_,
+                const int chromsomes_per_ligand_,
+                const chromosome* __restrict__ chromosomes_b_,
                 const int* __restrict__ num_atoms_b_,
                 const int* __restrict__ num_rotamers_b_,
                 const fp_type* __restrict__ x_coords_b_,
@@ -31,11 +32,11 @@ namespace mudock {
                 fp_type* __restrict__ x_scratch_b_,
                 fp_type* __restrict__ y_scratch_b_,
                 fp_type* __restrict__ z_scratch_b_,
-                int* __restrict__ ligand_fragments_b_,
-                int* __restrict__ ligand_fragments_start_b_,
-                int* __restrict__ frag_indices_start_b_,
-                int* __restrict__ frag_start_indices_b_,
-                int* __restrict__ frag_stop_indices_b_,
+                const int* __restrict__ ligand_fragments_b_,
+                const int* __restrict__ ligand_fragments_start_b_,
+                const int* __restrict__ frag_indices_start_b_,
+                const int* __restrict__ frag_start_indices_b_,
+                const int* __restrict__ frag_stop_indices_b_,
                 std::shared_ptr<queue_type> q_)
         : batch_ligands(batch_ligands_),
           batch_atoms(batch_atoms_),
@@ -69,7 +70,7 @@ namespace mudock {
     const int batch_ligands;
     const int batch_atoms;
     const int chromsomes_per_ligand;
-    chromosome* __restrict__ chromosomes_b;
+    const chromosome* __restrict__ chromosomes_b;
     const int* __restrict__ num_atoms_b;
     const int* __restrict__ num_rotamers_b;
     const fp_type* __restrict__ x_coords_b;
@@ -78,11 +79,11 @@ namespace mudock {
     fp_type* __restrict__ x_scratch_b;
     fp_type* __restrict__ y_scratch_b;
     fp_type* __restrict__ z_scratch_b;
-    int* __restrict__ ligand_fragments_b;
-    int* __restrict__ ligand_fragments_start_b;
-    int* __restrict__ frag_indices_start_b;
-    int* __restrict__ frag_start_indices_b;
-    int* __restrict__ frag_stop_indices_b;
+    const int* __restrict__ ligand_fragments_b;
+    const int* __restrict__ ligand_fragments_start_b;
+    const int* __restrict__ frag_indices_start_b;
+    const int* __restrict__ frag_start_indices_b;
+    const int* __restrict__ frag_stop_indices_b;
     std::shared_ptr<queue_type> q;
   };
 
@@ -100,15 +101,18 @@ namespace mudock {
           protein_center(protein.get_center()) {};
 
     void prepare(batch<static_molecule>& batch) {
-      batch_ligands                           = batch.num_ligands;
-      const knobs& configuration              = (*this->scratch).configuration;
-      const auto chromsomes_per_ligand        = configuration.max_chromosomes_per_ligand;
+      batch_ligands = batch.num_ligands;
+      // const auto chromsomes_per_ligand        = configuration.max_chromosomes_per_ligand;
       batch_atoms                             = batch.batch_max_atoms;
       const int batch_rotamers                = batch_atoms - 3;
       const int tot_atoms_in_batch            = batch_ligands * batch_atoms;
       const int tot_rotamers_atoms_in_batch   = tot_atoms_in_batch * batch_rotamers;
       const std::size_t tot_rotamers_in_batch = batch_ligands * batch_rotamers;
       auto q                                  = (*this->scratch).get_queue();
+      auto& chromosomes_b = (*this->scratch).template get<buffer_data_type::CHROMOSOMES>();
+      assert(chromosomes_b.num_elements() > 0 &&
+             "Chromosomes buffer not allocated before geom transform construction");
+      auto chromsomes_per_ligand = chromosomes_b.num_elements() / batch_ligands;
 
       ligand_fragments.alloc(tot_rotamers_atoms_in_batch);
       ligand_fragments_start.alloc(batch_ligands + 1);
@@ -229,26 +233,24 @@ namespace mudock {
     std::unique_ptr<geom_kernel<queue_t>> kernel;
 
     void teardown_impl(batch<static_molecule>& batch) {
-      assert(batch.num_ligands ==
-                 static_cast<int>(
-                     (*this->scratch).template get<buffer_data_type::CHROMOSOMES>().num_elements()) &&
-             "Number of chromosomes and ligands in batch are different");
-
-      auto& x_scratch_b = (*this->scratch).template get<buffer_data_type::X_SCRATCH>();
-      auto& y_scratch_b = (*this->scratch).template get<buffer_data_type::Y_SCRATCH>();
-      auto& z_scratch_b = (*this->scratch).template get<buffer_data_type::Z_SCRATCH>();
-      x_scratch_b.copy_host2device();
-      x_scratch_b.copy_host2device();
-      x_scratch_b.copy_host2device();
-
-      for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
-        auto& ligand           = *batch.molecules[ligand_index];
-        const int num_atoms    = ligand.num_atoms();
-        const int stride_atoms = ligand_index * batch_atoms;
-        std::memcpy(ligand.x(), x_scratch_b.host_pointer() + stride_atoms, num_atoms * sizeof(fp_type));
-        std::memcpy(ligand.y(), y_scratch_b.host_pointer() + stride_atoms, num_atoms * sizeof(fp_type));
-        std::memcpy(ligand.z(), z_scratch_b.host_pointer() + stride_atoms, num_atoms * sizeof(fp_type));
+      if (batch.num_ligands ==
+          static_cast<int>((*this->scratch).template get<buffer_data_type::CHROMOSOMES>().num_elements())) {
+        for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
+          auto& ligand           = *batch.molecules[ligand_index];
+          const int num_atoms    = ligand.num_atoms();
+          const int stride_atoms = ligand_index * batch_atoms;
+          auto& x_scratch_b      = (*this->scratch).template get<buffer_data_type::X_SCRATCH>();
+          auto& y_scratch_b      = (*this->scratch).template get<buffer_data_type::Y_SCRATCH>();
+          auto& z_scratch_b      = (*this->scratch).template get<buffer_data_type::Z_SCRATCH>();
+          x_scratch_b.copy_host2device();
+          x_scratch_b.copy_host2device();
+          x_scratch_b.copy_host2device();
+          std::memcpy(ligand.x(), x_scratch_b.host_pointer() + stride_atoms, num_atoms * sizeof(fp_type));
+          std::memcpy(ligand.y(), y_scratch_b.host_pointer() + stride_atoms, num_atoms * sizeof(fp_type));
+          std::memcpy(ligand.z(), z_scratch_b.host_pointer() + stride_atoms, num_atoms * sizeof(fp_type));
+        }
       }
+      // Otherwise the upper stage have the responsibility to do so
     };
   };
 #endif
