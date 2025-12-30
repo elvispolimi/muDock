@@ -6,11 +6,6 @@
 
 namespace mudock {
   template<>
-  struct rand_state_type<queue_cuda> {
-    using type = int;
-  };
-
-  template<>
   void genetic_kernel<queue_cuda>::operator()();
   template<>
   void genetic_kernel<queue_cuda>::initialize();

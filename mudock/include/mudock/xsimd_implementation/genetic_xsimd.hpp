@@ -4,13 +4,8 @@
 #include <mudock/compute/genetic.hpp>
 #include <mudock/cpp_implementation/genetic_cpp.hpp>
 #include <mudock/xsimd_implementation/queue_xsimd.hpp>
-#include <random>
 
 namespace mudock {
-  template<>
-  struct rand_state_type<queue_xsimd> {
-    using type = std::mt19937;
-  };
 
   template<>
   struct genetic_kernel<queue_xsimd>: genetic_kernel<queue_cpp> {

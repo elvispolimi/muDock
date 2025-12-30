@@ -25,7 +25,7 @@ namespace mudock {
 
   //TODO find a better way to specific grid and block dimensions
   //TODO what about shared mem?
-  void queue_cuda::launch_kernel(void* f, const int batch_ligands, void* args[]) {
+  void queue_cuda::launch_kernel(void* f, void* args[], const int batch_ligands) {
     // const std::size_t shared_mem =
     //     std::max(configuration.population_number, static_cast<std::size_t>(BLOCK_SIZE)) * sizeof(fp_type);
     MUDOCK_CHECK(cudaLaunchKernel(f, batch_ligands, BLOCK_SIZE, args, 0, impl_->stream));

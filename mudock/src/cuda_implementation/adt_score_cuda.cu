@@ -1,3 +1,5 @@
+#include "mudock/compute/adt_score_kernel.hpp"
+
 #include <array>
 #include <memory>
 #include <mudock/chem/autodock_grid_types.hpp>
@@ -20,8 +22,8 @@
 namespace mudock {
   // FIXME with mehler solmajher header file
   __device__ static constexpr fp_type EINTCLAMP_CUDA{EINTCLAMP};
-  __device__ static constexpr fp_type lambda{mehler_solmajer::lambda};
-  __device__ static constexpr fp_type epsilon0{mehler_solmajer::epsilon0};
+  // __device__ static constexpr fp_type lambda{mehler_solmajer::lambda};
+  // __device__ static constexpr fp_type epsilon0{mehler_solmajer::epsilon0};
   __device__ static constexpr fp_type A{mehler_solmajer::A};
   __device__ static constexpr fp_type B{mehler_solmajer::B};
   __device__ static constexpr fp_type rk{mehler_solmajer::rk};
@@ -88,32 +90,31 @@ namespace mudock {
   }
 
   template<int MAX_ATOMS>
-  __global__ inline void calc_energy(const int atom_stride,
-                                     const int scores_per_ligand,
-                                     const fp_type* __restrict__ scratch_x,
-                                     const fp_type* __restrict__ scratch_y,
-                                     const fp_type* __restrict__ scratch_z,
-                                     const fp_type* __restrict__ vol,
-                                     const fp_type* __restrict__ solpar,
-                                     const fp_type* __restrict__ charge,
-                                     const int* num_atoms_b,
-                                     const int* num_rotamers_b,
-                                     const int* num_nonbonds_b,
-                                     const int* __restrict__ nonbond_a1,
-                                     const int* __restrict__ nonbond_a2,
-                                     const fp_type* __restrict__ nonbond_cA,
-                                     const fp_type* __restrict__ nonbond_cB,
-                                     const int* __restrict__ nonbond_xB,
-                                     const cudaTextureObject_t* __restrict__ atom_textures,
-                                     const int* __restrict__ atom_tex_indexes,
-                                     fp_type* scores) {
+  __global__ void calc_energy(const int atom_stride,
+                              const int scores_per_ligand,
+                              const fp_type* __restrict__ scratch_x,
+                              const fp_type* __restrict__ scratch_y,
+                              const fp_type* __restrict__ scratch_z,
+                              const fp_type* __restrict__ vol,
+                              const fp_type* __restrict__ solpar,
+                              const fp_type* __restrict__ charge,
+                              const int* num_atoms_b,
+                              const int* num_rotamers_b,
+                              const int* num_nonbonds_b,
+                              const int* __restrict__ nonbond_a1,
+                              const int* __restrict__ nonbond_a2,
+                              const fp_type* __restrict__ nonbond_cA,
+                              const fp_type* __restrict__ nonbond_cB,
+                              const int* __restrict__ nonbond_xB,
+                              const cudaTextureObject_t* __restrict__ atom_textures,
+                              const int* __restrict__ atom_tex_indexes,
+                              fp_type* __restrict__ scores) {
     const cudaTextureObject_t& electro_texture = atom_textures[static_cast<int>(autodock_grid_type::ELEC)];
     const cudaTextureObject_t& desolv_texture  = atom_textures[static_cast<int>(autodock_grid_type::DESOLV)];
 
     const int ligand_id        = blockIdx.x;
     const int local_thread_id  = threadIdx.x;
     const int thread_per_block = blockDim.x;
-    const int global_thread_id = local_thread_id + thread_per_block * ligand_id;
 
     const int num_atoms    = num_atoms_b[ligand_id];
     const int num_nonbonds = num_nonbonds_b[ligand_id + 1] - num_nonbonds_b[ligand_id];
@@ -316,7 +317,7 @@ namespace mudock {
     constexpr_switch_bucket<0, reorder_buffer<static_molecule>::get_num_atom_clusters(), 1>(
         [&](const auto atom_index) {
           const auto max_atoms = reorder_buffer<static_molecule>::atoms_clusters[atom_index];
-          q->launch_kernel((void*) calc_energy<max_atoms>, batch_ligands, args);
+          q->launch_kernel((void*) calc_energy<max_atoms>, args, batch_ligands);
         },
         batch_atoms,
         reorder_buffer<static_molecule>::atoms_clusters.data());

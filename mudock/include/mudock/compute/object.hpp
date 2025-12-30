@@ -44,7 +44,7 @@ namespace mudock {
       q->copy_host2device(host, ptr, (copy_size ? copy_size : size) * sizeof(T));
     };
     void copy_device2host(T* const host) const { q->copy_device2host(ptr, host, size * sizeof(T)); };
-    void copy_device2device(object<T>& other, const int copy_size = -1) {
+    void copy_device2device(object<T>& other, const int copy_size = 0) {
       const auto n = (copy_size ? copy_size : size);
       // TODO check if necessary
       // alloc(n);

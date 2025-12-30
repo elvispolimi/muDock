@@ -110,14 +110,14 @@ if(MUDOCK_ENABLE_TEST)
   target_link_libraries(test_score_adt_impl libmudock Boost::program_options)
 endif()
 
-if(MUDOCK_ENABLE_LIKWID)
-  # target_include_directories("${CMAKE_PROJECT_NAME}" PRIVATE
-  # ${LIKWID_INCLUDE_DIR})
-  target_link_libraries("${CMAKE_PROJECT_NAME}" likwid::likwid)
-  target_link_libraries(test_score likwid::likwid)
-
-  add_definitions(-DLIKWID_PERFMON)
-endif()
+# if(MUDOCK_ENABLE_LIKWID)
+#   # target_include_directories("${CMAKE_PROJECT_NAME}" PRIVATE
+#   # ${LIKWID_INCLUDE_DIR})
+#   target_link_libraries("${CMAKE_PROJECT_NAME}" likwid::likwid)
+#   target_link_libraries(test_score likwid::likwid)
+#
+#   add_definitions(-DLIKWID_PERFMON)
+# endif()
 
 # ##############################################################################
 # ### Declare the install step

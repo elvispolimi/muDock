@@ -122,7 +122,9 @@ list(
   "${source_path}/cpp_implementation/adt_score_cpp.cpp"
   "${source_path}/cpp_implementation/genetic_cpp.cpp"
 )
-
+set_source_files_properties(
+  "${source_path}/chem/autodock_protein.cpp"
+  PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS} -O2 -g")
 if(MUDOCK_ENABLE_GH)
   list(APPEND source_files
        "${source_path}/gh_implementation/geom_transform_gh.cpp"
@@ -145,6 +147,11 @@ if(MUDOCK_ENABLE_CUDA)
     "${header_path}/${header_prefix}/cuda_implementation/queue_cuda.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/adt_score_cuda.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/genetic_cuda.cuh"
+    "${header_path}/${header_prefix}/cuda_implementation/cuda_random.cuh"
+    "${header_path}/${header_prefix}/cuda_implementation/cuda_utils.cuh"
+    "${header_path}/${header_prefix}/cuda_implementation/mutate.cuh"
+    "${header_path}/${header_prefix}/cuda_implementation/cuda_texture.cuh"
+    "${header_path}/${header_prefix}/cuda_implementation/cuda_implementation.hpp"
     )
   list(
     APPEND
@@ -152,6 +159,7 @@ if(MUDOCK_ENABLE_CUDA)
     "${source_path}/cuda_implementation/queue_cuda.cu"
     "${source_path}/cuda_implementation/adt_score_cuda.cu"
     "${source_path}/cuda_implementation/genetic_cuda.cu"
+    "${source_path}/cuda_implementation/cuda_random.cu"
     "${source_path}/cuda_implementation/geom_transform_cuda.cu"
 )
 endif()
@@ -276,8 +284,18 @@ endif()
 
 # Profiling
 if(MUDOCK_ENABLE_LIKWID)
+  target_link_libraries(libmudock PUBLIC likwid::likwid)
   target_include_directories(libmudock PUBLIC ${LIKWID_INCLUDE_DIR})
-  add_definitions(-DLIKWID_PERFMON)
+  if(MUDOCK_ENABLE_CUDA)
+    target_compile_definitions(libmudock PUBLIC LIKWID_NVMON)
+    if(MUDOCK_LIKWID_CUDA)
+      target_compile_definitions(libmudock PUBLIC MUDOCK_LIKWID_CUDA)
+    endif()
+  endif()
+  if(MUDOCK_LIKWID_CPP)
+    target_compile_definitions(libmudock PUBLIC MUDOCK_LIKWID_CPP)
+    target_compile_definitions(libmudock PUBLIC LIKWID_PERFMON)
+  endif()
 endif()
 
 # Test

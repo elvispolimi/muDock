@@ -256,17 +256,18 @@ namespace mudock {
 
     void teardown_impl(batch<static_molecule> &batch) override {
       assert(batch.num_ligands == batch_ligands && "Scoring algorithm received different batch for teardown");
-      assert(batch_ligands ==
-                 static_cast<int>((*this->scratch).template get<buffer_data_type::SCORES>().num_elements()) &&
-             "Number of scores and ligands in batch are different");
 
-      auto &scores_b = (*this->scratch).template get<buffer_data_type::SCORES>();
-      scores_b.copy_device2host();
-      for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
-        auto &ligand = *batch.molecules[ligand_index];
+      if (batch_ligands ==
+          static_cast<int>((*this->scratch).template get<buffer_data_type::SCORES>().num_elements())) {
+        auto &scores_b = (*this->scratch).template get<buffer_data_type::SCORES>();
+        scores_b.copy_device2host();
+        for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
+          auto &ligand = *batch.molecules[ligand_index];
 
-        ligand.properties.assign(property_type::SCORE, std::to_string(scores_b()[ligand_index]));
+          ligand.properties.assign(property_type::SCORE, std::to_string(scores_b()[ligand_index]));
+        }
       }
+      // Otherwise the upper stage gave the responsibility to do so
     };
   };
 #endif
