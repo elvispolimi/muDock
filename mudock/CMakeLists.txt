@@ -103,7 +103,6 @@ list(
   "${source_path}/chem/autodock_grid_types.cpp"
   "${source_path}/chem/elements.cpp"
   "${source_path}/compute/parse_ids.cpp"
-  "${source_path}/compute/reorder_buffer.cpp"
   "${source_path}/format/dot.cpp"
   "${source_path}/format/mol2.cpp"
   "${source_path}/format/mol2x.cpp"
