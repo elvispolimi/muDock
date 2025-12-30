@@ -112,9 +112,8 @@ namespace mudock {
     const cudaTextureObject_t& electro_texture = atom_textures[static_cast<int>(autodock_grid_type::ELEC)];
     const cudaTextureObject_t& desolv_texture  = atom_textures[static_cast<int>(autodock_grid_type::DESOLV)];
 
-    const int ligand_id        = blockIdx.x;
-    const int local_thread_id  = threadIdx.x;
-    const int thread_per_block = blockDim.x;
+    const int ligand_id       = blockIdx.x;
+    const int local_thread_id = threadIdx.x;
 
     const int num_atoms    = num_atoms_b[ligand_id];
     const int num_nonbonds = num_nonbonds_b[ligand_id + 1] - num_nonbonds_b[ligand_id];
