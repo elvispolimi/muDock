@@ -1,15 +1,20 @@
 #pragma once
 
 #include <concepts>
+#include <memory>
 #include <mudock/compute/queue.hpp>
+#include <mudock/type_alias.hpp>
 
 namespace mudock {
+  // TODO check maybe the kernel can be fused togheter with main adt score
+  // May become an issue to keep separate the TU and the CUDA/etc dependencies
   template<typename queue_type>
     requires std::derived_from<queue_type, queue>
   struct adt_score_kernel {
-    adt_score_kernel(int scores_per_ligand_,
-                     int batch_ligands_,
-                     int batch_atoms_,
+    static constexpr char adt_region_name[] = "adt_score_kernel";
+    adt_score_kernel(const int scores_per_ligand_,
+                     const int batch_ligands_,
+                     const int batch_atoms_,
                      const int *__restrict__ num_atoms_b_,
                      const int *__restrict__ num_rotamers_b_,
                      const int *__restrict__ num_nonbonds_b_,
@@ -29,9 +34,9 @@ namespace mudock {
                      const fp_type *__restrict__ minimum_,
                      const fp_type *__restrict__ maximum_,
                      const fp_type *__restrict__ center_,
-                     int map_index_x_,
-                     int map_index_xy_,
-                     int map_index_xyz_,
+                     const int map_index_x_,
+                     const int map_index_xy_,
+                     const int map_index_xyz_,
                      fp_type *__restrict__ scores_b_,
                      std::shared_ptr<queue_type> q_)
         : scores_per_ligand(scores_per_ligand_),
@@ -72,9 +77,9 @@ namespace mudock {
     ~adt_score_kernel() = default;
 
   private:
-    int scores_per_ligand;
-    int batch_ligands;
-    int batch_atoms;
+    const int scores_per_ligand;
+    const int batch_ligands;
+    const int batch_atoms;
     const int *__restrict__ num_atoms_b;
     const int *__restrict__ num_rotamers_b;
     const int *__restrict__ num_nonbonds_b;
@@ -94,9 +99,9 @@ namespace mudock {
     const fp_type *__restrict__ minimum;
     const fp_type *__restrict__ maximum;
     const fp_type *__restrict__ center;
-    int map_index_x;
-    int map_index_xy;
-    int map_index_xyz;
+    const int map_index_x;
+    const int map_index_xy;
+    const int map_index_xyz;
     fp_type *__restrict__ scores_b;
     std::shared_ptr<queue_type> q;
   };

@@ -5,6 +5,7 @@
 #include <mudock/batch.hpp>
 #include <mudock/chem/autodock_protein.hpp>
 #ifndef __CUDACC__
+  #include <mudock/compute/buffer_utils.hpp>
   #include <mudock/compute/docking.hpp>
   #include <mudock/compute/geometric_transform.hpp>
   #include <mudock/compute/scoring.hpp>
@@ -18,12 +19,10 @@ namespace mudock {
 
   template<typename queue_type>
     requires std::derived_from<queue_type, queue>
-  struct rand_state_type;
-
-  template<typename queue_type>
-    requires std::derived_from<queue_type, queue>
   struct genetic_kernel {
-    using rand_type = typename rand_state_type<queue_type>::type;
+    static constexpr char finalize_region_name[]   = "genetic_finalize";
+    static constexpr char iterate_region_name[]    = "genetic_iterate";
+    static constexpr char initialize_region_name[] = "genetic_initialize";
 
     genetic_kernel(const int batch_ligands_,
                    const int population_number_,
@@ -49,7 +48,7 @@ namespace mudock {
           scores_b(scores_b_),
           best_scores_b(best_scores_b_),
           best_chromosomes_b(best_chromosomes_b_),
-          rand(seed_),
+          seed(seed_),
           q(q_) {};
     genetic_kernel() {};
 
@@ -69,7 +68,7 @@ namespace mudock {
     fp_type* __restrict__ scores_b;
     fp_type* __restrict__ best_scores_b;
     chromosome* __restrict__ best_chromosomes_b;
-    rand_type rand;
+    size_t seed;
     std::shared_ptr<queue_type> q;
   };
 
@@ -104,12 +103,7 @@ namespace mudock {
       best_scores.alloc(batch_ligands);
       best_chromosomes.alloc(batch_ligands);
 
-      for (int index{0}; index < batch_ligands; ++index) {
-        auto& ligand            = *batch.molecules[0];
-        num_rotamers_b()[index] = ligand.num_rotamers();
-      }
-
-      num_rotamers_b.copy_host2device();
+      load_num_rotamers<queue_t>(batch, this->scratch);
 
       const auto seed =
           configuration.seed.has_value()
@@ -117,7 +111,7 @@ namespace mudock {
               : static_cast<size_t>(std::chrono::high_resolution_clock::now().time_since_epoch().count());
 
       int* __restrict__ num_rotamers_p            = num_rotamers_b.dev_pointer();
-      fp_type* __restrict__ scores_p              = scores_b.host_pointer();
+      fp_type* __restrict__ scores_p              = scores_b.dev_pointer();
       fp_type* __restrict__ best_scores_p         = best_scores.dev_pointer();
       chromosome* __restrict__ best_chromosomes_p = best_chromosomes.dev_pointer();
 
@@ -154,7 +148,6 @@ namespace mudock {
     };
 
   private:
-    // std::shared_ptr<scoring<queue_t>> score_stage;
     scoring_t<queue_t> score_stage;
     geometric<queue_t> geom_trans;
     std::unique_ptr<genetic_kernel<queue_t>> kernel;
@@ -168,18 +161,16 @@ namespace mudock {
     void teardown_impl(batch<static_molecule>& batch) {
       assert(batch.num_ligands == batch_ligands && "Genetic algorithm received different batch for teardown");
 
-      auto& population_b       = (*this->scratch).template get<buffer_data_type::CHROMOSOMES>();
-      auto& best_chromosomes_b = best_chromosomes;
-
       // TODO check if the copy can be changed with a swap
-      population_b.copy_device2device(best_chromosomes_b);
-
-      geom_trans();
-      score_stage();
-
-      //TODO geom teardown with genetic
+      // auto& population_b = (*this->scratch).template get<buffer_data_type::CHROMOSOMES>();
+      // population_b.copy_device2device(best_chromosomes);
+      // geom_trans();
+      // score_stage();
       // geom_trans.teardown(batch);
-      score_stage.teardown(batch);
+      // score_stage.teardown(batch);
+
+      best_scores.copy_device2host();
+      (*this->scratch).get_queue()->synchronize();
 
       for (int index{0}; index < batch_ligands; ++index) {
         auto& ligand = *batch.molecules[index];

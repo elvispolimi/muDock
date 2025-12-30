@@ -11,10 +11,11 @@
 #include <mudock/likwid_utils.hpp>
 #include <mudock/molecule.hpp>
 #include <mudock/mudock.hpp>
-#include <string>
 
 int main(int argc, char* argv[]) {
   const auto args = parse_command_line_arguments(argc, argv);
+
+  MUDOCK_MARKER_INIT;
 
   // read and parse the target protein
   mudock::info("Reading and parsing protein ", args.protein_path, " ...");
@@ -56,8 +57,6 @@ int main(int argc, char* argv[]) {
 
   // compute all the ligands according to the input configuration
   mudock::info("Virtual screening the ligands ...");
-  LIKWID_MARKER_INIT;
-
   mudock::genetic_adt_pipeline pipe{protein};
 
   auto output_queue = std::make_shared<mudock::safe_stack<mudock::static_molecule>>();
@@ -67,14 +66,14 @@ int main(int argc, char* argv[]) {
     mudock::info("All workers have been created!");
   } // when we exit from this block the computation is complete
 
-  LIKWID_MARKER_CLOSE;
-
   // after the computation it will be nice to print the score of all the molecules
   mudock::info("Printing the scores ...");
   for (auto ligand = output_queue->dequeue(); ligand; ligand = output_queue->dequeue()) {
     std::cout << ligand->properties.get(mudock::property_type::NAME) << " "
               << ligand->properties.get(mudock::property_type::SCORE) << std::endl;
   }
+
+  MUDOCK_MARKER_CLOSE;
 
   // if we reach this statement we completed successfully the run
   mudock::info("All Done!");

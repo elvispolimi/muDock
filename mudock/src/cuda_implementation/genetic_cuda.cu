@@ -1,4 +1,3 @@
-#include <cstring>
 #include <mudock/compute/devices_memory.hpp>
 #include <mudock/compute/genetic.hpp>
 #include <mudock/cpp_implementation/chromosome.hpp>
@@ -42,6 +41,7 @@ namespace mudock {
   __device__ inline fp_type get_mutation_coin_distribution(curandState& state) {
     return random_gen_cuda<fp_type>(state, 0, 1);
   };
+  // TODO check what happens if max num_rotamers is reached, read for split index could go out of bound
   __device__ inline int get_crossover_distribution(curandState& state, const int* num_rotamers) {
     return random_gen_cuda<int>(state, 0, 6 + *num_rotamers);
   };
@@ -80,7 +80,7 @@ namespace mudock {
     // extern __shared__ fp_type shared_data[];
     // fp_type* s_chromosome_scores = shared_data;
     // Initialize shared scores
-    for (int chromosome_index = local_thread_id; chromosome_index < max(chromosome_number, thread_per_block);
+    for (int chromosome_index = local_thread_id; chromosome_index < chromosome_number;
          chromosome_index += thread_per_block)
       scores[chromosome_index] = std::numeric_limits<fp_type>::infinity(); // Set initial score value
 
@@ -118,38 +118,41 @@ namespace mudock {
     curandState& l_state                        = (state[global_thread_id]);
     fp_type* __restrict__ scores                = ligand_scores + chromosome_number * ligand_id;
 
-    for (int chromosome_index = 0; chromosome_index < chromosome_number; ++chromosome_index) {
-      // Generate the new population
-      for (int chromosome_index = local_thread_id; chromosome_index < chromosome_number;
-           chromosome_index += thread_per_block) {
-        chromosome& next_chromosome = *(l_next_chromosomes + chromosome_index);
+    // Generate the new population
+    for (int chromosome_index = local_thread_id; chromosome_index < chromosome_number;
+         chromosome_index += thread_per_block) {
+      chromosome& next_chromosome = *(l_next_chromosomes + chromosome_index);
 
-        // select the parent
-        const int best_individual_1 =
-            tournament_selection_cuda(l_state, tournament_length, chromosome_number, scores);
-        const int best_individual_2 =
-            tournament_selection_cuda(l_state, tournament_length, chromosome_number, scores);
+      // select the parent
+      // TODO check probably they are always the same
+      const int best_individual_1 =
+          tournament_selection_cuda(l_state, tournament_length, chromosome_number, scores);
+      const int best_individual_2 =
+          tournament_selection_cuda(l_state, tournament_length, chromosome_number, scores);
 
-        // generate the offspring
-        const int split_index = get_crossover_distribution(l_state, &num_rotamers);
-        memcpy(next_chromosome.data(), &(l_chromosomes[best_individual_1][0]), split_index * sizeof(fp_type));
-        const int parent2_copy_size = 6 + num_rotamers - split_index;
-        if (parent2_copy_size > 0)
-          memcpy(next_chromosome.data() + split_index,
-                 &(l_chromosomes[best_individual_2][split_index]),
-                 parent2_copy_size * sizeof(fp_type));
+      // generate the offspring
+      const int split_index = get_crossover_distribution(l_state, &num_rotamers);
+      // memcpy(next_chromosome.data(), &(l_chromosomes[best_individual_1][0]), split_index * sizeof(fp_type));
+      // const int parent2_copy_size = 6 + num_rotamers - split_index;
+      // if (parent2_copy_size > 0)
+      //   memcpy(next_chromosome.data() + split_index,
+      //          &(l_chromosomes[best_individual_2][split_index]),
+      //          parent2_copy_size * sizeof(fp_type));
+      fp_type* dst      = next_chromosome.data();
+      const fp_type* p1 = l_chromosomes[best_individual_1].data();
+      const fp_type* p2 = l_chromosomes[best_individual_2].data();
+      for (int i = 0; i < (6 + num_rotamers); ++i) { dst[i] = (i < split_index) ? p1[i] : p2[i]; }
 
 // mutate the offspring
 #pragma unroll
-        for (int i{0}; i < 3; ++i) {
-          if (get_mutation_coin_distribution(l_state) < mutation_prob)
-            next_chromosome[i] += get_mutation_change_distribution(l_state) * coordinate_step;
-        }
+      for (int i{0}; i < 3; ++i) {
+        if (get_mutation_coin_distribution(l_state) < mutation_prob)
+          next_chromosome[i] += get_mutation_change_distribution(l_state) * coordinate_step;
+      }
 #pragma unroll
-        for (int i{3}; i < 6 + num_rotamers; ++i) {
-          if (get_mutation_coin_distribution(l_state) < mutation_prob) {
-            next_chromosome[i] += get_mutation_change_distribution(l_state) * angle_step;
-          }
+      for (int i{3}; i < 6 + num_rotamers; ++i) {
+        if (get_mutation_coin_distribution(l_state) < mutation_prob) {
+          next_chromosome[i] += get_mutation_change_distribution(l_state) * angle_step;
         }
       }
     }
@@ -171,8 +174,9 @@ namespace mudock {
 
     // Compute the maximum value within the warp
     // Assuming each warp has 32 threads
-    int min_index     = local_thread_id;
-    fp_type min_score = scores[min_index];
+    int min_index = local_thread_id;
+    fp_type min_score =
+        min_index < chromosome_number ? scores[min_index] : std::numeric_limits<fp_type>::infinity();
     for (int chromosome_index = local_thread_id + thread_per_block; chromosome_index < chromosome_number;
          chromosome_index += thread_per_block) {
       if (min_score > scores[chromosome_index]) {
@@ -192,17 +196,19 @@ namespace mudock {
     }
     if (local_thread_id == 0) {
       ligand_best_scores[ligand_id] = min_score;
-      memcpy((best_chromosomes + ligand_id)->data(),
-             (l_chromosomes + min_index)->data(),
-             sizeof(fp_type) * (6 + num_rotamers));
+
+      fp_type* dst       = (best_chromosomes + ligand_id)->data();
+      const fp_type* src = (l_chromosomes + min_index)->data();
+      for (int i = 0; i < (6 + num_rotamers); ++i) { dst[i] = src[i]; }
     }
   }
 
   template<>
   void genetic_kernel<queue_cuda>::initialize() {
+    // TODO each time or once per computation starts
     cuda_random_memory.init(q);
     // TODO chek assumption on num_threads
-    cuda_random_memory.get_data()->alloc(batch_ligands * BLOCK_SIZE, rand);
+    cuda_random_memory.get_data()->alloc(batch_ligands * BLOCK_SIZE, seed);
 
     void* args[] = {(void*) &population_number,
                     (void*) &num_rotamers_b,
@@ -210,7 +216,7 @@ namespace mudock {
                     (void*) cuda_random_memory.get_data()->dev_pointer_ref(),
                     (void*) &scores_b};
     //TODO check grid/dimensions
-    q->launch_kernel((void*) initialize_gpu, batch_ligands, args);
+    q->launch_kernel((void*) initialize_gpu, args, batch_ligands);
   }
   template<>
   void genetic_kernel<queue_cuda>::operator()() {
@@ -223,7 +229,7 @@ namespace mudock {
                     (void*) cuda_random_memory.get_data()->dev_pointer_ref(),
                     (void*) &scores_b};
     //TODO check grid/dimensions
-    q->launch_kernel((void*) iterate_gpu, batch_ligands, args);
+    q->launch_kernel((void*) iterate_gpu, args, batch_ligands);
   }
   template<>
   void genetic_kernel<queue_cuda>::finalize() {
@@ -234,6 +240,6 @@ namespace mudock {
                     (void*) &population,
                     (void*) &best_chromosomes_b};
     //TODO check grid/dimensions
-    q->launch_kernel((void*) finalize_gpu, batch_ligands, args);
+    q->launch_kernel((void*) finalize_gpu, args, batch_ligands);
   }
 } // namespace mudock

@@ -49,8 +49,6 @@ namespace mudock {
           pipeline(std::move(_pipeline)) {}
 
     void main() {
-      LIKWID_MARKER_REGISTER("GA");
-
       // process the input ligands
       auto new_ligand = input_stack->dequeue();
       while (new_ligand) {
