@@ -19,10 +19,7 @@
 #define BUCKET_MULTIPLIER 2
 
 namespace mudock {
-  // FIXME with mehler solmajher header file
   __device__ static constexpr fp_type EINTCLAMP_CUDA{EINTCLAMP};
-  // __device__ static constexpr fp_type lambda{mehler_solmajer::lambda};
-  // __device__ static constexpr fp_type epsilon0{mehler_solmajer::epsilon0};
   __device__ static constexpr fp_type A{mehler_solmajer::A};
   __device__ static constexpr fp_type B{mehler_solmajer::B};
   __device__ static constexpr fp_type rk{mehler_solmajer::rk};
@@ -138,9 +135,9 @@ namespace mudock {
     __syncwarp();
     for (int scores_index = 0; scores_index < scores_per_ligand; ++scores_index) {
       // Copy original coordinates
-      const fp_type* ligand_x = l_scratch_x + ligand_id * atom_stride;
-      const fp_type* ligand_y = l_scratch_y + ligand_id * atom_stride;
-      const fp_type* ligand_z = l_scratch_z + ligand_id * atom_stride;
+      const fp_type* ligand_x = l_scratch_x + scores_index * atom_stride;
+      const fp_type* ligand_y = l_scratch_y + scores_index * atom_stride;
+      const fp_type* ligand_z = l_scratch_z + scores_index * atom_stride;
 
       // Calculate energy
       fp_type elect_total_trilinear = 0, emap_total_trilinear = 0, dmap_total_trilinear = 0;
@@ -316,7 +313,7 @@ namespace mudock {
     constexpr_switch_bucket<0, reorder_buffer<static_molecule>::get_num_atom_clusters(), 1>(
         [&](const auto atom_index) {
           const auto max_atoms = reorder_buffer<static_molecule>::atoms_clusters[atom_index];
-          q->launch_kernel((void*) calc_energy<max_atoms>, args, batch_ligands);
+          q->launch_kernel((void*) calc_energy<max_atoms>, args, batch_ligands, BLOCK_SIZE);
         },
         batch_atoms,
         reorder_buffer<static_molecule>::atoms_clusters.data());
