@@ -116,7 +116,7 @@ namespace mudock {
     chromosome* __restrict__ l_chromosomes      = chromosomes + ligand_id * chromosome_number;
     chromosome* __restrict__ l_next_chromosomes = next_chromosomes + ligand_id * chromosome_number;
     curandState& l_state                        = (state[global_thread_id]);
-    fp_type* __restrict__ scores                = ligand_scores + chromosome_number * ligand_id;
+    const fp_type* __restrict__ scores          = ligand_scores + chromosome_number * ligand_id;
 
     // Generate the new population
     for (int chromosome_index = local_thread_id; chromosome_index < chromosome_number;

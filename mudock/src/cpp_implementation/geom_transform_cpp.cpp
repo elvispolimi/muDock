@@ -34,9 +34,9 @@ namespace mudock {
       const int* frag_start_indices = frag_start_indices_b + frag_indices_start_b[ligand_index];
       const int* frag_stop_indices  = frag_stop_indices_b + frag_indices_start_b[ligand_index];
 
-      fp_type* __restrict__ x_scratch = x_scratch_b + ligand_index * batch_atoms * chromsomes_per_ligand;
-      fp_type* __restrict__ y_scratch = y_scratch_b + ligand_index * batch_atoms * chromsomes_per_ligand;
-      fp_type* __restrict__ z_scratch = z_scratch_b + ligand_index * batch_atoms * chromsomes_per_ligand;
+      fp_type* __restrict__ x_scratch = x_scratch_b + stride_atoms * chromsomes_per_ligand;
+      fp_type* __restrict__ y_scratch = y_scratch_b + stride_atoms * chromsomes_per_ligand;
+      fp_type* __restrict__ z_scratch = z_scratch_b + stride_atoms * chromsomes_per_ligand;
       for (int element_index = 0; element_index < chromsomes_per_ligand; ++element_index) {
         fp_type* __restrict__ x_scratch_chromosome = x_scratch + element_index * batch_atoms;
         fp_type* __restrict__ y_scratch_chromosome = y_scratch + element_index * batch_atoms;
