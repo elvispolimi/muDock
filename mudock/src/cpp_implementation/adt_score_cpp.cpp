@@ -57,13 +57,13 @@ namespace mudock {
       const int num_nonbonds = num_nonbonds_b[ligand_index + 1] - num_nonbonds_b[ligand_index];
       const int num_rotamers = num_rotamers_b[ligand_index];
 
-      const fp_type *__restrict__ scratch_x = x_scratch_b + ligand_index * atom_stride * scores_per_ligand;
-      const fp_type *__restrict__ scratch_y = y_scratch_b + ligand_index * atom_stride * scores_per_ligand;
-      const fp_type *__restrict__ scratch_z = z_scratch_b + ligand_index * atom_stride * scores_per_ligand;
-      const fp_type *__restrict__ vol_l     = vols_b + ligand_index * atom_stride;
-      const fp_type *__restrict__ solpar_l  = solpars_b + ligand_index * atom_stride;
-      const fp_type *__restrict__ charge_l  = charges_b + ligand_index * atom_stride;
-      const int *__restrict__ map_offsets_l = map_offsets_b + ligand_index * atom_stride;
+      const fp_type *__restrict__ scratch_x = x_scratch_b + atom_stride * scores_per_ligand;
+      const fp_type *__restrict__ scratch_y = y_scratch_b + atom_stride * scores_per_ligand;
+      const fp_type *__restrict__ scratch_z = z_scratch_b + atom_stride * scores_per_ligand;
+      const fp_type *__restrict__ vol_l     = vols_b + atom_stride;
+      const fp_type *__restrict__ solpar_l  = solpars_b + atom_stride;
+      const fp_type *__restrict__ charge_l  = charges_b + atom_stride;
+      const int *__restrict__ map_offsets_l = map_offsets_b + atom_stride;
       const int *__restrict__ nonbond_a1_l  = nonbond_a1_b + num_nonbonds_b[ligand_index];
       const int *__restrict__ nonbond_a2_l  = nonbond_a2_b + num_nonbonds_b[ligand_index];
       const fp_type *nonbond_cA_l           = nonbond_cA_b + num_nonbonds_b[ligand_index];
