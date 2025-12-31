@@ -27,7 +27,7 @@ namespace mudock {
     constexpr_switch_bucket<0, reorder_buffer<static_molecule>::get_num_atom_clusters(), 1>(
         [&](const auto atom_index) {
           const auto max_atoms = reorder_buffer<static_molecule>::atoms_clusters[atom_index];
-          q->launch_kernel((void*) apply_cuda<max_atoms>, args, batch_ligands);
+          q->launch_kernel((void*) apply_cuda<max_atoms>, args, batch_ligands, BLOCK_SIZE);
         },
         batch_atoms,
         reorder_buffer<static_molecule>::atoms_clusters.data());

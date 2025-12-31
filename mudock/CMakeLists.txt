@@ -442,6 +442,8 @@ endif()
 
 if(MUDOCK_ENABLE_OMP)
   target_link_libraries(libmudock PRIVATE OpenMP::OpenMP_CXX)
+  target_compile_options(libmudock
+                               PRIVATE "-fopenmp")
 endif()
 
 # ##############################################################################
