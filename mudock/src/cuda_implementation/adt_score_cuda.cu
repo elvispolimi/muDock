@@ -1,11 +1,10 @@
-#include "mudock/compute/adt_score_kernel.hpp"
-
 #include <array>
 #include <memory>
 #include <mudock/chem/autodock_grid_types.hpp>
 #include <mudock/chem/autodock_parameters.hpp>
 #include <mudock/chem/grid_const.hpp>
 #include <mudock/chem/mehler_solmajer.hpp>
+#include <mudock/compute/adt_score_kernel.hpp>
 #include <mudock/compute/devices_memory.hpp>
 #include <mudock/compute/reorder_buffer.hpp>
 #include <mudock/cuda_implementation/adt_score_cuda.cuh>
@@ -118,15 +117,16 @@ namespace mudock {
     const int num_atoms    = num_atoms_b[ligand_id];
     const int num_nonbonds = num_nonbonds_b[ligand_id + 1] - num_nonbonds_b[ligand_id];
     const int num_rotamers = num_rotamers_b[ligand_id];
+    const int stride       = ligand_id * atom_stride;
 
-    const fp_type* l_scratch_x = scratch_x + ligand_id * atom_stride * scores_per_ligand;
-    const fp_type* l_scratch_y = scratch_y + ligand_id * atom_stride * scores_per_ligand;
-    const fp_type* l_scratch_z = scratch_z + ligand_id * atom_stride * scores_per_ligand;
-    const fp_type* l_vol       = vol + ligand_id * atom_stride;
-    const fp_type* l_solpar    = solpar + ligand_id * atom_stride;
-    const fp_type* l_charge    = charge + ligand_id * atom_stride;
+    const fp_type* l_scratch_x = scratch_x + stride * scores_per_ligand;
+    const fp_type* l_scratch_y = scratch_y + stride * scores_per_ligand;
+    const fp_type* l_scratch_z = scratch_z + stride * scores_per_ligand;
+    const fp_type* l_vol       = vol + stride;
+    const fp_type* l_solpar    = solpar + stride;
+    const fp_type* l_charge    = charge + stride;
     // Point to the next population buffer
-    const auto* l_atom_tex_indexes = atom_tex_indexes + ligand_id * atom_stride;
+    const auto* l_atom_tex_indexes = atom_tex_indexes + stride;
     const int* l_nonbond_a1        = nonbond_a1 + num_nonbonds_b[ligand_id];
     const int* l_nonbond_a2        = nonbond_a2 + num_nonbonds_b[ligand_id];
     const fp_type* l_nonbond_cA    = nonbond_cA + num_nonbonds_b[ligand_id];

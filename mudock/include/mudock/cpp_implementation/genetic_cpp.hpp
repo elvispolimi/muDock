@@ -5,10 +5,6 @@
 #include <mudock/cpp_implementation/queue_cpp.hpp>
 
 namespace mudock {
-  // template<>
-  // struct rand_state_type<queue_cpp> {
-  //   using type = std::mt19937;
-  // };
 
   template<>
   void genetic_kernel<queue_cpp>::operator()();
