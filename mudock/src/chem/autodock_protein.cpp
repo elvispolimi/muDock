@@ -1,4 +1,3 @@
-
 #include <algorithm>
 #include <array>
 #include <cassert>
@@ -271,6 +270,7 @@ namespace mudock {
     const auto size_x         = get_eletrostatic().size<0>();
     const auto size_y         = get_eletrostatic().size<1>();
     const auto size_z         = get_eletrostatic().size<2>();
+#pragma omp parallel for collapse(3) schedule(static)
     for (std::size_t index_z = 0; index_z < size_z; ++index_z) {
       for (std::size_t index_y = 0; index_y < size_y; ++index_y) {
         for (std::size_t index_x = 0; index_x < size_x; ++index_x) {

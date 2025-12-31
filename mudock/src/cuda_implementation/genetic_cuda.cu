@@ -74,7 +74,7 @@ namespace mudock {
     const int num_rotamers       = ligand_num_rotamers[ligand_id];
     chromosome* l_chromosomes    = chromosomes + ligand_id * chromosome_number;
     fp_type* __restrict__ scores = ligand_scores + chromosome_number * ligand_id;
-    curandState& l_state         = (state[global_thread_id]);
+    curandState l_state          = (state[global_thread_id]);
 
     // Shared memory
     // extern __shared__ fp_type shared_data[];
@@ -97,6 +97,8 @@ namespace mudock {
         chromo[i] = get_init_change_distribution(l_state) * angle_step;
       }
     }
+
+    state[global_thread_id] = l_state;
   }
 
   __global__ void iterate_gpu(const int tournament_length,
@@ -115,7 +117,7 @@ namespace mudock {
     const int num_rotamers                      = ligand_num_rotamers[ligand_id];
     chromosome* __restrict__ l_chromosomes      = chromosomes + ligand_id * chromosome_number;
     chromosome* __restrict__ l_next_chromosomes = next_chromosomes + ligand_id * chromosome_number;
-    curandState& l_state                        = (state[global_thread_id]);
+    curandState l_state                         = (state[global_thread_id]);
     const fp_type* __restrict__ scores          = ligand_scores + chromosome_number * ligand_id;
 
     // Generate the new population
@@ -156,6 +158,7 @@ namespace mudock {
         }
       }
     }
+    state[global_thread_id] = l_state;
   }
 
   __global__ void finalize_gpu(const int chromosome_number,
@@ -216,7 +219,7 @@ namespace mudock {
                     (void*) cuda_random_memory.get_data()->dev_pointer_ref(),
                     (void*) &scores_b};
     //TODO check grid/dimensions
-    q->launch_kernel((void*) initialize_gpu, args, batch_ligands);
+    q->launch_kernel((void*) initialize_gpu, args, batch_ligands, BLOCK_SIZE);
   }
   template<>
   void genetic_kernel<queue_cuda>::operator()() {
@@ -229,7 +232,7 @@ namespace mudock {
                     (void*) cuda_random_memory.get_data()->dev_pointer_ref(),
                     (void*) &scores_b};
     //TODO check grid/dimensions
-    q->launch_kernel((void*) iterate_gpu, args, batch_ligands);
+    q->launch_kernel((void*) iterate_gpu, args, batch_ligands, BLOCK_SIZE);
   }
   template<>
   void genetic_kernel<queue_cuda>::finalize() {
@@ -240,6 +243,6 @@ namespace mudock {
                     (void*) &population,
                     (void*) &best_chromosomes_b};
     //TODO check grid/dimensions
-    q->launch_kernel((void*) finalize_gpu, args, batch_ligands);
+    q->launch_kernel((void*) finalize_gpu, args, batch_ligands, BLOCK_SIZE);
   }
 } // namespace mudock

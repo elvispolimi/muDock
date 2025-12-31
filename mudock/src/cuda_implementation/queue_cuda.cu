@@ -25,11 +25,26 @@ namespace mudock {
 
   //TODO find a better way to specific grid and block dimensions
   //TODO what about shared mem?
-  void queue_cuda::launch_kernel(void* f, void* args[], const int batch_ligands) {
+  void queue_cuda::launch_kernel(void* f, void* args[], const index3D gridDim, const index3D blockDim) {
+    assert(gridDim.size_x() > 0 && blockDim.size_x() > 0);
+    assert(gridDim.size_y() > 0 && blockDim.size_y() > 0);
+    assert(gridDim.size_z() > 0 && blockDim.size_z() > 0);
+
+    const dim3 grid  = dim3{static_cast<unsigned int>(gridDim.size_x()),
+                           static_cast<unsigned int>(gridDim.size_y()),
+                           static_cast<unsigned int>(gridDim.size_z())};
+    const dim3 block = dim3{static_cast<unsigned int>(blockDim.size_x()),
+                            static_cast<unsigned int>(blockDim.size_y()),
+                            static_cast<unsigned int>(blockDim.size_z())};
+
     // const std::size_t shared_mem =
     //     std::max(configuration.population_number, static_cast<std::size_t>(BLOCK_SIZE)) * sizeof(fp_type);
-    MUDOCK_CHECK(cudaLaunchKernel(f, batch_ligands, BLOCK_SIZE, args, 0, impl_->stream));
+    MUDOCK_CHECK(cudaLaunchKernel(f, grid, block, args, 0, impl_->stream));
     MUDOCK_CHECK_KERNELCALL();
+  };
+  void queue_cuda::launch_kernel(void* f, void* args[], const int gridDim, const int blockDim) {
+    assert(gridDim >= 0 && blockDim >= 0);
+    launch_kernel(f, args, {gridDim, 1, 1}, {blockDim, 1, 1});
   };
 
   void queue_cuda::alloc(void** ptr, const size_t bytes) {
