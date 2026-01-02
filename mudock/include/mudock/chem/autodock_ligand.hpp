@@ -7,7 +7,7 @@
 
 namespace mudock {
   struct autodock_ligand: public autodock_static_layer {
-    autodock_ligand(static_molecule& _molecule, std::function<void(autodock_static_layer&)> f = {})
+    autodock_ligand(static_molecule& _molecule, std::function<void(static_molecule&)> f = {})
         : autodock_static_layer(_molecule, f) {
       prepare();
     };

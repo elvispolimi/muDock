@@ -271,11 +271,11 @@ namespace mudock {
                      const point3D max,
                      const fp_type resolution,
                      dynamic_molecule& _molecule,
-                     std::function<void(autodock_dynamic_layer&)> f = {})
+                     std::function<void(dynamic_molecule&)> f = {})
         : autodock_dynamic_layer(_molecule, f), adt_grid(min, max, resolution) {
       autodock_protein::prepare();
     };
-    autodock_protein(dynamic_molecule& _molecule, std::function<void(autodock_dynamic_layer&)> f = {})
+    autodock_protein(dynamic_molecule& _molecule, std::function<void(dynamic_molecule&)> f = {})
         : autodock_dynamic_layer(_molecule, f) {
       autodock_protein::prepare();
     };

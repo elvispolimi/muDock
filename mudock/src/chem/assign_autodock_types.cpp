@@ -1,6 +1,6 @@
 #include <mudock/chem/assign_autodock_babel_types.hpp>
+#include <mudock/chem/assign_autodock_types.hpp>
 #include <mudock/chem/autodock_babel_types.hpp>
-#include <mudock/chem/autodock_layer.hpp>
 #include <mudock/chem/autodock_types.hpp>
 #include <mudock/chem/elements.hpp>
 #include <mudock/molecule.hpp>
@@ -71,16 +71,16 @@ namespace mudock {
     return autodock_ff::C;
   }
 
-  template<class adt_layer>
-    requires is_autodock_layer<adt_layer>
-  void assign_autodock_types_impl(adt_layer& mol) {
+  template<class molecule_type>
+    requires is_molecule<molecule_type>
+  void assign_autodock_types_impl(molecule_type& mol) {
     // allocate memory for the support vectors required to allocate the atoms type
     const std::size_t num_atoms = mol.num_atoms();
     const auto elements         = mol.get_elements();
-    const auto is_aromatic      = mol().get_is_aromatic();
-    auto types                  = mol().get_autodock_type();
+    const auto is_aromatic      = mol.get_is_aromatic();
+    auto types                  = mol.get_autodock_type();
 
-    typename adt_layer::template atoms_array_type<autodock_babel_ff> babel_types;
+    typename molecule_type::template atoms_array_type<autodock_babel_ff> babel_types;
     mudock::resize(babel_types, num_atoms);
 
     // create the graph of the molecule
@@ -231,18 +231,18 @@ namespace mudock {
   }
 
   template<>
-  void autodock_static_layer::assign_autodock_types(std::function<void(autodock_static_layer&)> f) {
+  void assign_autodock_types(static_molecule& mol, std::function<void(static_molecule&)> f) {
     if (f)
-      f(*this);
+      f(mol);
     else
-      assign_autodock_types_impl(*this);
+      assign_autodock_types_impl(mol);
   };
   template<>
-  void autodock_dynamic_layer::assign_autodock_types(std::function<void(autodock_dynamic_layer&)> f) {
+  void assign_autodock_types(dynamic_molecule& mol, std::function<void(dynamic_molecule&)> f) {
     if (f)
-      f(*this);
+      f(mol);
     else
-      assign_autodock_types_impl(*this);
+      assign_autodock_types_impl(mol);
   };
 
 } // namespace mudock

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <mudock/chem/assign_autodock_types.hpp>
 #include <mudock/chem/autodock_babel_types.hpp>
 #include <mudock/chem/autodock_grid_types.hpp>
 #include <mudock/chem/autodock_parameters.hpp>
@@ -17,7 +18,7 @@ namespace mudock {
     using bonds_array_type = container_aliases::template bonds_size<T>;
 
     autodock_layer(molecule<container_aliases>& _molecule,
-                   std::function<void(autodock_layer<container_aliases>&)> f = {})
+                   std::function<void(molecule<container_aliases>&)> f = {})
         : molecule_layer<container_aliases>(_molecule) {
       const auto num_atoms = _molecule.num_atoms();
       mudock::resize(atom_Rii, num_atoms);
@@ -114,9 +115,8 @@ namespace mudock {
     atoms_array_type<fp_type> atom_Rij_hb;
     atoms_array_type<fp_type> atom_epsij_hb;
 
-    void assign_autodock_types(std::function<void(autodock_layer<container_aliases>&)> f = {});
-    void prepare(std::function<void(autodock_layer<container_aliases>&)> f = {}) {
-      assign_autodock_types(f);
+    void prepare(std::function<void(molecule<container_aliases>&)> f = {}) {
+      assign_autodock_types((*this)(), f);
       // fill the atom properties using the autodock force field
       for (int index{0}; index < this->get_base_molecule().num_atoms(); ++index) {
         const auto& ff_entry = get_description(this->get_base_molecule().autodock_type(index));
