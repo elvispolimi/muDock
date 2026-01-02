@@ -9,15 +9,15 @@
 #include <string_view>
 
 namespace mudock {
-  struct mol2x_tokens {
+  struct adt_mol2_tokens {
     static constexpr auto ATOM_TOKEN     = "@<TRIPOS>ATOM";
     static constexpr auto BOND_TOKEN     = "@<TRIPOS>BOND";
     static constexpr auto MOLECULE_TOKEN = "@<TRIPOS>MOLECULE";
   };
 
-  enum class mol2x_state { NONE = 0, MOLECULE, ATOM, BOND };
+  enum class adt_mol2_state { NONE = 0, MOLECULE, ATOM, BOND };
 
-  class mol2x {
+  class adt_mol2 {
   public:
     std::string_view::size_type next_molecule_start_index(std::string_view text) const;
 
@@ -68,25 +68,25 @@ namespace mudock {
       std::string line;
       std::istringstream desc{std::string(description)};
 
-      mol2x_state state = mol2x_state::NONE;
+      adt_mol2_state state = adt_mol2_state::NONE;
       int atom_index{0}, bond_index{0};
       while (std::getline(desc, line)) {
         switch (state) {
-          case mol2x_state::NONE:
-            if (line.find(mol2x_tokens::MOLECULE_TOKEN) != std::string::npos) {
-              state = mol2x_state::MOLECULE;
+          case adt_mol2_state::NONE:
+            if (line.find(adt_mol2_tokens::MOLECULE_TOKEN) != std::string::npos) {
+              state = adt_mol2_state::MOLECULE;
             }
             break;
-          case mol2x_state::MOLECULE:
-            if (line.find(mol2x_tokens::ATOM_TOKEN) != std::string::npos) {
-              state      = mol2x_state::ATOM;
+          case adt_mol2_state::MOLECULE:
+            if (line.find(adt_mol2_tokens::ATOM_TOKEN) != std::string::npos) {
+              state      = adt_mol2_state::ATOM;
               atom_index = 0;
               bond_index = 0;
             }
             break;
-          case mol2x_state::ATOM:
-            if (line.find(mol2x_tokens::BOND_TOKEN) != std::string::npos) {
-              state = mol2x_state::BOND;
+          case adt_mol2_state::ATOM:
+            if (line.find(adt_mol2_tokens::BOND_TOKEN) != std::string::npos) {
+              state = adt_mol2_state::BOND;
             } else {
               std::istringstream stream(line);
               fp_type x, y, z, charge;
@@ -106,12 +106,12 @@ namespace mudock {
               atom_index += 1;
             }
             break;
-          case mol2x_state::BOND:
-            // if (line.find(mol2x_tokens::MOLECULE_TOKEN) != std::string::npos) {
-            //   state = mol2x_state::MOLECULE;
+          case adt_mol2_state::BOND:
+            // if (line.find(adt_mol2_tokens::MOLECULE_TOKEN) != std::string::npos) {
+            //   state = adt_mol2_state::MOLECULE;
             // } else
             if (line.empty()) {
-              state = mol2x_state::NONE;
+              state = adt_mol2_state::NONE;
               molecule.resize(atom_index, bond_index);
             } else {
               std::istringstream stream{line};
@@ -128,7 +128,7 @@ namespace mudock {
           default: break;
         }
       }
-      assert(state == mol2x_state::NONE);
+      assert(state == adt_mol2_state::NONE);
     }
   };
 } // namespace mudock

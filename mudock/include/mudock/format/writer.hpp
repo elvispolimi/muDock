@@ -13,7 +13,6 @@
 #include <openbabel/obconversion.h>
 #include <openbabel/oberror.h>
 #include <sys/types.h>
-#include <utility>
 
 namespace mudock {
 
@@ -25,7 +24,7 @@ namespace mudock {
   template<>
   void writer<supported_format::MOL2>(const ob_mol_wrapper& mol, std::ofstream& ofs);
   template<>
-  void writer<supported_format::MOL2X>(const ob_mol_wrapper& mol, std::ofstream& ofs);
+  void writer<supported_format::ADTMOL2>(const ob_mol_wrapper& mol, std::ofstream& ofs);
   template<>
   void writer<supported_format::PDB>(const ob_mol_wrapper& mol, std::ofstream& ofs);
   template<>
@@ -33,7 +32,7 @@ namespace mudock {
   template<>
   void writer<supported_format::MOL2>(const static_molecule& mol, std::ofstream& ofs);
   template<>
-  void writer<supported_format::MOL2X>(const static_molecule& mol, std::ofstream& ofs);
+  void writer<supported_format::ADTMOL2>(const static_molecule& mol, std::ofstream& ofs);
   template<>
   void writer<supported_format::PDB>(const static_molecule& mol, std::ofstream& ofs);
   template<>
@@ -41,7 +40,7 @@ namespace mudock {
   template<>
   void writer<supported_format::MOL2>(const dynamic_molecule& mol, std::ofstream& ofs);
   template<>
-  void writer<supported_format::MOL2X>(const dynamic_molecule& mol, std::ofstream& ofs);
+  void writer<supported_format::ADTMOL2>(const dynamic_molecule& mol, std::ofstream& ofs);
   template<>
   void writer<supported_format::PDB>(const dynamic_molecule& mol, std::ofstream& ofs);
 

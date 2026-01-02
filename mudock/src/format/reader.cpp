@@ -1,6 +1,4 @@
 
-#include "mudock/format/supported_format.hpp"
-#include "mudock/molecule.hpp"
 
 #include <algorithm>
 #include <cassert>
@@ -39,28 +37,28 @@ namespace mudock {
     return mol;
   }
 
-  // MOL2X
+  // ADT_MOL2
   template<class molecule_type>
     requires is_molecule<molecule_type>
-  molecule_type parser_impl_mol2x(const std::string_view description) {
+  molecule_type parser_impl_adt_mol2(const std::string_view description) {
     molecule_type mol;
-    mol2x::parse(mol, description);
+    adt_mol2::parse(mol, description);
     return mol;
   }
   template<>
-  dynamic_molecule parser<supported_format::MOL2X>(const std::string_view description,
+  dynamic_molecule parser<supported_format::ADTMOL2>(const std::string_view description,
+                                                     std::function<bool(OpenBabel::OBBond&)>) {
+    return parser_impl_adt_mol2<dynamic_molecule>(description);
+  };
+  template<>
+  static_molecule parser<supported_format::ADTMOL2>(const std::string_view description,
+                                                    std::function<bool(OpenBabel::OBBond&)>) {
+    return parser_impl_adt_mol2<static_molecule>(description);
+  };
+  template<>
+  ob_mol_wrapper parser<supported_format::ADTMOL2>(const std::string_view description,
                                                    std::function<bool(OpenBabel::OBBond&)>) {
-    return parser_impl_mol2x<dynamic_molecule>(description);
-  };
-  template<>
-  static_molecule parser<supported_format::MOL2X>(const std::string_view description,
-                                                  std::function<bool(OpenBabel::OBBond&)>) {
-    return parser_impl_mol2x<static_molecule>(description);
-  };
-  template<>
-  ob_mol_wrapper parser<supported_format::MOL2X>(const std::string_view description,
-                                                 std::function<bool(OpenBabel::OBBond&)>) {
-    dynamic_molecule mol = parser_impl_mol2x<dynamic_molecule>(description);
+    dynamic_molecule mol = parser_impl_adt_mol2<dynamic_molecule>(description);
 
     ob_mol_wrapper ob_mol = std::make_unique<OpenBabel::OBMol>();
     convert(ob_mol, mol);
