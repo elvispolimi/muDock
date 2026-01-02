@@ -229,6 +229,12 @@ option(
   "Enable the various compilers optimizimization, like OpenMP SIMD optimizations and fast math"
   OFF)
 
+set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "RelWithDebInfo")
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+  set(CMAKE_BUILD_TYPE "Release" CACHE STRING "The type of build" FORCE)
+  message(STATUS "Setting build type to '${CMAKE_BUILD_TYPE}' as none was specified")
+endif()
+
 # If user hasn't set it AND build type is Release, set it to ON
 if(NOT MUDOCK_ENABLE_FAST AND CMAKE_BUILD_TYPE STREQUAL "Release")
   set(MUDOCK_ENABLE_FAST ON)
