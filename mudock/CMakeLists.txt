@@ -58,7 +58,7 @@ list(
   "${header_path}/${header_prefix}/format/mol2.hpp"
   "${header_path}/${header_prefix}/format/pdb.hpp"
   "${header_path}/${header_prefix}/format/supported_format.hpp"
-  "${header_path}/${header_prefix}/format/mol2x.hpp"
+  "${header_path}/${header_prefix}/format/adt_mol2.hpp"
   "${header_path}/${header_prefix}/format/writer.hpp"
   "${header_path}/${header_prefix}/format/pdbqt.hpp"
   "${header_path}/${header_prefix}/format/reader.hpp"
@@ -105,7 +105,7 @@ list(
   "${source_path}/compute/parse_ids.cpp"
   "${source_path}/format/dot.cpp"
   "${source_path}/format/mol2.cpp"
-  "${source_path}/format/mol2x.cpp"
+  "${source_path}/format/adt_mol2.cpp"
   "${source_path}/format/ob_wrapper.cpp"
   "${source_path}/format/pdb.cpp"
   "${source_path}/format/pdbqt.cpp"
@@ -431,6 +431,7 @@ if(MUDOCK_ENABLE_SYCL)
   target_sources(libmudock PRIVATE "${sycl_objects}")
   add_dependencies(libmudock sycl_targets)
   if(${SYCL_COMPILER} STREQUAL "AdaptiveCpp")
+
     find_package(CUDAToolkit REQUIRED)
     target_link_libraries(libmudock PRIVATE AdaptiveCpp::acpp-rt Boost::fiber
                                             CUDA::cudart)

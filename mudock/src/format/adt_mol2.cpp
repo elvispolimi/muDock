@@ -1,9 +1,9 @@
-#include <mudock/format/mol2x.hpp>
+#include <mudock/format/adt_mol2.hpp>
 #include <string_view>
 
 namespace mudock {
 
-  std::string_view::size_type mol2x::next_molecule_start_index(std::string_view text) const {
+  std::string_view::size_type adt_mol2::next_molecule_start_index(std::string_view text) const {
     static constexpr auto molecule_token = std::string_view{"@<TRIPOS>MOLECULE"};
     const auto index_first_token         = text.find(molecule_token);
     return index_first_token != std::string_view::npos

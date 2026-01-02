@@ -1,8 +1,5 @@
 #pragma once
 
-#include "mudock/log.hpp"
-#include "mudock/molecule.hpp"
-
 #include <cassert>
 #include <cmath>
 #include <mudock/format/ob_wrapper.hpp>
@@ -15,9 +12,7 @@
 #include <openbabel/mol.h>
 #include <openbabel/obconversion.h>
 #include <openbabel/oberror.h>
-#include <stdexcept>
 #include <sys/types.h>
-#include <utility>
 
 namespace mudock {
   template<supported_format format, class molecule>
@@ -31,8 +26,8 @@ namespace mudock {
   ob_mol_wrapper parser<supported_format::MOL2>(const std::string_view description,
                                                 std::function<bool(OpenBabel::OBBond &)>);
   template<>
-  ob_mol_wrapper parser<supported_format::MOL2X>(const std::string_view description,
-                                                 std::function<bool(OpenBabel::OBBond &)>);
+  ob_mol_wrapper parser<supported_format::ADTMOL2>(const std::string_view description,
+                                                   std::function<bool(OpenBabel::OBBond &)>);
   template<>
   ob_mol_wrapper parser<supported_format::PDB>(const std::string_view description,
                                                std::function<bool(OpenBabel::OBBond &)>);
@@ -43,8 +38,8 @@ namespace mudock {
   static_molecule parser<supported_format::MOL2>(const std::string_view description,
                                                  std::function<bool(OpenBabel::OBBond &)>);
   template<>
-  static_molecule parser<supported_format::MOL2X>(const std::string_view description,
-                                                  std::function<bool(OpenBabel::OBBond &)>);
+  static_molecule parser<supported_format::ADTMOL2>(const std::string_view description,
+                                                    std::function<bool(OpenBabel::OBBond &)>);
   template<>
   static_molecule parser<supported_format::PDB>(const std::string_view description,
                                                 std::function<bool(OpenBabel::OBBond &)>);
@@ -55,8 +50,8 @@ namespace mudock {
   dynamic_molecule parser<supported_format::MOL2>(const std::string_view description,
                                                   std::function<bool(OpenBabel::OBBond &)>);
   template<>
-  dynamic_molecule parser<supported_format::MOL2X>(const std::string_view description,
-                                                   std::function<bool(OpenBabel::OBBond &)>);
+  dynamic_molecule parser<supported_format::ADTMOL2>(const std::string_view description,
+                                                     std::function<bool(OpenBabel::OBBond &)>);
   template<>
   dynamic_molecule parser<supported_format::PDB>(const std::string_view description,
                                                  std::function<bool(OpenBabel::OBBond &)>);

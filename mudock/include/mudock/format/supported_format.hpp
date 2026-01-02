@@ -3,14 +3,14 @@
 #include <array>
 #include <assert.h>
 #include <filesystem>
+#include <mudock/format/adt_mol2.hpp>
 #include <mudock/format/mol2.hpp>
-#include <mudock/format/mol2x.hpp>
 #include <mudock/format/pdb.hpp>
 #include <mudock/format/pdbqt.hpp>
 #include <string>
 
 namespace mudock {
-  enum class supported_format : int { MOL2 = 0, PDBQT, PDB, MOL2X };
+  enum class supported_format : int { MOL2 = 0, PDBQT, PDB, ADTMOL2 };
 
   // Trait: Kind -> Type
   template<supported_format>
@@ -29,8 +29,8 @@ namespace mudock {
     using type = pdb;
   };
   template<>
-  struct type_of_format_t<supported_format::MOL2X> {
-    using type = mol2x;
+  struct type_of_format_t<supported_format::ADTMOL2> {
+    using type = adt_mol2;
   };
 
   template<supported_format T>
@@ -45,7 +45,7 @@ namespace mudock {
       {{supported_format::MOL2, "mol2"},
        {supported_format::PDBQT, "pdbqt"},
        {supported_format::PDB, "pdb"},
-       {supported_format::MOL2X, "mol2x"}}};
+       {supported_format::ADTMOL2, "adtmol2"}}};
 
   static constexpr auto get_num_supported_format() { return FORMAT_EXTENSIONS.size(); }
 

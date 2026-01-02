@@ -1,7 +1,9 @@
+#include "mudock/chem/assign_autodock_types.hpp"
+
 #include <cassert>
 #include <fstream>
 #include <memory>
-#include <mudock/format/mol2x.hpp>
+#include <mudock/format/adt_mol2.hpp>
 #include <mudock/format/ob_wrapper.hpp>
 #include <mudock/format/supported_format.hpp>
 #include <mudock/format/writer.hpp>
@@ -103,17 +105,21 @@ namespace mudock {
   }
 
   template<>
-  void writer<supported_format::MOL2X>(const ob_mol_wrapper& mol, std::ofstream& ofs) {
+  void writer<supported_format::ADTMOL2>(const ob_mol_wrapper& mol, std::ofstream& ofs) {
     dynamic_molecule s_mol;
     convert(s_mol, mol);
-    mol2x::print(s_mol, ofs);
+    writer<supported_format::ADTMOL2>(s_mol, ofs);
   };
   template<>
-  void writer<supported_format::MOL2X>(const static_molecule& mol, std::ofstream& ofs) {
-    mol2x::print(mol, ofs);
+  void writer<supported_format::ADTMOL2>(const static_molecule& mol, std::ofstream& ofs) {
+    auto temp = mol;
+    assign_autodock_types(temp);
+    adt_mol2::print(temp, ofs);
   }
   template<>
-  void writer<supported_format::MOL2X>(const dynamic_molecule& mol, std::ofstream& ofs) {
-    mol2x::print(mol, ofs);
+  void writer<supported_format::ADTMOL2>(const dynamic_molecule& mol, std::ofstream& ofs) {
+    auto temp = mol;
+    assign_autodock_types(temp);
+    adt_mol2::print(temp, ofs);
   }
 } // namespace mudock
