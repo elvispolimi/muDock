@@ -160,7 +160,7 @@ if(MUDOCK_ENABLE_CUDA)
     "${source_path}/cuda_implementation/genetic_cuda.cu"
     "${source_path}/cuda_implementation/cuda_random.cu"
     "${source_path}/cuda_implementation/geom_transform_cuda.cu"
-)
+  )
 endif()
 
 # declare the HIP sources
@@ -168,29 +168,22 @@ if(MUDOCK_ENABLE_HIP)
   list(
     APPEND
     header_files
-    "${header_path}/${header_prefix}/hip_implementation/hip_batch_sizer.hpp"
-    "${header_path}/${header_prefix}/hip_implementation/hip_check_error_macro.hpp"
-    "${header_path}/${header_prefix}/hip_implementation/hip_manager.hpp"
+    "${header_path}/${header_prefix}/hip_implementation/queue_hip.hpp"
+    "${header_path}/${header_prefix}/hip_implementation/adt_score_hip.hpp"
+    "${header_path}/${header_prefix}/hip_implementation/genetic_hip.hpp"
     "${header_path}/${header_prefix}/hip_implementation/hip_random.hpp"
-    "${header_path}/${header_prefix}/hip_implementation/hip_object.hpp"
-    "${header_path}/${header_prefix}/hip_implementation/hip_worker.hpp"
-    "${header_path}/${header_prefix}/hip_implementation/hip_wrapper.hpp"
-    "${header_path}/${header_prefix}/hip_implementation/device.hpp"
     "${header_path}/${header_prefix}/hip_implementation/hip_texture.hpp"
-    "${header_path}/${header_prefix}/hip_implementation/calc_energy.hpp"
-    "${header_path}/${header_prefix}/hip_implementation/evaluate_fitness.hpp"
-    "${header_path}/${header_prefix}/hip_implementation/geometric_transformations.hpp"
+    "${header_path}/${header_prefix}/hip_implementation/hip_utils.hpp"
     "${header_path}/${header_prefix}/hip_implementation/mutate.hpp"
-    # "${header_path}/${header_prefix}/hip_implementation/virtual_screen.hpp"
-  )
-  set(hip_source_files
-      "${source_path}/hip_implementation/hip_batch_sizer.cpp"
-      "${source_path}/hip_implementation/hip_manager.cpp"
-      "${source_path}/hip_implementation/hip_worker.cpp"
-      "${source_path}/hip_implementation/hip_random.cpp"
-      "${source_path}/hip_implementation/device.cpp"
-      "${source_path}/hip_implementation/constant_memory.cpp"
-      # "${source_path}/hip_implementation/virtual_screen.cpp"
+    "${header_path}/${header_prefix}/hip_implementation/hip_implementation.hpp"
+    )
+  set(
+    hip_source_files
+    "${source_path}/hip_implementation/queue_hip.cpp"
+    "${source_path}/hip_implementation/adt_score_hip.cpp"
+    "${source_path}/hip_implementation/genetic_hip.cpp"
+    "${source_path}/hip_implementation/hip_random.cpp"
+    "${source_path}/hip_implementation/geom_transform_hip.cpp"
   )
   list(APPEND source_files ${hip_source_files})
   set_source_files_properties(${hip_source_files} PROPERTIES LANGUAGE HIP)
@@ -328,7 +321,7 @@ endif()
 if(MUDOCK_ENABLE_HIP)
   target_compile_definitions(libmudock PUBLIC MUDOCK_USE_HIP)
   target_include_directories(
-    libmudock PRIVATE $<$<COMPILE_LANGUAGE:HIP>:${hip_INCLUDE_DIRS}>)
+    libmudock SYSTEM PRIVATE $<$<COMPILE_LANGUAGE:HIP>:${hip_INCLUDE_DIRS}>)
   target_link_libraries(libmudock PUBLIC hip::hiprand hip::host)
   target_compile_options(
     libmudock

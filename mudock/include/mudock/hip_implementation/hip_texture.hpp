@@ -1,25 +1,37 @@
 #pragma once
 
 #include <hip/hip_runtime.h>
-#include <mudock/chem/autodock_grid_types.hpp>
-#include <mudock/chem/autodock_protein.hpp>
-#include <mudock/hip_implementation/hip_check_error_macro.hpp>
-#include <mudock/hip_implementation/hip_wrapper.hpp>
+#include <mudock/hip_implementation/hip_utils.hpp>
+#include <mudock/hip_implementation/queue_hip.hpp>
+#include <mudock/type_alias.hpp>
 
 namespace mudock {
-  struct hipTexture_wrapper {
-    hip_wrapper<std::vector, fp_type> tex;
-    ~hipTexture_wrapper() = default;
-    const hip_wrapper<std::vector, fp_type>& operator()() const { return tex; };
-    hip_wrapper<std::vector, fp_type>& operator()() { return tex; };
-    hipTexture_wrapper(hipStream_t& stream, const autodock_protein& adt_protein): tex(stream) {
-      const fp_type* grid_map = adt_protein.get_maps_pointer();
-      const int num_elements  = adt_protein.get_map_flat_size() * num_autodock_grids();
-      tex.alloc(num_elements);
+  struct hip_texture_devices {
+    fp_type* tex_dev;
+    const int dev_id = 0;
 
-      std::memcpy(tex(), grid_map, num_elements * sizeof(fp_type));
+    hip_texture_devices(const int id, const int xyz, const int num_tex, const fp_type* src): dev_id(id) {
+      const int num_elements = xyz * num_tex;
 
-      tex.copy_host2device();
+      MUDOCK_CHECK(hipSetDevice(dev_id));
+      MUDOCK_CHECK(hipMalloc(&tex_dev, num_elements * sizeof(fp_type)));
+      MUDOCK_CHECK(hipMemcpy(tex_dev, src, num_elements * sizeof(fp_type), hipMemcpyHostToDevice));
+      MUDOCK_CHECK(hipDeviceSynchronize());
+    };
+
+    // no copy
+    hip_texture_devices(const hip_texture_devices&)            = delete;
+    hip_texture_devices& operator=(const hip_texture_devices&) = delete;
+
+    // no move
+    hip_texture_devices(hip_texture_devices&& other)            = delete;
+    hip_texture_devices& operator=(hip_texture_devices&& other) = delete;
+
+    ~hip_texture_devices() noexcept {
+      if (tex_dev) {
+        (void) hipSetDevice(dev_id);
+        (void) hipFree(tex_dev);
+      }
     }
   };
 } // namespace mudock
