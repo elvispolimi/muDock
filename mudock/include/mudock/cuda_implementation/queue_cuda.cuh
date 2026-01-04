@@ -3,7 +3,6 @@
 #include <memory>
 #include <mudock/compute/queue.hpp>
 #include <mudock/grid/mdindex.hpp>
-#include <mudock/likwid_utils.hpp>
 
 #define BLOCK_SIZE 32
 
