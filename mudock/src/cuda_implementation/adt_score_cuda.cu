@@ -62,7 +62,7 @@ namespace mudock {
                                           0,
                                           cudaMemcpyDeviceToDevice));
           MUDOCK_CHECK(cudaDeviceSynchronize());
-
+          // TODO implement RAI to release constant memory
           return std::make_unique<fp_type>(0);
         }));
   }
@@ -132,7 +132,6 @@ namespace mudock {
 
     fp_type* scores_l = scores + ligand_id * scores_per_ligand;
 
-    __syncwarp();
     for (int scores_index = 0; scores_index < scores_per_ligand; ++scores_index) {
       // Copy original coordinates
       const fp_type* ligand_x = l_scratch_x + scores_index * atom_stride;
@@ -218,8 +217,6 @@ namespace mudock {
           }
         }
       }
-
-      __syncwarp();
 
       fp_type elect_total_eintcal{0}, emap_total_eintcal{0}, dmap_total_eintcal{0};
       if (num_rotamers > 0)
