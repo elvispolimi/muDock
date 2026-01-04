@@ -29,6 +29,18 @@ namespace mudock {
       mudock::resize(atom_epsij_hb, num_atoms);
       prepare(f);
     };
+    autodock_layer(molecule<container_aliases>& _molecule,
+                   std::function<void(autodock_layer<container_aliases>&)> f)
+        : molecule_layer<container_aliases>(_molecule) {
+      const auto num_atoms = _molecule.num_atoms();
+      mudock::resize(atom_Rii, num_atoms);
+      mudock::resize(atom_vol, num_atoms);
+      mudock::resize(atom_solpar, num_atoms);
+      mudock::resize(atom_epsii, num_atoms);
+      mudock::resize(atom_Rij_hb, num_atoms);
+      mudock::resize(atom_epsij_hb, num_atoms);
+      f(*this);
+    };
 
     [[nodiscard]] inline auto get_Rii() const {
       return make_span(atom_Rii, *this->get_base_molecule().num_atoms());
