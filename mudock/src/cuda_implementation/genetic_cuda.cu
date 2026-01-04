@@ -1,5 +1,4 @@
 #include <mudock/compute/devices_memory.hpp>
-#include <mudock/compute/genetic.hpp>
 #include <mudock/cpp_implementation/chromosome.hpp>
 #include <mudock/cuda_implementation/cuda_random.cuh>
 #include <mudock/cuda_implementation/genetic_cuda.cuh>
@@ -11,10 +10,6 @@ namespace mudock {
 
   static constexpr fp_type coordinate_step{0.2};
   static constexpr fp_type angle_step{4};
-
-  void setup_constant_memory(const point<fp_type, 3>& minimum_coord,
-                             const point<fp_type, 3>& maximum_coord,
-                             const point<fp_type, 3>& center);
 
   template<typename T>
   __device__ inline const T random_gen_cuda(curandState& state, const T min, const T max) {
