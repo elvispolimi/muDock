@@ -1,25 +1,26 @@
-#include <hiprand/hiprand_kernel.h>
+#include <chrono>
 #include <mudock/hip_implementation/hip_random.hpp>
+#include <mudock/hip_implementation/hip_utils.hpp>
 
 namespace mudock {
   __global__ void init_hiprand(hiprandState *state, const long seed, const int num_elements) {
     const int id     = threadIdx.x + blockIdx.x * blockDim.x;
     const int stride = gridDim.x * blockDim.x;
     for (int index = id; index < num_elements; index += stride) {
-      hiprand_init(seed + index, index, 0, &state[index]);
+      curand_init(seed + index, index, 0, &state[index]);
     }
   }
 
   void hip_random_object::alloc(const std::size_t num_elements, const std::size_t seed) {
-    const bool init = num_elements > hip_object<hiprandState>::num_elements();
-    hip_object<hiprandState>::alloc(num_elements);
+    const auto num_el = state.num_elements();
+    //TODO check this condition
+    const bool init = num_elements > num_el;
+    state.alloc(num_elements);
     if (init) {
-      init_hiprand<<<4, 128, 0, hip_object<hiprandState>::get_stream()>>>(
-          hip_object<hiprandState>::dev_pointer(),
-          seed,
-          hip_object<hiprandState>::num_elements());
-      MUDOCK_CHECK_KERNELCALL();
-      MUDOCK_CHECK(hipStreamSynchronize(hip_object<hiprandState>::get_stream()));
+      void *args[] = {(void *) state.dev_pointer_ref(), (void *) &seed, (void *) &num_elements};
+      //TODO check grid/dimensions
+      q->launch_kernel((void *) init_hiprand, args, 128, BLOCK_SIZE);
+      q->synchronize();
     }
   };
 
