@@ -279,7 +279,10 @@ namespace mudock {
         : autodock_dynamic_layer(_molecule, f) {
       autodock_protein::prepare();
     };
-
+    autodock_protein(dynamic_molecule& _molecule, std::function<void(autodock_dynamic_layer&)> f)
+        : autodock_dynamic_layer(_molecule, f) {
+      autodock_protein::prepare();
+    };
     const std::array<fp_type, num_radius_tick_elect> electrostatic_energies = {compute_electostatic_energy()};
     const std::array<fp_type, num_radius_tick_desolv> desolvation_energies  = {compute_desolvation_energy()};
     const md_vector<fp_type, 3> vdw_energies = {compute_vdw_interaction_energies()};

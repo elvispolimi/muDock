@@ -11,6 +11,10 @@ namespace mudock {
         : autodock_static_layer(_molecule, f) {
       prepare();
     };
+    autodock_ligand(static_molecule& _molecule, std::function<void(autodock_static_layer&)> f)
+        : autodock_static_layer(_molecule, f) {
+      prepare();
+    };
     [[nodiscard]] inline auto non_bond_size() const { return non_bond_list_a1.size(); }
     [[nodiscard]] inline auto* non_bond_A() const { return non_bond_list_a1.data(); }
     [[nodiscard]] inline auto* non_bond_B() const { return non_bond_list_a2.data(); }
