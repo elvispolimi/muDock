@@ -13,6 +13,9 @@ namespace mudock {
 #ifdef MUDOCK_USE_CUDA
     static constexpr auto cuda_token = "CUDA";
 #endif
+#ifdef MUDOCK_USE_HIP
+    static constexpr auto hip_token = "HIP";
+#endif
   };
 
   enum class implementation_type {
@@ -28,6 +31,10 @@ namespace mudock {
 #ifdef MUDOCK_USE_CUDA
     ,
     CUDA
+#endif
+#ifdef MUDOCK_USE_HIP
+    ,
+    HIP
 #endif
   };
 
@@ -45,6 +52,10 @@ namespace mudock {
 #ifdef MUDOCK_USE_CUDA
     if (impl == implementation_type_desc::cuda_token)
       return implementation_type::CUDA;
+#endif
+#ifdef MUDOCK_USE_HIP
+    if (impl == implementation_type_desc::hip_token)
+      return implementation_type::HIP;
 #endif
     throw std::runtime_error("Requested implementation not available");
   };

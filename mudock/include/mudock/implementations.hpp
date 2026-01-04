@@ -3,6 +3,7 @@
 #include <mudock/cpp_implementation/cpp_implementation.hpp>
 #include <mudock/cuda_implementation/cuda_implementation.hpp>
 #include <mudock/gh_implementation/gh_implementation.hpp>
+#include <mudock/hip_implementation/hip_implementation.hpp>
 #include <mudock/implementation_types.hpp>
 #include <mudock/xsimd_implementation/xsimd_implementation.hpp>
 
@@ -46,6 +47,12 @@ namespace mudock {
     using type = kernel_type_traits_impl<implementation_type::CUDA, queue_cuda>::type;
   };
 #endif
+#ifdef MUDOCK_USE_HIP
+  template<>
+  struct kernel_type_traits<implementation_type::HIP> {
+    using type = kernel_type_traits_impl<implementation_type::HIP, queue_hip>::type;
+  };
+#endif
 
   static constexpr int num_cpu_kernel_type() {
     return 1
@@ -74,11 +81,17 @@ namespace mudock {
 #ifdef MUDOCK_USE_CUDA
            + 1
 #endif
+#ifdef MUDOCK_USE_HIP
+           + 1
+#endif
         ;
   }
   static constexpr std::array<implementation_type, num_gpu_kernel_type()> gpu_kernel_type{
 #ifdef MUDOCK_USE_CUDA
       implementation_type::CUDA,
+#endif
+#ifdef MUDOCK_USE_HIP
+      implementation_type::HIP,
 #endif
   };
 
