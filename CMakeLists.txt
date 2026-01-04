@@ -112,7 +112,7 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU"
    OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang"
    OR CMAKE_CXX_COMPILER_ID STREQUAL "IntelLLVM")
   if(MUDOCK_ENABLE_HIP)
-    list(APPEND release_flags -Xcompiler -march=native)
+    list(APPEND release_flags -march=native)
   else()
     list(APPEND release_flags "-march=${MUDOCK_CPU_ARCHITECTURES}")
     if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
