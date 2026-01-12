@@ -2,6 +2,7 @@
 
 #include <concepts>
 #include <mudock/compute/buffer.hpp>
+#include <mudock/devices.hpp>
 #include <mudock/knobs.hpp>
 #include <mudock/log.hpp>
 #include <mutex>
@@ -25,8 +26,8 @@ namespace mudock {
   // struct scratchpad_impl<buffer_type, object_type, std::tuple<Ts...>> {
   template<template<typename, typename> typename buffer_type, typename queue_t, typename... Ts>
   struct scratchpad_impl<buffer_type, queue_t, std::tuple<Ts...>> {
-    scratchpad_impl(const knobs& conf, const int id)
-        : configuration(conf), q(std::make_shared<queue_t>(id)) {};
+    scratchpad_impl(const knobs& conf, const int id, const device_type dev_type)
+        : configuration(conf), q(std::make_shared<queue_t>(id, dev_type)) {};
 
     template<buffer_data_type bdt>
     buffer_type<typename buffer_type_traits<bdt>::type, queue_t>& get(const int dim = 0) {

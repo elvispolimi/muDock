@@ -1,0 +1,48 @@
+#pragma once
+
+#include <memory>
+#include <mudock/compute/queue.hpp>
+#include <mudock/grid/mdindex.hpp>
+
+namespace mudock {
+  struct queue_sycl: queue {
+    queue_sycl(const int _id, const device_type dev_t);
+    ~queue_sycl();
+
+    // non-copyable, but movable (optional)
+    queue_sycl(const queue_sycl&)            = delete;
+    queue_sycl& operator=(const queue_sycl&) = delete;
+
+    queue_sycl(queue_sycl&&) noexcept;
+    queue_sycl& operator=(queue_sycl&&) noexcept;
+
+    // Implementation is missing, please inculde also invoke_kernel_header.hpp for TU which call this method
+    template<class F, class... Args>
+    inline void invoke_kernel(const index3D gridDim, const index3D blockDim, Args&&... args);
+
+    template<class F, class... Args>
+    inline void invoke_kernel(const int gridDim, const int blockDim, Args&&... args);
+
+    void alloc(void**, const size_t);
+    void free(void**);
+    void set_to_value(void*, const size_t, const char);
+    void copy_host2device(const void*, void*, const size_t);
+    void copy_device2host(const void*, void*, const size_t);
+    void copy_device2device(const void*, void*, const size_t);
+    bool obj_required() { return true; }
+
+    void operator()();
+
+    void synchronize();
+
+    int get_preferred_workgroup_size();
+
+    template<class kernel_name>
+    int get_batch_size();
+
+  private:
+    struct impl;
+    std::unique_ptr<impl> impl_;
+  };
+
+} // namespace mudock

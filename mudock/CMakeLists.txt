@@ -194,25 +194,33 @@ if(MUDOCK_ENABLE_SYCL)
   list(
     APPEND
     header_files_sycl
-    "${header_path}/${header_prefix}/sycl_implementation/sycl_manager.hpp"
-    "${header_path}/${header_prefix}/sycl_implementation/calc_energy.hpp"
-    "${header_path}/${header_prefix}/sycl_implementation/mutate.hpp"
-    "${header_path}/${header_prefix}/sycl_implementation/geometric_transformations.hpp"
-    "${header_path}/${header_prefix}/sycl_implementation/sycl_random.hpp"
-    "${header_path}/${header_prefix}/sycl_implementation/sycl_object.hpp"
-    "${header_path}/${header_prefix}/sycl_implementation/sycl_wrapper.hpp"
-    "${header_path}/${header_prefix}/sycl_implementation/sycl_worker.hpp"
-    "${header_path}/${header_prefix}/sycl_implementation/sycl_batch_sizer.hpp"
-    "${header_path}/${header_prefix}/sycl_implementation/virtual_screen.hpp"
-    "${header_path}/${header_prefix}/sycl_implementation/evaluate_fitness.hpp")
+    "${header_path}/${header_prefix}/sycl_implementation/queue_sycl.hpp"
+    "${header_path}/${header_prefix}/sycl_implementation/invoke_kernel_sycl.hpp"
+    "${header_path}/${header_prefix}/sycl_implementation/sycl_texture.hpp"
+    "${header_path}/${header_prefix}/sycl_implementation/adt_score_sycl.hpp"
+    "${header_path}/${header_prefix}/sycl_implementation/queue_sycl_impl.hpp"
+    "${header_path}/${header_prefix}/sycl_implementation/invoke_kernel_sycl.hpp"
+    # "${header_path}/${header_prefix}/sycl_implementation/calc_energy.hpp"
+    # "${header_path}/${header_prefix}/sycl_implementation/mutate.hpp"
+    # "${header_path}/${header_prefix}/sycl_implementation/geometric_transformations.hpp"
+    # "${header_path}/${header_prefix}/sycl_implementation/sycl_random.hpp"
+    # "${header_path}/${header_prefix}/sycl_implementation/sycl_object.hpp"
+    # "${header_path}/${header_prefix}/sycl_implementation/sycl_wrapper.hpp"
+    # "${header_path}/${header_prefix}/sycl_implementation/sycl_worker.hpp"
+    # "${header_path}/${header_prefix}/sycl_implementation/sycl_batch_sizer.hpp"
+    # "${header_path}/${header_prefix}/sycl_implementation/virtual_screen.hpp"
+    # "${header_path}/${header_prefix}/sycl_implementation/evaluate_fitness.hpp"
+   )
   list(APPEND header_files "${header_files_sycl}")
   set(sycl_source_files
-      "${source_path}/sycl_implementation/sycl_manager.cpp"
-      "${source_path}/sycl_implementation/sycl_random.cpp"
-      "${source_path}/sycl_implementation/device.cpp"
-      "${source_path}/sycl_implementation/sycl_worker.cpp"
-      "${source_path}/sycl_implementation/sycl_batch_sizer.cpp"
-      "${source_path}/sycl_implementation/virtual_screen.cpp")
+      "${source_path}/sycl_implementation/queue_sycl.cpp"
+      "${source_path}/sycl_implementation/adt_score_sycl.cpp"
+      # "${source_path}/sycl_implementation/sycl_random.cpp"
+      # "${source_path}/sycl_implementation/device.cpp"
+      # "${source_path}/sycl_implementation/sycl_worker.cpp"
+      # "${source_path}/sycl_implementation/sycl_batch_sizer.cpp"
+      # "${source_path}/sycl_implementation/virtual_screen.cpp"
+  )
 endif()
 
 # declare the OpenMP sources

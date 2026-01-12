@@ -8,7 +8,7 @@
 
 namespace mudock {
   struct queue_cuda: queue {
-    queue_cuda(const int _id);
+    queue_cuda(const int _id, const device_type dev_type);
     ~queue_cuda();
 
     // non-copyable, but movable (optional)
