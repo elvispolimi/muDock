@@ -5,7 +5,7 @@
 
 namespace mudock {
   template<>
-  inline int get_adt_score_batch<queue_xsimd>(const int) {
+  inline int get_adt_score_batch<queue_xsimd>(const int, std::shared_ptr<queue_xsimd>) {
     return 10;
   }
   template<>

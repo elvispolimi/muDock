@@ -1,11 +1,12 @@
 #pragma once
 
 #include <cstddef>
+#include <mudock/devices.hpp>
 
 namespace mudock {
 
   struct queue {
-    queue(const int _id): id(_id) {};
+    queue(const int _id, const device_type d_t): id(_id), dev_type(d_t) {};
     virtual ~queue() = default;
 
     queue(const queue&)            = delete;
@@ -35,9 +36,10 @@ namespace mudock {
 
     int get_id() { return id; };
 
+    device_type get_dev_type() { return dev_type; };
+
   protected:
     const int id;
-
-    // virtual void launch_kernel_impl(void*, void*[] = nullptr, const std::string_view = {}, const int = 0) = 0;
+    const device_type dev_type;
   };
 } // namespace mudock

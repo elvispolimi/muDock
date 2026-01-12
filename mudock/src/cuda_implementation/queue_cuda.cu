@@ -18,7 +18,10 @@ namespace mudock {
     ~impl() noexcept(false) { MUDOCK_CHECK(cudaStreamDestroy(stream)); };
   };
 
-  queue_cuda::queue_cuda(const int _id): queue(_id), impl_(std::make_unique<impl>(_id)) {};
+  queue_cuda::queue_cuda(const int _id, const device_type dev_type)
+      : queue(_id, dev_type), impl_(std::make_unique<impl>(_id)) {
+    assert(dev_type == device_type::GPU && "CUDA supports only GPUs devices");
+  };
   queue_cuda::~queue_cuda() = default; // unique_ptr will destroy Impl
 
   queue_cuda::queue_cuda(queue_cuda&&) noexcept = default;
@@ -49,14 +52,13 @@ namespace mudock {
 
   void queue_cuda::alloc(void** ptr, const size_t bytes) {
     // TOOD check if required
-    if (*ptr != nullptr)
-      free(ptr);
+    queue_cuda::free(ptr);
     MUDOCK_CHECK(cudaMallocAsync(ptr, bytes, impl_->stream));
   };
   void queue_cuda::free(void** ptr) {
     if (*ptr != nullptr) {
       MUDOCK_CHECK(cudaFreeAsync(*ptr, impl_->stream));
-      ptr = nullptr;
+      *ptr = nullptr;
     }
   };
   void queue_cuda::set_to_value(void* ptr, const size_t num_bytes, const char value) {

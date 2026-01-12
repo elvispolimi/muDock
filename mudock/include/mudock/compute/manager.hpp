@@ -12,7 +12,9 @@
 #include <mudock/compute/stage.hpp>
 #include <mudock/compute/threadpool.hpp>
 #include <mudock/compute/worker.hpp>
+#include <mudock/devices.hpp>
 #include <mudock/grid.hpp>
+#include <mudock/implementations.hpp>
 #include <mudock/knobs.hpp>
 #include <mudock/molecule.hpp>
 #include <mudock/utils.hpp>
@@ -29,16 +31,19 @@ namespace mudock {
                                 std::shared_ptr<safe_stack<static_molecule>>& input_molecules,
                                 std::shared_ptr<safe_stack<static_molecule>>& output_molecules,
                                 pipeline_t& pipe) {
-    auto device_scratch                    = std::make_shared<scratchpad<queue_type>>(knobs, 0);
-    std::function<int(const int)> get_size = pipeline_t::template get_batch_size<queue_type>;
-    auto rob                               = std::make_shared<reorder_buffer<static_molecule>>(get_size);
+    auto device_scratch = std::make_shared<scratchpad<queue_type>>(knobs, 0, device_type::CPU);
+    auto q_b            = device_scratch->get_queue();
+    std::function<int(const int)> get_size = [q_b](const int x) {
+      return pipeline_t::template get_batch_size<queue_type>(x, q_b);
+    };
+    auto rob = std::make_shared<reorder_buffer<static_molecule>>(get_size);
 
     for (const auto id: parse_ids(parts[2])) {
-      pool.add_worker(worker(input_molecules,
-                             output_molecules,
-                             rob,
-                             // static_cast<size_t>(id),
-                             pipe.template get_pipeline<queue_type>(knobs, id, device_scratch)));
+      pool.add_worker(
+          worker(input_molecules,
+                 output_molecules,
+                 rob,
+                 pipe.template get_pipeline<queue_type>(knobs, id, device_type::CPU, device_scratch)));
     }
   };
 
@@ -50,21 +55,19 @@ namespace mudock {
                                 std::shared_ptr<safe_stack<static_molecule>>& input_molecules,
                                 std::shared_ptr<safe_stack<static_molecule>>& output_molecules,
                                 pipeline_t& pipe) {
-    std::function<int(const int)> get_size = pipeline_t::template get_batch_size<queue_type>;
-    auto rob                               = std::make_shared<reorder_buffer<static_molecule>>(get_size);
+    auto q_b                               = std::make_shared<queue_type>(0, device_type::GPU);
+    std::function<int(const int)> get_size = [q_b](const int x) {
+      return pipeline_t::template get_batch_size<queue_type>(x, q_b);
+    };
+    auto rob = std::make_shared<reorder_buffer<static_molecule>>(get_size);
 
     for (const auto id: parse_ids(parts[2])) {
-      auto device_scratch = std::make_shared<scratchpad<queue_type>>(knobs, id);
-      pool.add_worker(worker(input_molecules,
-                             output_molecules,
-                             rob,
-                             // static_cast<size_t>(id),
-                             pipe.template get_pipeline<queue_type>(knobs, id, device_scratch)));
-      pool.add_worker(worker(input_molecules,
-                             output_molecules,
-                             rob,
-                             // static_cast<size_t>(id),
-                             pipe.template get_pipeline<queue_type>(knobs, id, device_scratch)));
+      auto device_scratch = std::make_shared<scratchpad<queue_type>>(knobs, id, device_type::GPU);
+      pool.add_worker(
+          worker(input_molecules,
+                 output_molecules,
+                 rob,
+                 pipe.template get_pipeline<queue_type>(knobs, id, device_type::GPU, device_scratch)));
     }
   };
 

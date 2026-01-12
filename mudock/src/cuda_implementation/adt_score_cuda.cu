@@ -318,8 +318,7 @@ namespace mudock {
   }; // namespace mudock
 
   template<int MAX_ATOMS>
-  int get_evaluate_fitness_batch() {
-    int device_id = 0;
+  int get_evaluate_fitness_batch(const int device_id) {
     MUDOCK_CHECK(cudaGetDevice(&device_id));
     cudaDeviceProp props;
     MUDOCK_CHECK(cudaGetDeviceProperties(&props, device_id));
@@ -334,13 +333,14 @@ namespace mudock {
   }
 
   template<>
-  int get_adt_score_batch<queue_cuda>(const int atoms) {
+  int get_adt_score_batch<queue_cuda>(const int atoms, std::shared_ptr<queue_cuda> q_b) {
     // populate the bucket dimension
     int bucket_size{0};
+    const int device_id = q_b->get_id();
     constexpr_for<0, reorder_buffer<static_molecule>::get_num_atom_clusters(), 1>([&](const auto atom_index) {
       const auto n_atoms = reorder_buffer<static_molecule>::atoms_clusters[atom_index];
       if (atoms == n_atoms)
-        bucket_size = get_evaluate_fitness_batch<n_atoms>();
+        bucket_size = get_evaluate_fitness_batch<n_atoms>(device_id);
     });
     if (bucket_size == 0)
       throw std::runtime_error(
