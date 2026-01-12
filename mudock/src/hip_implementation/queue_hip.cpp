@@ -16,7 +16,10 @@ namespace mudock {
     ~impl() noexcept(false) { MUDOCK_CHECK(hipStreamDestroy(stream)); };
   };
 
-  queue_hip::queue_hip(const int _id): queue(_id), impl_(std::make_unique<impl>(_id)) {};
+  queue_hip::queue_hip(const int _id, const device_type dev_type)
+      : queue(_id, dev_type), impl_(std::make_unique<impl>(_id)) {
+    assert(dev_type == device_type::GPU && "HIP supports only GPUs devices");
+  };
   queue_hip::~queue_hip() = default; // unique_ptr will destroy Impl
 
   queue_hip::queue_hip(queue_hip&&) noexcept = default;
@@ -47,14 +50,13 @@ namespace mudock {
 
   void queue_hip::alloc(void** ptr, const size_t bytes) {
     // TOOD check if required
-    if (*ptr != nullptr)
-      free(ptr);
+    queue_hip::free(ptr);
     MUDOCK_CHECK(hipMallocAsync(ptr, bytes, impl_->stream));
   };
   void queue_hip::free(void** ptr) {
     if (*ptr != nullptr) {
       MUDOCK_CHECK(hipFreeAsync(*ptr, impl_->stream));
-      ptr = nullptr;
+      *ptr = nullptr;
     }
   };
   void queue_hip::set_to_value(void* ptr, const size_t num_bytes, const char value) {

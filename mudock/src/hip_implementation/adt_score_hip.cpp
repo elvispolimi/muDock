@@ -1,4 +1,4 @@
-#include "mudock/hip_implementation/hip_texture.hpp"
+#include "mudock/compute/queue.hpp"
 
 #include <memory>
 #include <mudock/chem/autodock_grid_types.hpp>
@@ -7,9 +7,9 @@
 #include <mudock/chem/mehler_solmajer.hpp>
 #include <mudock/compute/adt_score_kernel.hpp>
 #include <mudock/compute/devices_memory.hpp>
-#include <mudock/compute/object.hpp>
 #include <mudock/compute/reorder_buffer.hpp>
 #include <mudock/hip_implementation/adt_score_hip.hpp>
+#include <mudock/hip_implementation/hip_texture.hpp>
 #include <mudock/hip_implementation/hip_utils.hpp>
 #include <mudock/hip_implementation/queue_hip.hpp>
 #include <mudock/molecule.hpp>
@@ -301,8 +301,8 @@ namespace mudock {
   }; // namespace mudock
 
   template<int MAX_ATOMS>
-  int get_evaluate_fitness_batch() {
-    int device_id = 0;
+  int get_evaluate_fitness_batch(const int device_id) {
+    //We assume that all devices are the same
     MUDOCK_CHECK(hipGetDevice(&device_id));
     hipDeviceProp_t props;
     MUDOCK_CHECK(hipGetDeviceProperties(&props, device_id));
@@ -317,13 +317,14 @@ namespace mudock {
   }
 
   template<>
-  int get_adt_score_batch<queue_hip>(const int atoms) {
+  int get_adt_score_batch<queue_hip>(const int atoms, std::shared_ptr<queue_hip> q_b) {
     // populate the bucket dimension
     int bucket_size{0};
+    const int device_id = q_b->get_id();
     constexpr_for<0, reorder_buffer<static_molecule>::get_num_atom_clusters(), 1>([&](const auto atom_index) {
       const auto n_atoms = reorder_buffer<static_molecule>::atoms_clusters[atom_index];
       if (atoms == n_atoms)
-        bucket_size = get_evaluate_fitness_batch<n_atoms>();
+        bucket_size = get_evaluate_fitness_batch<n_atoms>(device_id);
     });
     if (bucket_size == 0)
       throw std::runtime_error(
