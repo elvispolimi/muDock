@@ -17,8 +17,8 @@
 namespace mudock {
 
   template<typename queue_type>
-    requires std::derived_from<queue_type, queue>
-  int get_adt_score_batch(const int);
+  // requires std::derived_from<queue_type, queue>
+  int get_adt_score_batch(const int, std::shared_ptr<queue_type>);
 
 #ifndef __CUDACC__
   // TODO check that the object type and the kernel impl are the same
@@ -257,10 +257,12 @@ namespace mudock {
     void teardown_impl(batch<static_molecule> &batch) override {
       assert(batch.num_ligands == batch_ligands && "Scoring algorithm received different batch for teardown");
 
+      //TODO this could be an issue if the scores per population would be equal to 1;
       if (batch_ligands ==
           static_cast<int>((*this->scratch).template get<buffer_data_type::SCORES>().num_elements())) {
         auto &scores_b = (*this->scratch).template get<buffer_data_type::SCORES>();
         scores_b.copy_device2host();
+        (*this->scratch).get_queue()->synchronize();
         for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
           auto &ligand = *batch.molecules[ligand_index];
 

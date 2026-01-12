@@ -63,7 +63,7 @@ int main(int argc, char *argv[]) {
   std::vector<int> num_rotamers_b{static_cast<int>(num_rotamers)};
   std::vector<int> num_nonbonds_b{0, static_cast<int>(adt_ligand.non_bond_size())};
   std::vector<mudock::fp_type> scores_b{0};
-  auto q = std::make_shared<mudock::queue_cpp>(0);
+  auto q = std::make_shared<mudock::queue_cpp>(0, mudock::device_type::CPU);
   mudock::adt_score_kernel<mudock::queue_cpp> adt_kernel{1,
                                                          1,
                                                          num_atoms,

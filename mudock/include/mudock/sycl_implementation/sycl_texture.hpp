@@ -1,30 +1,45 @@
 #pragma once
 
-#include <mudock/chem/autodock_grid_types.hpp>
-#include <mudock/chem/autodock_protein.hpp>
-#include <mudock/grid/space_grid.hpp>
-#include <mudock/sycl_implementation/sycl_wrapper.hpp>
+#include <mudock/sycl_implementation/queue_sycl.hpp>
+#include <mudock/sycl_implementation/sycl_utils.hpp>
 #include <mudock/type_alias.hpp>
-// #include <sycl/image.hpp>
-#include <sycl/sycl.hpp>
-#include <vector>
 
-// TODO oneAPI images
 namespace mudock {
-  struct syclTexture_wrapper {
-    // sycl::image<3> tex;
-    sycl_wrapper<std::vector, fp_type> tex;
-    ~syclTexture_wrapper() = default;
-    const sycl_wrapper<std::vector, fp_type>& operator()() const { return tex; };
-    sycl_wrapper<std::vector, fp_type>& operator()() { return tex; };
-    syclTexture_wrapper(sycl::queue& queue, const autodock_protein& adt_protein): tex(queue) {
-      const fp_type* grid_map = adt_protein.get_maps_pointer();
-      const int num_elements  = adt_protein.get_map_flat_size() * num_autodock_grids();
-      tex.alloc(num_elements);
+  struct sycl_texture_devices {
+    fp_type* tex_dev = nullptr;
+    const int dev_id = 0;
+    queue_sycl q;
 
-      std::memcpy(tex(), grid_map, num_elements * sizeof(fp_type));
+    sycl_texture_devices(const int id,
+                         const device_type dev_type,
+                         const int xyz,
+                         const int num_tex,
+                         const fp_type* src)
+        : dev_id(id), q(id, dev_type) {
+      const int num_elements  = xyz * num_tex;
+      const std::size_t bytes = num_elements * sizeof(fp_type);
 
-      tex.copy_host2device();
+      q.alloc(reinterpret_cast<void**>(&tex_dev), bytes);
+      q.copy_host2device(src, tex_dev, bytes);
+
+      q.synchronize();
+    };
+
+    // no copy
+    sycl_texture_devices(const sycl_texture_devices&)            = delete;
+    sycl_texture_devices& operator=(const sycl_texture_devices&) = delete;
+
+    // no move (matches your HIP version)
+    sycl_texture_devices(sycl_texture_devices&&)            = delete;
+    sycl_texture_devices& operator=(sycl_texture_devices&&) = delete;
+
+    ~sycl_texture_devices() noexcept {
+      if (tex_dev) {
+        try {
+          q.free(reinterpret_cast<void**>(&tex_dev));
+        } catch (const sycl::exception& e) {}
+        tex_dev = nullptr;
+      }
     }
   };
 } // namespace mudock

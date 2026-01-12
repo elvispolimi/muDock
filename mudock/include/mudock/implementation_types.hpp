@@ -16,6 +16,9 @@ namespace mudock {
 #ifdef MUDOCK_USE_HIP
     static constexpr auto hip_token = "HIP";
 #endif
+#ifdef MUDOCK_USE_SYCL
+    static constexpr auto sycl_token = "SYCL";
+#endif
   };
 
   enum class implementation_type {
@@ -35,6 +38,10 @@ namespace mudock {
 #ifdef MUDOCK_USE_HIP
     ,
     HIP
+#endif
+#ifdef MUDOCK_USE_SYCL
+    ,
+    SYCL
 #endif
   };
 
@@ -56,6 +63,10 @@ namespace mudock {
 #ifdef MUDOCK_USE_HIP
     if (impl == implementation_type_desc::hip_token)
       return implementation_type::HIP;
+#endif
+#ifdef MUDOCK_USE_SYCL
+    if (impl == implementation_type_desc::sycl_token)
+      return implementation_type::SYCL;
 #endif
     throw std::runtime_error("Requested implementation not available");
   };

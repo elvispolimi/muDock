@@ -233,6 +233,7 @@ namespace mudock {
     std::unique_ptr<geom_kernel<queue_t>> kernel;
 
     void teardown_impl(batch<static_molecule>& batch) {
+      //TODO this could be an issue if the scores per population required by the user would be equal to 1
       if (batch.num_ligands ==
           static_cast<int>((*this->scratch).template get<buffer_data_type::CHROMOSOMES>().num_elements())) {
         for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
@@ -242,9 +243,10 @@ namespace mudock {
           auto& x_scratch_b      = (*this->scratch).template get<buffer_data_type::X_SCRATCH>();
           auto& y_scratch_b      = (*this->scratch).template get<buffer_data_type::Y_SCRATCH>();
           auto& z_scratch_b      = (*this->scratch).template get<buffer_data_type::Z_SCRATCH>();
-          x_scratch_b.copy_host2device();
-          x_scratch_b.copy_host2device();
-          x_scratch_b.copy_host2device();
+          x_scratch_b.copy_device2host();
+          x_scratch_b.copy_device2host();
+          x_scratch_b.copy_device2host();
+          (*this->scratch).get_queue()->synchronize();
           std::memcpy(ligand.x(), x_scratch_b.host_pointer() + stride_atoms, num_atoms * sizeof(fp_type));
           std::memcpy(ligand.y(), y_scratch_b.host_pointer() + stride_atoms, num_atoms * sizeof(fp_type));
           std::memcpy(ligand.z(), z_scratch_b.host_pointer() + stride_atoms, num_atoms * sizeof(fp_type));
