@@ -303,7 +303,7 @@ namespace mudock {
   template<int MAX_ATOMS>
   int get_evaluate_fitness_batch(const int device_id) {
     //We assume that all devices are the same
-    MUDOCK_CHECK(hipGetDevice(&device_id));
+    MUDOCK_CHECK(hipSetDevice(device_id));
     hipDeviceProp_t props;
     MUDOCK_CHECK(hipGetDeviceProperties(&props, device_id));
     int num_block_per_SM = 0;
