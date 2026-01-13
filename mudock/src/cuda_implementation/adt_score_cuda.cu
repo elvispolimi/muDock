@@ -319,7 +319,7 @@ namespace mudock {
 
   template<int MAX_ATOMS>
   int get_evaluate_fitness_batch(const int device_id) {
-    MUDOCK_CHECK(cudaGetDevice(&device_id));
+    MUDOCK_CHECK(cudaSetDevice(device_id));
     cudaDeviceProp props;
     MUDOCK_CHECK(cudaGetDeviceProperties(&props, device_id));
     int num_block_per_SM = 0;
