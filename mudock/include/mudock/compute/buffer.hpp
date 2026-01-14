@@ -209,6 +209,13 @@ namespace mudock {
       else
         return host_pointer();
     }
+
+    [[nodiscard]] T** dev_pointer_ref() {
+      if (obj)
+        return (*obj).dev_pointer_ref();
+      else
+        throw std::runtime_error("Reference to a buffer host pointer not yet implemented");
+    };
   };
 
   template<typename T, typename queue_t>
