@@ -130,15 +130,9 @@ namespace mudock {
 
       // generate the offspring
       const int split_index = get_crossover_distribution(l_state, &num_rotamers);
-      // memcpy(next_chromosome.data(), &(l_chromosomes[best_individual_1][0]), split_index * sizeof(fp_type));
-      // const int parent2_copy_size = 6 + num_rotamers - split_index;
-      // if (parent2_copy_size > 0)
-      //   memcpy(next_chromosome.data() + split_index,
-      //          &(l_chromosomes[best_individual_2][split_index]),
-      //          parent2_copy_size * sizeof(fp_type));
-      fp_type* dst      = next_chromosome.data();
-      const fp_type* p1 = l_chromosomes[best_individual_1].data();
-      const fp_type* p2 = l_chromosomes[best_individual_2].data();
+      fp_type* dst          = next_chromosome.data();
+      const fp_type* p1     = l_chromosomes[best_individual_1].data();
+      const fp_type* p2     = l_chromosomes[best_individual_2].data();
       for (int i = 0; i < (6 + num_rotamers); ++i) { dst[i] = (i < split_index) ? p1[i] : p2[i]; }
 
 // mutate the offspring
