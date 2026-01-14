@@ -1,6 +1,7 @@
 #pragma once
 
-#include <mudock/sycl_implementation/sycl_wrapper.hpp>
+#include <mudock/compute/buffer.hpp>
+#include <mudock/sycl_implementation/queue_sycl.hpp>
 #include <mudock/type_alias.hpp>
 
 namespace mudock {
@@ -23,7 +24,7 @@ namespace mudock {
     }
 
     // Generate the next random number
-    fp_type next() {
+    inline fp_type next() {
       /* Algorithm "xorwow" from p. 5 of Marsaglia, "Xorshift RNGs" */
       unsigned int t = state[4];
 
@@ -42,19 +43,22 @@ namespace mudock {
     }
   };
 
-  struct sycl_random_object: private sycl_wrapper<std::vector, XORWOWState> {
-    sycl_random_object(sycl::queue &_queue): sycl_wrapper<std::vector, XORWOWState>(_queue) {};
+  struct sycl_random_object {
+    sycl_random_object(std::shared_ptr<queue_sycl> q_): q(q_), state(q) {};
     sycl_random_object(const sycl_random_object &)            = delete;
-    sycl_random_object(sycl_random_object &&)                 = default;
+    sycl_random_object(sycl_random_object &&)                 = delete;
     sycl_random_object &operator=(const sycl_random_object &) = delete;
     sycl_random_object &operator=(sycl_random_object &&)      = delete;
 
     void alloc(const std::size_t num_elements);
     void alloc(const std::size_t num_elements, const std::size_t seed);
 
-    [[nodiscard]] inline auto dev_pointer() const {
-      return sycl_wrapper<std::vector, XORWOWState>::dev_pointer();
-    }
+    [[nodiscard]] inline auto dev_pointer() { return state.dev_pointer(); }
+    [[nodiscard]] inline XORWOWState **dev_pointer_ref() { return state.dev_pointer_ref(); }
+
+  private:
+    std::shared_ptr<queue_sycl> q;
+    buffer_vector<XORWOWState, queue_sycl> state;
   };
 
 } // namespace mudock
