@@ -1,6 +1,7 @@
 #include <cassert>
 #include <mudock/compute/reorder_buffer.hpp>
 #include <mudock/sycl_implementation/geom_transform_sycl.hpp>
+#include <mudock/sycl_implementation/invoke_kernel_sycl.hpp>
 #include <mudock/sycl_implementation/mutate.hpp>
 #include <mudock/utils.hpp>
 
