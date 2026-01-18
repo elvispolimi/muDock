@@ -1,5 +1,6 @@
 #include <mudock/compute/devices_memory.hpp>
 #include <mudock/sycl_implementation/genetic_sycl.hpp>
+#include <mudock/sycl_implementation/invoke_kernel_sycl.hpp>
 #include <mudock/sycl_implementation/sycl_random.hpp>
 #include <mudock/utils.hpp>
 #include <sycl/sycl.hpp>
@@ -59,7 +60,6 @@ namespace mudock {
   struct initialize_gpu {
     void operator()(sycl::nd_item<3> it,
                     const int tournament_length,
-                    const fp_type mutation_prob,
                     const int chromosome_number,
                     const int* __restrict__ ligand_num_rotamers,
                     chromosome* __restrict__ chromosomes,
@@ -193,7 +193,7 @@ namespace mudock {
 
       // TODO checks that only one can do it
       if (min_score == best_score) {
-        ligand_scores[ligand_id] = min_score + num_rotamers * autodock_parameters::coeff_tors;
+        ligand_best_scores[ligand_id] = min_score;
         memcpy((*(best_chromosomes + ligand_id)).data(),
                (*(l_chromosomes + min_index)).data(),
                sizeof(fp_type) * (6 + num_rotamers));
@@ -203,11 +203,6 @@ namespace mudock {
 
   template<>
   void genetic_kernel<queue_sycl>::operator()() {
-    // TODO each time or once per computation starts
-    sycl_random_memory.init(q);
-    // TODO chek assumption on num_threads
-    sycl_random_memory.get_data()->alloc(batch_ligands * q->get_preferred_workgroup_size(), seed);
-
     q->invoke_kernel<iterate_gpu>(batch_ligands,
                                   q->get_preferred_workgroup_size(),
                                   tournament_length,
@@ -216,17 +211,24 @@ namespace mudock {
                                   num_rotamers_b,
                                   population,
                                   next_population,
-                                  sycl_random_memory.get_data()->dev_pointer_ref(),
+                                  sycl_random_memory.get_data()->dev_pointer(),
                                   scores_b);
   }
   template<>
   void genetic_kernel<queue_sycl>::initialize() {
+    // TODO each time or once per computation starts
+    sycl_random_memory.init(q);
+    // TODO chek assumption on num_threads
+    sycl_random_memory.get_data()->alloc(batch_ligands * q->get_preferred_workgroup_size(), seed);
+
     q->invoke_kernel<initialize_gpu>(batch_ligands,
                                      q->get_preferred_workgroup_size(),
+                                     tournament_length,
                                      population_number,
                                      num_rotamers_b,
                                      population,
-                                     sycl_random_memory.get_data()->dev_pointer_ref(),
+                                     next_population,
+                                     sycl_random_memory.get_data()->dev_pointer(),
                                      scores_b);
   }
   template<>
