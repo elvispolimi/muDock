@@ -11,7 +11,7 @@
 
 #define FLATTENED_3D(x, y, z, index_x, index_xy) (index_xy * (z) + (y) * index_x + (x))
 
-#define BUCKET_MULTIPLIER 2
+#define BUCKET_MULTIPLIER 3
 
 namespace mudock {
   inline fp_type trilinear_interpolation_sycl(const fp_type* __restrict__ map,
