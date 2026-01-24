@@ -16,7 +16,7 @@
 #include <stdexcept>
 #include <stdio.h>
 
-#define BUCKET_MULTIPLIER 2
+#define BUCKET_MULTIPLIER 3
 
 namespace mudock {
   __device__ static constexpr fp_type EINTCLAMP_CUDA{EINTCLAMP};

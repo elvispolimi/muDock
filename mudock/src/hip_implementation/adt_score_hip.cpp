@@ -16,7 +16,7 @@
 #include <mudock/type_alias.hpp>
 #include <mudock/utils.hpp>
 
-#define BUCKET_MULTIPLIER 2
+#define BUCKET_MULTIPLIER 3
 
 #define FLATTENED_3D(x, y, z, index_x, index_xy) (index_xy * (z) + (y) * index_x + (x))
 
