@@ -66,7 +66,8 @@ endif()
 # CPU
 project(muDock VERSION 1.0)
 enable_language(CXX)
-option(MUDOCK_ENABLE_BUCKET "Enable large bucket usage" OFF)
+set(MUDOCK_BUCKET_LEVEL "OFF" CACHE STRING "Bucket level: OFF|MEDIUM|LARGE|EXTREME")
+set_property(CACHE MUDOCK_BUCKET_LEVEL PROPERTY STRINGS OFF MEDIUM LARGE EXTREME)
 option(MUDOCK_ENABLE_IPO "Enable IPO" OFF)
 if(MUDOCK_ENABLE_IPO)
   include(CheckIPOSupported)
@@ -399,7 +400,7 @@ message(
 )
 message(
   STATUS
-    "Bucket usage........................: ${MUDOCK_ENABLE_BUCKET} (MUDOCK_ENABLE_BUCKET)"
+    "Bucket level........................: ${MUDOCK_BUCKET_LEVEL} (MUDOCK_BUCKET_LEVEL)"
 )
 message(
   STATUS
