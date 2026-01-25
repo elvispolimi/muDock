@@ -331,11 +331,11 @@ if(MUDOCK_ENABLE_HIP)
       -rdc=true -Xptxas -v>)
   target_compile_options(
     libmudock
-    PUBLIC $<$<AND:$<COMPILE_LANGUAGE:HIP>,$<HIP_COMPILER_ID:Clang>>:-fgpu-rdc -Xclang -Rpass-analysis=kernel-resource-usage>)
+    PUBLIC $<$<AND:$<COMPILE_LANGUAGE:HIP>,$<HIP_COMPILER_ID:Clang>>:-fgpu-rdc -Rpass-analysis=kernel-resource-usage>)
   target_link_options(
     libmudock PUBLIC
     $<$<AND:$<COMPILE_LANGUAGE:HIP>,$<HIP_COMPILER_ID:Clang>>:-fgpu-rdc
-    --hip-link>)
+    --hip-link -Rpass-analysis=kernel-resource-usage>)
   target_compile_options(
     libmudock
     PUBLIC
