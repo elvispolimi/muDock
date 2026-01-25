@@ -12,7 +12,7 @@ namespace mudock {
   static constexpr fp_type angle_step{4};
 
   template<typename T>
-  __device__ inline const T random_gen_cuda(curandState& state, const T min, const T max) {
+  __device__ __forceinline__ const T random_gen_cuda(curandState& state, const T min, const T max) {
     fp_type value;
     if constexpr (is_debug()) {
       // TODO value here for debug
@@ -23,28 +23,29 @@ namespace mudock {
     return static_cast<T>((value * static_cast<fp_type>(max - min)) + min);
   }
 
-  __device__ inline int get_selection_distribution(curandState& state, const int* population_number) {
+  __device__ __forceinline__ int get_selection_distribution(curandState& state,
+                                                            const int* population_number) {
     return random_gen_cuda<int>(state, 0, *population_number - 1);
   };
 
-  __device__ inline fp_type get_init_change_distribution(curandState& state) {
+  __device__ __forceinline__ fp_type get_init_change_distribution(curandState& state) {
     return random_gen_cuda<fp_type>(state, -45, 45);
   }
-  __device__ inline fp_type get_mutation_change_distribution(curandState& state) {
+  __device__ __forceinline__ fp_type get_mutation_change_distribution(curandState& state) {
     return random_gen_cuda<fp_type>(state, -10, 10);
   };
-  __device__ inline fp_type get_mutation_coin_distribution(curandState& state) {
+  __device__ __forceinline__ fp_type get_mutation_coin_distribution(curandState& state) {
     return random_gen_cuda<fp_type>(state, 0, 1);
   };
   // TODO check what happens if max num_rotamers is reached, read for split index could go out of bound
-  __device__ inline int get_crossover_distribution(curandState& state, const int* num_rotamers) {
+  __device__ __forceinline__ int get_crossover_distribution(curandState& state, const int* num_rotamers) {
     return random_gen_cuda<int>(state, 0, 6 + *num_rotamers);
   };
 
-  __device__ inline int tournament_selection_cuda(curandState& state,
-                                                  const int tournament_length,
-                                                  const int chromosome_number,
-                                                  const fp_type* __restrict__ scores) {
+  __device__ __forceinline__ int tournament_selection_cuda(curandState& state,
+                                                           const int tournament_length,
+                                                           const int chromosome_number,
+                                                           const fp_type* __restrict__ scores) {
     const int num_iterations = tournament_length;
     int best_individual      = get_selection_distribution(state, &chromosome_number);
     for (int i = 0; i < num_iterations; ++i) {
