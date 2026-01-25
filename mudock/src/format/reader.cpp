@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <cassert>
-#include <format>
 #include <fstream>
 #include <memory>
 #include <mudock/format/ob_wrapper.hpp>
@@ -31,8 +30,8 @@ namespace mudock {
     std::istringstream desc{std::string(description)};
     auto mol = std::make_unique<OpenBabel::OBMol>();
     if (!conv.Read(mol.get(), &desc)) {
-      mudock::error(std::format("Couldn't open {} file", ext));
-      throw std::runtime_error(std::format("{} Parser failed, look to logs for details", ext));
+      mudock::error("Couldn't open ", ext, " file.");
+      throw std::runtime_error("Parser failed, look to logs for details.");
     }
     return mol;
   }
