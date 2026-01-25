@@ -1,5 +1,7 @@
 #pragma once
 
+#include "mudock/knobs.hpp"
+
 #include <concepts>
 #include <memory>
 #include <mudock/batch.hpp>
@@ -146,6 +148,21 @@ namespace mudock {
       }
       kernel->finalize();
     };
+
+    static int get_ligand_mem(const int max_atoms, const knobs conf) {
+      int mem{0};
+
+      mem += sizeof(int);                                 // num_rotamers
+      mem += sizeof(chromosome) * conf.population_number; // chromosomes
+      mem += sizeof(chromosome) * conf.population_number; //next population
+      mem += sizeof(fp_type) * conf.population_number;    //scores
+      mem += sizeof(chromosome);                          // best chromosomes
+      mem += sizeof(fp_type);                             // best scores
+
+      mem += scoring_t<queue_t>::get_ligand_mem(max_atoms, conf);
+      mem += geometric<queue_t>::get_ligand_mem(max_atoms, conf);
+      return mem;
+    }
 
   private:
     scoring_t<queue_t> score_stage;
