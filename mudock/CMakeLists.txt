@@ -345,6 +345,8 @@ if(MUDOCK_ENABLE_HIP)
   if(HIP_PLATFORM STREQUAL "nvidia")
     # FIX ME some platform requires -Wl,-rpath to link the correct CUDA rand lib
     target_link_libraries(libmudock PUBLIC CUDA::curand)
+  elseif(HIP_PLATFORM STREQUAL "amd")
+    target_link_libraries(libmudock PUBLIC rocrand::rocrand)
   endif()
 endif()
 

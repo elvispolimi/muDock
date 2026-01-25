@@ -93,6 +93,7 @@ if(MUDOCK_ENABLE_HIP)
       find_package(CUDAToolkit REQUIRED COMPONENTS curand)
     elseif(GPU_PLATFORM STREQUAL "amd")
       set(HIP_PLATFORM "${GPU_PLATFORM}")
+      find_package(rocrand REQUIRED)
 
       # TODO target arch
     else()
