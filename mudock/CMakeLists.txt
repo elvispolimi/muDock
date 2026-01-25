@@ -267,8 +267,12 @@ target_compile_options(
   libmudock
   PUBLIC $<$<AND:$<CONFIG:RELEASE>,$<COMPILE_LANGUAGE:CXX>>:${release_flags}>)
 
-if(MUDOCK_ENABLE_BUCKET)
+if(MUDOCK_BUCKET_LEVEL STREQUAL "EXTREME")
+  target_compile_definitions(libmudock PUBLIC MUDOCK_BUCKET_EXTREME)
+elseif(MUDOCK_BUCKET_LEVEL STREQUAL "LARGE")
   target_compile_definitions(libmudock PUBLIC MUDOCK_BUCKET_LARGE)
+elseif(MUDOCK_BUCKET_LEVEL STREQUAL "MEDIUM")
+  target_compile_definitions(libmudock PUBLIC MUDOCK_BUCKET_MEDIUM)
 endif()
 
 # Profiling
@@ -324,10 +328,10 @@ if(MUDOCK_ENABLE_HIP)
     libmudock
     PUBLIC
       $<$<AND:$<COMPILE_LANGUAGE:HIP>,$<HIP_COMPILER_ID:NVIDIA>>:--expt-relaxed-constexpr
-      -rdc=true>)
+      -rdc=true -Xptxas -v>)
   target_compile_options(
     libmudock
-    PUBLIC $<$<AND:$<COMPILE_LANGUAGE:HIP>,$<HIP_COMPILER_ID:Clang>>:-fgpu-rdc>)
+    PUBLIC $<$<AND:$<COMPILE_LANGUAGE:HIP>,$<HIP_COMPILER_ID:Clang>>:-fgpu-rdc --resource-usage>)
   target_link_options(
     libmudock PUBLIC
     $<$<AND:$<COMPILE_LANGUAGE:HIP>,$<HIP_COMPILER_ID:Clang>>:-fgpu-rdc
