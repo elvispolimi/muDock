@@ -29,4 +29,11 @@ namespace mudock {
 #elif defined(__HIP_PLATFORM_AMD__)
   #define BITLANE_MASK 0xFFFFFFFFFFFFFFFF
 #endif
+#if defined(__HIP_PLATFORM_AMD__)
+  #define SHFL_DOWN(mask, v, delta, width) __shfl_down((v), (delta), (width))
+  #define SHFL(mask, v, src, width)        __shfl((v), (src), (width))
+#else
+  #define SHFL_DOWN(mask, v, delta, width) __shfl_down_sync((mask), (v), (delta), (width))
+  #define SHFL(mask, v, src, width)        __shfl_sync((mask), (v), (src), (width))
+#endif
 } // namespace mudock
