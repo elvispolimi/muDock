@@ -180,8 +180,8 @@ namespace mudock {
 // Intra warp reduction
 #pragma unroll
     for (int offset = warpSize / 2; offset > 0; offset /= 2) {
-      const fp_type other_min_score = __shfl_down_sync(BITLANE_MASK, min_score, offset);
-      const int other_min_index     = __shfl_down_sync(BITLANE_MASK, min_index, offset);
+      const fp_type other_min_score = SHFL_DOWN(BITLANE_MASK, min_score, offset);
+      const int other_min_index     = SHFL_DOWN(BITLANE_MASK, min_index, offset);
       if (other_min_score < min_score) {
         min_score = other_min_score;
         min_index = other_min_index;
