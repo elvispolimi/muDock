@@ -349,7 +349,7 @@ if(MUDOCK_ENABLE_HIP)
     if(DEFINED ROCRAND_INCLUDE_DIRS)
       target_include_directories(libmudock SYSTEM PRIVATE ${ROCRAND_INCLUDE_DIRS})
     endif()
-    target_link_libraries(libmudock PUBLIC rocrand::rocrand)
+    target_link_libraries(libmudock PUBLIC rocrand)
   endif()
 endif()
 
