@@ -68,10 +68,10 @@ namespace mudock {
         }));
   }
 
-  __device__ inline fp_type trilinear_interpolation_hip(const fp_type* __restrict__ map,
-                                                        const fp_type* __restrict__ coeffs,
-                                                        const int& map_index_x,
-                                                        const int& map_index_xy) {
+  __device__ __forceinline__ fp_type trilinear_interpolation_hip(const fp_type* __restrict__ map,
+                                                                 const fp_type* __restrict__ coeffs,
+                                                                 const int& map_index_x,
+                                                                 const int& map_index_xy) {
     fp_type value{0};
 
     value = coeffs[0] * map[0] + value;
@@ -114,6 +114,7 @@ namespace mudock {
 
     const int ligand_id       = blockIdx.x;
     const int local_thread_id = threadIdx.x;
+    assert(blockDim.x == warpSize && "Warpsize and the number of thread per block does not coincide");
 
     const int num_atoms    = num_atoms_b[ligand_id];
     const int num_nonbonds = num_nonbonds_b[ligand_id + 1] - num_nonbonds_b[ligand_id];
@@ -145,7 +146,8 @@ namespace mudock {
       // Calculate energy
       fp_type elect_total_trilinear = 0, emap_total_trilinear = 0, dmap_total_trilinear = 0;
 #pragma unroll
-      for (int atom_index = threadIdx.x; atom_index < MAX_ATOMS; atom_index += blockDim.x) {
+      for (int i = 0; i < MAX_ATOMS; i += warpSize) {
+        const int atom_index = i + threadIdx.x;
         if (atom_index < num_atoms) {
           fp_type coord_tex[3]{ligand_x[atom_index], ligand_y[atom_index], ligand_z[atom_index]};
 

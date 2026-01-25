@@ -7,39 +7,41 @@
 
 namespace mudock {
   template<int MAX_ATOMS>
-  __device__ void translate_molecule_hip(fp_type* __restrict__ x,
-                                         fp_type* __restrict__ y,
-                                         fp_type* __restrict__ z,
-                                         const fp_type* offset_x,
-                                         const fp_type* offset_y,
-                                         const fp_type* offset_z,
-                                         const int num_atoms) {
+  __device__ __forceinline__ void translate_molecule_hip(fp_type* __restrict__ x,
+                                                         fp_type* __restrict__ y,
+                                                         fp_type* __restrict__ z,
+                                                         const fp_type offset_x,
+                                                         const fp_type offset_y,
+                                                         const fp_type offset_z,
+                                                         const int num_atoms) {
 #pragma unroll
-    for (int i = threadIdx.x; i < MAX_ATOMS; i += blockDim.x) {
-      if (i < num_atoms) {
-        x[i] += *offset_x;
-        y[i] += *offset_y;
-        z[i] += *offset_z;
+    for (int i = 0; i < MAX_ATOMS; i += warpSize) {
+      const int atom_index = i + threadIdx.x;
+      if (atom_index < num_atoms) {
+        x[atom_index] += offset_x;
+        y[] += offset_y;
+        z[] += offset_z;
       }
     }
   };
 
   template<int MAX_ATOMS>
-  __device__ void rotate_molecule_hip(fp_type* __restrict__ x,
-                                      fp_type* __restrict__ y,
-                                      fp_type* __restrict__ z,
-                                      const fp_type* angle_x,
-                                      const fp_type* angle_y,
-                                      const fp_type* angle_z,
-                                      const int num_atoms) {
+  __device__ __forceinline__ void rotate_molecule_hip(fp_type* __restrict__ x,
+                                                      fp_type* __restrict__ y,
+                                                      fp_type* __restrict__ z,
+                                                      const fp_type angle_x,
+                                                      const fp_type angle_y,
+                                                      const fp_type angle_z,
+                                                      const int num_atoms) {
     // compute the molecule center of mass
     fp_type c_x{0}, c_y{0}, c_z{0};
 #pragma unroll
-    for (int i = threadIdx.x; i < MAX_ATOMS; i += blockDim.x) {
-      if (i < num_atoms) {
-        c_x += x[i];
-        c_y += y[i];
-        c_z += z[i];
+    for (int i = 0; i < MAX_ATOMS; i += warpSize) {
+      const int atom_index = i + threadIdx.x;
+      if (atom_index < num_atoms) {
+        c_x += x[atom_index];
+        c_y += y[atom_index];
+        c_z += z[atom_index];
       }
     }
     c_x /= num_atoms;
@@ -57,7 +59,7 @@ namespace mudock {
     c_z = SHFL(BITLANE_MASK, c_z, 0, warpSize);
 
     // compute the angles sine and cosine
-    const auto rad_x = deg_to_rad(*angle_x), rad_y = deg_to_rad(*angle_y), rad_z = deg_to_rad(*angle_z);
+    const auto rad_x = deg_to_rad(angle_x), rad_y = deg_to_rad(angle_y), rad_z = deg_to_rad(angle_z);
     const auto cx = std::cos(rad_x), sx = std::sin(rad_x);
     const auto cy = std::cos(rad_y), sy = std::sin(rad_y);
     const auto cz = std::cos(rad_z), sz = std::sin(rad_z);
@@ -75,25 +77,27 @@ namespace mudock {
 
     // apply the rotation matrix
 #pragma unroll
-    for (int i = threadIdx.x; i < MAX_ATOMS; i += blockDim.x) {
-      if (i < num_atoms) {
-        const auto translated_x = x[i] - c_x, translated_y = y[i] - c_y, translated_z = z[i] - c_z;
-        x[i] = translated_x * m00 + translated_y * m01 + translated_z * m02 + c_x;
-        y[i] = translated_x * m10 + translated_y * m11 + translated_z * m12 + c_y;
-        z[i] = translated_x * m20 + translated_y * m21 + translated_z * m22 + c_z;
+    for (int i = 0; i < MAX_ATOMS; i += warpSize) {
+      const int atom_index = i + threadIdx.x;
+      if (atom_index < num_atoms) {
+        const auto translated_x = x[atom_index] - c_x, translated_y = y[atom_index] - c_y,
+                   translated_z = z[atom_index] - c_z;
+        x[atom_index]           = translated_x * m00 + translated_y * m01 + translated_z * m02 + c_x;
+        y[atom_index]           = translated_x * m10 + translated_y * m11 + translated_z * m12 + c_y;
+        z[atom_index]           = translated_x * m20 + translated_y * m21 + translated_z * m22 + c_z;
       }
     }
   };
 
   template<int MAX_ATOMS>
-  __device__ void rotate_fragment_hip(fp_type* __restrict__ x,
-                                      fp_type* __restrict__ y,
-                                      fp_type* __restrict__ z,
-                                      const int* bitmask,
-                                      const int start_index,
-                                      const int stop_index,
-                                      const fp_type* angle,
-                                      const int num_atoms) {
+  __device__ __forceinline__ void rotate_fragment_hip(fp_type* __restrict__ x,
+                                                      fp_type* __restrict__ y,
+                                                      fp_type* __restrict__ z,
+                                                      const int* bitmask,
+                                                      const int start_index,
+                                                      const int stop_index,
+                                                      const fp_type angle,
+                                                      const int num_atoms) {
     // compute the axis vector (and some properties)
     const auto origx = x[start_index], origy = y[start_index], origz = z[start_index];
     const auto destx = x[stop_index], desty = y[stop_index], destz = z[stop_index];
@@ -111,7 +115,7 @@ namespace mudock {
     const auto l = std::sqrt(l2);
 
     // compute the angle sine and cosine
-    const auto rad = deg_to_rad(*angle);
+    const auto rad = deg_to_rad(angle);
     const auto s = std::sin(rad), c = std::cos(rad);
     const auto one_minus_c = fp_type{1} - c;
     const auto ls          = l * s;
@@ -137,12 +141,13 @@ namespace mudock {
 
     // apply the rotation matrix
 #pragma unroll
-    for (int i = threadIdx.x; i < MAX_ATOMS; i += blockDim.x) {
-      if (i < num_atoms && bitmask[i] != 0) {
-        const auto prev_x = x[i], prev_y = y[i], prev_z = z[i];
-        x[i] = prev_x * m00 + prev_y * m01 + prev_z * m02 + m03;
-        y[i] = prev_x * m10 + prev_y * m11 + prev_z * m12 + m13;
-        z[i] = prev_x * m20 + prev_y * m21 + prev_z * m22 + m23;
+    for (int i = 0; i < MAX_ATOMS; i += warpSize) {
+      const int atom_index = i + threadIdx.x;
+      if (atom_index < num_atoms && bitmask[i] != 0) {
+        const auto prev_x = x[atom_index], prev_y = y[atom_index], prev_z = z[atom_index];
+        x[atom_index] = prev_x * m00 + prev_y * m01 + prev_z * m02 + m03;
+        y[atom_index] = prev_x * m10 + prev_y * m11 + prev_z * m12 + m13;
+        z[atom_index] = prev_x * m20 + prev_y * m21 + prev_z * m22 + m23;
       }
     }
   };
@@ -167,6 +172,7 @@ namespace mudock {
     const int ligand_id        = blockIdx.x;
     const int local_thread_id  = threadIdx.x;
     const int thread_per_block = blockDim.x;
+    assert(thread_per_block == warpSize && "Warpsize and the number of thread per block does not coincide");
 
     const int num_atoms    = num_atoms_b[ligand_id];
     const int num_rotamers = num_rotamers_b[ligand_id];
@@ -190,7 +196,8 @@ namespace mudock {
 
 // Copy original coordinates
 #pragma unroll
-      for (int atom_index = local_thread_id; atom_index < MAX_ATOMS; atom_index += thread_per_block) {
+      for (int i = 0; i < MAX_ATOMS; i += warpSize) {
+        const int atom_index = i + local_thread_id;
         if (atom_index < num_atoms) {
           x_scratch_chromosome[atom_index] = l_original_x[atom_index];
           y_scratch_chromosome[atom_index] = l_original_y[atom_index];
