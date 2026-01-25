@@ -19,8 +19,8 @@ namespace mudock {
       const int atom_index = i + threadIdx.x;
       if (atom_index < num_atoms) {
         x[atom_index] += offset_x;
-        y[] += offset_y;
-        z[] += offset_z;
+        y[atom_index] += offset_y;
+        z[atom_index] += offset_z;
       }
     }
   };
@@ -208,16 +208,16 @@ namespace mudock {
       translate_molecule_hip<MAX_ATOMS>(x_scratch_chromosome,
                                         y_scratch_chromosome,
                                         z_scratch_chromosome,
-                                        &l_chromosomes[0],
-                                        &l_chromosomes[1],
-                                        &l_chromosomes[2],
+                                        l_chromosomes[0],
+                                        l_chromosomes[1],
+                                        l_chromosomes[2],
                                         num_atoms);
       rotate_molecule_hip<MAX_ATOMS>(x_scratch_chromosome,
                                      y_scratch_chromosome,
                                      z_scratch_chromosome,
-                                     &l_chromosomes[3],
-                                     &l_chromosomes[4],
-                                     &l_chromosomes[5],
+                                     l_chromosomes[3],
+                                     l_chromosomes[4],
+                                     l_chromosomes[5],
                                      num_atoms);
 
       // change the molecule shape
@@ -230,7 +230,7 @@ namespace mudock {
                                        bitmask,
                                        l_frag_start_atom_index[i],
                                        l_frag_stop_atom_index[i],
-                                       &l_chromosomes[6 + i],
+                                       l_chromosomes[6 + i],
                                        num_atoms);
       }
     }
