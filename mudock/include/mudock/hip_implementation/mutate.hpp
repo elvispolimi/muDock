@@ -48,13 +48,13 @@ namespace mudock {
 
     // Intra warp reduction
     for (int offset = warpSize / 2; offset > 0; offset /= 2) {
-      c_x += __shfl_down_sync(BITLANE_MASK, c_x, offset);
-      c_y += __shfl_down_sync(BITLANE_MASK, c_y, offset);
-      c_z += __shfl_down_sync(BITLANE_MASK, c_z, offset);
+      c_x += SHFL_DOWN(BITLANE_MASK, c_x, offset);
+      c_y += SHFL_DOWN(BITLANE_MASK, c_y, offset);
+      c_z += SHFL_DOWN(BITLANE_MASK, c_z, offset);
     }
-    c_x = __shfl_sync(BITLANE_MASK, c_x, 0);
-    c_y = __shfl_sync(BITLANE_MASK, c_y, 0);
-    c_z = __shfl_sync(BITLANE_MASK, c_z, 0);
+    c_x = SHFL(BITLANE_MASK, c_x, 0);
+    c_y = SHFL(BITLANE_MASK, c_y, 0);
+    c_z = SHFL(BITLANE_MASK, c_z, 0);
 
     // compute the angles sine and cosine
     const auto rad_x = deg_to_rad(*angle_x), rad_y = deg_to_rad(*angle_y), rad_z = deg_to_rad(*angle_z);
