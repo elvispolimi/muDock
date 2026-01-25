@@ -4,7 +4,11 @@
 #include <mudock/compute/queue.hpp>
 #include <mudock/grid/mdindex.hpp>
 
-#define BLOCK_SIZE 32
+#ifdef __HIP_PLATFORM_AMD__
+  #define BLOCK_SIZE 64
+#else
+  #define BLOCK_SIZE 32
+#endif
 
 namespace mudock {
   struct queue_hip: queue {
