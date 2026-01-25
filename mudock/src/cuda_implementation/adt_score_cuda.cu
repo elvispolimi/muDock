@@ -67,9 +67,9 @@ namespace mudock {
         }));
   }
 
-  __device__ inline fp_type trilinear_interpolation_cuda(const int coord[],
-                                                         const cudaTextureObject_t& tex,
-                                                         const fp_type* __restrict__ coeffs) {
+  __device__ __forceinline__ fp_type trilinear_interpolation_cuda(const int coord[],
+                                                                  const cudaTextureObject_t& tex,
+                                                                  const fp_type* __restrict__ coeffs) {
     // Interpolation CUDA
     fp_type value{0};
 
