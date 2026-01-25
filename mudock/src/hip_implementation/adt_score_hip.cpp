@@ -264,7 +264,7 @@ namespace mudock {
 
 #pragma unroll
       for (int offset = warpSize / 2; offset > 0; offset /= 2) {
-        total_energy += SHFL_DOWN(BITLANE_MASK, total_energy, offset);
+        total_energy += SHFL_DOWN(BITLANE_MASK, total_energy, offset, warpSize);
       }
 
       if (local_thread_id == 0) {
