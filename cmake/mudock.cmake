@@ -4,9 +4,10 @@
 
 function(hip_separable_compilation target)
   if(CMAKE_HIP_PLATFORM STREQUAL "nvidia")
+    message(STATUS "----here ${target}")
     set(MUDOCK_LIB "$<TARGET_FILE:libmudock>")
     set(OBJECTS $<TARGET_OBJECTS:${target}>)
-    set(DEVICE_LINK_OBJ ${CMAKE_CURRENT_BINARY_DIR}/link/${target}.o)
+    set(DEVICE_LINK_OBJ ${CMAKE_CURRENT_BINARY_DIR}/${target}.o)
 
     separate_arguments(flags UNIX_COMMAND PROGRAM ${CMAKE_HIP_FLAGS})
 
