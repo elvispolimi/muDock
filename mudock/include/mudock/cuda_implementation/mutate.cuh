@@ -6,13 +6,13 @@
 
 namespace mudock {
   template<int MAX_ATOMS>
-  __device__ void translate_molecule_cuda(fp_type* __restrict__ x,
-                                          fp_type* __restrict__ y,
-                                          fp_type* __restrict__ z,
-                                          const fp_type* offset_x,
-                                          const fp_type* offset_y,
-                                          const fp_type* offset_z,
-                                          const int num_atoms) {
+  __device__ __forceinline__ void translate_molecule_cuda(fp_type* __restrict__ x,
+                                                          fp_type* __restrict__ y,
+                                                          fp_type* __restrict__ z,
+                                                          const fp_type* offset_x,
+                                                          const fp_type* offset_y,
+                                                          const fp_type* offset_z,
+                                                          const int num_atoms) {
 #pragma unroll
     for (int i = threadIdx.x; i < MAX_ATOMS; i += blockDim.x) {
       if (i < num_atoms) {
@@ -24,13 +24,13 @@ namespace mudock {
   }
 
   template<int MAX_ATOMS>
-  __device__ void rotate_molecule_cuda(fp_type* __restrict__ x,
-                                       fp_type* __restrict__ y,
-                                       fp_type* __restrict__ z,
-                                       const fp_type* angle_x,
-                                       const fp_type* angle_y,
-                                       const fp_type* angle_z,
-                                       const int num_atoms) {
+  __device__ __forceinline__ void rotate_molecule_cuda(fp_type* __restrict__ x,
+                                                       fp_type* __restrict__ y,
+                                                       fp_type* __restrict__ z,
+                                                       const fp_type* angle_x,
+                                                       const fp_type* angle_y,
+                                                       const fp_type* angle_z,
+                                                       const int num_atoms) {
     // compute the molecule center of mass
     fp_type c_x{0}, c_y{0}, c_z{0};
 #pragma unroll
@@ -85,14 +85,14 @@ namespace mudock {
   }
 
   template<int MAX_ATOMS>
-  __device__ void rotate_fragment_cuda(fp_type* __restrict__ x,
-                                       fp_type* __restrict__ y,
-                                       fp_type* __restrict__ z,
-                                       const int* bitmask,
-                                       const int start_index,
-                                       const int stop_index,
-                                       const fp_type* angle,
-                                       const int num_atoms) {
+  __device__ __forceinline__ void rotate_fragment_cuda(fp_type* __restrict__ x,
+                                                       fp_type* __restrict__ y,
+                                                       fp_type* __restrict__ z,
+                                                       const int* bitmask,
+                                                       const int start_index,
+                                                       const int stop_index,
+                                                       const fp_type* angle,
+                                                       const int num_atoms) {
     // compute the axis vector (and some properties)
     const auto origx = x[start_index], origy = y[start_index], origz = z[start_index];
     const auto destx = x[stop_index], desty = y[stop_index], destz = z[stop_index];
