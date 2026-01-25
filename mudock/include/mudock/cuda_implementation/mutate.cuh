@@ -9,16 +9,16 @@ namespace mudock {
   __device__ __forceinline__ void translate_molecule_cuda(fp_type* __restrict__ x,
                                                           fp_type* __restrict__ y,
                                                           fp_type* __restrict__ z,
-                                                          const fp_type* offset_x,
-                                                          const fp_type* offset_y,
-                                                          const fp_type* offset_z,
+                                                          const fp_type offset_x,
+                                                          const fp_type offset_y,
+                                                          const fp_type offset_z,
                                                           const int num_atoms) {
 #pragma unroll
     for (int i = threadIdx.x; i < MAX_ATOMS; i += blockDim.x) {
       if (i < num_atoms) {
-        x[i] += *offset_x;
-        y[i] += *offset_y;
-        z[i] += *offset_z;
+        x[i] += offset_x;
+        y[i] += offset_y;
+        z[i] += offset_z;
       }
     }
   }
@@ -27,9 +27,9 @@ namespace mudock {
   __device__ __forceinline__ void rotate_molecule_cuda(fp_type* __restrict__ x,
                                                        fp_type* __restrict__ y,
                                                        fp_type* __restrict__ z,
-                                                       const fp_type* angle_x,
-                                                       const fp_type* angle_y,
-                                                       const fp_type* angle_z,
+                                                       const fp_type angle_x,
+                                                       const fp_type angle_y,
+                                                       const fp_type angle_z,
                                                        const int num_atoms) {
     // compute the molecule center of mass
     fp_type c_x{0}, c_y{0}, c_z{0};
@@ -56,7 +56,7 @@ namespace mudock {
     c_z = __shfl_sync(0xffffffff, c_z, 0);
 
     // compute the angles sine and cosine
-    const auto rad_x = deg_to_rad(*angle_x), rad_y = deg_to_rad(*angle_y), rad_z = deg_to_rad(*angle_z);
+    const auto rad_x = deg_to_rad(angle_x), rad_y = deg_to_rad(angle_y), rad_z = deg_to_rad(angle_z);
     const auto cx = std::cos(rad_x), sx = std::sin(rad_x);
     const auto cy = std::cos(rad_y), sy = std::sin(rad_y);
     const auto cz = std::cos(rad_z), sz = std::sin(rad_z);
@@ -91,7 +91,7 @@ namespace mudock {
                                                        const int* bitmask,
                                                        const int start_index,
                                                        const int stop_index,
-                                                       const fp_type* angle,
+                                                       const fp_type angle,
                                                        const int num_atoms) {
     // compute the axis vector (and some properties)
     const auto origx = x[start_index], origy = y[start_index], origz = z[start_index];
@@ -111,7 +111,7 @@ namespace mudock {
     const auto l = std::sqrt(l2);
 
     // compute the angle sine and cosine
-    const auto rad = deg_to_rad(*angle);
+    const auto rad = deg_to_rad(angle);
     const auto s = std::sin(rad), c = std::cos(rad);
     const auto one_minus_c = fp_type{1} - c;
     const auto ls          = l * s;
@@ -199,16 +199,16 @@ namespace mudock {
       translate_molecule_cuda<MAX_ATOMS>(x_scratch_chromosome,
                                          y_scratch_chromosome,
                                          z_scratch_chromosome,
-                                         &l_chromosomes[0],
-                                         &l_chromosomes[1],
-                                         &l_chromosomes[2],
+                                         l_chromosomes[0],
+                                         l_chromosomes[1],
+                                         l_chromosomes[2],
                                          num_atoms);
       rotate_molecule_cuda<MAX_ATOMS>(x_scratch_chromosome,
                                       y_scratch_chromosome,
                                       z_scratch_chromosome,
-                                      &l_chromosomes[3],
-                                      &l_chromosomes[4],
-                                      &l_chromosomes[5],
+                                      l_chromosomes[3],
+                                      l_chromosomes[4],
+                                      l_chromosomes[5],
                                       num_atoms);
 
 // change the molecule shape
@@ -221,7 +221,7 @@ namespace mudock {
                                         bitmask,
                                         l_frag_start_atom_index[i],
                                         l_frag_stop_atom_index[i],
-                                        &l_chromosomes[6 + i],
+                                        l_chromosomes[6 + i],
                                         num_atoms);
       }
     }
