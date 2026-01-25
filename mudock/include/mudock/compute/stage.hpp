@@ -8,6 +8,8 @@
 namespace mudock {
   template<typename queue_type>
   struct stage {
+    static int get_ligand_mem(const int, const knobs) { return 0; }
+
     stage(std::shared_ptr<scratchpad<queue_type>> _scratch): scratch(_scratch) {};
     virtual void prepare(batch<static_molecule>&) = 0;
     virtual void operator()()                     = 0;
