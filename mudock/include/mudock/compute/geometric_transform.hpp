@@ -1,5 +1,7 @@
 #pragma once
 
+#include "mudock/type_alias.hpp"
+
 #include <concepts>
 #include <memory>
 #include <mudock/chem/geom_ligand.hpp>
@@ -101,8 +103,7 @@ namespace mudock {
           protein_center(protein.get_center()) {};
 
     void prepare(batch<static_molecule>& batch) {
-      batch_ligands = batch.num_ligands;
-      // const auto chromsomes_per_ligand        = configuration.max_chromosomes_per_ligand;
+      batch_ligands                           = batch.num_ligands;
       batch_atoms                             = batch.batch_max_atoms;
       const int batch_rotamers                = batch_atoms - 3;
       const int tot_atoms_in_batch            = batch_ligands * batch_atoms;
@@ -219,6 +220,28 @@ namespace mudock {
       assert(kernel && "Kernel method not yet prepared");
       (*kernel)();
     };
+
+    static int get_ligand_mem(const int max_atoms, const knobs conf) {
+      int mem{0};
+
+      const int batch_rotamers              = max_atoms - 3;
+      const int tot_rotamers_atoms_in_batch = max_atoms * batch_rotamers;
+
+      mem += sizeof(int) * tot_rotamers_atoms_in_batch; //ligand fragments
+      mem += sizeof(int);                               //ligand_fragments_start
+      mem += sizeof(int) * batch_rotamers;              //frag_start_atom_indices
+      mem += sizeof(int) * batch_rotamers;              //frag_stop_atom_indices
+      mem += sizeof(int);                               //frag_indices_start
+
+      mem += sizeof(fp_type) * max_atoms * conf.population_number; //x_scratch_b
+      mem += sizeof(fp_type) * max_atoms * conf.population_number; //y_scratch_b
+      mem += sizeof(fp_type) * max_atoms * conf.population_number; //z_scratch_b
+
+      mem += sizeof(fp_type) * max_atoms; //x_coords_b
+      mem += sizeof(fp_type) * max_atoms; //y_coords_b
+      mem += sizeof(fp_type) * max_atoms; //z_coords_b
+      return mem;
+    }
 
   private:
     buffer_vector<int, queue_t> ligand_fragments;

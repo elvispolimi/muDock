@@ -286,19 +286,30 @@ namespace mudock {
   }; // namespace mudock
 
   template<>
-  int get_adt_score_batch<queue_sycl>(const int atoms, std::shared_ptr<queue_sycl> q_b) {
+  int get_adt_score_batch<queue_sycl>(const int atoms,
+                                      std::shared_ptr<queue_sycl> q_b,
+                                      const size_t max_bucket_size) {
     // populate the bucket dimension
-    int bucket_size{0};
+    int bucket_multiple{0};
     constexpr_for<0, reorder_buffer<static_molecule>::get_num_atom_clusters(), 1>([&](const auto atom_index) {
       const auto n_atoms = reorder_buffer<static_molecule>::atoms_clusters[atom_index];
       if (atoms == n_atoms)
-        bucket_size = q_b->get_batch_size<calc_energy<n_atoms>>();
+        bucket_multiple = q_b->get_batch_size<calc_energy<n_atoms>>();
     });
-    if (bucket_size == 0)
+    if (bucket_multiple == 0)
       throw std::runtime_error(
           "Compilation error: there is a bucket of atoms number which it is not handled.");
 
-    mudock::info("SYCL Bucket size for ", atoms, " atoms ", bucket_size * BUCKET_MULTIPLIER, " ligands.");
-    return bucket_size * BUCKET_MULTIPLIER;
+    int bucket_size = max_bucket_size / bucket_multiple;
+    bucket_size     = bucket_size == 0 ? max_bucket_size : bucket_size * bucket_multiple;
+    mudock::info("SYCL Bucket size for ",
+                 atoms,
+                 " atoms ",
+                 bucket_multiple,
+                 " bucket multiple, ",
+                 max_bucket_size,
+                 " max bucket size -> ",
+                 bucket_size);
+    return bucket_size;
   };
 } // namespace mudock

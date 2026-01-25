@@ -18,7 +18,7 @@ namespace mudock {
 
   template<typename queue_type>
   // requires std::derived_from<queue_type, queue>
-  int get_adt_score_batch(const int, std::shared_ptr<queue_type>);
+  int get_adt_score_batch(const int, std::shared_ptr<queue_type>, const size_t);
 
 #ifndef __CUDACC__
   // TODO check that the object type and the kernel impl are the same
@@ -234,6 +234,30 @@ namespace mudock {
           "Number of scores is not a multiple of ligands in the batch");
       assert(kernel && "Kernel method not yet prepared");
       (*kernel)();
+    }
+
+    static int get_ligand_mem(const int max_atoms, const knobs) {
+      int mem{0};
+      const int non_bonds_atoms = max_atoms * max_atoms;
+
+      mem += sizeof(fp_type);             // scores
+      mem += sizeof(int);                 // num atoms
+      mem += sizeof(int);                 // num rotamers;
+      mem += sizeof(fp_type) * max_atoms; // x scratchs
+      mem += sizeof(fp_type) * max_atoms; // y scratchs
+      mem += sizeof(fp_type) * max_atoms; // z scratchs
+
+      mem += sizeof(fp_type) * max_atoms;       //vols
+      mem += sizeof(fp_type) * max_atoms;       //solpars
+      mem += sizeof(fp_type) * max_atoms;       //charges
+      mem += sizeof(int) * max_atoms;           //map_offsets
+      mem += sizeof(int);                       //num_nonbond
+      mem += sizeof(int) * non_bonds_atoms;     //nonbond_a1
+      mem += sizeof(int) * non_bonds_atoms;     //nonbond_a2
+      mem += sizeof(fp_type) * non_bonds_atoms; //nonbond_cA
+      mem += sizeof(fp_type) * non_bonds_atoms; //nonbond_cB
+      mem += sizeof(int) * non_bonds_atoms;     //nonbond_xB
+      return mem;
     }
 
   private:

@@ -20,7 +20,7 @@ namespace mudock {
                                    dynamic_molecule&) {}
 
     template<typename queue_type>
-    static int get_batch_size(const int, std::shared_ptr<queue_type>) {
+    static int get_batch_size(const int, std::shared_ptr<queue_type>, const knobs&, const int) {
       return 1;
     }
 
@@ -41,8 +41,12 @@ namespace mudock {
     }
 
     template<typename queue_type>
-    static int get_batch_size(const int atoms, std::shared_ptr<queue_type> q) {
-      return get_adt_score_batch<queue_type>(atoms, q);
+    static int get_batch_size(const int atoms,
+                              std::shared_ptr<queue_type> q,
+                              const knobs& conf,
+                              const size_t max_mem = 1000000000) {
+      const int mem = mudock::adt_score<queue_type>::get_ligand_mem(atoms, conf);
+      return get_adt_score_batch<queue_type>(atoms, q, max_mem / mem);
     }
   };
 
@@ -59,8 +63,12 @@ namespace mudock {
     }
 
     template<typename queue_type>
-    static int get_batch_size(const int atoms, std::shared_ptr<queue_type> q) {
-      return get_adt_score_batch<queue_type>(atoms, q);
+    static int get_batch_size(const int atoms,
+                              std::shared_ptr<queue_type> q,
+                              const knobs& conf,
+                              const size_t max_mem = 1000000000) {
+      const int mem = genetic<queue_type, adt_score>::get_ligand_mem(atoms, conf);
+      return get_adt_score_batch<queue_type>(atoms, q, max_mem / mem);
     }
   };
 } // namespace mudock
