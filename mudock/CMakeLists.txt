@@ -328,7 +328,7 @@ if(MUDOCK_ENABLE_HIP)
     libmudock
     PUBLIC
       $<$<AND:$<COMPILE_LANGUAGE:HIP>,$<HIP_COMPILER_ID:NVIDIA>>:--expt-relaxed-constexpr
-      -rdc=true -Xptxas -v>)
+      -rdc=true -Xptxas -v --resource-usage>)
   target_compile_options(
     libmudock
     PUBLIC $<$<AND:$<COMPILE_LANGUAGE:HIP>,$<HIP_COMPILER_ID:Clang>>:-fgpu-rdc -Rpass-analysis=kernel-resource-usage>)
