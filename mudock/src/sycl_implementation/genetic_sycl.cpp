@@ -5,6 +5,10 @@
 #include <mudock/utils.hpp>
 #include <sycl/sycl.hpp>
 
+#ifndef MUDOCK_SYCL_WG_SIZE
+  #define MUDOCK_SYCL_WG_SIZE 32
+#endif
+
 namespace mudock {
 
   thread_local device_memory<sycl_random_object> sycl_random_memory;
@@ -204,7 +208,7 @@ namespace mudock {
   template<>
   void genetic_kernel<queue_sycl>::operator()() {
     q->invoke_kernel<iterate_gpu>(batch_ligands,
-                                  q->get_preferred_workgroup_size(),
+                                  MUDOCK_SYCL_WG_SIZE,
                                   tournament_length,
                                   mutation_prob,
                                   population_number,
@@ -219,10 +223,10 @@ namespace mudock {
     // TODO each time or once per computation starts
     sycl_random_memory.init(q);
     // TODO chek assumption on num_threads
-    sycl_random_memory.get_data()->alloc(batch_ligands * q->get_preferred_workgroup_size(), seed);
+    sycl_random_memory.get_data()->alloc(batch_ligands * MUDOCK_SYCL_WG_SIZE, seed);
 
     q->invoke_kernel<initialize_gpu>(batch_ligands,
-                                     q->get_preferred_workgroup_size(),
+                                     MUDOCK_SYCL_WG_SIZE,
                                      tournament_length,
                                      population_number,
                                      num_rotamers_b,
@@ -234,7 +238,7 @@ namespace mudock {
   template<>
   void genetic_kernel<queue_sycl>::finalize() {
     q->invoke_kernel<finalize_gpu>(batch_ligands,
-                                   q->get_preferred_workgroup_size(),
+                                   MUDOCK_SYCL_WG_SIZE,
                                    population_number,
                                    num_rotamers_b,
                                    scores_b,

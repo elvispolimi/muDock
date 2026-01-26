@@ -101,7 +101,11 @@ if(MUDOCK_ENABLE_HIP)
       message(FATAL_ERROR "Wrong target for HIP implementation")
     endif()
 
-    set(CMAKE_HIP_ARCHITECTURES "${GPU_ARCHITECTURE}")
+    set(HIP_ARCHITECTURE "${GPU_ARCHITECTURE}")
+    if(HIP_PLATFORM STREQUAL "nvidia")
+      string(REGEX REPLACE "^sm_" "" HIP_ARCHITECTURE "${HIP_ARCHITECTURE}")
+    endif()
+    set(CMAKE_HIP_ARCHITECTURES "${HIP_ARCHITECTURE}")
     find_package(hip REQUIRED)
     enable_language(HIP)
     find_package(hiprand REQUIRED)
@@ -181,11 +185,22 @@ endif()
 # SYCL
 option(MUDOCK_ENABLE_SYCL "Enable the SYCL kernel implementation" OFF)
 set(MUDOCK_SYCL_EXTRA_LINK_FLAGS "" CACHE STRING "Extra SYCL link flags appended to the clang++ link step")
+set(MUDOCK_SYCL_WG_SIZE "" CACHE STRING "SYCL work-group size override for kernels (e.g. 32 or 64)")
 
 if(MUDOCK_ENABLE_SYCL)
   if(NOT MUDOCK_ENABLE_HIP
      AND NOT MUDOCK_ENABLE_CUDA
      AND NOT MUDOCK_ENABLE_OMP_OFFLOAD)
+    if(MUDOCK_SYCL_WG_SIZE STREQUAL "")
+      if(MUDOCK_GPU_ARCHITECTURES MATCHES "amd")
+        set(MUDOCK_SYCL_WG_SIZE 64)
+      elseif(MUDOCK_GPU_ARCHITECTURES MATCHES "intel")
+        set(MUDOCK_SYCL_WG_SIZE 32)
+      else()
+        # NVIDIA and others default to 32
+        set(MUDOCK_SYCL_WG_SIZE 32)
+      endif()
+    endif()
     # Only GPU targets supported for now prepare the option for the AdaptiveCPP
     # package finder
     if(${SYCL_COMPILER} STREQUAL "AdaptiveCpp")
@@ -503,6 +518,10 @@ if(MUDOCK_ENABLE_SYCL)
   message(
     STATUS
       "SYCL Compiler.......................: ${SYCL_COMPILER} (SYCL_COMPILER)")
+  message(
+    STATUS
+      "SYCL Work-group size................: ${MUDOCK_SYCL_WG_SIZE} (MUDOCK_SYCL_WG_SIZE)"
+  )
   if(${SYCL_COMPILER} STREQUAL "oneAPI")
     message(
       STATUS
