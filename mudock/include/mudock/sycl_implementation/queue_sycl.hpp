@@ -35,8 +35,6 @@ namespace mudock {
 
     void synchronize();
 
-    int get_preferred_workgroup_size();
-
     template<class kernel_name>
     int get_batch_size();
 

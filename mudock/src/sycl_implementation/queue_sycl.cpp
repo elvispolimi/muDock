@@ -52,5 +52,4 @@ namespace mudock {
   void queue_sycl::operator()() {
     // Setup default queue/device if you want a global singleton.
   }
-  int queue_sycl::get_preferred_workgroup_size() { return impl_->get_preferred_wg_size(); }
 } // namespace mudock

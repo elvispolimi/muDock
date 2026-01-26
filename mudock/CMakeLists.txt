@@ -423,6 +423,9 @@ endif()
 # check if we need to activate the compilation flag that signals SYCL
 if(MUDOCK_ENABLE_SYCL)
   target_compile_definitions(libmudock PUBLIC MUDOCK_USE_SYCL)
+  if(NOT MUDOCK_SYCL_WG_SIZE STREQUAL "")
+    target_compile_definitions(libmudock PUBLIC MUDOCK_SYCL_WG_SIZE=${MUDOCK_SYCL_WG_SIZE})
+  endif()
   set(sycl_generated_source)
   set(sycl_objects"")
   add_sycl_files("${sycl_source_files}" ${header_path} "${header_files}"
