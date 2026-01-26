@@ -13,6 +13,10 @@
 
 #define BUCKET_MULTIPLIER 3
 
+#ifndef MUDOCK_SYCL_WG_SIZE
+  #define MUDOCK_SYCL_WG_SIZE 32
+#endif
+
 namespace mudock {
   inline fp_type trilinear_interpolation_sycl(const fp_type* __restrict__ map,
                                               const fp_type* __restrict__ coeffs,
@@ -72,11 +76,12 @@ namespace mudock {
                     const fp_type* __restrict__ grid_maps,
                     const int* __restrict__ map_tex_indexes,
                     fp_type* __restrict__ scores) const {
-      const int workgroup_size       = it.get_local_range(0);
       const int workgroup_id         = it.get_group(0);
       const int ligand_id            = workgroup_id;
       const int workitem_id_in_group = it.get_local_id(0);
       const auto& sub_group          = it.get_sub_group();
+      assert(it.get_local_range(0) == MUDOCK_SYCL_WG_SIZE &&
+             "SYCL WG size and the number of thread per block does not coincide");
 
       const fp_type* electro_map = grid_maps + map_index_xyz * static_cast<int>(autodock_grid_type::ELEC);
       const fp_type* desolv_map  = grid_maps + map_index_xyz * static_cast<int>(autodock_grid_type::DESOLV);
@@ -113,7 +118,8 @@ namespace mudock {
         fp_type emap_total_trilinear  = 0;
         fp_type dmap_total_trilinear  = 0;
 #pragma unroll
-        for (int atom_index = workitem_id_in_group; atom_index < MAX_ATOMS; atom_index += workgroup_size) {
+        for (int atom_index = workitem_id_in_group; atom_index < MAX_ATOMS;
+             atom_index += MUDOCK_SYCL_WG_SIZE) {
           if (atom_index < num_atoms) {
             fp_type coord_tex[3]{ligand_x[atom_index], ligand_y[atom_index], ligand_z[atom_index]};
             if (coord_tex[0] < minimum[0] || coord_tex[0] > maximum[0] || coord_tex[1] < minimum[1] ||
@@ -180,7 +186,7 @@ namespace mudock {
         fp_type elect_total_eintcal{0}, emap_total_eintcal{0}, dmap_total_eintcal{0};
         if (num_rotamers > 0)
           for (int nonbond_list = it.get_local_id(0); nonbond_list < num_nonbonds;
-               nonbond_list += it.get_local_range(0)) {
+               nonbond_list += MUDOCK_SYCL_WG_SIZE) {
             const int& a1 = nonbond_a1[nonbond_list];
             const int& a2 = nonbond_a2[nonbond_list];
 
@@ -253,7 +259,7 @@ namespace mudock {
         [&](const auto atom_index) {
           const auto max_atoms = reorder_buffer<static_molecule>::atoms_clusters[atom_index];
           q->invoke_kernel<calc_energy<max_atoms>>(batch_ligands,
-                                                   q->get_preferred_workgroup_size(),
+                                                   MUDOCK_SYCL_WG_SIZE,
                                                    batch_atoms,
                                                    scores_per_ligand,
                                                    x_scratch_b,

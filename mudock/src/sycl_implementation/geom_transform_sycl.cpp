@@ -5,6 +5,10 @@
 #include <mudock/sycl_implementation/mutate.hpp>
 #include <mudock/utils.hpp>
 
+#ifndef MUDOCK_SYCL_WG_SIZE
+  #define MUDOCK_SYCL_WG_SIZE 32
+#endif
+
 namespace mudock {
   template<>
   void geom_kernel<queue_sycl>::operator()() {
@@ -13,7 +17,7 @@ namespace mudock {
         [&](const auto atom_index) {
           const auto max_atoms = reorder_buffer<static_molecule>::atoms_clusters[atom_index];
           q->invoke_kernel<apply_sycl<max_atoms>>(batch_ligands,
-                                                  q->get_preferred_workgroup_size(),
+                                                  MUDOCK_SYCL_WG_SIZE,
                                                   chromsomes_per_ligand,
                                                   batch_atoms,
                                                   x_coords_b,
