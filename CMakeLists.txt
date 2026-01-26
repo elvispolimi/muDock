@@ -180,6 +180,7 @@ endif()
 
 # SYCL
 option(MUDOCK_ENABLE_SYCL "Enable the SYCL kernel implementation" OFF)
+set(MUDOCK_SYCL_EXTRA_LINK_FLAGS "" CACHE STRING "Extra SYCL link flags appended to the clang++ link step")
 
 if(MUDOCK_ENABLE_SYCL)
   if(NOT MUDOCK_ENABLE_HIP
@@ -209,7 +210,7 @@ if(MUDOCK_ENABLE_SYCL)
           list(APPEND sycl_targets "intel_gpu_${VALUE_AFTER_COLON}")
         endif()
         set(CMAKE_CXX_LINK_EXECUTABLE
-            "${LLVM_TOOLS_BINARY_DIR}/clang++ -fsycl -fsycl-targets=${sycl_targets} <FLAGS> <CMAKE_CXX_LINK_FLAGS> <LINK_FLAGS> <OBJECTS> -o <TARGET> <LINK_LIBRARIES>"
+            "${LLVM_TOOLS_BINARY_DIR}/clang++ -fsycl -fsycl-targets=${sycl_targets} <FLAGS> <CMAKE_CXX_LINK_FLAGS> <LINK_FLAGS> ${MUDOCK_SYCL_EXTRA_LINK_FLAGS} <OBJECTS> -o <TARGET> <LINK_LIBRARIES>"
         )
 
       else()
