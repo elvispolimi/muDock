@@ -508,6 +508,12 @@ if(MUDOCK_ENABLE_SYCL)
       STATUS
         "oneAPI Compiler Path................: ${LLVM_TOOLS_BINARY_DIR} (LLVM_TOOLS_BINARY_DIR)"
     )
+    if(NOT MUDOCK_SYCL_EXTRA_LINK_FLAGS STREQUAL "")
+      message(
+        STATUS
+          "oneAPI Extra Link Flags.............: ${MUDOCK_SYCL_EXTRA_LINK_FLAGS} (MUDOCK_SYCL_EXTRA_LINK_FLAGS)"
+      )
+    endif()
   endif()
 endif()
 
