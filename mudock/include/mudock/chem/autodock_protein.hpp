@@ -194,7 +194,7 @@ namespace mudock {
         : index(min.difference(max)
                     .apply(std::abs<fp_type>)
                     .divide({resolution})
-                    .apply(static_cast<fp_type (*)(fp_type)>(std::ceil))
+                    .apply([](fp_type x) { return std::ceil(x); })
                     .add({fp_type{1}})),
           data(index.size_x(), index.size_y(), index.size_z(), num_autodock_grids()),
           _inv_resolution(1 / resolution),
