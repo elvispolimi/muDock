@@ -49,7 +49,7 @@ function(add_sycl_files SYCL_SOURCES HEADER_PATH HEADER_FILES OUTPUT)
         OUTPUT ${GENERATED_FILE}
         COMMAND
           ${LLVM_TOOLS_BINARY_DIR}/clang++ -fsycl -fsycl-targets=${SYCL_TARGETS}
-          ${SYCL_BACKEND_FLAGS} ${CXX_FLAGS_LIST} --std=c++20 -o ${GENERATED_FILE} -c ${SYCL_FILE}
+          -Xsycl-target-backend ${SYCL_BACKEND_FLAGS} ${CXX_FLAGS_LIST} --std=c++20 -o ${GENERATED_FILE} -c ${SYCL_FILE}
           ${BOOST_INCLUDE_DIRS} -I${HEADER_PATH} -I${Boost_INCLUDE_DIRS}
           -I${LLVM_INCLUDE_DIRS}
         DEPENDS "${SYCL_FILE}" "${HEADER_FILES}"
