@@ -212,6 +212,7 @@ if(MUDOCK_ENABLE_SYCL)
       set(CMAKE_LINKER
           clang++
           CACHE STRING "C++ linker" FORCE)
+      set(SYCL_BACKEND_FLAGS "")
       string(FIND "${MUDOCK_GPU_ARCHITECTURES}" ":" COLON_INDEX)
 
       # Check that a colon was found
@@ -220,14 +221,28 @@ if(MUDOCK_ENABLE_SYCL)
         string(SUBSTRING "${MUDOCK_GPU_ARCHITECTURES}" ${VALUE_INDEX} -1
                          VALUE_AFTER_COLON)
         if(MUDOCK_GPU_ARCHITECTURES MATCHES "nvidia")
-          list(APPEND sycl_targets "nvidia_gpu_${VALUE_AFTER_COLON}")
+          list(APPEND sycl_targets "nvptx64-nvidia-cuda")
+          if(VALUE_AFTER_COLON MATCHES "^sm_")
+            set(CUDA_ARCH "${VALUE_AFTER_COLON}")
+          else()
+            set(CUDA_ARCH "sm_${VALUE_AFTER_COLON}")
+          endif()
+          set(SYCL_BACKEND_FLAGS
+              "-Xsycl-target-backend=nvptx64-nvidia-cuda --cuda-gpu-arch=${CUDA_ARCH}"
+          )
         elseif(MUDOCK_GPU_ARCHITECTURES MATCHES "amd")
-          list(APPEND sycl_targets "amd_gpu_${VALUE_AFTER_COLON}")
+          list(APPEND sycl_targets "amdgcn-amd-amdhsa")
+          set(SYCL_BACKEND_FLAGS
+              "-Xsycl-target-backend=amdgcn-amd-amdhsa --offload-arch=${VALUE_AFTER_COLON}"
+          )
         elseif(MUDOCK_GPU_ARCHITECTURES MATCHES "intel")
-          list(APPEND sycl_targets "intel_gpu_${VALUE_AFTER_COLON}")
+          list(APPEND sycl_targets "spir64_gen")
+          set(SYCL_BACKEND_FLAGS
+              "-Xsycl-target-backend=spir64_gen -device ${VALUE_AFTER_COLON}"
+          )
         endif()
         set(CMAKE_CXX_LINK_EXECUTABLE
-            "${LLVM_TOOLS_BINARY_DIR}/clang++ -fsycl -fsycl-targets=${sycl_targets} <FLAGS> <CMAKE_CXX_LINK_FLAGS> <LINK_FLAGS> ${MUDOCK_SYCL_EXTRA_LINK_FLAGS} <OBJECTS> -o <TARGET> <LINK_LIBRARIES>"
+            "${LLVM_TOOLS_BINARY_DIR}/clang++ -fsycl -fsycl-targets=${sycl_targets} <FLAGS> <CMAKE_CXX_LINK_FLAGS> <LINK_FLAGS> ${SYCL_BACKEND_FLAGS} ${MUDOCK_SYCL_EXTRA_LINK_FLAGS} <OBJECTS> -o <TARGET> <LINK_LIBRARIES>"
         )
 
       else()
@@ -529,6 +544,12 @@ if(MUDOCK_ENABLE_SYCL)
       STATUS
         "oneAPI Compiler Path................: ${LLVM_TOOLS_BINARY_DIR} (LLVM_TOOLS_BINARY_DIR)"
     )
+    if(DEFINED SYCL_BACKEND_FLAGS AND NOT SYCL_BACKEND_FLAGS STREQUAL "")
+      message(
+        STATUS
+          "oneAPI Backend Flags................: ${SYCL_BACKEND_FLAGS} (SYCL_BACKEND_FLAGS)"
+      )
+    endif()
     if(NOT MUDOCK_SYCL_EXTRA_LINK_FLAGS STREQUAL "")
       message(
         STATUS
