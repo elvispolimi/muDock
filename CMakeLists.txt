@@ -228,17 +228,17 @@ if(MUDOCK_ENABLE_SYCL)
             set(CUDA_ARCH "sm_${VALUE_AFTER_COLON}")
           endif()
           set(SYCL_BACKEND_FLAGS
-              "-Xsycl-target-backend=nvptx64-nvidia-cuda --cuda-gpu-arch=${CUDA_ARCH}"
+              "-Xsycl-target-backend --cuda-gpu-arch=${CUDA_ARCH}"
           )
         elseif(MUDOCK_GPU_ARCHITECTURES MATCHES "amd")
           list(APPEND sycl_targets "amdgcn-amd-amdhsa")
           set(SYCL_BACKEND_FLAGS
-              "-Xsycl-target-backend=amdgcn-amd-amdhsa --offload-arch=${VALUE_AFTER_COLON}"
+              "-Xsycl-target-backend --offload-arch=${VALUE_AFTER_COLON}"
           )
         elseif(MUDOCK_GPU_ARCHITECTURES MATCHES "intel")
           list(APPEND sycl_targets "spir64_gen")
           set(SYCL_BACKEND_FLAGS
-              "-Xsycl-target-backend=spir64_gen -device ${VALUE_AFTER_COLON}"
+              "-Xsycl-target-backend -device ${VALUE_AFTER_COLON}"
           )
         endif()
         set(CMAKE_CXX_LINK_EXECUTABLE
