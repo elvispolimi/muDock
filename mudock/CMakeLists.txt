@@ -390,7 +390,7 @@ if(MUDOCK_ENABLE_OMP_OFFLOAD)
   # Enable offloading to AMD GPUs using Clang
   if(NOT OMP_TARGET EQUAL "cpu")
     if("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
-      if(GPU_PLATFORM STREQUAL "cuda")
+      if(GPU_PLATFORM STREQUAL "nvidia")
         target_compile_options(libmudock PRIVATE "-fopenmp")
         target_compile_options(libmudock PRIVATE "-fopenmp-targets=nvptx64")
         # target_compile_options(libmudock PRIVATE "-Xopenmp-target=nvptx64")
