@@ -242,8 +242,9 @@ if(MUDOCK_ENABLE_SYCL)
               "-Xsycl-target-backend=spir64_gen;-device;${VALUE_AFTER_COLON}")
           set(SYCL_BACKEND_FLAGS_COMPILE "${SYCL_BACKEND_FLAGS_LINK}")
         endif()
+        string(JOIN " " SYCL_BACKEND_FLAGS_LINK_STR ${SYCL_BACKEND_FLAGS_LINK})
         set(CMAKE_CXX_LINK_EXECUTABLE
-            "${LLVM_TOOLS_BINARY_DIR}/clang++ -fsycl -fsycl-targets=${sycl_targets} <FLAGS> <CMAKE_CXX_LINK_FLAGS> <LINK_FLAGS> ${SYCL_BACKEND_FLAGS_LINK} ${MUDOCK_SYCL_EXTRA_LINK_FLAGS} <OBJECTS> -o <TARGET> <LINK_LIBRARIES>"
+            "${LLVM_TOOLS_BINARY_DIR}/clang++ -fsycl -fsycl-targets=${sycl_targets} <FLAGS> <CMAKE_CXX_LINK_FLAGS> <LINK_FLAGS> ${SYCL_BACKEND_FLAGS_LINK_STR} ${MUDOCK_SYCL_EXTRA_LINK_FLAGS} <OBJECTS> -o <TARGET> <LINK_LIBRARIES>"
         )
 
       else()
