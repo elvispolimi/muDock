@@ -212,9 +212,7 @@ if(MUDOCK_ENABLE_SYCL)
       set(CMAKE_LINKER
           clang++
           CACHE STRING "C++ linker" FORCE)
-      set(SYCL_BACKEND_FLAG1 "")
-      set(SYCL_BACKEND_FLAG2 "")
-      set(SYCL_BACKEND_FLAG3 "")
+      set(SYCL_BACKEND_FLAGS_LINK "")
       set(SYCL_BACKEND_FLAGS_COMPILE "")
       string(FIND "${MUDOCK_GPU_ARCHITECTURES}" ":" COLON_INDEX)
 
@@ -230,22 +228,22 @@ if(MUDOCK_ENABLE_SYCL)
           else()
             set(CUDA_ARCH "sm_${VALUE_AFTER_COLON}")
           endif()
-          set(SYCL_BACKEND_FLAG1 "-Xsycl-target-backend=nvptx64-nvidia-cuda")
-          set(SYCL_BACKEND_FLAG2 "--cuda-gpu-arch=${CUDA_ARCH}")
+          set(SYCL_BACKEND_FLAGS_LINK
+              "-Xsycl-target-backend=nvptx64-nvidia-cuda;--cuda-gpu-arch=${CUDA_ARCH};-Xcuda-ptxas;-v")
+          set(SYCL_BACKEND_FLAGS_COMPILE "${SYCL_BACKEND_FLAGS_LINK}")
         elseif(MUDOCK_GPU_ARCHITECTURES MATCHES "amd")
           list(APPEND sycl_targets "amdgcn-amd-amdhsa")
-          set(SYCL_BACKEND_FLAG1 "-Xsycl-target-backend=amdgcn-amd-amdhsa")
-          set(SYCL_BACKEND_FLAG2 "--offload-arch=${VALUE_AFTER_COLON}")
+          set(SYCL_BACKEND_FLAGS_LINK
+              "-Xsycl-target-backend=amdgcn-amd-amdhsa;--offload-arch=${VALUE_AFTER_COLON};-mllvm;-amdgpu-print-regs")
+          set(SYCL_BACKEND_FLAGS_COMPILE "${SYCL_BACKEND_FLAGS_LINK}")
         elseif(MUDOCK_GPU_ARCHITECTURES MATCHES "intel")
           list(APPEND sycl_targets "spir64_gen")
-          set(SYCL_BACKEND_FLAG1 "-Xsycl-target-backend=spir64_gen")
-          set(SYCL_BACKEND_FLAG2 "-device")
-          set(SYCL_BACKEND_FLAG3 "${VALUE_AFTER_COLON}")
+          set(SYCL_BACKEND_FLAGS_LINK
+              "-Xsycl-target-backend=spir64_gen;-device;${VALUE_AFTER_COLON}")
+          set(SYCL_BACKEND_FLAGS_COMPILE "${SYCL_BACKEND_FLAGS_LINK}")
         endif()
-        set(SYCL_BACKEND_FLAGS_COMPILE
-            "${SYCL_BACKEND_FLAG1};${SYCL_BACKEND_FLAG2};${SYCL_BACKEND_FLAG3}")
         set(CMAKE_CXX_LINK_EXECUTABLE
-            "${LLVM_TOOLS_BINARY_DIR}/clang++ -fsycl -fsycl-targets=${sycl_targets} <FLAGS> <CMAKE_CXX_LINK_FLAGS> <LINK_FLAGS> ${SYCL_BACKEND_FLAG1} ${SYCL_BACKEND_FLAG2} ${SYCL_BACKEND_FLAG3} ${MUDOCK_SYCL_EXTRA_LINK_FLAGS} <OBJECTS> -o <TARGET> <LINK_LIBRARIES>"
+            "${LLVM_TOOLS_BINARY_DIR}/clang++ -fsycl -fsycl-targets=${sycl_targets} <FLAGS> <CMAKE_CXX_LINK_FLAGS> <LINK_FLAGS> ${SYCL_BACKEND_FLAGS_LINK} ${MUDOCK_SYCL_EXTRA_LINK_FLAGS} <OBJECTS> -o <TARGET> <LINK_LIBRARIES>"
         )
 
       else()
@@ -547,10 +545,11 @@ if(MUDOCK_ENABLE_SYCL)
       STATUS
         "oneAPI Compiler Path................: ${LLVM_TOOLS_BINARY_DIR} (LLVM_TOOLS_BINARY_DIR)"
     )
-    if(NOT SYCL_BACKEND_FLAG1 STREQUAL "" OR NOT SYCL_BACKEND_FLAG2 STREQUAL "" OR NOT SYCL_BACKEND_FLAG3 STREQUAL "")
+    if(NOT SYCL_BACKEND_FLAGS_LINK STREQUAL "")
+      string(JOIN " " SYCL_BACKEND_FLAGS_PRINT ${SYCL_BACKEND_FLAGS_LINK})
       message(
         STATUS
-          "oneAPI Backend Flags................: ${SYCL_BACKEND_FLAG1} ${SYCL_BACKEND_FLAG2} ${SYCL_BACKEND_FLAG3} (SYCL_BACKEND_FLAG*)"
+          "oneAPI Backend Flags................: ${SYCL_BACKEND_FLAGS_PRINT} (SYCL_BACKEND_FLAGS_LINK)"
       )
     endif()
     if(NOT MUDOCK_SYCL_EXTRA_LINK_FLAGS STREQUAL "")
