@@ -234,7 +234,7 @@ if(MUDOCK_ENABLE_SYCL)
         elseif(MUDOCK_GPU_ARCHITECTURES MATCHES "amd")
           list(APPEND sycl_targets "amdgcn-amd-amdhsa")
           set(SYCL_BACKEND_FLAGS_LINK
-              "-Xsycl-target-backend=amdgcn-amd-amdhsa;--offload-arch=${VALUE_AFTER_COLON}")
+              "-Xsycl-target-backend=amdgcn-amd-amdhsa;--offload-arch=${VALUE_AFTER_COLON};-Xsycl-target-frontend=amdgcn-amd-amdhsa;-Rpass-analysis=kernel-resource-usage")
           set(SYCL_BACKEND_FLAGS_COMPILE "${SYCL_BACKEND_FLAGS_LINK}")
         elseif(MUDOCK_GPU_ARCHITECTURES MATCHES "intel")
           list(APPEND sycl_targets "spir64_gen")
