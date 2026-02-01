@@ -83,3 +83,41 @@ cmake -S /path/to/muDock -B /path/to/muDock/build \
   -DCMAKE_BUILD_TYPE=Release
 cmake --build /path/to/muDock/build
 ```
+
+## Running
+
+Main application:
+
+```bash
+./build/application/muDock --protein /path/to/protein.pdb --ligand /path/to/ligands.mol2 --use CPP:CPU:0
+```
+
+The `--use` flag maps implementations to devices using `IMPLEMENTATION:DEVICE:IDS` (for example, `CPP:CPU:0`).
+
+Converter:
+
+```bash
+./build/application/converter --input input.mol2 --output output.pdbqt
+```
+
+Supported formats (by file extension):
+- `mol2`
+- `pdbqt`
+- `pdb`
+- `adtmol2`
+
+Note on `adtmol2`: the converter can produce `adtmol2`, and muDock can parse it for Autodock-like scoring with ligands parsed in parallel. Other formats are currently parsed sequentially.
+
+## Tests
+
+Enable tests at configure time (Release is not allowed):
+
+```bash
+cmake -S /path/to/muDock -B /path/to/muDock/build -DMUDOCK_ENABLE_TEST=ON -DCMAKE_BUILD_TYPE=Debug
+cmake --build /path/to/muDock/build
+ctest --test-dir /path/to/muDock/build
+```
+
+## References
+
+- Gianmarco Accordi, Jens Domke, Theresa Pollinger, Davide Gadioli, Gianluca Palermo. "Towards High-Performance and Portable Molecular Docking on CPUs Through Vectorization." IEEE Cluster 2025. DOI: https://doi.org/10.1109/CLUSTER59342.2025.11186493
