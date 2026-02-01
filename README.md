@@ -1,73 +1,83 @@
 ![muDock_icon](share/icon_200_186.png)
 
-# µDock - Molecular Docking microapp
+# muDock — Molecular Docking Microapp
 
-Molecular docking is a well-known problem in scientific literature.
-It aims to estimate the 3D displacement of a molecule with a small molecular weight, named _ligand_, when it interacts with the target protein.
-The main issue is the number of degree of freedom involved in the operation.
-Due to the difference in size between the protein and ligand, we need to find the correct position and orientation of the ligand inside a pocket cavity.
-Moreover, the molecules are not rigid bodies, but we can rotate a subset of their bonds, changing their geometry, without changing their chemical and physical properties.
-Thus, we have six degrees of freedom for rigid rototranslations in a 3D space and one additional degree of freedom for each of those bonds.
-Arguably, the most popular tool that performs molecular docking is autodock ([https://autodock.scripps.edu/](https://autodock.scripps.edu/)).
-Its implementation is composed of a feature rich ecosystem of tools, that might employ different optimization strategies to solve the exploration problem.
+muDock is a compact, Autodock-style docking engine that uses a genetic algorithm and the Autodock 4.0 energy model. It is designed as a small, focused codebase for experimenting with performance techniques (kernel porting, vectorization, accelerator backends, and approximation strategies) while remaining a usable docking tool.
 
-This repository provides a nimble Autodock-like implementation that uses a genetic algorithm as an optimization strategy and the energy model of Autodock 4.0.
-The goal is to provide a microapp to use as a prototype for applying a wide range of optimizations, from kernel porting to a different language, to the application of approximate computation techniques.
+## Repository layout
 
-## How to build from sources
+- `application` — CLI entry point and executable sources
+- `mudock` — core library and domain logic
+- `chem` — chemical knowledge (JSON) used for code generation
+- `cmake` — CMake helpers and dependency setup
+- `script` — utility scripts (formatting, code generation, etc.)
+- `share` — icons and non-code assets
+- `test` — tests (disabled by default)
 
-We use CMake as a building system with a standard compilation procedure.
-This example will compile and install µDock in the `/install/path` path, assuming that `/path/to/muDock` is the path of this repository root:
+## Dependencies
+
+Required:
+- CMake 3.25+
+- A C++ compiler (GCC/Clang/IntelLLVM)
+- Boost (components: `program_options`, `graph`, `fiber`)
+- OpenBabel3
+
+Fetched automatically:
+- Microsoft GSL (via CMake FetchContent)
+
+Optional (enabled via build flags):
+- OpenMP (CPU parallelism)
+- CUDA Toolkit (with `curand`) for CUDA backend
+- HIP + hiprand for HIP backend
+- SYCL toolchain (oneAPI/LLVM)
+- Google Highway (`HWY`) and/or `xsimd` for CPU vectorization
+- LIKWID for profiling
+
+## Build and configuration
+
+The project uses CMake and builds like a standard CMake package.
+
+Basic build:
 
 ```bash
-$ cmake -S /path/to/muDock -B /path/to/muDock/build -DCMAKE_INSTALL_PREFIX=/install/path
-$ cmake --build /path/to/muDock/build
-$ cmake --install /path/to/muDock/build
+cmake -S /path/to/muDock -B /path/to/muDock/build -DCMAKE_INSTALL_PREFIX=/install/path
+cmake --build /path/to/muDock/build
 ```
 
-## How to use the application
+Key configuration options:
 
-This application reads from the standard input a ligand library in mol2 format. It will print on the standard output the best docked pose with the score as comment
+- `CMAKE_BUILD_TYPE` — `Release` (default), `Debug`, or `RelWithDebInfo`
+- `MUDOCK_ENABLE_FAST` — enables aggressive optimizations (auto-ON for Release)
+- `MUDOCK_ENABLE_OMP` — OpenMP CPU parallelism
+- `MUDOCK_ENABLE_CUDA` — CUDA backend
+- `MUDOCK_ENABLE_HIP` — HIP backend
+- `MUDOCK_ENABLE_SYCL` — SYCL backend
+- `MUDOCK_ENABLE_GH` — Google Highway vectorization
+- `MUDOCK_ENABLE_XSIMD` — xsimd vectorization
+- `MUDOCK_ENABLE_LIKWID` — LIKWID profiling
+- `MUDOCK_ENABLE_TEST` — enable tests (not allowed in Release)
 
-USAGE: ./build/application/muDock --protein "protein.pdb" --use CPP:CPU:0 < "/path/to/ligands.mol2"
+GPU/accelerator target configuration:
 
-Available options:
---help print this help message
---protein arg (="protein.pdb") Path to the protein file (in PDB)
---use arg (=CPP:CPU:0) Devices configuration
+- `MUDOCK_GPU_ARCHITECTURES` — format `platform:arch`
+  - Examples: `cuda:sm_80`, `amd:gfx90a`, `intel:gen12`
+- `MUDOCK_CPU_ARCHITECTURES`, `MUDOCK_CPU_TARGET`, `MUDOCK_CPU_TUNE` — fine-tune CPU codegen
 
-### Devices Configuration
+Example: CUDA build targeting SM80:
 
-The device configuration options follows the following structure:
-
+```bash
+cmake -S /path/to/muDock -B /path/to/muDock/build \
+  -DMUDOCK_ENABLE_CUDA=ON \
+  -DMUDOCK_GPU_ARCHITECTURES=cuda:sm_80 \
+  -DCMAKE_BUILD_TYPE=Release
+cmake --build /path/to/muDock/build
 ```
-KERNEL:DEVICE:IDS
+
+Example: OpenMP CPU build:
+
+```bash
+cmake -S /path/to/muDock -B /path/to/muDock/build \
+  -DMUDOCK_ENABLE_OMP=ON \
+  -DCMAKE_BUILD_TYPE=Release
+cmake --build /path/to/muDock/build
 ```
-
-Where:
-
-- KERNEL is one of the following
-  - **CPP** which is the multi-threaded version of muDock
-- IDS is like the printer dialogue, for example
-  - **1,3,4,7-9,12** means that you are targeting devices with ids 1,3,4,7,8,9,12
-  - **0-3,5,8-10** means that you are targeting devices with ids 0,1,2,3,5,8,9,10
-- Device is one of the following
-  - **CPU** use the CPU of the target machine, each IDS is a thread with the specify affinity
-
-The full list of supported devices can be found in [here](./mudock/include/mudock/devices/device_types.hpp), while the kernel types list in [here](./mudock/include/mudock/devices/kernel_types.hpp)
-
-## Repository structure
-
-The repository is structured as follows:
-
-- `application`: contains the source files of the µDock executable.
-
-- `chem`: contains chemical knowledge in JSON format, typically used to automatically generate sources
-
-- `cmake`: contains cmake helper function, e.g. to download third party dependencies
-
-- `mudock`: contains the sources of the µDock library, which implements domain concerns
-
-- `script`: contains utility scripts, e.g. beautifier or the script that generates sources
-
-- `share`: contains graphical resources and other files that are not strictly related to the application.
