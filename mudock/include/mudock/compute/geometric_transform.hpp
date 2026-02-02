@@ -163,7 +163,7 @@ namespace mudock {
       auto& x_scratch_b = (*this->scratch).template get<buffer_data_type::X_SCRATCH>();
       auto& y_scratch_b = (*this->scratch).template get<buffer_data_type::Y_SCRATCH>();
       auto& z_scratch_b = (*this->scratch).template get<buffer_data_type::Z_SCRATCH>();
-      if (load_coords<queue_t>(batch, this->scratch)) {
+      if (load_coords<queue_t>(batch, this->scratch, 1)) {
         x_scratch_b.alloc(tot_atoms_in_batch * chromsomes_per_ligand);
         y_scratch_b.alloc(tot_atoms_in_batch * chromsomes_per_ligand);
         z_scratch_b.alloc(tot_atoms_in_batch * chromsomes_per_ligand);
@@ -256,26 +256,27 @@ namespace mudock {
     std::unique_ptr<geom_kernel<queue_t>> kernel;
 
     void teardown_impl(batch<static_molecule>& batch) {
-      //TODO this could be an issue if the scores per population required by the user would be equal to 1
-      if (batch.num_ligands ==
-          static_cast<int>((*this->scratch).template get<buffer_data_type::CHROMOSOMES>().num_elements())) {
-        for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
-          auto& ligand           = *batch.molecules[ligand_index];
-          const int num_atoms    = ligand.num_atoms();
-          const int stride_atoms = ligand_index * batch_atoms;
-          auto& x_scratch_b      = (*this->scratch).template get<buffer_data_type::X_SCRATCH>();
-          auto& y_scratch_b      = (*this->scratch).template get<buffer_data_type::Y_SCRATCH>();
-          auto& z_scratch_b      = (*this->scratch).template get<buffer_data_type::Z_SCRATCH>();
-          x_scratch_b.copy_device2host();
-          x_scratch_b.copy_device2host();
-          x_scratch_b.copy_device2host();
-          (*this->scratch).get_queue()->synchronize();
-          std::memcpy(ligand.x(), x_scratch_b.host_pointer() + stride_atoms, num_atoms * sizeof(fp_type));
-          std::memcpy(ligand.y(), y_scratch_b.host_pointer() + stride_atoms, num_atoms * sizeof(fp_type));
-          std::memcpy(ligand.z(), z_scratch_b.host_pointer() + stride_atoms, num_atoms * sizeof(fp_type));
-        }
+      auto& chromosomes_b = (*this->scratch).template get<buffer_data_type::CHROMOSOMES>();
+      const int chromsomes_per_ligand = chromosomes_b.num_elements() / batch_ligands;
+      auto& x_scratch_b = (*this->scratch).template get<buffer_data_type::X_SCRATCH>();
+      auto& y_scratch_b = (*this->scratch).template get<buffer_data_type::Y_SCRATCH>();
+      auto& z_scratch_b = (*this->scratch).template get<buffer_data_type::Z_SCRATCH>();
+      x_scratch_b.copy_device2host();
+      y_scratch_b.copy_device2host();
+      z_scratch_b.copy_device2host();
+      (*this->scratch).get_queue()->synchronize();
+      for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
+        auto& ligand        = *batch.molecules[ligand_index];
+        const int num_atoms = ligand.num_atoms();
+        const int stride_atoms =
+            ligand_index * batch_atoms * chromsomes_per_ligand;
+        std::memcpy(ligand.x(), x_scratch_b.host_pointer() + stride_atoms,
+                    num_atoms * sizeof(fp_type));
+        std::memcpy(ligand.y(), y_scratch_b.host_pointer() + stride_atoms,
+                    num_atoms * sizeof(fp_type));
+        std::memcpy(ligand.z(), z_scratch_b.host_pointer() + stride_atoms,
+                    num_atoms * sizeof(fp_type));
       }
-      // Otherwise the upper stage have the responsibility to do so
     };
   };
 #endif
