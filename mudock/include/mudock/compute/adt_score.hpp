@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <cstring>
 #include <mudock/batch.hpp>
 #include <mudock/chem/autodock_grid_types.hpp>
@@ -95,12 +96,12 @@ namespace mudock {
       auto &score_b = (*this->scratch).template get<buffer_data_type::SCORES>();
       if (load_scratchs<queue_type>(batch, this->scratch, scores_per_ligand_target)) {
         if (!score_b.is_valid() ||
-            score_b.num_elements() != (batch_ligands * scores_per_ligand_target)) {
+            score_b.num_elements() != static_cast<size_t>(batch_ligands * scores_per_ligand_target)) {
           score_b.alloc(batch_ligands * scores_per_ligand_target);
           score_b.set_valid();
         }
       } else if (!score_b.is_valid() ||
-                 score_b.num_elements() != (batch_ligands * scores_per_ligand_target)) {
+                 score_b.num_elements() != static_cast<size_t>(batch_ligands * scores_per_ligand_target)) {
         score_b.alloc(batch_ligands * scores_per_ligand_target);
         score_b.set_valid();
       }
@@ -291,12 +292,12 @@ namespace mudock {
     void teardown_impl(batch<static_molecule> &batch) override {
       assert(batch.num_ligands == batch_ligands && "Scoring algorithm received different batch for teardown");
 
-      auto &scores_b = (*this->scratch).template get<buffer_data_type::SCORES>();
+      auto &scores_b               = (*this->scratch).template get<buffer_data_type::SCORES>();
       const auto scores_per_ligand = scores_b.num_elements() / batch_ligands;
       scores_b.copy_device2host();
       (*this->scratch).get_queue()->synchronize();
       for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
-        auto &ligand = *batch.molecules[ligand_index];
+        auto &ligand          = *batch.molecules[ligand_index];
         const int score_index = ligand_index * scores_per_ligand;
         ligand.properties.assign(property_type::SCORE, std::to_string(scores_b()[score_index]));
       }
