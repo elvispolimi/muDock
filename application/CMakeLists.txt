@@ -75,40 +75,8 @@ if(MUDOCK_ENABLE_OMP_OFFLOAD)
                       "-fopenmp-targets=nvptx64")
 endif()
 
-if(MUDOCK_ENABLE_TEST)
-  add_executable_mudock(test_grid
-                        "${CMAKE_CURRENT_SOURCE_DIR}/src/tests/grid_test.cpp")
-  target_include_directories(test_grid
-                             PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/")
-  set_target_properties(
-    test_grid
-    PROPERTIES CXX_STANDARD 20
-               CXX_STANDARD_REQUIRED ON
-               CXX_EXTENSIONS OFF)
-  target_link_libraries(test_grid libmudock Boost::program_options)
-
-  add_executable_mudock(
-    test_score_adt "${CMAKE_CURRENT_SOURCE_DIR}/src/tests/adt_score_test.cpp")
-  target_include_directories(test_score_adt
-                             PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/")
-  set_target_properties(
-    test_score_adt
-    PROPERTIES CXX_STANDARD 20
-               CXX_STANDARD_REQUIRED ON
-               CXX_EXTENSIONS OFF)
-  target_link_libraries(test_score_adt libmudock Boost::program_options)
-
-  add_executable_mudock(test_score_adt_impl
-                        "${CMAKE_CURRENT_SOURCE_DIR}/src/tests/adt_impl_score_test.cpp")
-  target_include_directories(test_score_adt_impl
-                             PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/")
-  set_target_properties(
-    test_score_adt_impl
-    PROPERTIES CXX_STANDARD 20
-               CXX_STANDARD_REQUIRED ON
-               CXX_EXTENSIONS OFF)
-  target_link_libraries(test_score_adt_impl libmudock Boost::program_options)
-endif()
+add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/src/bench" bench)
+add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/src/tests" tests)
 
 # if(MUDOCK_ENABLE_LIKWID)
 #   # target_include_directories("${CMAKE_PROJECT_NAME}" PRIVATE
