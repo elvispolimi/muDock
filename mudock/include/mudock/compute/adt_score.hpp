@@ -89,9 +89,19 @@ namespace mudock {
       load_num_rotamers(batch, this->scratch);
       load_num_atoms(batch, this->scratch);
 
+      const int scores_per_ligand_target =
+          std::max(1, static_cast<int>((*this->scratch).configuration.population_number));
+
       auto &score_b = (*this->scratch).template get<buffer_data_type::SCORES>();
-      if (load_scratchs<queue_type>(batch, this->scratch)) {
-        score_b.alloc(batch_ligands);
+      if (load_scratchs<queue_type>(batch, this->scratch, scores_per_ligand_target)) {
+        if (!score_b.is_valid() ||
+            score_b.num_elements() != (batch_ligands * scores_per_ligand_target)) {
+          score_b.alloc(batch_ligands * scores_per_ligand_target);
+          score_b.set_valid();
+        }
+      } else if (!score_b.is_valid() ||
+                 score_b.num_elements() != (batch_ligands * scores_per_ligand_target)) {
+        score_b.alloc(batch_ligands * scores_per_ligand_target);
         score_b.set_valid();
       }
 
@@ -162,9 +172,9 @@ namespace mudock {
       // TODO ask Davide about this performance
       // Bind to the kernel function
       const auto scores_per_ligand = score_b.num_elements() / batch_ligands;
-      assert((*this->scratch).template get<buffer_data_type::X_SCRATCH>().num_elements() !=
-                 (scores_per_ligand * batch_ligands) &&
-             "Number of scores per ligands does not match the allocated coordinates space");
+      assert((*this->scratch).template get<buffer_data_type::X_SCRATCH>().num_elements() ==
+                 (scores_per_ligand * tot_atoms_in_batch) &&
+             "Number of scores per ligand does not match the allocated coordinates space");
 
       const int *num_atoms_b = (*this->scratch).template get<buffer_data_type::NUM_ATOMS>().dev_pointer();
       const int *num_rotamers_b =
@@ -281,19 +291,15 @@ namespace mudock {
     void teardown_impl(batch<static_molecule> &batch) override {
       assert(batch.num_ligands == batch_ligands && "Scoring algorithm received different batch for teardown");
 
-      //TODO this could be an issue if the scores per population would be equal to 1;
-      if (batch_ligands ==
-          static_cast<int>((*this->scratch).template get<buffer_data_type::SCORES>().num_elements())) {
-        auto &scores_b = (*this->scratch).template get<buffer_data_type::SCORES>();
-        scores_b.copy_device2host();
-        (*this->scratch).get_queue()->synchronize();
-        for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
-          auto &ligand = *batch.molecules[ligand_index];
-
-          ligand.properties.assign(property_type::SCORE, std::to_string(scores_b()[ligand_index]));
-        }
+      auto &scores_b = (*this->scratch).template get<buffer_data_type::SCORES>();
+      const auto scores_per_ligand = scores_b.num_elements() / batch_ligands;
+      scores_b.copy_device2host();
+      (*this->scratch).get_queue()->synchronize();
+      for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
+        auto &ligand = *batch.molecules[ligand_index];
+        const int score_index = ligand_index * scores_per_ligand;
+        ligand.properties.assign(property_type::SCORE, std::to_string(scores_b()[score_index]));
       }
-      // Otherwise the upper stage gave the responsibility to do so
     };
   };
 #endif
