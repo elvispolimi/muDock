@@ -113,7 +113,8 @@ namespace mudock {
       auto& chromosomes_b = (*this->scratch).template get<buffer_data_type::CHROMOSOMES>();
       assert(chromosomes_b.num_elements() > 0 &&
              "Chromosomes buffer not allocated before geom transform construction");
-      auto chromsomes_per_ligand = chromosomes_b.num_elements() / batch_ligands;
+      const auto chromsomes_per_ligand =
+          std::max(1, static_cast<int>((*this->scratch).configuration.population_number));
 
       ligand_fragments.alloc(tot_rotamers_atoms_in_batch);
       ligand_fragments_start.alloc(batch_ligands + 1);
@@ -257,7 +258,8 @@ namespace mudock {
 
     void teardown_impl(batch<static_molecule>& batch) {
       auto& chromosomes_b = (*this->scratch).template get<buffer_data_type::CHROMOSOMES>();
-      const int chromsomes_per_ligand = chromosomes_b.num_elements() / batch_ligands;
+      const auto chromsomes_per_ligand =
+          std::max(1, static_cast<int>((*this->scratch).configuration.population_number));
       auto& x_scratch_b = (*this->scratch).template get<buffer_data_type::X_SCRATCH>();
       auto& y_scratch_b = (*this->scratch).template get<buffer_data_type::Y_SCRATCH>();
       auto& z_scratch_b = (*this->scratch).template get<buffer_data_type::Z_SCRATCH>();
@@ -266,16 +268,12 @@ namespace mudock {
       z_scratch_b.copy_device2host();
       (*this->scratch).get_queue()->synchronize();
       for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
-        auto& ligand        = *batch.molecules[ligand_index];
-        const int num_atoms = ligand.num_atoms();
-        const int stride_atoms =
-            ligand_index * batch_atoms * chromsomes_per_ligand;
-        std::memcpy(ligand.x(), x_scratch_b.host_pointer() + stride_atoms,
-                    num_atoms * sizeof(fp_type));
-        std::memcpy(ligand.y(), y_scratch_b.host_pointer() + stride_atoms,
-                    num_atoms * sizeof(fp_type));
-        std::memcpy(ligand.z(), z_scratch_b.host_pointer() + stride_atoms,
-                    num_atoms * sizeof(fp_type));
+        auto& ligand           = *batch.molecules[ligand_index];
+        const int num_atoms    = ligand.num_atoms();
+        const int stride_atoms = ligand_index * batch_atoms * chromsomes_per_ligand;
+        std::memcpy(ligand.x(), x_scratch_b.host_pointer() + stride_atoms, num_atoms * sizeof(fp_type));
+        std::memcpy(ligand.y(), y_scratch_b.host_pointer() + stride_atoms, num_atoms * sizeof(fp_type));
+        std::memcpy(ligand.z(), z_scratch_b.host_pointer() + stride_atoms, num_atoms * sizeof(fp_type));
       }
     };
   };
