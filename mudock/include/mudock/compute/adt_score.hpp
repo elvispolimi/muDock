@@ -90,19 +90,19 @@ namespace mudock {
       load_num_rotamers(batch, this->scratch);
       load_num_atoms(batch, this->scratch);
 
-      const int scores_per_ligand_target =
+      const int scores_per_ligand =
           std::max(1, static_cast<int>((*this->scratch).configuration.population_number));
 
       auto &score_b = (*this->scratch).template get<buffer_data_type::SCORES>();
-      if (load_scratchs<queue_type>(batch, this->scratch, scores_per_ligand_target)) {
+      if (load_scratchs<queue_type>(batch, this->scratch, scores_per_ligand)) {
         if (!score_b.is_valid() ||
-            score_b.num_elements() != static_cast<size_t>(batch_ligands * scores_per_ligand_target)) {
-          score_b.alloc(batch_ligands * scores_per_ligand_target);
+            score_b.num_elements() != static_cast<size_t>(batch_ligands * scores_per_ligand)) {
+          score_b.alloc(batch_ligands * scores_per_ligand);
           score_b.set_valid();
         }
       } else if (!score_b.is_valid() ||
-                 score_b.num_elements() != static_cast<size_t>(batch_ligands * scores_per_ligand_target)) {
-        score_b.alloc(batch_ligands * scores_per_ligand_target);
+                 score_b.num_elements() != static_cast<size_t>(batch_ligands * scores_per_ligand)) {
+        score_b.alloc(batch_ligands * scores_per_ligand);
         score_b.set_valid();
       }
 
@@ -172,7 +172,6 @@ namespace mudock {
 
       // TODO ask Davide about this performance
       // Bind to the kernel function
-      const auto scores_per_ligand = score_b.num_elements() / batch_ligands;
       assert((*this->scratch).template get<buffer_data_type::X_SCRATCH>().num_elements() ==
                  (scores_per_ligand * tot_atoms_in_batch) &&
              "Number of scores per ligand does not match the allocated coordinates space");
@@ -247,16 +246,17 @@ namespace mudock {
       (*kernel)();
     }
 
-    static int get_ligand_mem(const int max_atoms, const knobs) {
+    static int get_ligand_mem(const int max_atoms, const knobs conf) {
       int mem{0};
-      const int non_bonds_atoms = max_atoms * max_atoms;
+      const int scores_per_ligand = std::max(1, static_cast<int>(conf.population_number));
+      const int non_bonds_atoms   = max_atoms * max_atoms;
 
-      mem += sizeof(fp_type);             // scores
-      mem += sizeof(int);                 // num atoms
-      mem += sizeof(int);                 // num rotamers;
-      mem += sizeof(fp_type) * max_atoms; // x scratchs
-      mem += sizeof(fp_type) * max_atoms; // y scratchs
-      mem += sizeof(fp_type) * max_atoms; // z scratchs
+      mem += sizeof(fp_type) * scores_per_ligand;             // scores
+      mem += sizeof(int);                                     // num atoms
+      mem += sizeof(int);                                     // num rotamers;
+      mem += sizeof(fp_type) * max_atoms * scores_per_ligand; // x scratchs
+      mem += sizeof(fp_type) * max_atoms * scores_per_ligand; // y scratchs
+      mem += sizeof(fp_type) * max_atoms * scores_per_ligand; // z scratchs
 
       mem += sizeof(fp_type) * max_atoms;       //vols
       mem += sizeof(fp_type) * max_atoms;       //solpars
