@@ -110,11 +110,11 @@ namespace mudock {
       const int tot_rotamers_atoms_in_batch   = tot_atoms_in_batch * batch_rotamers;
       const std::size_t tot_rotamers_in_batch = batch_ligands * batch_rotamers;
       auto q                                  = (*this->scratch).get_queue();
-      auto& chromosomes_b = (*this->scratch).template get<buffer_data_type::CHROMOSOMES>();
-      assert(chromosomes_b.num_elements() > 0 &&
-             "Chromosomes buffer not allocated before geom transform construction");
       const auto chromsomes_per_ligand =
           std::max(1, static_cast<int>((*this->scratch).configuration.population_number));
+      assert((*this->scratch).template get<buffer_data_type::CHROMOSOMES>().num_elements() !=
+                 batch_ligands * chromsomes_per_ligand &&
+             "Chromosomes buffer not allocated before geom transform construction");
 
       ligand_fragments.alloc(tot_rotamers_atoms_in_batch);
       ligand_fragments_start.alloc(batch_ligands + 1);
@@ -164,7 +164,7 @@ namespace mudock {
       auto& x_scratch_b = (*this->scratch).template get<buffer_data_type::X_SCRATCH>();
       auto& y_scratch_b = (*this->scratch).template get<buffer_data_type::Y_SCRATCH>();
       auto& z_scratch_b = (*this->scratch).template get<buffer_data_type::Z_SCRATCH>();
-      if (load_coords<queue_t>(batch, this->scratch, 1)) {
+      if (load_coords<queue_t>(batch, this->scratch)) {
         x_scratch_b.alloc(tot_atoms_in_batch * chromsomes_per_ligand);
         y_scratch_b.alloc(tot_atoms_in_batch * chromsomes_per_ligand);
         z_scratch_b.alloc(tot_atoms_in_batch * chromsomes_per_ligand);
@@ -257,7 +257,6 @@ namespace mudock {
     std::unique_ptr<geom_kernel<queue_t>> kernel;
 
     void teardown_impl(batch<static_molecule>& batch) {
-      auto& chromosomes_b = (*this->scratch).template get<buffer_data_type::CHROMOSOMES>();
       const auto chromsomes_per_ligand =
           std::max(1, static_cast<int>((*this->scratch).configuration.population_number));
       auto& x_scratch_b = (*this->scratch).template get<buffer_data_type::X_SCRATCH>();
