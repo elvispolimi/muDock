@@ -322,6 +322,9 @@ namespace mudock {
   int get_adt_score_batch<queue_hip>(const int atoms,
                                      std::shared_ptr<queue_hip> q_b,
                                      const size_t max_bucket_size) {
+#ifdef MUDOCK_ADT_BUCKET_OVERRIDE
+    return MUDOCK_ADT_BUCKET_OVERRIDE;
+#endif
     // populate the bucket dimension
     int bucket_multiple{0};
     const int device_id = q_b->get_id();
