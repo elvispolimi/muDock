@@ -186,6 +186,7 @@ endif()
 option(MUDOCK_ENABLE_SYCL "Enable the SYCL kernel implementation" OFF)
 set(MUDOCK_SYCL_EXTRA_LINK_FLAGS "" CACHE STRING "Extra SYCL link flags appended to the clang++ link step")
 set(MUDOCK_SYCL_WG_SIZE "" CACHE STRING "SYCL work-group size override for kernels (e.g. 32 or 64)")
+set(MUDOCK_SCORE_GENERATIONS "" CACHE STRING "Score kernel generations (optional integer)")
 
 if(MUDOCK_ENABLE_SYCL)
   if(NOT MUDOCK_ENABLE_HIP
@@ -254,6 +255,10 @@ if(MUDOCK_ENABLE_SYCL)
   else()
     message(FATAL_ERROR "Enable only one parallel framework at a time.")
   endif()
+endif()
+
+if(NOT MUDOCK_SCORE_GENERATIONS STREQUAL "")
+  add_compile_definitions(MUDOCK_SCORE_GENERATIONS=${MUDOCK_SCORE_GENERATIONS})
 endif()
 
 # OpenMP
@@ -474,6 +479,12 @@ message(
   STATUS
     "Likwid Profiling....................: ${MUDOCK_ENABLE_LIKWID} (MUDOCK_ENABLE_LIKWID)"
 )
+if(NOT MUDOCK_SCORE_GENERATIONS STREQUAL "")
+  message(
+    STATUS
+      "Score generations....................: ${MUDOCK_SCORE_GENERATIONS} (MUDOCK_SCORE_GENERATIONS)"
+  )
+endif()
 if(MUDOCK_ENABLE_LIKWID)
   message(
   STATUS
