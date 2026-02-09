@@ -243,7 +243,11 @@ namespace mudock {
           (((*this->scratch).template get<buffer_data_type::SCORES>().num_elements() % batch_ligands) == 0) &&
           "Number of scores is not a multiple of ligands in the batch");
       assert(kernel && "Kernel method not yet prepared");
-      (*kernel)();
+      if constexpr (knobs::num_score_generations > 1) {
+        for (auto i = 0; i < knobs::num_score_generations; ++i) (*kernel)();
+      } else {
+        (*kernel)();
+      }
     }
 
     static int get_ligand_mem(const int max_atoms, const knobs conf) {
