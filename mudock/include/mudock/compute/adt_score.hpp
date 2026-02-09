@@ -244,7 +244,7 @@ namespace mudock {
           "Number of scores is not a multiple of ligands in the batch");
       assert(kernel && "Kernel method not yet prepared");
       if constexpr (knobs::num_score_generations > 1) {
-        for (auto i = 0; i < knobs::num_score_generations; ++i) (*kernel)();
+        for (size_t i = 0; i < knobs::num_score_generations; ++i) (*kernel)();
       } else {
         (*kernel)();
       }
