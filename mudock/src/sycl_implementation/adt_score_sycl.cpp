@@ -295,6 +295,9 @@ namespace mudock {
   int get_adt_score_batch<queue_sycl>(const int atoms,
                                       std::shared_ptr<queue_sycl> q_b,
                                       const size_t max_bucket_size) {
+#ifdef MUDOCK_ADT_BUCKET_OVERRIDE
+    return MUDOCK_ADT_BUCKET_OVERRIDE;
+#endif
     // populate the bucket dimension
     int bucket_multiple{0};
     constexpr_for<0, reorder_buffer<static_molecule>::get_num_atom_clusters(), 1>([&](const auto atom_index) {
