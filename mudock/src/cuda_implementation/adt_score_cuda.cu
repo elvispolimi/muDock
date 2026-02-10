@@ -1,4 +1,5 @@
 #include <array>
+#include <cassert>
 #include <memory>
 #include <mudock/chem/autodock_grid_types.hpp>
 #include <mudock/chem/autodock_parameters.hpp>
@@ -105,6 +106,7 @@ namespace mudock {
                               const cudaTextureObject_t* __restrict__ atom_textures,
                               const int* __restrict__ atom_tex_indexes,
                               fp_type* __restrict__ scores) {
+    assert(blockDim.x == warpSize && "calc_energy requires blockDim.x == warpSize");
     const cudaTextureObject_t& electro_texture = atom_textures[static_cast<int>(autodock_grid_type::ELEC)];
     const cudaTextureObject_t& desolv_texture  = atom_textures[static_cast<int>(autodock_grid_type::DESOLV)];
 
@@ -140,8 +142,8 @@ namespace mudock {
 
       // Calculate energy
       fp_type elect_total_trilinear = 0, emap_total_trilinear = 0, dmap_total_trilinear = 0;
-#pragma unroll
-      for (int atom_index = threadIdx.x; atom_index < MAX_ATOMS; atom_index += blockDim.x) {
+      MUDOCK_PRAGMA_UNROLL
+      for (int atom_index = threadIdx.x; atom_index < MAX_ATOMS; atom_index += warpSize) {
         if (atom_index < num_atoms) {
           fp_type coord_tex[3]{ligand_x[atom_index], ligand_y[atom_index], ligand_z[atom_index]};
 
@@ -271,8 +273,8 @@ namespace mudock {
       fp_type total_energy = emap_total_eintcal + elect_total_eintcal + dmap_total_eintcal +
                              emap_total_trilinear + elect_total_trilinear + dmap_total_trilinear;
 
-#pragma unroll
-      for (int offset = BLOCK_SIZE / 2; offset > 0; offset /= 2) {
+      MUDOCK_PRAGMA_UNROLL
+      for (int offset = warpSize / 2; offset > 0; offset /= 2) {
         total_energy += __shfl_down_sync(0xffffffff, total_energy, offset);
       }
 

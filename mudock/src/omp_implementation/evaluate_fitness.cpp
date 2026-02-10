@@ -35,11 +35,11 @@ namespace mudock {
     const fp_type pv[2] = {p1v, p0v};
     const fp_type pw[2] = {p1w, p0w};
     fp_type value{0};
-#pragma unroll
+MUDOCK_PRAGMA_UNROLL
     for (int i = 0; i <= 1; i++)
-#pragma unroll
+MUDOCK_PRAGMA_UNROLL
       for (int t = 0; t <= 1; t++)
-#pragma unroll
+MUDOCK_PRAGMA_UNROLL
         for (int n = 0; n <= 1; n++) {
           const fp_type tmp = tex[FLATTENED_3D(u0 + n, v0 + t, w0 + i, index_x, index_xy)];
           value += pu[n] * pv[t] * pw[i] * tmp;
@@ -205,11 +205,11 @@ namespace mudock {
         l_scratch_chromosome[chromosome_index] =
             std::numeric_limits<fp_type>::infinity(); // Set initial score value
         chromosome& chromo = *(l_chromosomes + chromosome_index);
-#pragma unroll
+MUDOCK_PRAGMA_UNROLL
         for (int i{0}; i < 3; ++i) { // initialize the rigid translation
           chromo[i] = get_init_change_distribution(l_state[omp_get_thread_num()]) * coordinate_step;
         }
-#pragma unroll
+MUDOCK_PRAGMA_UNROLL
         for (int i{3}; i < 6 + num_rotamers; ++i) { // initialize the rotations
           chromo[i] = get_init_change_distribution(l_state[omp_get_thread_num()]) * angle_step;
         }
@@ -337,13 +337,13 @@ namespace mudock {
                    parent2_copy_size * sizeof(fp_type));
 
 // mutate the offspring
-#pragma unroll
+MUDOCK_PRAGMA_UNROLL
           for (int i{0}; i < 3; ++i) {
             if (get_mutation_coin_distribution(l_state[omp_get_thread_num()]) < mutation_prob)
               next_chromosome[i] +=
                   get_mutation_change_distribution(l_state[omp_get_thread_num()]) * coordinate_step;
           }
-#pragma unroll
+MUDOCK_PRAGMA_UNROLL
           for (int i{3}; i < 6 + num_rotamers; ++i) {
             // printf("%d %d %d %d\n",generation,chromosome_index, omp_get_thread_num(),omp_get_team_num());
             if (get_mutation_coin_distribution(l_state[omp_get_thread_num()]) < mutation_prob) {

@@ -33,6 +33,13 @@ constexpr void constexpr_switch_bucket(F&& f, T value, V* values) {
   }
 }
 
+// Unroll control for kernels
+#ifdef MUDOCK_DISABLE_UNROLL
+  #define MUDOCK_PRAGMA_UNROLL _Pragma("unroll 1")
+#else
+  #define MUDOCK_PRAGMA_UNROLL _Pragma("unroll")
+#endif
+
 // utility function that reads the whole content of a stream
 template<class stream_type>
 inline auto read_from_stream(stream_type&& in) {

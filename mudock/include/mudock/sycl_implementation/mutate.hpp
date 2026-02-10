@@ -3,6 +3,7 @@
 #include <mudock/cpp_implementation/chromosome.hpp>
 #include <mudock/molecule.hpp>
 #include <mudock/type_alias.hpp>
+#include <mudock/utils.hpp>
 #include <sycl/sycl.hpp>
 
 #ifndef MUDOCK_SYCL_WG_SIZE
@@ -20,7 +21,7 @@ namespace mudock {
                                       const fp_type* offset_z,
                                       const int num_atoms,
                                       sycl::nd_item<3> it) {
-#pragma unroll
+MUDOCK_PRAGMA_UNROLL
     for (int i = it.get_local_id(0); i < MAX_ATOMS; i += MUDOCK_SYCL_WG_SIZE) {
       if (i < num_atoms) {
         x[i] += *offset_x;
@@ -43,7 +44,7 @@ namespace mudock {
     const auto& sub_group = it.get_sub_group();
 
     fp_type c_x{0}, c_y{0}, c_z{0};
-#pragma unroll
+MUDOCK_PRAGMA_UNROLL
     for (int i = it.get_local_id(0); i < MAX_ATOMS; i += MUDOCK_SYCL_WG_SIZE) {
       if (i < num_atoms) {
         c_x += x[i];
@@ -72,7 +73,7 @@ namespace mudock {
     const auto m22 = cx * cy;
 
     // apply the rotation matrix
-#pragma unroll
+MUDOCK_PRAGMA_UNROLL
     for (int i = it.get_local_id(0); i < MAX_ATOMS; i += MUDOCK_SYCL_WG_SIZE) {
       if (i < num_atoms) {
         const auto translated_x = x[i] - c_x, translated_y = y[i] - c_y, translated_z = z[i] - c_z;
@@ -134,7 +135,7 @@ namespace mudock {
         ((origz * (u2 + v2) - w * (origx * u + origy * v)) * one_minus_c + (origx * v - origy * u) * ls) / l2;
 
     // apply the rotation matrix
-#pragma unroll
+MUDOCK_PRAGMA_UNROLL
     for (int i = it.get_local_id(0); i < MAX_ATOMS; i += MUDOCK_SYCL_WG_SIZE) {
       if (i < num_atoms && bitmask[i] != 0) {
         const auto prev_x = x[i], prev_y = y[i], prev_z = z[i];
@@ -191,7 +192,7 @@ namespace mudock {
         fp_type* __restrict__ z_scratch_chromosome = l_scratch_z + chromosome_index * atom_stride;
 
 // Copy original coordinates
-#pragma unroll
+MUDOCK_PRAGMA_UNROLL
         for (int atom_index = local_thread_id; atom_index < MAX_ATOMS; atom_index += MUDOCK_SYCL_WG_SIZE) {
           if (atom_index < num_atoms) {
             x_scratch_chromosome[atom_index] = l_original_x[atom_index];
@@ -218,7 +219,7 @@ namespace mudock {
                                         it);
 
         // change the molecule shape
-#pragma unroll
+MUDOCK_PRAGMA_UNROLL
         for (int i = 0; i < num_rotamers; ++i) {
           const int* bitmask = l_fragments + i * num_atoms;
           rotate_fragment_sycl<MAX_ATOMS>(x_scratch_chromosome,
