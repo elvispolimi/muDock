@@ -4,6 +4,7 @@
 #include <mudock/hip_implementation/hip_utils.hpp>
 #include <mudock/molecule.hpp>
 #include <mudock/type_alias.hpp>
+#include <mudock/utils.hpp>
 
 namespace mudock {
   template<int MAX_ATOMS>
@@ -14,7 +15,7 @@ namespace mudock {
                                                          const fp_type offset_y,
                                                          const fp_type offset_z,
                                                          const int num_atoms) {
-#pragma unroll
+MUDOCK_PRAGMA_UNROLL
     for (int i = 0; i < MAX_ATOMS; i += warpSize) {
       const int atom_index = i + threadIdx.x;
       if (atom_index < num_atoms) {
@@ -35,7 +36,7 @@ namespace mudock {
                                                       const int num_atoms) {
     // compute the molecule center of mass
     fp_type c_x{0}, c_y{0}, c_z{0};
-#pragma unroll
+MUDOCK_PRAGMA_UNROLL
     for (int i = 0; i < MAX_ATOMS; i += warpSize) {
       const int atom_index = i + threadIdx.x;
       if (atom_index < num_atoms) {
@@ -76,7 +77,7 @@ namespace mudock {
     const auto m22 = cx * cy;
 
     // apply the rotation matrix
-#pragma unroll
+MUDOCK_PRAGMA_UNROLL
     for (int i = 0; i < MAX_ATOMS; i += warpSize) {
       const int atom_index = i + threadIdx.x;
       if (atom_index < num_atoms) {
@@ -140,7 +141,7 @@ namespace mudock {
         ((origz * (u2 + v2) - w * (origx * u + origy * v)) * one_minus_c + (origx * v - origy * u) * ls) / l2;
 
     // apply the rotation matrix
-#pragma unroll
+MUDOCK_PRAGMA_UNROLL
     for (int i = 0; i < MAX_ATOMS; i += warpSize) {
       const int atom_index = i + threadIdx.x;
       if (atom_index < num_atoms && bitmask[i] != 0) {
@@ -195,7 +196,7 @@ namespace mudock {
       fp_type* __restrict__ z_scratch_chromosome = l_scratch_z + chromosome_index * atom_stride;
 
 // Copy original coordinates
-#pragma unroll
+MUDOCK_PRAGMA_UNROLL
       for (int i = 0; i < MAX_ATOMS; i += warpSize) {
         const int atom_index = i + local_thread_id;
         if (atom_index < num_atoms) {
@@ -221,7 +222,7 @@ namespace mudock {
                                      num_atoms);
 
       // change the molecule shape
-#pragma unroll
+MUDOCK_PRAGMA_UNROLL
       for (int i = 0; i < num_rotamers; ++i) {
         const int* bitmask = l_fragments + i * num_atoms;
         rotate_fragment_hip<MAX_ATOMS>(x_scratch_chromosome,
