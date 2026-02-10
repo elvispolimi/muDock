@@ -117,7 +117,7 @@ namespace mudock {
         fp_type elect_total_trilinear = 0;
         fp_type emap_total_trilinear  = 0;
         fp_type dmap_total_trilinear  = 0;
-#pragma unroll
+MUDOCK_PRAGMA_UNROLL
         for (int atom_index = workitem_id_in_group; atom_index < MAX_ATOMS;
              atom_index += MUDOCK_SYCL_WG_SIZE) {
           if (atom_index < num_atoms) {
