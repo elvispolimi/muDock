@@ -193,6 +193,7 @@ set(MUDOCK_SYCL_EXTRA_LINK_FLAGS "" CACHE STRING "Extra SYCL link flags appended
 set(MUDOCK_SYCL_WG_SIZE "" CACHE STRING "SYCL work-group size override for kernels (e.g. 32 or 64)")
 set(MUDOCK_SCORE_GENERATIONS "" CACHE STRING "Score kernel generations (optional integer)")
 set(MUDOCK_ADT_BUCKET_OVERRIDE "" CACHE STRING "Override ADT score bucket size (optional integer)")
+set(MUDOCK_ADT_BUCKET_MULTIPLE_OVERRIDE "" CACHE STRING "Override ADT score bucket multiple (optional integer)")
 option(MUDOCK_DISABLE_UNROLL "Disable kernel loop unrolling" OFF)
 
 if(MUDOCK_ENABLE_SYCL)
@@ -269,6 +270,9 @@ if(NOT MUDOCK_SCORE_GENERATIONS STREQUAL "")
 endif()
 if(NOT MUDOCK_ADT_BUCKET_OVERRIDE STREQUAL "")
   add_compile_definitions(MUDOCK_ADT_BUCKET_OVERRIDE=${MUDOCK_ADT_BUCKET_OVERRIDE})
+endif()
+if(NOT MUDOCK_ADT_BUCKET_MULTIPLE_OVERRIDE STREQUAL "")
+  add_compile_definitions(MUDOCK_ADT_BUCKET_MULTIPLE_OVERRIDE=${MUDOCK_ADT_BUCKET_MULTIPLE_OVERRIDE})
 endif()
 if(MUDOCK_DISABLE_UNROLL)
   add_compile_definitions(MUDOCK_DISABLE_UNROLL)
@@ -506,6 +510,12 @@ if(NOT MUDOCK_ADT_BUCKET_OVERRIDE STREQUAL "")
   message(
     STATUS
       "ADT bucket override.................: ${MUDOCK_ADT_BUCKET_OVERRIDE} (MUDOCK_ADT_BUCKET_OVERRIDE)"
+  )
+endif()
+if(NOT MUDOCK_ADT_BUCKET_MULTIPLE_OVERRIDE STREQUAL "")
+  message(
+    STATUS
+      "ADT bucket multiple override........: ${MUDOCK_ADT_BUCKET_MULTIPLE_OVERRIDE} (MUDOCK_ADT_BUCKET_MULTIPLE_OVERRIDE)"
   )
 endif()
 if(MUDOCK_ENABLE_LIKWID)
