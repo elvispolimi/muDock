@@ -325,6 +325,9 @@ MUDOCK_PRAGMA_UNROLL
 #ifdef MUDOCK_ADT_BUCKET_OVERRIDE
     return MUDOCK_ADT_BUCKET_OVERRIDE;
 #endif
+#ifdef MUDOCK_ADT_BUCKET_MULTIPLE_OVERRIDE
+    int bucket_multiple = MUDOCK_ADT_BUCKET_MULTIPLE_OVERRIDE;
+#else
     // populate the bucket dimension
     int bucket_multiple{0};
     const int device_id = q_b->get_id();
@@ -336,6 +339,7 @@ MUDOCK_PRAGMA_UNROLL
     if (bucket_multiple == 0)
       throw std::runtime_error(
           "Compilation error: there is a bucket of atoms number which it is not handled.");
+#endif
 
     int bucket_size = max_bucket_size / bucket_multiple;
     bucket_size     = bucket_size == 0 ? max_bucket_size : bucket_size * bucket_multiple;
