@@ -1,5 +1,6 @@
 #include <cstdlib>
 #include <memory>
+#include <mudock/compute/devices_memory.hpp>
 #include <mudock/compute/reorder_buffer.hpp>
 #include <mudock/cuda_implementation/cuda_utils.cuh>
 #include <mudock/cuda_implementation/queue_cuda.cuh>
@@ -7,11 +8,47 @@
 #include <mudock/molecule.hpp>
 #include <mudock/type_alias.hpp>
 #include <mudock/utils.hpp>
+#include <mutex>
 
 namespace mudock {
+#ifdef MUDOCK_KERNEL_LOCK
+  namespace {
+    constexpr int k_max_devices = 16;
+
+    struct device_kernel_lock {
+      std::mutex mutex;
+      cudaEvent_t event{};
+      bool event_created{false};
+      bool has_event{false};
+
+      ~device_kernel_lock() noexcept(false) {
+        if (event_created) {
+          cudaEventDestroy(event);
+        }
+      }
+    };
+
+    device_memory_array<k_max_devices, device_kernel_lock> cuda_kernel_locks;
+
+    device_kernel_lock* get_kernel_lock(const int dev) {
+      cuda_kernel_locks.init(dev, std::function<std::unique_ptr<device_kernel_lock>()>([&]() {
+                               MUDOCK_CHECK(cudaSetDevice(dev));
+                               auto lock = std::make_unique<device_kernel_lock>();
+                               MUDOCK_CHECK(cudaEventCreateWithFlags(&lock->event, cudaEventDisableTiming));
+                               lock->event_created = true;
+                               lock->has_event     = false;
+                               return lock;
+                             }));
+      return cuda_kernel_locks.v[dev].get_data();
+    }
+  } // namespace
+#endif
+
   struct queue_cuda::impl {
     cudaStream_t stream;
+    int device_id;
     impl(const int id) {
+      device_id = id;
       MUDOCK_CHECK(cudaSetDevice(static_cast<int>(id)));
       MUDOCK_CHECK(cudaStreamCreate(&stream));
     };
@@ -42,8 +79,21 @@ namespace mudock {
 
     // const std::size_t shared_mem =
     //     std::max(configuration.population_number, static_cast<std::size_t>(BLOCK_SIZE)) * sizeof(fp_type);
+#ifdef MUDOCK_KERNEL_LOCK
+    auto* lock = get_kernel_lock(impl_->device_id);
+    std::unique_lock<std::mutex> guard(lock->mutex);
+    if (lock->has_event) {
+      MUDOCK_CHECK(cudaStreamWaitEvent(impl_->stream, lock->event, 0));
+    }
+#endif
+
     MUDOCK_CHECK(cudaLaunchKernel(f, grid, block, args, 0, impl_->stream));
     MUDOCK_CHECK_KERNELCALL();
+
+#ifdef MUDOCK_KERNEL_LOCK
+    MUDOCK_CHECK(cudaEventRecord(lock->event, impl_->stream));
+    lock->has_event = true;
+#endif
   };
   void queue_cuda::launch_kernel(void* f, void* args[], const int gridDim, const int blockDim) {
     assert(gridDim >= 0 && blockDim >= 0);
