@@ -150,6 +150,7 @@ endif()
 
 # CUDA
 option(MUDOCK_ENABLE_CUDA "Enable the CUDA kernel implementation" OFF)
+option(MUDOCK_ENABLE_KERNEL_LOCK "Serialize kernel launches per device" OFF)
 
 if(MUDOCK_ENABLE_CUDA)
   if(NOT MUDOCK_ENABLE_HIP
@@ -180,6 +181,10 @@ if(MUDOCK_ENABLE_CUDA)
   else()
     message(FATAL_ERROR "Enable only one parallel framework at a time.")
   endif()
+endif()
+
+if(MUDOCK_ENABLE_KERNEL_LOCK)
+  add_compile_definitions(MUDOCK_KERNEL_LOCK)
 endif()
 
 # SYCL
@@ -527,6 +532,10 @@ message(
 message(
   STATUS
     "Enable CUDA.........................: ${MUDOCK_ENABLE_CUDA} (MUDOCK_ENABLE_CUDA)"
+)
+message(
+  STATUS
+    "Kernel lock..........................: ${MUDOCK_ENABLE_KERNEL_LOCK} (MUDOCK_ENABLE_KERNEL_LOCK)"
 )
 
 if(MUDOCK_ENABLE_CUDA)

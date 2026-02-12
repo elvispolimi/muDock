@@ -1,5 +1,6 @@
 #pragma once
 
+#include <mudock/compute/devices_memory.hpp>
 #include <mudock/sycl_implementation/queue_sycl_impl.hpp>
 #include <mutex>
 #include <string>
@@ -8,6 +9,27 @@
 #include <unordered_map>
 
 namespace mudock {
+#ifdef MUDOCK_KERNEL_LOCK
+  namespace {
+    constexpr int k_max_devices = 16;
+
+    struct device_kernel_lock {
+      std::mutex mutex;
+      sycl::event event;
+      bool has_event{false};
+    };
+
+    device_memory_array<k_max_devices, device_kernel_lock> sycl_kernel_locks;
+
+    device_kernel_lock* get_kernel_lock(const int dev) {
+      sycl_kernel_locks.init(dev, std::function<std::unique_ptr<device_kernel_lock>()>([]() {
+        return std::make_unique<device_kernel_lock>();
+      }));
+      return sycl_kernel_locks.v[dev].get_data();
+    }
+  } // namespace
+#endif
+
   template<class F, class... Args>
   inline void queue_sycl::invoke_kernel(index3D gridDim, index3D blockDim, Args&&... args) {
     static_assert(std::is_invocable_r_v<void, F, sycl::nd_item<3>, std::decay_t<Args>...>,
@@ -23,13 +45,24 @@ namespace mudock {
     sycl::nd_range<3> nd{global, local};
 
     // sycl::queue q{pick_device(0, device_type::GPU)};
-    impl_->get_queue().submit([&](sycl::handler& h) {
+#ifdef MUDOCK_KERNEL_LOCK
+    auto* lock = get_kernel_lock(this->id);
+    std::unique_lock<std::mutex> guard(lock->mutex);
+    if (lock->has_event) {
+      lock->event.wait();
+    }
+#endif
+    sycl::event evt = impl_->get_queue().submit([&](sycl::handler& h) {
       F kernel{};
       const auto args_copy = std::tuple<std::decay_t<Args>...>{static_cast<std::decay_t<Args>>(args)...};
       h.parallel_for<F>(nd, [=](sycl::nd_item<3> it) {
         std::apply([&](auto... a) { kernel(it, a...); }, args_copy);
       });
     });
+#ifdef MUDOCK_KERNEL_LOCK
+    lock->event     = evt;
+    lock->has_event = true;
+#endif
   }
 
   template<class F, class... Args>
