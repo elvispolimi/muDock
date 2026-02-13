@@ -15,7 +15,7 @@ namespace mudock {
                                                          const fp_type offset_y,
                                                          const fp_type offset_z,
                                                          const int num_atoms) {
-MUDOCK_PRAGMA_UNROLL
+    MUDOCK_PRAGMA_UNROLL
     for (int i = 0; i < MAX_ATOMS; i += warpSize) {
       const int atom_index = i + threadIdx.x;
       if (atom_index < num_atoms) {
@@ -36,7 +36,7 @@ MUDOCK_PRAGMA_UNROLL
                                                       const int num_atoms) {
     // compute the molecule center of mass
     fp_type c_x{0}, c_y{0}, c_z{0};
-MUDOCK_PRAGMA_UNROLL
+    MUDOCK_PRAGMA_UNROLL
     for (int i = 0; i < MAX_ATOMS; i += warpSize) {
       const int atom_index = i + threadIdx.x;
       if (atom_index < num_atoms) {
@@ -77,7 +77,7 @@ MUDOCK_PRAGMA_UNROLL
     const auto m22 = cx * cy;
 
     // apply the rotation matrix
-MUDOCK_PRAGMA_UNROLL
+    MUDOCK_PRAGMA_UNROLL
     for (int i = 0; i < MAX_ATOMS; i += warpSize) {
       const int atom_index = i + threadIdx.x;
       if (atom_index < num_atoms) {
@@ -141,7 +141,7 @@ MUDOCK_PRAGMA_UNROLL
         ((origz * (u2 + v2) - w * (origx * u + origy * v)) * one_minus_c + (origx * v - origy * u) * ls) / l2;
 
     // apply the rotation matrix
-MUDOCK_PRAGMA_UNROLL
+    MUDOCK_PRAGMA_UNROLL
     for (int i = 0; i < MAX_ATOMS; i += warpSize) {
       const int atom_index = i + threadIdx.x;
       if (atom_index < num_atoms && bitmask[i] != 0) {
@@ -170,10 +170,9 @@ MUDOCK_PRAGMA_UNROLL
                             const int* __restrict__ frag_indices_start,
                             const int* __restrict__ num_rotamers_b,
                             const int* __restrict__ num_atoms_b) {
-    const int ligand_id        = blockIdx.x;
-    const int local_thread_id  = threadIdx.x;
-    const int thread_per_block = blockDim.x;
-    assert(thread_per_block == warpSize && "Warpsize and the number of thread per block does not coincide");
+    const int ligand_id       = blockIdx.x;
+    const int local_thread_id = threadIdx.x;
+    assert(blockDim.x == warpSize && "Warpsize and the number of thread per block does not coincide");
 
     const int num_atoms    = num_atoms_b[ligand_id];
     const int num_rotamers = num_rotamers_b[ligand_id];
@@ -195,8 +194,8 @@ MUDOCK_PRAGMA_UNROLL
       fp_type* __restrict__ y_scratch_chromosome = l_scratch_y + chromosome_index * atom_stride;
       fp_type* __restrict__ z_scratch_chromosome = l_scratch_z + chromosome_index * atom_stride;
 
-// Copy original coordinates
-MUDOCK_PRAGMA_UNROLL
+      // Copy original coordinates
+      MUDOCK_PRAGMA_UNROLL
       for (int i = 0; i < MAX_ATOMS; i += warpSize) {
         const int atom_index = i + local_thread_id;
         if (atom_index < num_atoms) {
@@ -222,7 +221,7 @@ MUDOCK_PRAGMA_UNROLL
                                      num_atoms);
 
       // change the molecule shape
-MUDOCK_PRAGMA_UNROLL
+      MUDOCK_PRAGMA_UNROLL
       for (int i = 0; i < num_rotamers; ++i) {
         const int* bitmask = l_fragments + i * num_atoms;
         rotate_fragment_hip<MAX_ATOMS>(x_scratch_chromosome,
