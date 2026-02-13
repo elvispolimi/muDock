@@ -323,6 +323,10 @@ MUDOCK_PRAGMA_UNROLL
                                      std::shared_ptr<queue_hip> q_b,
                                      const size_t max_bucket_size) {
 #ifdef MUDOCK_ADT_BUCKET_OVERRIDE
+    mudock::info("HIP Bucket size for ",
+                 atoms,
+                 " atoms override -> ",
+                 MUDOCK_ADT_BUCKET_OVERRIDE);
     return MUDOCK_ADT_BUCKET_OVERRIDE;
 #endif
 #ifdef MUDOCK_ADT_BUCKET_MULTIPLE_OVERRIDE
