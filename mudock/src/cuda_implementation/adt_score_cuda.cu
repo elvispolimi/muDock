@@ -339,11 +339,14 @@ namespace mudock {
                                       std::shared_ptr<queue_cuda> q_b,
                                       const size_t max_bucket_size) {
 #ifdef MUDOCK_ADT_BUCKET_OVERRIDE
+    const int capped = std::min<int>(MUDOCK_ADT_BUCKET_OVERRIDE, max_bucket_size);
     mudock::info("CUDA Bucket size for ",
                  atoms,
                  " atoms override -> ",
-                 MUDOCK_ADT_BUCKET_OVERRIDE);
-    return MUDOCK_ADT_BUCKET_OVERRIDE;
+                 MUDOCK_ADT_BUCKET_OVERRIDE,
+                 ", capped -> ",
+                 capped);
+    return capped;
 #endif
 #ifdef MUDOCK_ADT_BUCKET_MULTIPLE_OVERRIDE
     int bucket_multiple = MUDOCK_ADT_BUCKET_MULTIPLE_OVERRIDE;
