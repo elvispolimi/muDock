@@ -267,6 +267,24 @@ target_compile_options(
   libmudock
   PUBLIC $<$<AND:$<CONFIG:RELEASE>,$<COMPILE_LANGUAGE:CXX>>:${release_flags}>)
 
+# Ensure cache-driven compile definitions are applied to the target so custom
+# SYCL compile commands can see them via COMPILE_DEFINITIONS.
+if(MUDOCK_ENABLE_KERNEL_LOCK)
+  target_compile_definitions(libmudock PUBLIC MUDOCK_KERNEL_LOCK)
+endif()
+if(NOT MUDOCK_SCORE_GENERATIONS STREQUAL "")
+  target_compile_definitions(libmudock PUBLIC MUDOCK_SCORE_GENERATIONS=${MUDOCK_SCORE_GENERATIONS})
+endif()
+if(NOT MUDOCK_ADT_BUCKET_OVERRIDE STREQUAL "")
+  target_compile_definitions(libmudock PUBLIC MUDOCK_ADT_BUCKET_OVERRIDE=${MUDOCK_ADT_BUCKET_OVERRIDE})
+endif()
+if(NOT MUDOCK_ADT_BUCKET_MULTIPLE_OVERRIDE STREQUAL "")
+  target_compile_definitions(libmudock PUBLIC MUDOCK_ADT_BUCKET_MULTIPLE_OVERRIDE=${MUDOCK_ADT_BUCKET_MULTIPLE_OVERRIDE})
+endif()
+if(MUDOCK_DISABLE_UNROLL)
+  target_compile_definitions(libmudock PUBLIC MUDOCK_DISABLE_UNROLL)
+endif()
+
 if(MUDOCK_BUCKET_LEVEL STREQUAL "EXTREME")
   target_compile_definitions(libmudock PUBLIC MUDOCK_BUCKET_EXTREME)
 elseif(MUDOCK_BUCKET_LEVEL STREQUAL "LARGE")
