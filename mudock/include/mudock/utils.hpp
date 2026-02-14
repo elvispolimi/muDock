@@ -37,7 +37,12 @@ constexpr void constexpr_switch_bucket(F&& f, T value, V* values) {
 #ifdef MUDOCK_DISABLE_UNROLL
   #define MUDOCK_PRAGMA_UNROLL _Pragma("unroll 1")
 #else
-  #define MUDOCK_PRAGMA_UNROLL _Pragma("unroll")
+  #ifndef MUDOCK_UNROLL_FACTOR
+    #define MUDOCK_UNROLL_FACTOR 8
+  #endif
+  #define MUDOCK_STRINGIFY_INNER(x) #x
+  #define MUDOCK_STRINGIFY(x) MUDOCK_STRINGIFY_INNER(x)
+  #define MUDOCK_PRAGMA_UNROLL _Pragma(MUDOCK_STRINGIFY(unroll MUDOCK_UNROLL_FACTOR))
 #endif
 
 // utility function that reads the whole content of a stream
