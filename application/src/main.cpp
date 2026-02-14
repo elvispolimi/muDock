@@ -1,9 +1,13 @@
 #include "command_line_args.hpp"
 
+#include <chrono>
+#include <condition_variable>
 #include <cassert>
 #include <fstream>
 #include <iostream>
+#include <mutex>
 #include <memory>
+#include <thread>
 #include <mudock/chem/autodock_grid_types.hpp>
 #include <mudock/compute/manager.hpp>
 #include <mudock/format/reader.hpp>
@@ -60,10 +64,67 @@ int main(int argc, char* argv[]) {
   mudock::genetic_adt_pipeline pipe{protein};
 
   auto output_queue = std::make_shared<mudock::safe_stack<mudock::static_molecule>>();
+  const auto start  = std::chrono::high_resolution_clock::now();
   {
+    std::mutex observer_mutex;
+    std::condition_variable observer_cv;
+    bool observer_stop = false;
+    std::thread observer_thread;
+    if (args.observer && *args.observer > 0.0) {
+      mudock::info("Observer enabled with period: ", *args.observer, " s");
+      observer_thread = std::thread([&]() {
+        std::size_t prev_processed = output_queue->size();
+        auto prev_time             = std::chrono::high_resolution_clock::now();
+        while (true) {
+          std::unique_lock<std::mutex> lock(observer_mutex);
+          const bool stop = observer_cv.wait_for(lock,
+                                                 std::chrono::duration<double>(*args.observer),
+                                                 [&]() { return observer_stop; });
+          if (stop) {
+            break;
+          }
+          lock.unlock();
+
+          const auto now                  = std::chrono::high_resolution_clock::now();
+          const std::size_t now_processed = output_queue->size();
+          const std::size_t in_backlog    = input_queue->size();
+
+          const std::chrono::duration<double> dt = now - prev_time;
+          const std::size_t delta_processed       = now_processed - prev_processed;
+          const double inst_throughput =
+              dt.count() > 0.0 ? static_cast<double>(delta_processed) / dt.count() : 0.0;
+          const std::chrono::duration<double> total = now - start;
+          const double avg_throughput =
+              total.count() > 0.0 ? static_cast<double>(now_processed) / total.count() : 0.0;
+
+          mudock::info("Observer: processed=",
+                       now_processed,
+                       ", input_backlog=",
+                       in_backlog,
+                       ", inst_throughput=",
+                       inst_throughput,
+                       " ligands/s, avg_throughput=",
+                       avg_throughput,
+                       " ligands/s");
+
+          prev_processed = now_processed;
+          prev_time      = now;
+        }
+      });
+    }
+
     auto threadpool = mudock::threadpool();
     mudock::manager(args.device_confs, threadpool, args.knobs, input_queue, output_queue, pipe);
     mudock::info("All workers have been created!");
+
+    if (observer_thread.joinable()) {
+      {
+        std::lock_guard<std::mutex> lock(observer_mutex);
+        observer_stop = true;
+      }
+      observer_cv.notify_one();
+      observer_thread.join();
+    }
   } // when we exit from this block the computation is complete
 
   // after the computation it will be nice to print the score of all the molecules
