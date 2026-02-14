@@ -195,6 +195,7 @@ set(MUDOCK_SCORE_GENERATIONS "" CACHE STRING "Score kernel generations (optional
 set(MUDOCK_ADT_BUCKET_OVERRIDE "" CACHE STRING "Override ADT score bucket size (optional integer)")
 set(MUDOCK_ADT_BUCKET_MULTIPLE_OVERRIDE "" CACHE STRING "Override ADT score bucket multiple (optional integer)")
 option(MUDOCK_DISABLE_UNROLL "Disable kernel loop unrolling" OFF)
+set(MUDOCK_UNROLL_FACTOR 8 CACHE STRING "Kernel loop unroll factor when unrolling is enabled")
 
 if(MUDOCK_ENABLE_SYCL)
   if(NOT MUDOCK_ENABLE_HIP
@@ -273,6 +274,9 @@ if(NOT MUDOCK_ADT_BUCKET_OVERRIDE STREQUAL "")
 endif()
 if(NOT MUDOCK_ADT_BUCKET_MULTIPLE_OVERRIDE STREQUAL "")
   add_compile_definitions(MUDOCK_ADT_BUCKET_MULTIPLE_OVERRIDE=${MUDOCK_ADT_BUCKET_MULTIPLE_OVERRIDE})
+endif()
+if(NOT MUDOCK_UNROLL_FACTOR STREQUAL "")
+  add_compile_definitions(MUDOCK_UNROLL_FACTOR=${MUDOCK_UNROLL_FACTOR})
 endif()
 if(MUDOCK_DISABLE_UNROLL)
   add_compile_definitions(MUDOCK_DISABLE_UNROLL)
@@ -499,6 +503,10 @@ message(
 message(
   STATUS
     "Disable kernel unrolling............: ${MUDOCK_DISABLE_UNROLL} (MUDOCK_DISABLE_UNROLL)"
+)
+message(
+  STATUS
+    "Kernel unroll factor.................: ${MUDOCK_UNROLL_FACTOR} (MUDOCK_UNROLL_FACTOR)"
 )
 if(NOT MUDOCK_SCORE_GENERATIONS STREQUAL "")
   message(
