@@ -504,10 +504,12 @@ message(
   STATUS
     "Disable kernel unrolling............: ${MUDOCK_DISABLE_UNROLL} (MUDOCK_DISABLE_UNROLL)"
 )
-message(
-  STATUS
-    "Kernel unroll factor.................: ${MUDOCK_UNROLL_FACTOR} (MUDOCK_UNROLL_FACTOR)"
-)
+if(NOT MUDOCK_DISABLE_UNROLL)
+  message(
+    STATUS
+      "Kernel unroll factor.................: ${MUDOCK_UNROLL_FACTOR} (MUDOCK_UNROLL_FACTOR)"
+  )
+endif()
 if(NOT MUDOCK_SCORE_GENERATIONS STREQUAL "")
   message(
     STATUS

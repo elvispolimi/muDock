@@ -12,6 +12,8 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
   command_line_arguments args;
   po::options_description arguments_description("Available options");
   std::size_t seed{};
+  double time_limit_sec{};
+  double observer_sec{};
   arguments_description.add_options()("help", "print this help message");
   arguments_description.add_options()("protein",
                                       po::value(&args.protein_path)->default_value(args.protein_path),
@@ -23,6 +25,14 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
       "use",
       po::value<std::vector<std::string>>(&args.device_confs)->multitoken()->composing(),
       "Map each implementation to the device");
+  arguments_description.add_options()(
+      "time_limit_sec",
+      po::value(&time_limit_sec),
+      "Optional benchmark time limit in seconds; when reached, pending input ligands are discarded");
+  arguments_description.add_options()(
+      "observer",
+      po::value(&observer_sec),
+      "Optional throughput observer interval in seconds");
 
   // define the knobs command line arguments
   po::options_description knobs_description("Virtual Screening Knobs");
@@ -80,6 +90,12 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
   po::notify(vm);
   if (vm.count("seed")) {
     args.knobs.seed = std::optional<size_t>{seed};
+  }
+  if (vm.count("time_limit_sec")) {
+    args.time_limit_sec = std::optional<double>{time_limit_sec};
+  }
+  if (vm.count("observer")) {
+    args.observer = std::optional<double>{observer_sec};
   }
   return args;
 }
