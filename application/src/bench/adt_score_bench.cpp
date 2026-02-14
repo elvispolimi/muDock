@@ -1,8 +1,11 @@
 #include "command_line_args.hpp"
 
+#include <atomic>
 #include <chrono>
+#include <condition_variable>
 #include <fstream>
 #include <memory>
+#include <mutex>
 #include <mudock/compute/manager.hpp>
 #include <mudock/compute/pipeline.hpp>
 #include <mudock/format/reader.hpp>
@@ -10,6 +13,7 @@
 #include <mudock/log.hpp>
 #include <mudock/molecule.hpp>
 #include <mudock/mudock.hpp>
+#include <thread>
 
 int main(int argc, char* argv[]) {
   const auto args = parse_command_line_arguments(argc, argv);
@@ -59,9 +63,101 @@ int main(int argc, char* argv[]) {
   auto output_queue = std::make_shared<mudock::safe_stack<mudock::static_molecule>>();
 
   const auto start = std::chrono::high_resolution_clock::now();
+  std::atomic<std::size_t> dropped_by_timeout{0};
+  std::atomic<bool> timeout_triggered{false};
   {
-    auto threadpool = mudock::threadpool();
-    mudock::manager(args.device_confs, threadpool, args.knobs, input_queue, output_queue, pipe);
+    std::mutex observer_mutex;
+    std::condition_variable observer_cv;
+    bool observer_stop = false;
+    std::thread observer_thread;
+    if (args.observer && *args.observer > 0.0) {
+      mudock::info("Observer enabled with period: ", *args.observer, " s");
+      observer_thread = std::thread([&]() {
+        std::size_t prev_processed = output_queue->size();
+        auto prev_time             = std::chrono::high_resolution_clock::now();
+        while (true) {
+          std::unique_lock<std::mutex> lock(observer_mutex);
+          const bool stop = observer_cv.wait_for(lock,
+                                                 std::chrono::duration<double>(*args.observer),
+                                                 [&]() { return observer_stop; });
+          if (stop) {
+            break;
+          }
+          lock.unlock();
+
+          const auto now                  = std::chrono::high_resolution_clock::now();
+          const std::size_t now_processed = output_queue->size();
+          const std::size_t in_backlog    = input_queue->size();
+
+          const std::chrono::duration<double> dt = now - prev_time;
+          const std::size_t delta_processed       = now_processed - prev_processed;
+          const double inst_throughput =
+              dt.count() > 0.0 ? static_cast<double>(delta_processed) / dt.count() : 0.0;
+          const std::chrono::duration<double> total = now - start;
+          const double avg_throughput =
+              total.count() > 0.0 ? static_cast<double>(now_processed) / total.count() : 0.0;
+
+          mudock::info("Observer: processed=",
+                       now_processed,
+                       ", input_backlog=",
+                       in_backlog,
+                       ", inst_throughput=",
+                       inst_throughput,
+                       " ligands/s, avg_throughput=",
+                       avg_throughput,
+                       " ligands/s");
+
+          prev_processed = now_processed;
+          prev_time      = now;
+        }
+      });
+    }
+
+    std::mutex timer_mutex;
+    std::condition_variable timer_cv;
+    bool timer_cancelled = false;
+    std::thread timer_thread;
+    if (args.time_limit_sec && *args.time_limit_sec > 0.0) {
+      mudock::info("Time limit enabled: ", *args.time_limit_sec, " s");
+      timer_thread = std::thread([&]() {
+        std::unique_lock<std::mutex> lock(timer_mutex);
+        const bool cancelled = timer_cv.wait_for(lock,
+                                                 std::chrono::duration<double>(*args.time_limit_sec),
+                                                 [&]() { return timer_cancelled; });
+        if (cancelled) {
+          return;
+        }
+        lock.unlock();
+        dropped_by_timeout.store(input_queue->clear(), std::memory_order_relaxed);
+        timeout_triggered.store(true, std::memory_order_relaxed);
+        mudock::info("Time limit reached: discarded ",
+                     dropped_by_timeout.load(std::memory_order_relaxed),
+                     " pending ligand(s) from input queue.");
+      });
+    }
+
+    {
+      auto threadpool = mudock::threadpool();
+      mudock::manager(args.device_confs, threadpool, args.knobs, input_queue, output_queue, pipe);
+    } // threadpool destructor waits for workers; computation is complete here
+
+    if (observer_thread.joinable()) {
+      {
+        std::lock_guard<std::mutex> lock(observer_mutex);
+        observer_stop = true;
+      }
+      observer_cv.notify_one();
+      observer_thread.join();
+    }
+
+    if (timer_thread.joinable()) {
+      {
+        std::lock_guard<std::mutex> lock(timer_mutex);
+        timer_cancelled = true;
+      }
+      timer_cv.notify_one();
+      timer_thread.join();
+    }
   }
   const auto end                              = std::chrono::high_resolution_clock::now();
   const std::chrono::duration<double> elapsed = end - start;
@@ -70,6 +166,9 @@ int main(int argc, char* argv[]) {
   for (auto ligand = output_queue->dequeue(); ligand; ligand = output_queue->dequeue()) { ++processed; }
 
   mudock::info("Processed ligands: ", processed);
+  if (timeout_triggered.load(std::memory_order_relaxed)) {
+    mudock::info("Dropped ligands due to timeout: ", dropped_by_timeout.load(std::memory_order_relaxed));
+  }
   mudock::info("Elapsed time: ", elapsed.count(), " s");
   if (elapsed.count() > 0.0) {
     mudock::info("Throughput: ", static_cast<double>(processed) / elapsed.count(), " ligands/s");
