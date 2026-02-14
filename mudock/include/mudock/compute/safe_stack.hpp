@@ -14,7 +14,7 @@ namespace mudock {
 
   private:
     std::vector<std::unique_ptr<value_type>> stack;
-    std::mutex mutex;
+    mutable std::mutex mutex;
 
   public:
     [[nodiscard]] inline auto dequeue() {
@@ -34,6 +34,18 @@ namespace mudock {
         std::lock_guard lock{mutex};
         stack.emplace_back(std::move(new_element));
       }
+    }
+
+    inline std::size_t clear() {
+      std::lock_guard lock{mutex};
+      const std::size_t n = stack.size();
+      stack.clear();
+      return n;
+    }
+
+    [[nodiscard]] inline std::size_t size() const {
+      std::lock_guard lock{mutex};
+      return stack.size();
     }
   };
 
