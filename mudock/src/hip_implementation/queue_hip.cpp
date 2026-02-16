@@ -1,5 +1,5 @@
-#include <mudock/compute/reorder_buffer.hpp>
 #include <mudock/compute/devices_memory.hpp>
+#include <mudock/compute/reorder_buffer.hpp>
 #include <mudock/hip_implementation/hip_utils.hpp>
 #include <mudock/hip_implementation/queue_hip.hpp>
 #include <mudock/log.hpp>
@@ -21,7 +21,7 @@ namespace mudock {
 
       ~device_kernel_lock() noexcept(false) {
         if (event_created) {
-          MUDOCK_CHECK(hipEventDestroy(event));
+          hipEventDestroy(event);
         }
       }
     };
@@ -30,13 +30,13 @@ namespace mudock {
 
     device_kernel_lock* get_kernel_lock(const int dev) {
       hip_kernel_locks.init(dev, std::function<std::unique_ptr<device_kernel_lock>()>([&]() {
-        MUDOCK_CHECK(hipSetDevice(dev));
-        auto lock = std::make_unique<device_kernel_lock>();
-        MUDOCK_CHECK(hipEventCreateWithFlags(&lock->event, hipEventDisableTiming));
-        lock->event_created = true;
-        lock->has_event     = false;
-        return lock;
-      }));
+                              MUDOCK_CHECK(hipSetDevice(dev));
+                              auto lock = std::make_unique<device_kernel_lock>();
+                              MUDOCK_CHECK(hipEventCreateWithFlags(&lock->event, hipEventDisableTiming));
+                              lock->event_created = true;
+                              lock->has_event     = false;
+                              return lock;
+                            }));
       return hip_kernel_locks.v[dev].get_data();
     }
   } // namespace
