@@ -67,7 +67,8 @@ namespace mudock {
     const int local_thread_id  = threadIdx.x;
     const int thread_per_block = blockDim.x;
     const int global_thread_id = local_thread_id + thread_per_block * ligand_id;
-    assert(thread_per_block == warpSize && "Warpsize and the number of thread per block does not coincide");
+    assert(thread_per_block == BLOCK_SIZE && warpSize == BLOCK_SIZE &&
+           "Warpsize and the number of thread per block does not coincide");
 
     const int num_rotamers       = ligand_num_rotamers[ligand_id];
     chromosome* l_chromosomes    = chromosomes + ligand_id * chromosome_number;
@@ -111,7 +112,8 @@ MUDOCK_PRAGMA_UNROLL
     const int local_thread_id  = threadIdx.x;
     const int thread_per_block = blockDim.x;
     const int global_thread_id = local_thread_id + thread_per_block * ligand_id;
-    assert(thread_per_block == warpSize && "Warpsize and the number of thread per block does not coincide");
+    assert(thread_per_block == BLOCK_SIZE && warpSize == BLOCK_SIZE &&
+           "Warpsize and the number of thread per block does not coincide");
 
     const int num_rotamers                      = ligand_num_rotamers[ligand_id];
     chromosome* __restrict__ l_chromosomes      = chromosomes + ligand_id * chromosome_number;
@@ -163,7 +165,8 @@ MUDOCK_PRAGMA_UNROLL
     const int ligand_id        = blockIdx.x;
     const int local_thread_id  = threadIdx.x;
     const int thread_per_block = blockDim.x;
-    assert(thread_per_block == warpSize && "Warpsize and the number of thread per block does not coincide");
+    assert(thread_per_block == BLOCK_SIZE && warpSize == BLOCK_SIZE &&
+           "Warpsize and the number of thread per block does not coincide");
 
     const int num_rotamers                 = ligand_num_rotamers[ligand_id];
     chromosome* __restrict__ l_chromosomes = chromosomes + ligand_id * chromosome_number;
@@ -183,9 +186,9 @@ MUDOCK_PRAGMA_UNROLL
     }
 // Intra warp reduction
 MUDOCK_PRAGMA_UNROLL
-    for (int offset = warpSize / 2; offset > 0; offset /= 2) {
-      const fp_type other_min_score = SHFL_DOWN(BITLANE_MASK, min_score, offset, warpSize);
-      const int other_min_index     = SHFL_DOWN(BITLANE_MASK, min_index, offset, warpSize);
+    for (int offset = BLOCK_SIZE / 2; offset > 0; offset /= 2) {
+      const fp_type other_min_score = SHFL_DOWN(BITLANE_MASK, min_score, offset, BLOCK_SIZE);
+      const int other_min_index     = SHFL_DOWN(BITLANE_MASK, min_index, offset, BLOCK_SIZE);
       if (other_min_score < min_score) {
         min_score = other_min_score;
         min_index = other_min_index;

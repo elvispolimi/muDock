@@ -114,7 +114,8 @@ namespace mudock {
 
     const int ligand_id       = blockIdx.x;
     const int local_thread_id = threadIdx.x;
-    assert(blockDim.x == warpSize && "Warpsize and the number of thread per block does not coincide");
+    assert(blockDim.x == BLOCK_SIZE && warpSize == BLOCK_SIZE &&
+           "Warpsize and the number of thread per block does not coincide");
 
     const int num_atoms    = num_atoms_b[ligand_id];
     const int num_nonbonds = num_nonbonds_b[ligand_id + 1] - num_nonbonds_b[ligand_id];
@@ -146,7 +147,7 @@ namespace mudock {
       // Calculate energy
       fp_type elect_total_trilinear = 0, emap_total_trilinear = 0, dmap_total_trilinear = 0;
 MUDOCK_PRAGMA_UNROLL
-      for (int i = 0; i < MAX_ATOMS; i += warpSize) {
+      for (int i = 0; i < MAX_ATOMS; i += BLOCK_SIZE) {
         const int atom_index = i + threadIdx.x;
         if (atom_index < num_atoms) {
           fp_type coord_tex[3]{ligand_x[atom_index], ligand_y[atom_index], ligand_z[atom_index]};
@@ -265,8 +266,8 @@ MUDOCK_PRAGMA_UNROLL
                              emap_total_trilinear + elect_total_trilinear + dmap_total_trilinear;
 
 MUDOCK_PRAGMA_UNROLL
-      for (int offset = warpSize / 2; offset > 0; offset /= 2) {
-        total_energy += SHFL_DOWN(BITLANE_MASK, total_energy, offset, warpSize);
+      for (int offset = BLOCK_SIZE / 2; offset > 0; offset /= 2) {
+        total_energy += SHFL_DOWN(BITLANE_MASK, total_energy, offset, BLOCK_SIZE);
       }
 
       if (local_thread_id == 0) {
