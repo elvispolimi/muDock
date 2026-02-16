@@ -1,6 +1,7 @@
 #pragma once
 
 #include <mudock/cpp_implementation/chromosome.hpp>
+#include <mudock/hip_implementation/queue_hip.hpp>
 #include <mudock/hip_implementation/hip_utils.hpp>
 #include <mudock/molecule.hpp>
 #include <mudock/type_alias.hpp>
@@ -16,7 +17,7 @@ namespace mudock {
                                                          const fp_type offset_z,
                                                          const int num_atoms) {
     MUDOCK_PRAGMA_UNROLL
-    for (int i = 0; i < MAX_ATOMS; i += warpSize) {
+    for (int i = 0; i < MAX_ATOMS; i += BLOCK_SIZE) {
       const int atom_index = i + threadIdx.x;
       if (atom_index < num_atoms) {
         x[atom_index] += offset_x;
@@ -37,7 +38,7 @@ namespace mudock {
     // compute the molecule center of mass
     fp_type c_x{0}, c_y{0}, c_z{0};
     MUDOCK_PRAGMA_UNROLL
-    for (int i = 0; i < MAX_ATOMS; i += warpSize) {
+    for (int i = 0; i < MAX_ATOMS; i += BLOCK_SIZE) {
       const int atom_index = i + threadIdx.x;
       if (atom_index < num_atoms) {
         c_x += x[atom_index];
@@ -50,14 +51,14 @@ namespace mudock {
     c_z /= num_atoms;
 
     // Intra warp reduction
-    for (int offset = warpSize / 2; offset > 0; offset /= 2) {
-      c_x += SHFL_DOWN(BITLANE_MASK, c_x, offset, warpSize);
-      c_y += SHFL_DOWN(BITLANE_MASK, c_y, offset, warpSize);
-      c_z += SHFL_DOWN(BITLANE_MASK, c_z, offset, warpSize);
+    for (int offset = BLOCK_SIZE / 2; offset > 0; offset /= 2) {
+      c_x += SHFL_DOWN(BITLANE_MASK, c_x, offset, BLOCK_SIZE);
+      c_y += SHFL_DOWN(BITLANE_MASK, c_y, offset, BLOCK_SIZE);
+      c_z += SHFL_DOWN(BITLANE_MASK, c_z, offset, BLOCK_SIZE);
     }
-    c_x = SHFL(BITLANE_MASK, c_x, 0, warpSize);
-    c_y = SHFL(BITLANE_MASK, c_y, 0, warpSize);
-    c_z = SHFL(BITLANE_MASK, c_z, 0, warpSize);
+    c_x = SHFL(BITLANE_MASK, c_x, 0, BLOCK_SIZE);
+    c_y = SHFL(BITLANE_MASK, c_y, 0, BLOCK_SIZE);
+    c_z = SHFL(BITLANE_MASK, c_z, 0, BLOCK_SIZE);
 
     // compute the angles sine and cosine
     const auto rad_x = deg_to_rad(angle_x), rad_y = deg_to_rad(angle_y), rad_z = deg_to_rad(angle_z);
@@ -78,7 +79,7 @@ namespace mudock {
 
     // apply the rotation matrix
     MUDOCK_PRAGMA_UNROLL
-    for (int i = 0; i < MAX_ATOMS; i += warpSize) {
+    for (int i = 0; i < MAX_ATOMS; i += BLOCK_SIZE) {
       const int atom_index = i + threadIdx.x;
       if (atom_index < num_atoms) {
         const auto translated_x = x[atom_index] - c_x, translated_y = y[atom_index] - c_y,
@@ -142,7 +143,7 @@ namespace mudock {
 
     // apply the rotation matrix
     MUDOCK_PRAGMA_UNROLL
-    for (int i = 0; i < MAX_ATOMS; i += warpSize) {
+    for (int i = 0; i < MAX_ATOMS; i += BLOCK_SIZE) {
       const int atom_index = i + threadIdx.x;
       if (atom_index < num_atoms && bitmask[i] != 0) {
         const auto prev_x = x[atom_index], prev_y = y[atom_index], prev_z = z[atom_index];
@@ -172,7 +173,8 @@ namespace mudock {
                             const int* __restrict__ num_atoms_b) {
     const int ligand_id       = blockIdx.x;
     const int local_thread_id = threadIdx.x;
-    assert(blockDim.x == warpSize && "Warpsize and the number of thread per block does not coincide");
+    assert(blockDim.x == BLOCK_SIZE && warpSize == BLOCK_SIZE &&
+           "Warpsize and the number of thread per block does not coincide");
 
     const int num_atoms    = num_atoms_b[ligand_id];
     const int num_rotamers = num_rotamers_b[ligand_id];
@@ -196,7 +198,7 @@ namespace mudock {
 
       // Copy original coordinates
       MUDOCK_PRAGMA_UNROLL
-      for (int i = 0; i < MAX_ATOMS; i += warpSize) {
+      for (int i = 0; i < MAX_ATOMS; i += BLOCK_SIZE) {
         const int atom_index = i + local_thread_id;
         if (atom_index < num_atoms) {
           x_scratch_chromosome[atom_index] = l_original_x[atom_index];
