@@ -49,10 +49,10 @@ namespace mudock {
 #ifdef MUDOCK_KERNEL_LOCK
     auto* lock = get_kernel_lock(this->id);
     std::unique_lock<std::mutex> guard(lock->mutex);
+    if (lock->has_event) {
+      lock->event.wait_and_throw();
+    }
     evt = impl_->get_queue().submit([&](sycl::handler& h) {
-      if (lock->has_event) {
-        h.depends_on(lock->event);
-      }
 #else
     evt = impl_->get_queue().submit([&](sycl::handler& h) {
 #endif
