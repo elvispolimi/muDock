@@ -42,10 +42,11 @@ namespace mudock {
 
     // helper functor that given a random ligand, it will find the index of its cluster
     static constexpr auto get_flattened_index(const int num_atoms) {
-      auto index_atoms = static_cast<std::size_t>(
-          std::count_if(std::begin(atoms_clusters), std::end(atoms_clusters), [&num_atoms](const auto a) {
-            return a <= num_atoms;
-          }));
+      const auto it = std::find_if(
+          std::begin(atoms_clusters), std::end(atoms_clusters), [&num_atoms](const auto a) {
+            return num_atoms <= a;
+          });
+      auto index_atoms = static_cast<std::size_t>(std::distance(std::begin(atoms_clusters), it));
       if (index_atoms >= get_num_atom_clusters()) {
         throw std::runtime_error("Molecule with " + std::to_string(num_atoms) + " atoms, it is too large");
       }
