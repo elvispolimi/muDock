@@ -121,7 +121,7 @@ namespace mudock {
         fp_type elect_total_trilinear = 0;
         fp_type emap_total_trilinear  = 0;
         fp_type dmap_total_trilinear  = 0;
-MUDOCK_PRAGMA_UNROLL
+        MUDOCK_PRAGMA_UNROLL
         for (int atom_index = workitem_id_in_group; atom_index < MAX_ATOMS;
              atom_index += MUDOCK_SYCL_WG_SIZE) {
           if (atom_index < num_atoms) {
@@ -144,7 +144,7 @@ MUDOCK_PRAGMA_UNROLL
               coord_tex[1]            = (coord_tex[1] - minimum[1]) * inv_spacing;
               coord_tex[2]            = (coord_tex[2] - minimum[2]) * inv_spacing;
               const auto& charge      = l_charge[atom_index];
-              const fp_type* atom_map = grid_maps + map_tex_indexes[atom_index];
+              const fp_type* atom_map = grid_maps + l_atom_tex_indexes[atom_index];
 
               const int u0      = coord_tex[0];
               const fp_type p0u = coord_tex[0] - static_cast<fp_type>(u0);
