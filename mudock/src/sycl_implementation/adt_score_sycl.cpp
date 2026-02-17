@@ -37,15 +37,19 @@ namespace mudock {
   }
 
   constexpr int k_max_devices = 16;
-
-  device_memory_array<k_max_devices, sycl_texture_devices> sycl_texture_memory;
+  device_memory_array<k_max_devices, sycl_texture_devices>* get_sycl_texture_memory() {
+    // Intentionally leaked to avoid static destruction after SYCL runtime teardown.
+    static auto* storage = new device_memory_array<k_max_devices, sycl_texture_devices>();
+    return storage;
+  }
 
   void init_device(const int dev,
                    const device_type dev_type,
                    const int map_index_xyz,
                    const fp_type* map_grids) {
     // Thread-safe, exactly-once init per device:
-    sycl_texture_memory.init(dev, dev_type, map_index_xyz, num_autodock_grids(), map_grids);
+    auto* texture_memory = get_sycl_texture_memory();
+    texture_memory->init(dev, dev_type, map_index_xyz, num_autodock_grids(), map_grids);
   }
 
   template<int MAX_ATOMS>
@@ -282,7 +286,7 @@ MUDOCK_PRAGMA_UNROLL
                                                    map_index_x,
                                                    map_index_xy,
                                                    map_index_xyz,
-                                                   sycl_texture_memory.v[dev_id].data->tex_dev,
+                                                   get_sycl_texture_memory()->v[dev_id].data->tex_dev,
                                                    map_offsets_b,
                                                    scores_b);
         },
