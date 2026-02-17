@@ -57,9 +57,6 @@ int main(int argc, char* argv[]) {
 
   mudock::info("Running score-only benchmark ...");
   mudock::info("Scores per ligand (population): ", args.knobs.population_number);
-#ifdef MUDOCK_SCORE_GENERATIONS
-  mudock::info("Score generations (macro): ", MUDOCK_SCORE_GENERATIONS);
-#endif
 
   mudock::adt_score_pipeline pipe{protein};
   auto output_queue = std::make_shared<mudock::safe_stack<mudock::static_molecule>>();
