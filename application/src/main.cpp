@@ -144,17 +144,7 @@ int main(int argc, char* argv[]) {
     {
       auto threadpool = mudock::threadpool();
       mudock::manager(args.device_confs, threadpool, args.knobs, input_queue, output_queue, pipe);
-      mudock::info("All workers have been created!");
     } // threadpool destructor waits for workers; computation is complete here
-
-    if (timer_thread.joinable()) {
-      {
-        std::lock_guard<std::mutex> lock(timer_mutex);
-        timer_cancelled = true;
-      }
-      timer_cv.notify_one();
-      timer_thread.join();
-    }
 
     if (observer_thread.joinable()) {
       {
@@ -163,6 +153,15 @@ int main(int argc, char* argv[]) {
       }
       observer_cv.notify_one();
       observer_thread.join();
+    }
+
+    if (timer_thread.joinable()) {
+      {
+        std::lock_guard<std::mutex> lock(timer_mutex);
+        timer_cancelled = true;
+      }
+      timer_cv.notify_one();
+      timer_thread.join();
     }
   } // when we exit from this block the computation is complete
 

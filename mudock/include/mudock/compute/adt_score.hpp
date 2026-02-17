@@ -174,6 +174,7 @@ namespace mudock {
       // Bind to the kernel function
       const auto expected_scratch_elements =
           static_cast<std::size_t>(scores_per_ligand) * static_cast<std::size_t>(tot_atoms_in_batch);
+      (void) expected_scratch_elements;
       assert((*this->scratch).template get<buffer_data_type::X_SCRATCH>().num_elements() ==
                  expected_scratch_elements &&
              "Number of scores per ligand does not match the allocated coordinates space");
