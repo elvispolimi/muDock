@@ -196,6 +196,7 @@ if(MUDOCK_ENABLE_SYCL)
     "${header_path}/${header_prefix}/sycl_implementation/sycl_texture.hpp"
     "${header_path}/${header_prefix}/sycl_implementation/adt_score_sycl.hpp"
     "${header_path}/${header_prefix}/sycl_implementation/queue_sycl_impl.hpp"
+    "${header_path}/${header_prefix}/sycl_implementation/sycl_kernel_lock.hpp"
     "${header_path}/${header_prefix}/sycl_implementation/invoke_kernel_sycl.hpp"
     "${header_path}/${header_prefix}/sycl_implementation/mutate.hpp"
     "${header_path}/${header_prefix}/sycl_implementation/sycl_random.hpp"
@@ -209,6 +210,7 @@ if(MUDOCK_ENABLE_SYCL)
       "${source_path}/sycl_implementation/geom_transform_sycl.cpp"
       "${source_path}/sycl_implementation/sycl_random.cpp"
       "${source_path}/sycl_implementation/genetic_sycl.cpp"
+      "${source_path}/sycl_implementation/sycl_kernel_lock.cpp"
   )
 endif()
 
