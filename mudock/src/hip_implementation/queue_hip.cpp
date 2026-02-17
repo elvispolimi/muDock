@@ -11,7 +11,7 @@
 namespace mudock {
 #ifdef MUDOCK_KERNEL_LOCK
   namespace {
-    constexpr int k_max_devices = 16;
+    constexpr int k_max_devices_kernel_lock = 16;
 
     struct device_kernel_lock {
       std::mutex mutex;
@@ -26,7 +26,7 @@ namespace mudock {
       }
     };
 
-    device_memory_array<k_max_devices, device_kernel_lock> hip_kernel_locks;
+    device_memory_array<k_max_devices_kernel_lock, device_kernel_lock> hip_kernel_locks;
 
     device_kernel_lock* get_kernel_lock(const int dev) {
       hip_kernel_locks.init(dev, std::function<std::unique_ptr<device_kernel_lock>()>([&]() {
