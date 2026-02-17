@@ -81,7 +81,7 @@ namespace mudock {
     auto* lock = get_kernel_lock(impl_->device_id);
     std::unique_lock<std::mutex> guard(lock->mutex);
     if (lock->has_event) {
-      MUDOCK_CHECK(hipStreamWaitEvent(impl_->stream, lock->event, 0));
+      MUDOCK_CHECK(hipEventSynchronize(lock->event));
     }
 #endif
 
