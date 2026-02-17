@@ -75,6 +75,8 @@ namespace mudock {
           case adt_mol2_state::NONE:
             if (line.find(adt_mol2_tokens::MOLECULE_TOKEN) != std::string::npos) {
               state = adt_mol2_state::MOLECULE;
+              std::getline(desc, line);
+              molecule.properties.assign(property_type::NAME, line);
             }
             break;
           case adt_mol2_state::MOLECULE:
