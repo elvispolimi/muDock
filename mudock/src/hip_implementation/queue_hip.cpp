@@ -21,7 +21,7 @@ namespace mudock {
 
       ~device_kernel_lock() noexcept(false) {
         if (event_created) {
-          hipEventDestroy(event);
+          (void) hipEventDestroy(event); // best-effort at teardown; runtime may already be shutdown
         }
       }
     };
