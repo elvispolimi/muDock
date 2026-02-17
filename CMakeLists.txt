@@ -191,7 +191,6 @@ endif()
 option(MUDOCK_ENABLE_SYCL "Enable the SYCL kernel implementation" OFF)
 set(MUDOCK_SYCL_EXTRA_LINK_FLAGS "" CACHE STRING "Extra SYCL link flags appended to the clang++ link step")
 set(MUDOCK_SYCL_WG_SIZE "" CACHE STRING "SYCL work-group size override for kernels (e.g. 32 or 64)")
-set(MUDOCK_SCORE_GENERATIONS "" CACHE STRING "Score kernel generations (optional integer)")
 set(MUDOCK_ADT_BUCKET_OVERRIDE "" CACHE STRING "Override ADT score bucket size (optional integer)")
 set(MUDOCK_ADT_BUCKET_MULTIPLE_OVERRIDE "" CACHE STRING "Override ADT score bucket multiple (optional integer)")
 option(MUDOCK_DISABLE_UNROLL "Disable kernel loop unrolling" OFF)
@@ -266,9 +265,6 @@ if(MUDOCK_ENABLE_SYCL)
   endif()
 endif()
 
-if(NOT MUDOCK_SCORE_GENERATIONS STREQUAL "")
-  add_compile_definitions(MUDOCK_SCORE_GENERATIONS=${MUDOCK_SCORE_GENERATIONS})
-endif()
 if(NOT MUDOCK_ADT_BUCKET_OVERRIDE STREQUAL "")
   add_compile_definitions(MUDOCK_ADT_BUCKET_OVERRIDE=${MUDOCK_ADT_BUCKET_OVERRIDE})
 endif()
@@ -508,12 +504,6 @@ if(NOT MUDOCK_DISABLE_UNROLL)
   message(
     STATUS
       "Kernel unroll factor.................: ${MUDOCK_UNROLL_FACTOR} (MUDOCK_UNROLL_FACTOR)"
-  )
-endif()
-if(NOT MUDOCK_SCORE_GENERATIONS STREQUAL "")
-  message(
-    STATUS
-      "Score generations....................: ${MUDOCK_SCORE_GENERATIONS} (MUDOCK_SCORE_GENERATIONS)"
   )
 endif()
 if(NOT MUDOCK_ADT_BUCKET_OVERRIDE STREQUAL "")
