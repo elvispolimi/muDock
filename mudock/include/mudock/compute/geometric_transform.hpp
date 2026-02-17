@@ -114,6 +114,7 @@ namespace mudock {
           std::max(1, static_cast<int>((*this->scratch).configuration.population_number));
       const auto expected_chromosomes =
           static_cast<std::size_t>(batch_ligands) * static_cast<std::size_t>(chromsomes_per_ligand);
+      (void) expected_chromosomes;
       assert((*this->scratch).template get<buffer_data_type::CHROMOSOMES>().num_elements() ==
                  expected_chromosomes &&
              "Chromosomes buffer not allocated before geom transform construction");
