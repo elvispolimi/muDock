@@ -1,10 +1,10 @@
 #pragma once
 
+#include <cassert>
 #include <mudock/cpp_implementation/chromosome.hpp>
 #include <mudock/molecule.hpp>
 #include <mudock/type_alias.hpp>
 #include <mudock/utils.hpp>
-#include <cassert>
 
 namespace mudock {
   template<int MAX_ATOMS>
@@ -15,8 +15,8 @@ namespace mudock {
                                                           const fp_type offset_y,
                                                           const fp_type offset_z,
                                                           const int num_atoms) {
-MUDOCK_PRAGMA_UNROLL(MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, BLOCK_SIZE))
-    for (int i = threadIdx.x; i < MAX_ATOMS; i += warpSize) {
+    MUDOCK_PRAGMA_UNROLL(MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, BLOCK_SIZE))
+    for (int i = threadIdx.x; i < MAX_ATOMS; i += BLOCK_SIZE) {
       if (i < num_atoms) {
         x[i] += offset_x;
         y[i] += offset_y;
@@ -35,8 +35,8 @@ MUDOCK_PRAGMA_UNROLL(MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, BLOCK_SIZE))
                                                        const int num_atoms) {
     // compute the molecule center of mass
     fp_type c_x{0}, c_y{0}, c_z{0};
-MUDOCK_PRAGMA_UNROLL(MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, BLOCK_SIZE))
-    for (int i = threadIdx.x; i < MAX_ATOMS; i += warpSize) {
+    MUDOCK_PRAGMA_UNROLL(MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, BLOCK_SIZE))
+    for (int i = threadIdx.x; i < MAX_ATOMS; i += BLOCK_SIZE) {
       if (i < num_atoms) {
         c_x += x[i];
         c_y += y[i];
@@ -48,7 +48,8 @@ MUDOCK_PRAGMA_UNROLL(MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, BLOCK_SIZE))
     c_z /= num_atoms;
 
     // Intra warp reduction
-    for (int offset = warpSize / 2; offset > 0; offset /= 2) {
+    MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
+    for (int offset = BLOCK_SIZE / 2; offset > 0; offset /= 2) {
       c_x += __shfl_down_sync(0xffffffff, c_x, offset);
       c_y += __shfl_down_sync(0xffffffff, c_y, offset);
       c_z += __shfl_down_sync(0xffffffff, c_z, offset);
@@ -74,9 +75,9 @@ MUDOCK_PRAGMA_UNROLL(MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, BLOCK_SIZE))
     const auto m21 = sx * cy;
     const auto m22 = cx * cy;
 
-// apply the rotation matrix
-MUDOCK_PRAGMA_UNROLL(MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, BLOCK_SIZE))
-    for (int i = threadIdx.x; i < MAX_ATOMS; i += warpSize) {
+    // apply the rotation matrix
+    MUDOCK_PRAGMA_UNROLL(MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, BLOCK_SIZE))
+    for (int i = threadIdx.x; i < MAX_ATOMS; i += BLOCK_SIZE) {
       if (i < num_atoms) {
         const auto translated_x = x[i] - c_x, translated_y = y[i] - c_y, translated_z = z[i] - c_z;
         x[i] = translated_x * m00 + translated_y * m01 + translated_z * m02 + +c_x;
@@ -137,9 +138,9 @@ MUDOCK_PRAGMA_UNROLL(MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, BLOCK_SIZE))
     const auto m23 =
         ((origz * (u2 + v2) - w * (origx * u + origy * v)) * one_minus_c + (origx * v - origy * u) * ls) / l2;
 
-// apply the rotation matrix
-MUDOCK_PRAGMA_UNROLL(MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, BLOCK_SIZE))
-    for (int i = threadIdx.x; i < MAX_ATOMS; i += warpSize) {
+    // apply the rotation matrix
+    MUDOCK_PRAGMA_UNROLL(MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, BLOCK_SIZE))
+    for (int i = threadIdx.x; i < MAX_ATOMS; i += BLOCK_SIZE) {
       if (i < num_atoms && bitmask[i] != 0) {
         const auto prev_x = x[i], prev_y = y[i], prev_z = z[i];
         x[i] = prev_x * m00 + prev_y * m01 + prev_z * m02 + m03;
@@ -166,8 +167,8 @@ MUDOCK_PRAGMA_UNROLL(MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, BLOCK_SIZE))
                              const int* __restrict__ num_rotamers_b,
                              const int* __restrict__ num_atoms_b) {
     assert(blockDim.x == warpSize && "apply_cuda requires blockDim.x == warpSize");
-    const int ligand_id        = blockIdx.x;
-    const int local_thread_id  = threadIdx.x;
+    const int ligand_id       = blockIdx.x;
+    const int local_thread_id = threadIdx.x;
 
     const int num_atoms    = num_atoms_b[ligand_id];
     const int num_rotamers = num_rotamers_b[ligand_id];
@@ -188,9 +189,9 @@ MUDOCK_PRAGMA_UNROLL(MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, BLOCK_SIZE))
       fp_type* __restrict__ x_scratch_chromosome = l_scratch_x + chromosome_index * atom_stride;
       fp_type* __restrict__ y_scratch_chromosome = l_scratch_y + chromosome_index * atom_stride;
       fp_type* __restrict__ z_scratch_chromosome = l_scratch_z + chromosome_index * atom_stride;
-// Copy original coordinates
-MUDOCK_PRAGMA_UNROLL(MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, BLOCK_SIZE))
-      for (int atom_index = local_thread_id; atom_index < MAX_ATOMS; atom_index += warpSize) {
+      // Copy original coordinates
+      MUDOCK_PRAGMA_UNROLL(MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, BLOCK_SIZE))
+      for (int atom_index = local_thread_id; atom_index < MAX_ATOMS; atom_index += BLOCK_SIZE) {
         if (atom_index < num_atoms) {
           x_scratch_chromosome[atom_index] = l_original_x[atom_index];
           y_scratch_chromosome[atom_index] = l_original_y[atom_index];
@@ -213,8 +214,8 @@ MUDOCK_PRAGMA_UNROLL(MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, BLOCK_SIZE))
                                       l_chromosomes[5],
                                       num_atoms);
 
-// change the molecule shape
-MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
+      // change the molecule shape
+      MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
       for (int i = 0; i < num_rotamers; ++i) {
         const int* bitmask = l_fragments + i * num_atoms;
         rotate_fragment_cuda<MAX_ATOMS>(x_scratch_chromosome,
