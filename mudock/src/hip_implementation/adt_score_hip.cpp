@@ -146,7 +146,7 @@ namespace mudock {
 
       // Calculate energy
       fp_type elect_total_trilinear = 0, emap_total_trilinear = 0, dmap_total_trilinear = 0;
-MUDOCK_PRAGMA_UNROLL
+MUDOCK_PRAGMA_UNROLL(MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, BLOCK_SIZE))
       for (int i = 0; i < MAX_ATOMS; i += BLOCK_SIZE) {
         const int atom_index = i + threadIdx.x;
         if (atom_index < num_atoms) {
@@ -265,7 +265,7 @@ MUDOCK_PRAGMA_UNROLL
       fp_type total_energy = emap_total_eintcal + elect_total_eintcal + dmap_total_eintcal +
                              emap_total_trilinear + elect_total_trilinear + dmap_total_trilinear;
 
-MUDOCK_PRAGMA_UNROLL
+MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
       for (int offset = BLOCK_SIZE / 2; offset > 0; offset /= 2) {
         total_energy += SHFL_DOWN(BITLANE_MASK, total_energy, offset, BLOCK_SIZE);
       }

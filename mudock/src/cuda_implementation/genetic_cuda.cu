@@ -84,11 +84,11 @@ namespace mudock {
     for (int chromosome_index = local_thread_id; chromosome_index < chromosome_number;
          chromosome_index += thread_per_block) {
       chromosome& chromo = *(l_chromosomes + chromosome_index);
-#pragma unroll
+      MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
       for (int i{0}; i < 3; ++i) { // initialize the rigid translation
         chromo[i] = get_init_change_distribution(l_state) * coordinate_step;
       }
-#pragma unroll
+      MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
       for (int i{3}; i < 6 + num_rotamers; ++i) { // initialize the rotations
         chromo[i] = get_init_change_distribution(l_state) * angle_step;
       }
@@ -142,12 +142,12 @@ namespace mudock {
       for (int i = 0; i < (6 + num_rotamers); ++i) { dst[i] = (i < split_index) ? p1[i] : p2[i]; }
 
 // mutate the offspring
-#pragma unroll
+      MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
       for (int i{0}; i < 3; ++i) {
         if (get_mutation_coin_distribution(l_state) < mutation_prob)
           next_chromosome[i] += get_mutation_change_distribution(l_state) * coordinate_step;
       }
-#pragma unroll
+      MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
       for (int i{3}; i < 6 + num_rotamers; ++i) {
         if (get_mutation_coin_distribution(l_state) < mutation_prob) {
           next_chromosome[i] += get_mutation_change_distribution(l_state) * angle_step;
@@ -184,7 +184,7 @@ namespace mudock {
       }
     }
 // Intra warp reduction
-#pragma unroll
+    MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
     for (int offset = BLOCK_SIZE / 2; offset > 0; offset /= 2) {
       const fp_type other_min_score = __shfl_down_sync(0xFFFFFFFF, min_score, offset);
       const int other_min_index     = __shfl_down_sync(0xFFFFFFFF, min_index, offset);
