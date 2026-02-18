@@ -19,7 +19,7 @@ namespace mudock {
       std::mutex mutex;
       cudaEvent_t event{};
       bool event_created{false};
-      bool has_event{false};
+      bool has_previous_event{false};
 
       ~device_kernel_lock() noexcept(false) {
         if (event_created) {
@@ -36,7 +36,7 @@ namespace mudock {
                                auto lock = std::make_unique<device_kernel_lock>();
                                MUDOCK_CHECK(cudaEventCreateWithFlags(&lock->event, cudaEventDisableTiming));
                                lock->event_created = true;
-                               lock->has_event     = false;
+                               lock->has_previous_event = false;
                                return lock;
                              }));
       return cuda_kernel_locks.v[dev].get_data();
@@ -82,7 +82,8 @@ namespace mudock {
 #ifdef MUDOCK_KERNEL_LOCK
     auto* lock = get_kernel_lock(impl_->device_id);
     std::unique_lock<std::mutex> guard(lock->mutex);
-    if (lock->has_event) {
+    if (lock->has_previous_event) {
+      // Cross-stream dependency on the previous kernel recorded for this device.
       MUDOCK_CHECK(cudaStreamWaitEvent(impl_->stream, lock->event, 0));
     }
 #endif
@@ -92,7 +93,7 @@ namespace mudock {
 
 #ifdef MUDOCK_KERNEL_LOCK
     MUDOCK_CHECK(cudaEventRecord(lock->event, impl_->stream));
-    lock->has_event = true;
+    lock->has_previous_event = true;
 #endif
   };
   void queue_cuda::launch_kernel(void* f, void* args[], const int gridDim, const int blockDim) {
