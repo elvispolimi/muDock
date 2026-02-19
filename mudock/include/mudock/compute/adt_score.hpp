@@ -172,8 +172,10 @@ namespace mudock {
 
       // TODO ask Davide about this performance
       // Bind to the kernel function
+      const auto expected_scratch_elements =
+          static_cast<std::size_t>(scores_per_ligand) * static_cast<std::size_t>(tot_atoms_in_batch);
       assert((*this->scratch).template get<buffer_data_type::X_SCRATCH>().num_elements() ==
-                 (scores_per_ligand * tot_atoms_in_batch) &&
+                 expected_scratch_elements &&
              "Number of scores per ligand does not match the allocated coordinates space");
 
       const int *num_atoms_b = (*this->scratch).template get<buffer_data_type::NUM_ATOMS>().dev_pointer();

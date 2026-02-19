@@ -26,10 +26,10 @@ constexpr void constexpr_switch(F&& f, T value) {
 template<auto Start, auto End, auto Inc, class T, class V, class F>
 constexpr void constexpr_switch_bucket(F&& f, T value, V* values) {
   if constexpr (Start < End) {
-    if (static_cast<T>(values[Start]) <= value)
+    if (value <= static_cast<T>(values[Start]))
       f(std::integral_constant<decltype(Start), Start>());
     else
-      constexpr_switch<Start + Inc, End, Inc>(f, value);
+      constexpr_switch_bucket<Start + Inc, End, Inc>(f, value, values);
   }
 }
 

@@ -35,7 +35,9 @@ int main(int argc, char* argv[]) {
 
         mudock::info("Parsing ", ligands_description.size(), " ligand(s) ...");
         if constexpr (format == mudock::supported_format::ADTMOL2) {
+#ifdef _OPENMP
 #pragma omp parallel for shared(input_queue)
+#endif
           for (const auto& description: ligands_description) {
             auto ligand = std::make_unique<mudock::static_molecule>(
                 mudock::parser<mudock::supported_format::ADTMOL2, mudock::static_molecule>(description));
