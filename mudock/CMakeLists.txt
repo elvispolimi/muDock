@@ -75,6 +75,9 @@ list(
   "${header_path}/${header_prefix}/molecule/graph.hpp"
   "${header_path}/${header_prefix}/molecule/properties.hpp"
   "${header_path}/${header_prefix}/molecule/property_table.hpp"
+  "${header_path}/${header_prefix}/tbb_implementation/stream_filter.hpp"
+  "${header_path}/${header_prefix}/tbb_implementation/parser_filter.hpp"
+  "${header_path}/${header_prefix}/tbb_implementation/tbb_pipeline.hpp"
   "${header_path}/${header_prefix}/batch.hpp"
   "${header_path}/${header_prefix}/chem.hpp"
   "${header_path}/${header_prefix}/compute.hpp"
@@ -120,6 +123,9 @@ list(
   "${source_path}/cpp_implementation/geom_transform_cpp.cpp"
   "${source_path}/cpp_implementation/adt_score_cpp.cpp"
   "${source_path}/cpp_implementation/genetic_cpp.cpp"
+  "${source_path}/tbb_implementation/stream_filter.cpp"
+  "${source_path}/tbb_implementation/parser_filter.cpp"
+  "${source_path}/tbb_implementation/tbb_pipeline.cpp"
 )
 if(MUDOCK_ENABLE_GH)
   list(APPEND source_files
@@ -246,6 +252,7 @@ endif()
 # ##############################################################################
 
 # declare the mudock library
+find_package(TBB REQUIRED)
 add_library(libmudock STATIC ${source_files} ${header_files})
 add_library(mudock::libmudock ALIAS libmudock)
 set_target_properties(libmudock PROPERTIES PUBLIC_HEADER "${headers}")
@@ -259,7 +266,7 @@ set_target_properties(
              CXX_EXTENSIONS OFF
              POSITION_INDEPENDENT_CODE ON)
 target_link_libraries(libmudock PUBLIC Microsoft.GSL::GSL Boost::graph
-                                       ${OpenBabel3_LIBRARIES})
+                                       ${OpenBabel3_LIBRARIES} TBB::tbb)
 target_include_directories(libmudock SYSTEM PRIVATE ${Boost_INCLUDE_DIR})
 if(NOT MUDOCK_ENABLE_OMP)
   target_compile_options(libmudock PRIVATE -Wno-unknown-pragmas)

@@ -48,15 +48,17 @@ namespace mudock {
           rob(rb),
           pipeline(std::move(_pipeline)) {}
 
+    // We could also consider to make this function templated to enable blocking/non-blocking queue    
+    // For now this is only a blocking queue
     void main() {
       // process the input ligands
-      auto new_ligand = input_stack->dequeue();
+      auto new_ligand = input_stack->dequeue_wait();
       while (new_ligand) {
         auto [new_batch, is_valid] = rob->add_ligand(std::move(new_ligand));
         if (is_valid) {
           process(new_batch);
         }
-        new_ligand = input_stack->dequeue();
+        new_ligand = input_stack->dequeue_wait();
       }
 
       // finish the half empty batches in the rob

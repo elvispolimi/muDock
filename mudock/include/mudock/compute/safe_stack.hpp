@@ -1,5 +1,6 @@
 #pragma once
 
+#include <condition_variable>
 #include <cstdint>
 #include <memory>
 #include <mutex>
@@ -15,8 +16,11 @@ namespace mudock {
   private:
     std::vector<std::unique_ptr<value_type>> stack;
     mutable std::mutex mutex;
+    std::condition_variable cv;
+    bool closed = false;
 
   public:
+    // non-blocking dequeue, return nullptr if the stack is empty
     [[nodiscard]] inline auto dequeue() {
       auto new_element = std::unique_ptr<value_type>{};
       {
@@ -29,11 +33,34 @@ namespace mudock {
       return new_element;
     }
 
-    inline void enqueue(std::unique_ptr<value_type> new_element) {
-      if (new_element) {
+    // blocking dequeue, return nullptr if the stack is empty and closed
+    std::unique_ptr<value_type> dequeue_wait() {
+      std::unique_lock lock{mutex};
+      // release the lock and reacquire that based on the condition
+      cv.wait(lock, [&]{ return closed || !stack.empty(); });
+      if (stack.empty()) return {};
+      auto p = std::move(stack.back());
+      stack.pop_back();
+      return p;
+    }
+
+    void enqueue(std::unique_ptr<value_type> p) {
+      if (!p) return;
+      {
         std::lock_guard lock{mutex};
-        stack.emplace_back(std::move(new_element));
+        if (closed) return;
+        stack.emplace_back(std::move(p));
       }
+      cv.notify_one();
+    }
+
+    // close the stack, i.e., no more element will be enqueued
+    void close() {
+      {
+        std::lock_guard lock{mutex};
+        closed = true;
+      }
+      cv.notify_all();
     }
 
     inline std::size_t clear() {
