@@ -9,7 +9,8 @@
 #include <mudock/compute/parse_ids.hpp>
 #include <mudock/compute/pipeline.hpp>
 #include <mudock/compute/queue.hpp>
-#include <mudock/compute/safe_stack.hpp>
+#include <mudock/compute/safe_queue.hpp>
+// #include <mudock/compute/safe_stack.hpp>
 #include <mudock/compute/scratchpad.hpp>
 #include <mudock/compute/stage.hpp>
 #include <mudock/compute/threadpool.hpp>
@@ -30,8 +31,8 @@ namespace mudock {
   inline void launch_worker_cpu(const knobs& knobs,
                                 const std::vector<std::string>& parts,
                                 threadpool& pool,
-                                std::shared_ptr<safe_stack<static_molecule>>& input_molecules,
-                                std::shared_ptr<safe_stack<static_molecule>>& output_molecules,
+                                std::shared_ptr<safe_queue<static_molecule>>& input_molecules,
+                                std::shared_ptr<safe_queue<static_molecule>>& output_molecules,
                                 pipeline_t& pipe) {
     auto device_scratch = std::make_shared<scratchpad<queue_type>>(knobs, 0, device_type::CPU);
     auto q_b            = device_scratch->get_queue();
@@ -55,8 +56,8 @@ namespace mudock {
   inline void launch_worker_gpu(const knobs& knobs,
                                 const std::vector<std::string>& parts,
                                 threadpool& pool,
-                                std::shared_ptr<safe_stack<static_molecule>>& input_molecules,
-                                std::shared_ptr<safe_stack<static_molecule>>& output_molecules,
+                                std::shared_ptr<safe_queue<static_molecule>>& input_molecules,
+                                std::shared_ptr<safe_queue<static_molecule>>& output_molecules,
                                 pipeline_t& pipe) {
     const std::size_t workers_per_device =
         (parts.size() > 3) ? std::stoul(parts[3]) : static_cast<std::size_t>(2);
@@ -92,8 +93,8 @@ namespace mudock {
   void manager(const std::vector<std::string>& configurations,
                threadpool& pool,
                const knobs knobs,
-               std::shared_ptr<safe_stack<static_molecule>>& input_molecules,
-               std::shared_ptr<safe_stack<static_molecule>>& output_molecules,
+               std::shared_ptr<safe_queue<static_molecule>>& input_molecules,
+               std::shared_ptr<safe_queue<static_molecule>>& output_molecules,
                pipeline_t& pipe) {
     for (auto& configuration: configurations) {
       std::vector<std::string> parts;

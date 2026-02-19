@@ -2,7 +2,8 @@
 
 #include <memory>
 #include <mudock/compute/reorder_buffer.hpp>
-#include <mudock/compute/safe_stack.hpp>
+#include <mudock/compute/safe_queue.hpp>
+// #include <mudock/compute/safe_stack.hpp>
 #include <mudock/compute/stage.hpp>
 #include <mudock/compute/threadpool.hpp>
 #include <mudock/cpp_implementation/vectorization.hpp>
@@ -16,8 +17,8 @@ namespace mudock {
   template<typename stage_t>
   class worker: public worker_interface {
     // this a reference to the input and output queues
-    std::shared_ptr<safe_stack<static_molecule>> input_stack;
-    std::shared_ptr<safe_stack<static_molecule>> output_stack;
+    std::shared_ptr<safe_queue<static_molecule>> input_stack;
+    std::shared_ptr<safe_queue<static_molecule>> output_stack;
 
     // this is a reoder buffer that we can use to fetch baches of ligands out of order
     std::shared_ptr<reorder_buffer<static_molecule>> rob;
@@ -33,13 +34,17 @@ namespace mudock {
       } catch (const std::runtime_error& e) { error("Unable to virtual screen a batch due to ", e.what()); }
 
       for (auto& batch_ligand: std::span(b.molecules.data(), b.num_ligands)) {
-        output_stack->enqueue(std::make_unique<static_molecule>(std::move(*batch_ligand)));
+        bool is_stored = false;
+        output_stack->enqueue(batch_ligand, is_stored);
+        assert(is_stored);
+        // Used if using safe_stack instead of safe_queue
+        // output_stack->enqueue(std::make_unique<static_molecule>(std::move(*batch_ligand)));
       }
     }
 
   public:
-    worker(std::shared_ptr<safe_stack<static_molecule>>& input_molecules,
-           std::shared_ptr<safe_stack<static_molecule>>& output_molecules,
+    worker(std::shared_ptr<safe_queue<static_molecule>>& input_molecules,
+           std::shared_ptr<safe_queue<static_molecule>>& output_molecules,
            std::shared_ptr<reorder_buffer<static_molecule>> rb,
            // const std::size_t cpu_id,
            stage_t&& _pipeline)
@@ -48,16 +53,30 @@ namespace mudock {
           rob(rb),
           pipeline(std::move(_pipeline)) {}
 
+    // We could also consider to make this function templated to enable blocking/non-blocking queue
+    // For now this is only a blocking queue
     void main() {
       // process the input ligands
-      auto new_ligand = input_stack->dequeue();
-      while (new_ligand) {
-        auto [new_batch, is_valid] = rob->add_ligand(std::move(new_ligand));
-        if (is_valid) {
-          process(new_batch);
+      bool is_retrieved = false;
+      do {
+        auto new_ligand = input_stack->dequeue(is_retrieved);
+        if (is_retrieved) {
+          auto [new_batch, is_valid] = rob->add_ligand(std::move(new_ligand));
+          if (is_valid) {
+            process(new_batch);
+          }
         }
-        new_ligand = input_stack->dequeue();
-      }
+      } while (is_retrieved);
+
+      // Used if using safe_stack instead of safe_queue
+      // auto new_ligand = input_stack->dequeue_wait();
+      // while (new_ligand) {
+      //   auto [new_batch, is_valid] = rob->add_ligand(std::move(new_ligand));
+      //   if (is_valid) {
+      //     process(new_batch);
+      //   }
+      //   new_ligand = input_stack->dequeue_wait();
+      // }
 
       // finish the half empty batches in the rob
       auto rob_is_empty = false;
