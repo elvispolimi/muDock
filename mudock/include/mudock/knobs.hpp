@@ -12,6 +12,7 @@ namespace mudock {
     std::size_t tournament_length                      = 10;
     fp_type mutation_prob                              = fp_type{0.01};
     std::optional<std::size_t> seed                    = std::optional<std::size_t>{};
+    std::size_t max_tbb_tokens                         = 4;
   };
 
 } // namespace mudock

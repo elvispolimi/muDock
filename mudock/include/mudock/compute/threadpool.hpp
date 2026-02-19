@@ -25,13 +25,7 @@ namespace mudock {
     threadpool(const threadpool&)            = delete;
     threadpool& operator=(threadpool&&)      = default;
     threadpool& operator=(const threadpool&) = delete;
-    ~threadpool() {
-      for (auto& thread: threads) {
-        if (thread.joinable()) {
-          thread.join();
-        }
-      }
-    }
+    ~threadpool() { wait(); }
 
     template<class worker_type>
     inline void add_worker(worker_type wt) {
@@ -41,6 +35,14 @@ namespace mudock {
       // TODO check me if it works
       // threads.emplace_back(std::thread([&wt]() mutable { wt.main(); }));
       threads.emplace_back(&worker_type::main, std::move(wt));
+    }
+
+    inline void wait() {
+      for (auto& thread: threads) {
+        if (thread.joinable()) {
+          thread.join();
+        }
+      }
     }
   };
 

@@ -79,6 +79,13 @@ if(MUDOCK_ENABLE_IPO)
     message(WARNING "IPO is not supported: ${ipo_output}")
   endif()
 endif()
+
+#MPI
+option(MUDOCK_ENABLE_MPI "Enable MPI support" OFF)
+if(MUDOCK_ENABLE_MPI)
+  find_package(MPI REQUIRED COMPONENTS CXX)
+endif()
+
 # HIP
 option(MUDOCK_ENABLE_HIP "Enable the HIP kernel implementation" OFF)
 
@@ -621,6 +628,11 @@ if(MUDOCK_ENABLE_OMP_OFFLOAD)
   message(
     STATUS "Target OpenMP architecture..........: ${OMP_TARGET} (OMP_TARGET)")
 endif()
+
+message(
+  STATUS
+    "Enable MPI..........................: ${MUDOCK_ENABLE_MPI} (MUDOCK_ENABLE_MPI)"
+)
 
 message(STATUS "//===---------------------------===//")
 message(STATUS "")
