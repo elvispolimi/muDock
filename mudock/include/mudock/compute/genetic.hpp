@@ -2,8 +2,10 @@
 
 #include "mudock/knobs.hpp"
 
+#include <algorithm>
 #include <concepts>
 #include <memory>
+#include <numeric>
 #include <mudock/batch.hpp>
 #include <mudock/chem/autodock_protein.hpp>
 #ifndef __CUDACC__
@@ -162,6 +164,27 @@ namespace mudock {
       mem += scoring_t<queue_t>::get_ligand_mem(max_atoms, conf);
       mem += geometric<queue_t>::get_ligand_mem(max_atoms, conf);
       return mem;
+    }
+
+    static int get_batch_size(const int atoms,
+                              std::shared_ptr<queue_t> q,
+                              const knobs& conf,
+                              const size_t max_bucket_size) {
+      const int score_bucket = std::max(1, scoring_t<queue_t>::get_batch_size(atoms, q, conf, max_bucket_size));
+      const int geom_bucket  = std::max(1, geometric<queue_t>::get_batch_size(atoms, q, conf, max_bucket_size));
+
+      const int score_multiple = std::max(1, scoring_t<queue_t>::get_batch_multiple(atoms, q, conf));
+      const int geom_multiple  = std::max(1, geometric<queue_t>::get_batch_multiple(atoms, q, conf));
+      const int combined_multiple = std::lcm(score_multiple, geom_multiple);
+
+      int bucket_size = std::min({score_bucket, geom_bucket, static_cast<int>(max_bucket_size)});
+      if (combined_multiple > 1) {
+        const int aligned = (bucket_size / combined_multiple) * combined_multiple;
+        if (aligned > 0) {
+          bucket_size = aligned;
+        }
+      }
+      return std::max(1, bucket_size);
     }
 
   private:

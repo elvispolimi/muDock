@@ -27,7 +27,7 @@ set(MUDOCK_GPU_ARCHITECTURES
     "none"
     CACHE
       STRING
-      "Optimize for specific target GPU architecture (none to disable, otherwise cuda:sm_$$ or hip:$$)"
+      "Optimize for target GPU architecture (none, nvidia:sm_$$, amd:gfx$$$, intel:$$; cuda:sm_$$ kept as alias for nvidia)"
 )
 set(MUDOCK_CPU_TARGET
     "native"
@@ -58,6 +58,11 @@ if(NOT MUDOCK_GPU_ARCHITECTURES STREQUAL "none")
     # Get the part after the colon
     string(SUBSTRING ${MUDOCK_GPU_ARCHITECTURES} ${COLON_POS} 1000 GPU_TEMP)
     string(SUBSTRING ${GPU_TEMP} 1 1000 GPU_ARCHITECTURE) # Skip the colon
+
+    # Backward-compatibility alias: treat "cuda:*" as NVIDIA target naming.
+    if(GPU_PLATFORM STREQUAL "cuda")
+      set(GPU_PLATFORM "nvidia")
+    endif()
   else()
     message(FATAL_ERROR "${MUDOCK_GPU_ARCHITECTURES} cannot be parsed.")
   endif()
