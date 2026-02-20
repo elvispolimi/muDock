@@ -142,8 +142,8 @@ namespace mudock {
 
       // Calculate energy
       fp_type elect_total_trilinear = 0, emap_total_trilinear = 0, dmap_total_trilinear = 0;
-      MUDOCK_PRAGMA_UNROLL
-      for (int atom_index = threadIdx.x; atom_index < MAX_ATOMS; atom_index += warpSize) {
+      MUDOCK_PRAGMA_UNROLL(MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, BLOCK_SIZE))
+      for (int atom_index = threadIdx.x; atom_index < MAX_ATOMS; atom_index += BLOCK_SIZE) {
         if (atom_index < num_atoms) {
           fp_type coord_tex[3]{ligand_x[atom_index], ligand_y[atom_index], ligand_z[atom_index]};
 
@@ -273,8 +273,8 @@ namespace mudock {
       fp_type total_energy = emap_total_eintcal + elect_total_eintcal + dmap_total_eintcal +
                              emap_total_trilinear + elect_total_trilinear + dmap_total_trilinear;
 
-      MUDOCK_PRAGMA_UNROLL
-      for (int offset = warpSize / 2; offset > 0; offset /= 2) {
+      MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
+      for (int offset = BLOCK_SIZE / 2; offset > 0; offset /= 2) {
         total_energy += __shfl_down_sync(0xffffffff, total_energy, offset);
       }
 

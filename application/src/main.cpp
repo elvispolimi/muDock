@@ -1,5 +1,6 @@
 #include "command_line_args.hpp"
 
+#include <atomic>
 #include <chrono>
 #include <condition_variable>
 #include <cassert>
@@ -67,6 +68,8 @@ int main(int argc, char* argv[]) {
 
   auto output_queue = std::make_shared<mudock::safe_stack<mudock::static_molecule>>();
   const auto start  = std::chrono::high_resolution_clock::now();
+  std::atomic<std::size_t> dropped_by_timeout{0};
+  std::atomic<bool> timeout_triggered{false};
   {
     std::mutex observer_mutex;
     std::condition_variable observer_cv;
@@ -115,10 +118,34 @@ int main(int argc, char* argv[]) {
       });
     }
 
-    auto threadpool = mudock::threadpool();
-    mudock::manager(args.device_confs, threadpool, args.knobs, input_queue, output_queue, pipe);
-    input_queue->close(); // signal that no more ligand will be enqueued, so the workers can stop when they finish the backlog
-    mudock::info("All workers have been created!");
+    std::mutex timer_mutex;
+    std::condition_variable timer_cv;
+    bool timer_cancelled = false;
+    std::thread timer_thread;
+    if (args.time_limit_sec && *args.time_limit_sec > 0.0) {
+      mudock::info("Time limit enabled: ", *args.time_limit_sec, " s");
+      timer_thread = std::thread([&]() {
+        std::unique_lock<std::mutex> lock(timer_mutex);
+        const bool cancelled = timer_cv.wait_for(lock,
+                                                 std::chrono::duration<double>(*args.time_limit_sec),
+                                                 [&]() { return timer_cancelled; });
+        if (cancelled) {
+          return;
+        }
+        lock.unlock();
+        dropped_by_timeout.store(input_queue->clear(), std::memory_order_relaxed);
+        timeout_triggered.store(true, std::memory_order_relaxed);
+        mudock::info("Time limit reached: discarded ",
+                     dropped_by_timeout.load(std::memory_order_relaxed),
+                     " pending ligand(s) from input queue.");
+      });
+    }
+
+    {
+      auto threadpool = mudock::threadpool();
+      mudock::manager(args.device_confs, threadpool, args.knobs, input_queue, output_queue, pipe);
+      input_queue->close(); // signal that no more ligand will be enqueued, so the workers can stop when they finish the backlog
+    } // threadpool destructor waits for workers; computation is complete here
 
     if (observer_thread.joinable()) {
       {
@@ -128,7 +155,20 @@ int main(int argc, char* argv[]) {
       observer_cv.notify_one();
       observer_thread.join();
     }
+
+    if (timer_thread.joinable()) {
+      {
+        std::lock_guard<std::mutex> lock(timer_mutex);
+        timer_cancelled = true;
+      }
+      timer_cv.notify_one();
+      timer_thread.join();
+    }
   } // when we exit from this block the computation is complete
+
+  if (timeout_triggered.load(std::memory_order_relaxed)) {
+    mudock::info("Dropped ligands due to timeout: ", dropped_by_timeout.load(std::memory_order_relaxed));
+  }
 
   // after the computation it will be nice to print the score of all the molecules
   mudock::info("Printing the scores ...");
