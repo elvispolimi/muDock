@@ -19,6 +19,11 @@
 
 namespace mudock {
   template<typename queue_type>
+  int get_geom_transform_batch_multiple(const int, std::shared_ptr<queue_type>) {
+    return 1;
+  }
+
+  template<typename queue_type>
     requires std::derived_from<queue_type, queue>
   struct geom_kernel {
     static constexpr char geom_region_name[] = "geometric_trasformation";
@@ -245,6 +250,10 @@ namespace mudock {
       mem += sizeof(fp_type) * max_atoms; //y_coords_b
       mem += sizeof(fp_type) * max_atoms; //z_coords_b
       return mem;
+    }
+
+    static int get_batch_multiple(const int atoms, std::shared_ptr<queue_t> q, const knobs&) {
+      return get_geom_transform_batch_multiple<queue_t>(atoms, q);
     }
 
   private:

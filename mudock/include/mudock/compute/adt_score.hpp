@@ -21,6 +21,11 @@ namespace mudock {
   // requires std::derived_from<queue_type, queue>
   int get_adt_score_batch(const int, std::shared_ptr<queue_type>, const size_t);
 
+  template<typename queue_type>
+  int get_adt_score_batch_multiple(const int, std::shared_ptr<queue_type>) {
+    return 1;
+  }
+
 #ifndef __CUDACC__
   // TODO check that the object type and the kernel impl are the same
   template<typename queue_type>
@@ -272,6 +277,17 @@ namespace mudock {
       mem += sizeof(fp_type) * non_bonds_atoms; //nonbond_cB
       mem += sizeof(int) * non_bonds_atoms;     //nonbond_xB
       return mem;
+    }
+
+    static int get_batch_multiple(const int atoms, std::shared_ptr<queue_type> q, const knobs&) {
+      return get_adt_score_batch_multiple<queue_type>(atoms, q);
+    }
+
+    static int get_batch_size(const int atoms,
+                              std::shared_ptr<queue_type> q,
+                              [[maybe_unused]] const knobs& conf,
+                              const size_t max_bucket_size) {
+      return get_adt_score_batch<queue_type>(atoms, q, max_bucket_size);
     }
 
   private:
