@@ -6,6 +6,7 @@
 #include <mudock/chem/grid_const.hpp>
 #include <mudock/chem/mehler_solmajer.hpp>
 #include <mudock/compute/adt_score_kernel.hpp>
+#include <mudock/compute/bucket_size.hpp>
 #include <mudock/compute/devices_memory.hpp>
 #include <mudock/compute/reorder_buffer.hpp>
 #include <mudock/cuda_implementation/adt_score_cuda.cuh>
@@ -321,37 +322,11 @@ namespace mudock {
 
   template<int MAX_ATOMS>
   int get_evaluate_fitness_batch(const int device_id) {
-    MUDOCK_CHECK(cudaSetDevice(device_id));
-    cudaDeviceProp props;
-    MUDOCK_CHECK(cudaGetDeviceProperties(&props, device_id));
-    int num_block_per_SM = 0;
-    // TODO
-    MUDOCK_CHECK(cudaOccupancyMaxActiveBlocksPerMultiprocessor(&num_block_per_SM,
-                                                               calc_energy<MAX_ATOMS>,
-                                                               BLOCK_SIZE,
-                                                               0));
-    // TODO check the return value
-    return num_block_per_SM * props.multiProcessorCount;
+    return get_kernel_batch_multiple_cuda<calc_energy<MAX_ATOMS>>(device_id, BLOCK_SIZE);
   }
 
   template<>
-  int get_adt_score_batch<queue_cuda>(const int atoms,
-                                      std::shared_ptr<queue_cuda> q_b,
-                                      const size_t max_bucket_size) {
-#ifdef MUDOCK_ADT_BUCKET_OVERRIDE
-    const int capped = std::min<int>(MUDOCK_ADT_BUCKET_OVERRIDE, max_bucket_size);
-    mudock::info("CUDA Bucket size for ",
-                 atoms,
-                 " atoms override -> ",
-                 MUDOCK_ADT_BUCKET_OVERRIDE,
-                 ", capped -> ",
-                 capped);
-    return capped;
-#endif
-#ifdef MUDOCK_ADT_BUCKET_MULTIPLE_OVERRIDE
-    int bucket_multiple = MUDOCK_ADT_BUCKET_MULTIPLE_OVERRIDE;
-#else
-    // populate the bucket dimension
+  int get_adt_score_batch_multiple<queue_cuda>(const int atoms, std::shared_ptr<queue_cuda> q_b) {
     int bucket_multiple{0};
     const int device_id = q_b->get_id();
     constexpr_for<0, reorder_buffer<static_molecule>::get_num_atom_clusters(), 1>([&](const auto atom_index) {
@@ -362,18 +337,15 @@ namespace mudock {
     if (bucket_multiple == 0)
       throw std::runtime_error(
           "Compilation error: there is a bucket of atoms number which it is not handled.");
-#endif
+    return bucket_multiple;
+  }
 
-    int bucket_size = max_bucket_size / bucket_multiple;
-    bucket_size     = bucket_size == 0 ? max_bucket_size : bucket_size * bucket_multiple;
-    mudock::info("CUDA Bucket size for ",
-                 atoms,
-                 " atoms ",
-                 bucket_multiple,
-                 " bucket multiple, ",
-                 max_bucket_size,
-                 " max bucket size -> ",
-                 bucket_size);
-    return bucket_size;
+  template<>
+  int get_adt_score_batch<queue_cuda>(const int atoms,
+                                      std::shared_ptr<queue_cuda> q_b,
+                                      const size_t max_bucket_size) {
+    return resolve_bucket_size("CUDA", atoms, max_bucket_size, [&]() {
+      return get_adt_score_batch_multiple<queue_cuda>(atoms, q_b);
+    });
   };
 } // namespace mudock

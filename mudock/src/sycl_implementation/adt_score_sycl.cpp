@@ -1,5 +1,6 @@
 #include <mudock/chem/mehler_solmajer.hpp>
 #include <mudock/compute/adt_score_kernel.hpp>
+#include <mudock/compute/bucket_size.hpp>
 #include <mudock/compute/devices_memory.hpp>
 #include <mudock/compute/reorder_buffer.hpp>
 #include <mudock/devices.hpp>
@@ -299,41 +300,14 @@ namespace mudock {
   int get_adt_score_batch<queue_sycl>(const int atoms,
                                       std::shared_ptr<queue_sycl> q_b,
                                       const size_t max_bucket_size) {
-#ifdef MUDOCK_ADT_BUCKET_OVERRIDE
-    const int capped = std::min<int>(MUDOCK_ADT_BUCKET_OVERRIDE, max_bucket_size);
-    mudock::info("SYCL Bucket size for ",
-                 atoms,
-                 " atoms override -> ",
-                 MUDOCK_ADT_BUCKET_OVERRIDE,
-                 ", capped -> ",
-                 capped);
-    return capped;
-#endif
-#ifdef MUDOCK_ADT_BUCKET_MULTIPLE_OVERRIDE
-    int bucket_multiple = MUDOCK_ADT_BUCKET_MULTIPLE_OVERRIDE;
-#else
-    // populate the bucket dimension
-    int bucket_multiple{0};
-    constexpr_for<0, reorder_buffer<static_molecule>::get_num_atom_clusters(), 1>([&](const auto atom_index) {
-      const auto n_atoms = reorder_buffer<static_molecule>::atoms_clusters[atom_index];
-      if (atoms == n_atoms)
-        bucket_multiple = q_b->get_batch_size<calc_energy<n_atoms>>();
+    return resolve_bucket_size("SYCL", atoms, max_bucket_size, [&]() {
+      int bucket_multiple{0};
+      constexpr_for<0, reorder_buffer<static_molecule>::get_num_atom_clusters(), 1>([&](const auto atom_index) {
+        const auto n_atoms = reorder_buffer<static_molecule>::atoms_clusters[atom_index];
+        if (atoms == n_atoms)
+          bucket_multiple = q_b->get_batch_size<calc_energy<n_atoms>>();
+      });
+      return bucket_multiple;
     });
-    if (bucket_multiple == 0)
-      throw std::runtime_error(
-          "Compilation error: there is a bucket of atoms number which it is not handled.");
-#endif
-
-    int bucket_size = max_bucket_size / bucket_multiple;
-    bucket_size     = bucket_size == 0 ? max_bucket_size : bucket_size * bucket_multiple;
-    mudock::info("SYCL Bucket size for ",
-                 atoms,
-                 " atoms ",
-                 bucket_multiple,
-                 " bucket multiple, ",
-                 max_bucket_size,
-                 " max bucket size -> ",
-                 bucket_size);
-    return bucket_size;
   };
 } // namespace mudock
