@@ -28,10 +28,12 @@ namespace mudock {
 #ifdef MUDOCK_KERNEL_LOCK
     auto* lock = get_sycl_kernel_lock(this->id);
     std::unique_lock<std::mutex> guard(lock->mutex);
-    if (lock->has_event) {
-      lock->event.wait_and_throw();
-    }
+    const bool has_previous_event = lock->has_event;
+    const sycl::event previous_event = lock->event;
     evt = impl_->get_queue().submit([&](sycl::handler& h) {
+      if (has_previous_event) {
+        h.depends_on(previous_event);
+      }
 #else
     evt = impl_->get_queue().submit([&](sycl::handler& h) {
 #endif
