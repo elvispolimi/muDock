@@ -3,7 +3,6 @@
 #include <mudock/hip_implementation/hip_utils.hpp>
 #include <mudock/hip_implementation/queue_hip.hpp>
 #include <mudock/log.hpp>
-#include <mudock/molecule.hpp>
 #include <mudock/type_alias.hpp>
 #include <mudock/utils.hpp>
 #include <mutex>
@@ -81,7 +80,7 @@ namespace mudock {
     auto* lock = get_kernel_lock(impl_->device_id);
     std::unique_lock<std::mutex> guard(lock->mutex);
     if (lock->has_event) {
-      MUDOCK_CHECK(hipEventSynchronize(lock->event));
+      MUDOCK_CHECK(hipStreamWaitEvent(impl_->stream, lock->event, 0));
     }
 #endif
 
