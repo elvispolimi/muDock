@@ -20,13 +20,8 @@
 namespace mudock {
 
   template<typename queue_type>
-<<<<<<< HEAD
   batch_multiple get_adt_score_batch_multiple(const int, std::shared_ptr<queue_type>) {
     return {};
-=======
-  int get_adt_score_batch_multiple(const int, std::shared_ptr<queue_type>) {
-    return 1;
->>>>>>> 71711dab (Rebase)
   }
 
 #if !defined(__CUDACC__) || defined(MUDOCK_ENABLE_HOST_COMPUTE_PIPELINE)
@@ -281,7 +276,6 @@ namespace mudock {
       return mem;
     }
 
-<<<<<<< HEAD
     static int get_ligand_mem(const int max_atoms, const knobs conf) {
       return static_cast<int>(get_shared_ligand_mem(max_atoms, conf) +
                               get_private_ligand_mem(max_atoms, conf));
@@ -307,17 +301,6 @@ namespace mudock {
                                  max_bucket_size,
                                  ")");
       return plain_multiple_info;
-=======
-    static int get_batch_multiple(const int atoms, std::shared_ptr<queue_type> q, const knobs&) {
-      return get_adt_score_batch_multiple<queue_type>(atoms, q);
-    }
-
-    static int get_batch_size(const int atoms,
-                              std::shared_ptr<queue_type> q,
-                              [[maybe_unused]] const knobs& conf,
-                              const size_t max_bucket_size) {
-      return get_adt_score_batch<queue_type>(atoms, q, max_bucket_size);
->>>>>>> 71711dab (Rebase)
     }
 
   private:
