@@ -6,7 +6,7 @@
 #include <memory>
 #include <mudock/chem/geom_ligand.hpp>
 #include <mudock/compute/queue.hpp>
-#ifndef __CUDACC__
+#if !defined(__CUDACC__) && !defined(__HIPCC__)
   #include <mudock/compute/buffer_utils.hpp>
   #include <mudock/compute/scratchpad.hpp>
   #include <mudock/compute/transform.hpp>
@@ -94,7 +94,7 @@ namespace mudock {
     std::shared_ptr<queue_type> q;
   };
 
-#ifndef __CUDACC__
+#if !defined(__CUDACC__) && !defined(__HIPCC__)
   template<typename queue_t>
     requires std::derived_from<queue_t, queue>
   struct geometric: public transform<queue_t> {
