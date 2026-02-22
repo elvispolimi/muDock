@@ -233,6 +233,9 @@ if(MUDOCK_ENABLE_SYCL)
       set(CMAKE_LINKER
           clang++
           CACHE STRING "C++ linker" FORCE)
+      # Optional user-provided compile flags for SYCL source compilation.
+      # If passed as -DSYCL_BACKEND_FLAGS_COMPILE="...", append to auto backend flags.
+      set(SYCL_BACKEND_FLAGS_COMPILE_USER "${SYCL_BACKEND_FLAGS_COMPILE}")
       set(SYCL_BACKEND_FLAGS_LINK "")
       set(SYCL_BACKEND_FLAGS_COMPILE "")
       string(FIND "${MUDOCK_GPU_ARCHITECTURES}" ":" COLON_INDEX)
@@ -260,6 +263,11 @@ if(MUDOCK_ENABLE_SYCL)
         elseif(MUDOCK_GPU_ARCHITECTURES MATCHES "intel")
           list(APPEND sycl_targets "intel_gpu_${VALUE_AFTER_COLON}")
           set(SYCL_BACKEND_FLAGS_COMPILE "${SYCL_BACKEND_FLAGS_LINK}")
+        endif()
+        if(NOT SYCL_BACKEND_FLAGS_COMPILE_USER STREQUAL "")
+          separate_arguments(SYCL_BACKEND_FLAGS_COMPILE_USER_LIST UNIX_COMMAND
+                             "${SYCL_BACKEND_FLAGS_COMPILE_USER}")
+          list(APPEND SYCL_BACKEND_FLAGS_COMPILE ${SYCL_BACKEND_FLAGS_COMPILE_USER_LIST})
         endif()
         string(JOIN " " SYCL_BACKEND_FLAGS_LINK_STR ${SYCL_BACKEND_FLAGS_LINK})
         set(CMAKE_CXX_LINK_EXECUTABLE
@@ -609,6 +617,12 @@ if(MUDOCK_ENABLE_SYCL)
       message(
         STATUS
           "oneAPI Backend Flags................: ${SYCL_BACKEND_FLAGS_PRINT} (SYCL_BACKEND_FLAGS_LINK)"
+      )
+    endif()
+    if(NOT SYCL_BACKEND_FLAGS_COMPILE_USER STREQUAL "")
+      message(
+        STATUS
+          "oneAPI User Compile Flags...........: ${SYCL_BACKEND_FLAGS_COMPILE_USER} (SYCL_BACKEND_FLAGS_COMPILE)"
       )
     endif()
     if(NOT MUDOCK_SYCL_EXTRA_LINK_FLAGS STREQUAL "")
