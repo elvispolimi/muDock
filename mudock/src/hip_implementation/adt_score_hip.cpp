@@ -315,7 +315,6 @@ MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
   }
 
   template<>
-<<<<<<< HEAD
   batch_multiple get_adt_score_batch_multiple<queue_hip>(const int atoms, std::shared_ptr<queue_hip> q_b) {
     batch_multiple bucket_multiple{};
     const int device_id = q_b->get_id();
@@ -330,20 +329,4 @@ MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
     return normalize_batch_multiple(bucket_multiple);
   }
 
-=======
-  int get_adt_score_batch<queue_hip>(const int atoms,
-                                     std::shared_ptr<queue_hip> q_b,
-                                     const size_t max_bucket_size) {
-    return resolve_bucket_size("HIP", atoms, max_bucket_size, [&]() {
-      int bucket_multiple{0};
-      const int device_id = q_b->get_id();
-      constexpr_for<0, reorder_buffer<static_molecule>::get_num_atom_clusters(), 1>([&](const auto atom_index) {
-        const auto n_atoms = reorder_buffer<static_molecule>::atoms_clusters[atom_index];
-        if (atoms == n_atoms)
-          bucket_multiple = get_evaluate_fitness_batch<n_atoms>(device_id);
-      });
-      return bucket_multiple;
-    });
-  };
->>>>>>> 71711dab (Rebase)
 } // namespace mudock
