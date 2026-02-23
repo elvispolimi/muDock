@@ -56,6 +56,9 @@ Key configuration options:
 - `MUDOCK_ENABLE_CUDA` — CUDA backend
 - `MUDOCK_ENABLE_HIP` — HIP backend
 - `MUDOCK_ENABLE_SYCL` — SYCL backend
+- `MUDOCK_SYCL_EXTRA_FLAGS` — extra oneAPI SYCL flags applied to both compile and link
+- `MUDOCK_SYCL_EXTRA_COMPILE_FLAGS` — extra oneAPI SYCL flags applied only to compile
+- `MUDOCK_SYCL_EXTRA_LINK_FLAGS` — extra oneAPI SYCL flags applied only to link
 - `MUDOCK_ENABLE_GH` — Google Highway vectorization
 - `MUDOCK_ENABLE_XSIMD` — xsimd vectorization
 - `MUDOCK_ENABLE_LIKWID` — LIKWID profiling
