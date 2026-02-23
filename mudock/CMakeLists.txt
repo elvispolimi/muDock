@@ -353,7 +353,7 @@ if(MUDOCK_ENABLE_FAST)
   else()
     message(
       STATUS
-        "MuDock does not optimize SIMD auto-vectorization with {CMAKE_C_COMPILER_ID}"
+        "MuDock does not optimize SIMD auto-vectorization with ${CMAKE_C_COMPILER_ID}"
     )
   endif()
 
