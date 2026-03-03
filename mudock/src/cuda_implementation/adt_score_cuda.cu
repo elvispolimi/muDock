@@ -6,7 +6,6 @@
 #include <mudock/chem/grid_const.hpp>
 #include <mudock/chem/mehler_solmajer.hpp>
 #include <mudock/compute/adt_score_kernel.hpp>
-#include <mudock/compute/bucket_size.hpp>
 #include <mudock/compute/devices_memory.hpp>
 #include <mudock/compute/reorder_buffer.hpp>
 #include <mudock/cuda_implementation/adt_score_cuda.cuh>

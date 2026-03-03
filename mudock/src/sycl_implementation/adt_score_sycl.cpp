@@ -1,12 +1,12 @@
 #include <mudock/chem/mehler_solmajer.hpp>
 #include <mudock/compute/adt_score_kernel.hpp>
-#include <mudock/compute/bucket_size.hpp>
 #include <mudock/compute/devices_memory.hpp>
 #include <mudock/compute/reorder_buffer.hpp>
 #include <mudock/devices.hpp>
 #include <mudock/sycl_implementation/adt_score_sycl.hpp>
 #include <mudock/sycl_implementation/invoke_kernel_sycl.hpp>
 #include <mudock/sycl_implementation/queue_sycl.hpp>
+#include <mudock/sycl_implementation/sycl_utils.hpp>
 #include <mudock/sycl_implementation/sycl_texture.hpp>
 #include <mudock/sycl_implementation/sycl_utils.hpp>
 #include <mudock/utils.hpp>
