@@ -1,7 +1,6 @@
 #pragma once
 
 #include <mudock/compute/adt_score.hpp>
-#include <mudock/compute/bucket_size.hpp>
 #include <mudock/compute/adt_score_kernel.hpp>
 #include <mudock/cpp_implementation/queue_cpp.hpp>
 

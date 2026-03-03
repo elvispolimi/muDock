@@ -6,7 +6,6 @@
 #include <concepts>
 #include <limits>
 #include <memory>
-#include <numeric>
 #include <mudock/batch.hpp>
 #include <mudock/chem/autodock_protein.hpp>
 #include <numeric>
@@ -20,6 +19,7 @@
 #endif
 #include <mudock/compute/batch_multiple.hpp>
 #include <mudock/compute/queue.hpp>
+#include <mudock/compute/batch_multiple.hpp>
 #include <mudock/cpp_implementation/chromosome.hpp>
 #include <mudock/log.hpp>
 #include <mudock/molecule.hpp>

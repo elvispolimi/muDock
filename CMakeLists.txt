@@ -662,6 +662,8 @@ if(NOT MUDOCK_GENETIC_BUCKET_COMBINE STREQUAL
                       "${MUDOCK_GENETIC_BUCKET_COMBINE}"
                       "MUDOCK_GENETIC_BUCKET_COMBINE")
 endif()
+mudock_print_config("ADT bucket policy" "${MUDOCK_ADT_BUCKET_POLICY}"
+                    "MUDOCK_ADT_BUCKET_POLICY")
 if(MUDOCK_ENABLE_LIKWID)
   mudock_print_config("Likwid CPP Profiling" "${MUDOCK_LIKWID_CPP}"
                       "MUDOCK_LIKWID_CPP")

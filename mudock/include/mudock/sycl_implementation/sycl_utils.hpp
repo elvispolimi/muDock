@@ -32,4 +32,15 @@ namespace mudock {
     return q_b->template get_batch_multiple<kernel_name>();
   }
 
+  template<class kernel_name>
+  inline batch_multiple get_kernel_batch_multiple_sycl(std::shared_ptr<queue_sycl> q_b,
+                                                       const char* kernel_label = "unknown_kernel") {
+    (void) kernel_label;
+    const int total_multiple = std::max(1, q_b->template get_batch_size<kernel_name>());
+    const auto dev           = pick_device(q_b->get_id(), q_b->get_dev_type());
+    const int compute_units  = std::max(1, static_cast<int>(dev.get_info<sycl::info::device::max_compute_units>()));
+    const int per_cu         = std::max(1, total_multiple / compute_units);
+    return {per_cu, compute_units};
+  }
+
 } // namespace mudock
