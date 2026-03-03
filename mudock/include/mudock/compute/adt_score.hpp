@@ -7,23 +7,21 @@
 #include <mudock/chem/autodock_ligand.hpp>
 #include <mudock/chem/autodock_protein.hpp>
 #include <mudock/compute/adt_score_kernel.hpp>
+#include <mudock/compute/batch_multiple.hpp>
 #if !defined(__CUDACC__) && !defined(__HIPCC__)
   #include <mudock/compute/buffer_utils.hpp>
   #include <mudock/compute/scoring.hpp>
   #include <mudock/compute/scratchpad.hpp>
 #endif
+#include <mudock/log.hpp>
 #include <mudock/molecule.hpp>
 #include <mudock/type_alias.hpp>
 
 namespace mudock {
 
   template<typename queue_type>
-  // requires std::derived_from<queue_type, queue>
-  int get_adt_score_batch(const int, std::shared_ptr<queue_type>, const size_t);
-
-  template<typename queue_type>
-  int get_adt_score_batch_multiple(const int, std::shared_ptr<queue_type>) {
-    return 1;
+  batch_multiple get_adt_score_batch_multiple(const int, std::shared_ptr<queue_type>) {
+    return {};
   }
 
 #if !defined(__CUDACC__) && !defined(__HIPCC__)
@@ -279,15 +277,25 @@ namespace mudock {
       return mem;
     }
 
-    static int get_batch_multiple(const int atoms, std::shared_ptr<queue_type> q, const knobs&) {
-      return get_adt_score_batch_multiple<queue_type>(atoms, q);
-    }
-
-    static int get_batch_size(const int atoms,
-                              std::shared_ptr<queue_type> q,
-                              [[maybe_unused]] const knobs& conf,
-                              const size_t max_bucket_size) {
-      return get_adt_score_batch<queue_type>(atoms, q, max_bucket_size);
+    static batch_multiple get_batch_size(const int atoms,
+                                         std::shared_ptr<queue_type> q,
+                                         const knobs& conf,
+                                         const size_t max_bucket_size) {
+      (void) conf;
+      const auto plain_multiple_info = normalize_batch_multiple(get_adt_score_batch_multiple<queue_type>(atoms, q));
+      mudock::info("ADT stage plain multiple for ",
+                   atoms,
+                   " atoms -> total=",
+                   plain_multiple_info.total_multiple(),
+                   " (active_blocks_per_sm=",
+                   plain_multiple_info.active_blocks_per_sm,
+                   ", num_sms=",
+                   plain_multiple_info.num_sms,
+                   ")",
+                   " (max_bucket_size hint=",
+                   max_bucket_size,
+                   ")");
+      return plain_multiple_info;
     }
 
   private:
