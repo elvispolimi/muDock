@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cuda_runtime.h>
+#include <mudock/compute/batch_multiple.hpp>
 #include <mudock/log.hpp>
 #include <stdexcept>
 
@@ -27,9 +28,10 @@
 
 namespace mudock {
   template<auto Kernel>
-  inline int get_kernel_batch_multiple_cuda(const int device_id,
-                                            const int block_size,
-                                            const size_t dynamic_shared_mem = 0) {
+  inline batch_multiple get_kernel_batch_multiple_cuda(const int device_id,
+                                                       const int block_size,
+                                                       const size_t dynamic_shared_mem = 0,
+                                                       const char* kernel_label = "unknown_kernel") {
     MUDOCK_CHECK(cudaSetDevice(device_id));
     cudaDeviceProp props;
     MUDOCK_CHECK(cudaGetDeviceProperties(&props, device_id));
@@ -39,6 +41,7 @@ namespace mudock {
                                                                Kernel,
                                                                block_size,
                                                                dynamic_shared_mem));
-    return num_blocks_per_sm * props.multiProcessorCount;
+    (void) kernel_label;
+    return {num_blocks_per_sm, props.multiProcessorCount};
   }
 } // namespace mudock

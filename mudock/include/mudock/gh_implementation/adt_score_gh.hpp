@@ -5,8 +5,8 @@
 
 namespace mudock {
   template<>
-  inline int get_adt_score_batch<queue_gh>(const int, std::shared_ptr<queue_gh>, const size_t) {
-    return 10;
+  inline batch_multiple get_adt_score_batch_multiple<queue_gh>(const int, std::shared_ptr<queue_gh>) {
+    return {10, 1};
   }
   template<>
   void adt_score_kernel<queue_gh>::operator()();

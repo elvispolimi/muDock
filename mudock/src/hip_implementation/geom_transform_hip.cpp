@@ -1,10 +1,35 @@
 #include <cassert>
 #include <mudock/compute/reorder_buffer.hpp>
 #include <mudock/hip_implementation/geom_transform_hip.hpp>
+#include <mudock/hip_implementation/hip_utils.hpp>
+#include <mudock/log.hpp>
 #include <mudock/hip_implementation/mutate.hpp>
 #include <mudock/utils.hpp>
 
 namespace mudock {
+  template<int MAX_ATOMS>
+  batch_multiple get_geom_apply_batch(const int device_id) {
+    return get_kernel_batch_multiple_hip<apply_hip<MAX_ATOMS>>(device_id,
+                                                               BLOCK_SIZE,
+                                                               0,
+                                                               "geometric::apply_hip");
+  }
+
+  template<>
+  batch_multiple get_geom_transform_batch_multiple<queue_hip>(const int atoms, std::shared_ptr<queue_hip> q_b) {
+    batch_multiple bucket_multiple{};
+    const int device_id = q_b->get_id();
+    constexpr_for<0, reorder_buffer<static_molecule>::get_num_atom_clusters(), 1>([&](const auto atom_index) {
+      const auto n_atoms = reorder_buffer<static_molecule>::atoms_clusters[atom_index];
+      if (atoms == n_atoms)
+        bucket_multiple = get_geom_apply_batch<n_atoms>(device_id);
+    });
+    if (bucket_multiple.total_multiple() <= 0)
+      throw std::runtime_error(
+          "Compilation error: there is a bucket of atoms number which it is not handled.");
+    return normalize_batch_multiple(bucket_multiple);
+  }
+
   template<>
   void geom_kernel<queue_hip>::operator()() {
     void* args[] = {(void*) &chromsomes_per_ligand,

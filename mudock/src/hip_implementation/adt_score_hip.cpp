@@ -6,10 +6,11 @@
 #include <mudock/chem/grid_const.hpp>
 #include <mudock/chem/mehler_solmajer.hpp>
 #include <mudock/compute/adt_score_kernel.hpp>
-#include <mudock/compute/bucket_size.hpp>
 #include <mudock/compute/devices_memory.hpp>
 #include <mudock/compute/reorder_buffer.hpp>
 #include <mudock/hip_implementation/adt_score_hip.hpp>
+#include <mudock/hip_implementation/hip_utils.hpp>
+#include <mudock/log.hpp>
 #include <mudock/hip_implementation/hip_texture.hpp>
 #include <mudock/hip_implementation/hip_utils.hpp>
 #include <mudock/hip_implementation/queue_hip.hpp>
@@ -305,34 +306,26 @@ MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
   }; // namespace mudock
 
   template<int MAX_ATOMS>
-  int get_evaluate_fitness_batch(const int device_id) {
-    //We assume that all devices are the same
-    MUDOCK_CHECK(hipSetDevice(device_id));
-    hipDeviceProp_t props;
-    MUDOCK_CHECK(hipGetDeviceProperties(&props, device_id));
-    int num_block_per_SM = 0;
-    // TODO
-    MUDOCK_CHECK(hipOccupancyMaxActiveBlocksPerMultiprocessor(&num_block_per_SM,
-                                                              calc_energy<MAX_ATOMS>,
-                                                              BLOCK_SIZE,
-                                                              0));
-    // TODO check the return value
-    return num_block_per_SM * props.multiProcessorCount;
+  batch_multiple get_evaluate_fitness_batch(const int device_id) {
+    return get_kernel_batch_multiple_hip<calc_energy<MAX_ATOMS>>(device_id,
+                                                                 BLOCK_SIZE,
+                                                                 0,
+                                                                 "adt_score::calc_energy");
   }
 
   template<>
-  int get_adt_score_batch<queue_hip>(const int atoms,
-                                     std::shared_ptr<queue_hip> q_b,
-                                     const size_t max_bucket_size) {
-    return resolve_bucket_size("HIP", atoms, max_bucket_size, [&]() {
-      int bucket_multiple{0};
-      const int device_id = q_b->get_id();
-      constexpr_for<0, reorder_buffer<static_molecule>::get_num_atom_clusters(), 1>([&](const auto atom_index) {
-        const auto n_atoms = reorder_buffer<static_molecule>::atoms_clusters[atom_index];
-        if (atoms == n_atoms)
-          bucket_multiple = get_evaluate_fitness_batch<n_atoms>(device_id);
-      });
-      return bucket_multiple;
+  batch_multiple get_adt_score_batch_multiple<queue_hip>(const int atoms, std::shared_ptr<queue_hip> q_b) {
+    batch_multiple bucket_multiple{};
+    const int device_id = q_b->get_id();
+    constexpr_for<0, reorder_buffer<static_molecule>::get_num_atom_clusters(), 1>([&](const auto atom_index) {
+      const auto n_atoms = reorder_buffer<static_molecule>::atoms_clusters[atom_index];
+      if (atoms == n_atoms)
+        bucket_multiple = get_evaluate_fitness_batch<n_atoms>(device_id);
     });
-  };
+    if (bucket_multiple.total_multiple() <= 0)
+      throw std::runtime_error(
+          "Compilation error: there is a bucket of atoms number which it is not handled.");
+    return normalize_batch_multiple(bucket_multiple);
+  }
+
 } // namespace mudock

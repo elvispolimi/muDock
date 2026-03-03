@@ -1,7 +1,9 @@
 #pragma once
 
+#include <algorithm>
 #include <memory>
 #include <mudock/compute/adt_score.hpp>
+#include <mudock/compute/bucket_size.hpp>
 #include <mudock/compute/genetic.hpp>
 #include <mudock/compute/scratchpad.hpp>
 #include <mudock/compute/stage.hpp>
@@ -45,8 +47,19 @@ namespace mudock {
                               std::shared_ptr<queue_type> q,
                               const knobs& conf,
                               const size_t max_mem = 1000000000) {
-      const int mem = mudock::adt_score<queue_type>::get_ligand_mem(atoms, conf);
-      return mudock::adt_score<queue_type>::get_batch_size(atoms, q, conf, max_mem / mem);
+      const size_t mem_per_ligand = static_cast<size_t>(mudock::adt_score<queue_type>::get_ligand_mem(atoms, conf));
+      const size_t max_bucket_size = std::max<size_t>(1, max_mem / mem_per_ligand);
+      mudock::info("PIPELINE(ADT) pre-resolve for ",
+                   atoms,
+                   " atoms: mem_budget=",
+                   max_mem,
+                   " B, mem_per_ligand=",
+                   mem_per_ligand,
+                   " B, max_bucket_size=",
+                   max_bucket_size);
+      return resolve_bucket_size("PIPELINE(ADT)", atoms, max_bucket_size, mem_per_ligand, [&]() {
+        return mudock::adt_score<queue_type>::get_batch_size(atoms, q, conf, max_bucket_size);
+      });
     }
   };
 
@@ -67,8 +80,20 @@ namespace mudock {
                               std::shared_ptr<queue_type> q,
                               const knobs& conf,
                               const size_t max_mem = 1000000000) {
-      const int mem = genetic<queue_type, adt_score>::get_ligand_mem(atoms, conf);
-      return genetic<queue_type, adt_score>::get_batch_size(atoms, q, conf, max_mem / mem);
+      const size_t mem_per_ligand =
+          static_cast<size_t>(genetic<queue_type, adt_score>::get_ligand_mem(atoms, conf));
+      const size_t max_bucket_size = std::max<size_t>(1, max_mem / mem_per_ligand);
+      mudock::info("PIPELINE(GENETIC) pre-resolve for ",
+                   atoms,
+                   " atoms: mem_budget=",
+                   max_mem,
+                   " B, mem_per_ligand=",
+                   mem_per_ligand,
+                   " B, max_bucket_size=",
+                   max_bucket_size);
+      return resolve_bucket_size("PIPELINE(GENETIC)", atoms, max_bucket_size, mem_per_ligand, [&]() {
+        return genetic<queue_type, adt_score>::get_batch_size(atoms, q, conf, max_bucket_size);
+      });
     }
   };
 } // namespace mudock

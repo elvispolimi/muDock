@@ -1,14 +1,15 @@
 #include <mudock/chem/mehler_solmajer.hpp>
 #include <mudock/compute/adt_score_kernel.hpp>
-#include <mudock/compute/bucket_size.hpp>
 #include <mudock/compute/devices_memory.hpp>
 #include <mudock/compute/reorder_buffer.hpp>
 #include <mudock/devices.hpp>
 #include <mudock/sycl_implementation/adt_score_sycl.hpp>
 #include <mudock/sycl_implementation/invoke_kernel_sycl.hpp>
 #include <mudock/sycl_implementation/queue_sycl.hpp>
+#include <mudock/sycl_implementation/sycl_utils.hpp>
 #include <mudock/sycl_implementation/sycl_texture.hpp>
 #include <mudock/utils.hpp>
+#include <stdexcept>
 
 #define FLATTENED_3D(x, y, z, index_x, index_xy) (index_xy * (z) + (y) * index_x + (x))
 
@@ -297,17 +298,17 @@ namespace mudock {
   }; // namespace mudock
 
   template<>
-  int get_adt_score_batch<queue_sycl>(const int atoms,
-                                      std::shared_ptr<queue_sycl> q_b,
-                                      const size_t max_bucket_size) {
-    return resolve_bucket_size("SYCL", atoms, max_bucket_size, [&]() {
-      int bucket_multiple{0};
-      constexpr_for<0, reorder_buffer<static_molecule>::get_num_atom_clusters(), 1>([&](const auto atom_index) {
-        const auto n_atoms = reorder_buffer<static_molecule>::atoms_clusters[atom_index];
-        if (atoms == n_atoms)
-          bucket_multiple = q_b->get_batch_size<calc_energy<n_atoms>>();
-      });
-      return bucket_multiple;
+  batch_multiple get_adt_score_batch_multiple<queue_sycl>(const int atoms, std::shared_ptr<queue_sycl> q_b) {
+    batch_multiple bucket_multiple{};
+    constexpr_for<0, reorder_buffer<static_molecule>::get_num_atom_clusters(), 1>([&](const auto atom_index) {
+      const auto n_atoms = reorder_buffer<static_molecule>::atoms_clusters[atom_index];
+      if (atoms == n_atoms)
+        bucket_multiple = get_kernel_batch_multiple_sycl<calc_energy<n_atoms>>(q_b,
+                                                                                "adt_score::calc_energy");
     });
-  };
+    if (bucket_multiple.total_multiple() <= 0)
+      throw std::runtime_error(
+          "Compilation error: there is a bucket of atoms number which it is not handled.");
+    return normalize_batch_multiple(bucket_multiple);
+  }
 } // namespace mudock
