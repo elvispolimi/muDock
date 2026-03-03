@@ -5,9 +5,9 @@
 #include <algorithm>
 #include <concepts>
 #include <memory>
-#include <numeric>
 #include <mudock/batch.hpp>
 #include <mudock/chem/autodock_protein.hpp>
+#include <numeric>
 #if !defined(__CUDACC__) && !defined(__HIPCC__)
   #include <mudock/compute/buffer_utils.hpp>
   #include <mudock/compute/docking.hpp>
@@ -16,7 +16,9 @@
   #include <mudock/compute/scratchpad.hpp>
 #endif
 #include <mudock/compute/queue.hpp>
+#include <mudock/compute/batch_multiple.hpp>
 #include <mudock/cpp_implementation/chromosome.hpp>
+#include <mudock/log.hpp>
 #include <mudock/molecule.hpp>
 
 namespace mudock {
@@ -166,25 +168,47 @@ namespace mudock {
       return mem;
     }
 
-    static int get_batch_size(const int atoms,
-                              std::shared_ptr<queue_t> q,
-                              const knobs& conf,
-                              const size_t max_bucket_size) {
-      const int score_bucket = std::max(1, scoring_t<queue_t>::get_batch_size(atoms, q, conf, max_bucket_size));
-      const int geom_bucket  = std::max(1, geometric<queue_t>::get_batch_size(atoms, q, conf, max_bucket_size));
+    static batch_multiple get_batch_size(const int atoms,
+                                         std::shared_ptr<queue_t> q,
+                                         const knobs& conf,
+                                         const size_t max_bucket_size) {
+      (void) max_bucket_size;
+      const auto score_bucket_info =
+          normalize_batch_multiple(scoring_t<queue_t>::get_batch_size(atoms, q, conf, max_bucket_size));
+      const auto geom_bucket_info =
+          normalize_batch_multiple(geometric<queue_t>::get_batch_size(atoms, q, conf, max_bucket_size));
+      const int score_total = score_bucket_info.total_multiple();
+      const int geom_total  = geom_bucket_info.total_multiple();
 
-      const int score_multiple = std::max(1, scoring_t<queue_t>::get_batch_multiple(atoms, q, conf));
-      const int geom_multiple  = std::max(1, geometric<queue_t>::get_batch_multiple(atoms, q, conf));
-      const int combined_multiple = std::lcm(score_multiple, geom_multiple);
-
-      int bucket_size = std::min({score_bucket, geom_bucket, static_cast<int>(max_bucket_size)});
-      if (combined_multiple > 1) {
-        const int aligned = (bucket_size / combined_multiple) * combined_multiple;
-        if (aligned > 0) {
-          bucket_size = aligned;
-        }
+      batch_multiple selected_info{};
+      if (score_total <= geom_total) {
+        selected_info = score_bucket_info;
+      } else {
+        selected_info = geom_bucket_info;
       }
-      return std::max(1, bucket_size);
+      selected_info = normalize_batch_multiple(selected_info);
+      mudock::info("GENETIC stage combine for ",
+                   atoms,
+                   " atoms: score_multiple=",
+                   score_total,
+                   " (",
+                   score_bucket_info.active_blocks_per_sm,
+                   "x",
+                   score_bucket_info.num_sms,
+                   "), geom_multiple=",
+                   geom_total,
+                   " (",
+                   geom_bucket_info.active_blocks_per_sm,
+                   "x",
+                   geom_bucket_info.num_sms,
+                   ") -> selected_plain_multiple=",
+                   selected_info.total_multiple(),
+                   " (",
+                   selected_info.active_blocks_per_sm,
+                   "x",
+                   selected_info.num_sms,
+                   ")");
+      return selected_info;
     }
 
   private:
