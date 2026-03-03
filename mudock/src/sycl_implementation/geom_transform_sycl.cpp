@@ -3,13 +3,30 @@
 #include <mudock/sycl_implementation/geom_transform_sycl.hpp>
 #include <mudock/sycl_implementation/invoke_kernel_sycl.hpp>
 #include <mudock/sycl_implementation/mutate.hpp>
+#include <mudock/sycl_implementation/sycl_utils.hpp>
+#include <mudock/log.hpp>
 #include <mudock/utils.hpp>
+#include <stdexcept>
 
 #ifndef MUDOCK_SYCL_WG_SIZE
   #define MUDOCK_SYCL_WG_SIZE 32
 #endif
 
 namespace mudock {
+  template<>
+  batch_multiple get_geom_transform_batch_multiple<queue_sycl>(const int atoms, std::shared_ptr<queue_sycl> q_b) {
+    batch_multiple bucket_multiple{};
+    constexpr_for<0, reorder_buffer<static_molecule>::get_num_atom_clusters(), 1>([&](const auto atom_index) {
+      const auto n_atoms = reorder_buffer<static_molecule>::atoms_clusters[atom_index];
+      if (atoms == n_atoms)
+        bucket_multiple = get_kernel_batch_multiple_sycl<apply_sycl<n_atoms>>(q_b, "geometric::apply_sycl");
+    });
+    if (bucket_multiple.total_multiple() <= 0)
+      throw std::runtime_error(
+          "Compilation error: there is a bucket of atoms number which it is not handled.");
+    return normalize_batch_multiple(bucket_multiple);
+  }
+
   template<>
   void geom_kernel<queue_sycl>::operator()() {
     //TODO check grid/dimensions
