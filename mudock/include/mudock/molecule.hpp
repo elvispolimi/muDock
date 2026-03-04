@@ -29,6 +29,9 @@ namespace mudock {
     template<typename T>
     using bonds_array_type = container_aliases::template bonds_size<T>;
 
+    template<typename T>
+    using neighbors_array_type = container_aliases::template neighbors_size<T>;
+
   private:
     // the atoms chemical properties
     atoms_array_type<element> atom_elements;
@@ -45,6 +48,14 @@ namespace mudock {
     atoms_array_type<int> atom_is_aromatic;
     atoms_array_type<fp_type> atom_charge;
     atoms_array_type<int> atom_num_hbond;
+
+    atoms_array_type<int> atom_is_hbond_donor;
+    atoms_array_type<int> atom_is_hbond_acceptor;
+    atoms_array_type<int> atom_is_hydrophobic;
+    atoms_array_type<fp_type> atom_vdw_radius;
+    
+    /// the neighbors of each atom
+    neighbors_array_type<int> atoms_neighbors; /// if -1 -> no more neighbors for current atom
 
   public:
     // functions to manage the geometry of a molecule
@@ -99,6 +110,11 @@ namespace mudock {
     [[nodiscard]] inline auto get_is_aromatic() const { return make_span(atom_is_aromatic, atoms_size); }
     [[nodiscard]] inline auto get_charge() const { return make_span(atom_charge, atoms_size); }
     [[nodiscard]] inline auto get_num_hbond() const { return make_span(atom_num_hbond, atoms_size); }
+    [[nodiscard]] inline auto get_is_hbond_donor() { return make_span(atom_is_hbond_donor, atoms_size);}
+    [[nodiscard]] inline auto get_is_hbond_acceptor() { return make_span(atom_is_hbond_acceptor, atoms_size);}
+    [[nodiscard]] inline auto get_is_hydrophobic() { return make_span(atom_is_hydrophobic, atoms_size);}
+    [[nodiscard]] inline auto get_vdw_radius() { return make_span(atom_vdw_radius, atoms_size);}
+    [[nodiscard]] inline auto get_neighbors() { return make_span(atoms_neighbors, atoms_size * max_static_neighbors());}
 
     // utility functions to get the span of the whole molecule (read only)
     [[nodiscard]] inline auto get_elements() const { return make_span(atom_elements, atoms_size); }
@@ -106,6 +122,11 @@ namespace mudock {
     [[nodiscard]] inline auto get_x() const { return make_span(x_coordinates, atoms_size); }
     [[nodiscard]] inline auto get_y() const { return make_span(y_coordinates, atoms_size); }
     [[nodiscard]] inline auto get_z() const { return make_span(z_coordinates, atoms_size); }
+    [[nodiscard]] inline auto get_is_hbond_donor() const { return make_span(atom_is_hbond_donor, atoms_size);}
+    [[nodiscard]] inline auto get_is_hbond_acceptor() const { return make_span(atom_is_hbond_acceptor, atoms_size);}
+    [[nodiscard]] inline auto get_is_hydrophobic() const { return make_span(atom_is_hydrophobic, atoms_size);}
+    [[nodiscard]] inline auto get_vdw_radius() const { return make_span(atom_vdw_radius, atoms_size);}
+    [[nodiscard]] inline auto get_neighbors() const { return make_span(atoms_neighbors, atoms_size * max_static_neighbors());}
 
     // utility functions to get the ref to an atom element (read + write)
     [[nodiscard]] inline auto& autodock_type(const int index) { return atom_autodock_type[index]; }
@@ -116,6 +137,11 @@ namespace mudock {
     [[nodiscard]] inline auto& z(const int index) { return z_coordinates[index]; }
     [[nodiscard]] inline auto& charge(const int index) { return atom_charge[index]; }
     [[nodiscard]] inline auto& num_hbond(const int index) { return atom_num_hbond[index]; }
+    [[nodiscard]] inline auto& is_hbond_donor(const int index) { return atom_is_hbond_donor[index];}
+    [[nodiscard]] inline auto& is_hbond_acceptor(const int index) { return atom_is_hbond_acceptor[index];}
+    [[nodiscard]] inline auto& is_hydrophobic(const int index) { return atom_is_hydrophobic[index];}
+    [[nodiscard]] inline auto& vdw_radius(const int index) { return atom_vdw_radius[index];}
+    [[nodiscard]] inline auto& neighbors(const int index, const int n) { return atoms_neighbors[index * max_static_neighbors() + n];}
 
     // utility functions to get the ref to an atom element (read + write)
     [[nodiscard]] inline auto* autodock_type() { return atom_autodock_type.data(); }
@@ -138,6 +164,11 @@ namespace mudock {
     [[nodiscard]] inline const auto& z(const int index) const { return z_coordinates[index]; }
     [[nodiscard]] inline const auto& charge(const int index) const { return atom_charge[index]; }
     [[nodiscard]] inline const auto& num_hbond(const int index) const { return atom_num_hbond[index]; }
+    [[nodiscard]] inline const auto& is_hbond_donor(const int index) const { return atom_is_hbond_donor[index];}
+    [[nodiscard]] inline const auto& is_hbond_acceptor(const int index) const { return atom_is_hbond_acceptor[index];}
+    [[nodiscard]] inline const auto& is_hydrophobic(const int index) const { return atom_is_hydrophobic[index];}
+    [[nodiscard]] inline const auto& vdw_radius(const int index) const { return atom_vdw_radius[index];}
+    [[nodiscard]] inline const auto& neighbors(const int index, const int n) const { return atoms_neighbors[index * max_static_neighbors() + n];}
   };
 
   //===------------------------------------------------------------------------------------------------------
@@ -172,6 +203,11 @@ namespace mudock {
     mudock::resize(atom_is_aromatic, n_atoms);
     mudock::resize(atom_charge, n_atoms);
     mudock::resize(atom_num_hbond, n_atoms);
+    mudock::resize(atom_is_hbond_donor, n_atoms);
+    mudock::resize(atom_is_hbond_acceptor, n_atoms);
+    mudock::resize(atom_is_hydrophobic, n_atoms);
+    mudock::resize(atom_vdw_radius, n_atoms);
+    mudock::resize(atoms_neighbors, n_atoms * max_static_neighbors());
     atoms_size = n_atoms;
     bonds_size = n_bonds;
   }
@@ -188,7 +224,39 @@ namespace mudock {
     mudock::resize(atom_is_aromatic, index);
     mudock::resize(atom_charge, index);
     mudock::resize(atom_num_hbond, index);
+    mudock::remove_atom(atom_is_hbond_donor, index);
+    mudock::remove_atom(atom_is_hbond_acceptor, index);
+    mudock::remove_atom(atom_is_hydrophobic, index);
+    mudock::remove_atom(atom_vdw_radius, index);
     atoms_size--;
+
+    /// Update the neighbors
+
+    ///Clear the neighbors of the removed atom
+    const int max_neighbors = max_static_neighbors();
+    size_t start = index * max_neighbors;
+    std::shift_left(atoms_neighbors.begin() + start,
+        atoms_neighbors.end(),
+        max_neighbors);
+    atoms_neighbors.resize(atoms_size * max_neighbors);
+
+    /// For each atom, we need to remove the index of the removed atom from its neighbors
+    for (int i = 0; i < atoms_size; ++i) {
+      int* neighbors = &atoms_neighbors[i * max_neighbors];
+      int write_pos = 0;
+      for (int j = 0; j < max_neighbors; ++j) {
+        int n = neighbors[j];
+        if (n == -1) break;
+        if (n != index) {
+          neighbors[write_pos++] = n;
+        }
+      }
+      while (write_pos < max_neighbors) {
+        neighbors[write_pos++] = -1;
+      }
+    }
+
+
 
     // now we need to update the bonds as well
     auto end_loop = std::begin(bond_descriptions) + bonds_size;

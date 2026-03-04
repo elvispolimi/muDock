@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <mudock/compute/adt_score.hpp>
+#include <mudock/compute/vina_score.hpp>
 #include <mudock/compute/genetic.hpp>
 #include <mudock/compute/scratchpad.hpp>
 #include <mudock/compute/stage.hpp>
@@ -63,4 +64,23 @@ namespace mudock {
       return get_adt_score_batch<queue_type>(atoms, q);
     }
   };
+
+  struct genetic_vina_pipeline : pipeline {
+    template<typename queue_type>
+    genetic<queue_type, vina_score> get_pipeline(const knobs& conf,
+                                                const int id,
+                                                const device_type dev_type,
+                                                std::shared_ptr<scratchpad<queue_type>> device_scratch) {
+      auto q = std::make_shared<mudock::scratchpad<queue_type>>(conf, id, dev_type);
+      return genetic<queue_type, vina_score>(q,
+                                            *protein,
+                                            mudock::vina_score<queue_type>(q, device_scratch, *protein));
+    }
+
+    template<typename queue_type>
+    static int get_batch_size(const int atoms, std::shared_ptr<queue_type> q) {
+      return get_vina_score_batch<queue_type>(atoms, q);
+    }
+  };
+
 } // namespace mudock

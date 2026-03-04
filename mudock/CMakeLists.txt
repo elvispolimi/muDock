@@ -36,6 +36,7 @@ list(
   "${header_path}/${header_prefix}/compute/stage.hpp"
   "${header_path}/${header_prefix}/compute/scoring.hpp"
   "${header_path}/${header_prefix}/compute/adt_score.hpp"
+  "${header_path}/${header_prefix}/compute/vina_score.hpp"
   "${header_path}/${header_prefix}/compute/pipeline.hpp"
   "${header_path}/${header_prefix}/compute/docking.hpp"
   "${header_path}/${header_prefix}/compute/genetic.hpp"
@@ -48,6 +49,7 @@ list(
   "${header_path}/${header_prefix}/cpp_implementation/buffer_cpp.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/queue_cpp.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/adt_score_cpp.hpp"
+  "${header_path}/${header_prefix}/cpp_implementation/vina_score_cpp.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/geom_transform_cpp.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/genetic_cpp.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/cpp_implementation.hpp"
@@ -119,6 +121,7 @@ list(
   "${source_path}/cpp_implementation/mutate_cpp.cpp"
   "${source_path}/cpp_implementation/geom_transform_cpp.cpp"
   "${source_path}/cpp_implementation/adt_score_cpp.cpp"
+  "${source_path}/cpp_implementation/vina_score_cpp.cpp"
   "${source_path}/cpp_implementation/genetic_cpp.cpp"
 )
 if(MUDOCK_ENABLE_GH)

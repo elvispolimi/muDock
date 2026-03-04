@@ -211,7 +211,7 @@ namespace mudock {
     mudock::resize(atom_epsij_hb, n_atoms);
     mudock::resize(atom_charge, n_atoms);
     mudock::resize(atom_num_hbond, n_atoms);
-    mudock::resize(atom_is_hbond_donor, n_atoms);
+      mudock::resize(atom_is_hbond_donor, n_atoms);
     mudock::resize(atom_is_hbond_acceptor, n_atoms);
     mudock::resize(atom_is_hydrophobic, n_atoms);
     mudock::resize(atom_vdw_radius, n_atoms);
