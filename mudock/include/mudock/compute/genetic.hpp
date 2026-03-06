@@ -4,7 +4,9 @@
 
 #include <algorithm>
 #include <concepts>
+#include <limits>
 #include <memory>
+#include <stdexcept>
 #include <mudock/batch.hpp>
 #include <mudock/chem/autodock_protein.hpp>
 #include <numeric>
@@ -181,11 +183,31 @@ namespace mudock {
       const int geom_total  = geom_bucket_info.total_multiple();
 
       batch_multiple selected_info{};
+      const char* combine_policy = "MIN";
+#ifdef MUDOCK_GENETIC_BUCKET_COMBINE_SCORE_ONLY
+      selected_info              = score_bucket_info;
+      combine_policy             = "SCORE_ONLY";
+#elif defined(MUDOCK_GENETIC_BUCKET_COMBINE_GEOM_ONLY)
+      selected_info  = geom_bucket_info;
+      combine_policy = "GEOM_ONLY";
+#elif defined(MUDOCK_GENETIC_BUCKET_COMBINE_LCM)
+      {
+        const long long lcm_total =
+            std::lcm(static_cast<long long>(score_total), static_cast<long long>(geom_total));
+        if (lcm_total <= 0 || lcm_total > static_cast<long long>(std::numeric_limits<int>::max())) {
+          throw std::runtime_error("GENETIC stage LCM combine overflowed int range");
+        }
+        // LCM is a pure combined multiplicity; represent it as total x 1.
+        selected_info = batch_multiple{static_cast<int>(lcm_total), 1};
+      }
+      combine_policy = "LCM";
+#else
       if (score_total <= geom_total) {
         selected_info = score_bucket_info;
       } else {
         selected_info = geom_bucket_info;
       }
+#endif
       selected_info = normalize_batch_multiple(selected_info);
       mudock::info("GENETIC stage combine for ",
                    atoms,
@@ -201,7 +223,9 @@ namespace mudock {
                    geom_bucket_info.active_blocks_per_sm,
                    "x",
                    geom_bucket_info.num_sms,
-                   ") -> selected_plain_multiple=",
+                   ") policy=",
+                   combine_policy,
+                   " -> selected_plain_multiple=",
                    selected_info.total_multiple(),
                    " (",
                    selected_info.active_blocks_per_sm,
