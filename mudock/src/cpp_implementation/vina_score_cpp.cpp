@@ -280,6 +280,7 @@ namespace mudock {
       const size_t num_interacting_pairs
         ){
 
+#if 0
           print_matrix("protein_x", num_atoms_protein, "%f", protein_x);
           print_matrix("protein_y", num_atoms_protein, "%f", protein_y);
           print_matrix("protein_z", num_atoms_protein, "%f", protein_z);
@@ -299,10 +300,7 @@ namespace mudock {
           printf("active torsions: %zu\n", active_torsions);
           print_matrix("interacting_pairs_first", num_interacting_pairs, "%i", interacting_pairs_first);
           print_matrix("interacting_pairs_second", num_interacting_pairs, "%i", interacting_pairs_second);
-
-         
-
-          /// TODO: be sure all the atoms passed are not H
+#endif
 
           std::vector<fp_type> dst_mtx                    = std::vector<fp_type>();
           std::vector<int> rec_lig_is_hbond               = std::vector<int>();

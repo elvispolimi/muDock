@@ -1,7 +1,5 @@
 #pragma once
 
-#include "mudock/compute/buffer.hpp"
-#include "mudock/log.hpp"
 #include <boost/range/size.hpp>
 #include <cassert>
 #include <cstddef>
@@ -21,6 +19,19 @@ namespace mudock {
   
   #define MAX_INTERACTING_PAIRS_IN_BATCH 10000
 
+  template<typename molecule_type>
+    size_t remove_hydrogens(molecule_type molecule) {
+      size_t out = 0;
+        for(int atom = 0; atom < molecule.num_atoms();) {                   
+                element type = molecule.elements(atom);                     
+                if(type == element::H) {
+                  molecule.remove_atom(atom);
+                  out++;
+                }
+                else atom++;                                                
+      }    
+      return out;
+  }
 
   std::pair<std::vector<int>, std::vector<int>> get_interactive_pairs(const static_molecule& ligand);
 
@@ -52,10 +63,11 @@ namespace mudock {
         l_num_interacting_pairs(_scratch->get_queue()),
         device_scratch(_device_scratch) {
 
-          info("Hello from vina score...");
+          info("Removing hydrogens from protein...");
+          size_t removed = remove_hydrogens(protein);           
+          printf("Protein size reduced by %zu\n", removed);
 
-          //TODO: Initialize fields related to the protein
-          num_atoms_protein = protein.num_atoms(); 
+          num_atoms_protein = protein.num_atoms();
 
           protein_x.alloc(num_atoms_protein);
           protein_y.alloc(num_atoms_protein);
@@ -145,6 +157,11 @@ namespace mudock {
         size_t offset_interacting_pairs = 0;
         for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
           auto &ligand = *batch.molecules[ligand_index];
+
+          info("Removing hydrogens from ligand...");
+          size_t removed = remove_hydrogens(ligand);           
+          printf("Size reduced by %zu\n", removed);
+
           const int stride_atoms = ligand_index * batch_atoms; 
           const int num_atoms = ligand.num_atoms();
           std::memcpy(

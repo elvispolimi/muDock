@@ -219,11 +219,11 @@ namespace mudock {
     mudock::remove_atom(x_coordinates, index);
     mudock::remove_atom(y_coordinates, index);
     mudock::remove_atom(z_coordinates, index);
-    mudock::resize(bond_descriptions, index);
-    mudock::resize(atom_autodock_type, index);
-    mudock::resize(atom_is_aromatic, index);
-    mudock::resize(atom_charge, index);
-    mudock::resize(atom_num_hbond, index);
+    // mudock::remove_atom(bond_descriptions, index);
+    mudock::remove_atom(atom_autodock_type, index);
+    mudock::remove_atom(atom_is_aromatic, index);
+    mudock::remove_atom(atom_charge, index);
+    mudock::remove_atom(atom_num_hbond, index);
     mudock::remove_atom(atom_is_hbond_donor, index);
     mudock::remove_atom(atom_is_hbond_acceptor, index);
     mudock::remove_atom(atom_is_hydrophobic, index);
@@ -238,7 +238,7 @@ namespace mudock {
     std::shift_left(atoms_neighbors.begin() + start,
         atoms_neighbors.end(),
         max_neighbors);
-    atoms_neighbors.resize(atoms_size * max_neighbors);
+    mudock::resize(atoms_neighbors, atoms_size * max_neighbors);
 
     /// For each atom, we need to remove the index of the removed atom from its neighbors
     for (int i = 0; i < atoms_size; ++i) {
@@ -247,18 +247,41 @@ namespace mudock {
       for (int j = 0; j < max_neighbors; ++j) {
         int n = neighbors[j];
         if (n == -1) break;
-        if (n != index) {
+        if (n > index) {
+          neighbors[write_pos++] = n - 1;
+        } else if (n != index) {
           neighbors[write_pos++] = n;
-        }
+        }      
       }
       while (write_pos < max_neighbors) {
         neighbors[write_pos++] = -1;
       }
     }
 
+    size_t write_idx = 0;
+    for (size_t read_idx = 0; read_idx < bonds_size; ++read_idx) {
+      auto& b = bond_descriptions[read_idx];
 
+      // If this bond is connected to the atom we just deleted, skip it
+      if (b.source == index || b.dest == index) {
+        continue;
+      }
 
-    // now we need to update the bonds as well
+      // Otherwise, we keep it and update its indices
+      if (b.source > index) --b.source;
+      if (b.dest > index)   --b.dest;
+
+      // Move it to the 'current' valid position in the array
+      bond_descriptions[write_idx++] = b;
+    }
+
+    // 2. Update the bond count and resize the container
+    bonds_size = static_cast<int>(write_idx);
+    mudock::resize(bond_descriptions, bonds_size);
+
+  
+#if 0
+// now we need to update the bonds as well
     auto end_loop = std::begin(bond_descriptions) + bonds_size;
     for (auto bond_it{std::begin(bond_descriptions)}; bond_it != end_loop; ++bond_it) {
       auto& source = bond_it->source;
@@ -275,9 +298,10 @@ namespace mudock {
         }
       }
     }
-    const auto new_bond_size = int{end_loop - std::begin(bond_descriptions)};
+    const auto new_bond_size = long{end_loop - std::begin(bond_descriptions)};
     mudock::resize(bond_descriptions, new_bond_size);
     bonds_size = new_bond_size;
-  }
+#endif
+    }
 
 } // namespace mudock
