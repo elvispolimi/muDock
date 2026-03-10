@@ -65,6 +65,25 @@ namespace mudock {
     }
   };
 
+  struct vina_score_pipeline: pipeline {
+    template<typename queue_type>
+      vina_score<queue_type> get_pipeline(const knobs& conf,
+                                       const int id,
+                                       const device_type dev_type,
+                                       std::shared_ptr<scratchpad<queue_type>> device_scratch) {
+      return mudock::vina_score<queue_type>(
+          std::make_shared<mudock::scratchpad<queue_type>>(conf, id, dev_type),
+          device_scratch,
+          *protein);
+    }
+
+    template<typename queue_type>
+    static int get_batch_size(const int atoms, std::shared_ptr<queue_type> q) {
+        return get_vina_score_batch<queue_type>(atoms, q);
+    }
+  };
+
+
   struct genetic_vina_pipeline : pipeline {
     template<typename queue_type>
     genetic<queue_type, vina_score> get_pipeline(const knobs& conf,
