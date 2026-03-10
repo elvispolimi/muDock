@@ -9,7 +9,6 @@
 #include <mudock/type_alias.hpp>
 #include <stdexcept>
 #include <tuple>
-#include <type_traits>
 #include <vector>
 
 namespace mudock {
@@ -32,7 +31,11 @@ namespace mudock {
     PROT_SIZE_X,
     PROT_SIZE_XY,
     PROT_SIZE_XYZ,
-    PROT_GRID_MAPS
+    PROT_GRID_MAPS,
+    PROT_H_ACCETORS,
+    PROT_H_DONORS,
+    PROT_HYDROPHOBICS,
+    PROT_VDW_RADS
   };
 
   using buffer_type_list = std::tuple<fp_type, int, chromosome>;
@@ -123,6 +126,22 @@ namespace mudock {
   template<>
   struct buffer_type_traits<buffer_data_type::PROT_GRID_MAPS> {
     using type = buffer_type_traits_impl<buffer_data_type::PROT_SIZE_XYZ, fp_type>::type;
+  };
+  template<>
+  struct buffer_type_traits<buffer_data_type::PROT_H_ACCETORS> {
+    using type = buffer_type_traits_impl<buffer_data_type::PROT_H_ACCETORS, int>::type;
+  };
+  template<>
+  struct buffer_type_traits<buffer_data_type::PROT_H_DONORS> {
+    using type = buffer_type_traits_impl<buffer_data_type::PROT_H_DONORS, int>::type;
+  };
+  template<>
+  struct buffer_type_traits<buffer_data_type::PROT_HYDROPHOBICS> {
+    using type = buffer_type_traits_impl<buffer_data_type::PROT_HYDROPHOBICS, int>::type;
+  };
+  template<>
+  struct buffer_type_traits<buffer_data_type::PROT_VDW_RADS> {
+    using type = buffer_type_traits_impl<buffer_data_type::PROT_VDW_RADS, float>::type;
   };
 
   template<template<class...> class container_type, typename T, class queue_t, class... args>

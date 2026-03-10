@@ -20,7 +20,8 @@ namespace mudock {
   #define MAX_INTERACTING_PAIRS_IN_BATCH 10000
 
   template<typename molecule_type>
-    size_t remove_hydrogens(molecule_type molecule) {
+    // TODO pass the pointer not the reference
+    size_t remove_hydrogens(molecule_type& molecule) {
       size_t out = 0;
         for(int atom = 0; atom < molecule.num_atoms();) {                   
                 element type = molecule.elements(atom);                     
@@ -47,13 +48,6 @@ namespace mudock {
           std::shared_ptr<scratchpad<queue_type>> _device_scratch,
           dynamic_molecule &protein)
         : scoring<queue_type>(_scratch),
-        protein_x(_scratch->get_queue()),
-        protein_y(_scratch->get_queue()),
-        protein_z(_scratch->get_queue()),
-        p_is_hbond_acceptor(_scratch->get_queue()),
-        p_is_hbond_donor(_scratch->get_queue()),
-        p_is_hydrophobic(_scratch->get_queue()),
-        p_vdw_radius(_scratch->get_queue()),
         l_is_hbond_acceptor(_scratch->get_queue()),
         l_is_hbond_donor(_scratch->get_queue()),
         l_is_hydrophobic(_scratch->get_queue()),
@@ -62,72 +56,84 @@ namespace mudock {
         l_interacting_pairs_second(_scratch->get_queue()),
         l_num_interacting_pairs(_scratch->get_queue()),
         device_scratch(_device_scratch) {
+          if (!(*device_scratch).template exists<buffer_data_type::PROT_HYDROPHOBICS>()) {
+            info("Removing hydrogens from protein (", protein.num_atoms(), ")...");
+            size_t removed = remove_hydrogens(protein);           
+            printf("Protein size reduced by %zu\n", removed);
 
-          info("Removing hydrogens from protein...");
-          size_t removed = remove_hydrogens(protein);           
-          printf("Protein size reduced by %zu\n", removed);
+            int num_atoms_protein = protein.num_atoms();
 
-          num_atoms_protein = protein.num_atoms();
+            auto &num_atoms           = (*device_scratch).template get<buffer_data_type::NUM_ATOMS>();
+            auto &protein_x           = (*device_scratch).template get<buffer_data_type::X_COORDS>();
+            auto &protein_y           = (*device_scratch).template get<buffer_data_type::Y_COORDS>();
+            auto &protein_z           = (*device_scratch).template get<buffer_data_type::Z_COORDS>();
+            auto &p_is_hbond_acceptor = (*device_scratch).template get<buffer_data_type::PROT_H_ACCETORS>();
+            auto &p_is_hbond_donor    = (*device_scratch).template get<buffer_data_type::PROT_H_DONORS>();
+            auto &p_is_hydrophobic    = (*device_scratch).template get<buffer_data_type::PROT_HYDROPHOBICS>();
+            auto &p_vdw_radius        = (*device_scratch).template get<buffer_data_type::PROT_VDW_RADS>();
 
-          protein_x.alloc(num_atoms_protein);
-          protein_y.alloc(num_atoms_protein);
-          protein_z.alloc(num_atoms_protein);
-          p_is_hbond_acceptor.alloc(num_atoms_protein);
-          p_is_hbond_donor.alloc(num_atoms_protein);
-          p_is_hydrophobic.alloc(num_atoms_protein);
-          p_vdw_radius.alloc(num_atoms_protein);
+            num_atoms.alloc(1);
+            protein_x.alloc(num_atoms_protein);
+            protein_y.alloc(num_atoms_protein);
+            protein_z.alloc(num_atoms_protein);
+            p_is_hbond_acceptor.alloc(num_atoms_protein);
+            p_is_hbond_donor.alloc(num_atoms_protein);
+            p_is_hydrophobic.alloc(num_atoms_protein);
+            p_vdw_radius.alloc(num_atoms_protein);
 
-          std::memcpy(
-              (void *) (protein_x()), 
+            num_atoms()[0] = num_atoms_protein;
+
+            std::memcpy(
+                protein_x(), 
                 protein.get_x().data(), 
                 num_atoms_protein * sizeof(fp_type)
-          );
-          
-          std::memcpy(
-              (void *) (protein_y()), 
+                );
+
+            std::memcpy(
+                protein_y(), 
                 protein.get_y().data(), 
                 num_atoms_protein * sizeof(fp_type)
-          );
-          
-          std::memcpy(
-              (void *) (protein_z()), 
-                protein.get_z().data(), 
-                num_atoms_protein * sizeof(fp_type)
-          );
+                );
 
-          std::memcpy(
-              (void *) (p_is_hbond_acceptor()), 
+            std::memcpy(
+                protein_z(), 
+                protein.get_z().data(),
+                num_atoms_protein * sizeof(fp_type)
+                );
+
+            std::memcpy(
+                p_is_hbond_acceptor(), 
                 protein.get_is_hbond_acceptor().data(), 
                 num_atoms_protein * sizeof(int)
-          );
+                );
 
-          std::memcpy(
-              (void *) (p_is_hbond_donor()), 
+            std::memcpy(
+                p_is_hbond_donor(), 
                 protein.get_is_hbond_donor().data(), 
                 num_atoms_protein * sizeof(int)
-          );
+                );
 
-          std::memcpy(
-              (void *) (p_is_hydrophobic()), 
+            std::memcpy(
+                p_is_hydrophobic(), 
                 protein.get_is_hydrophobic().data(), 
                 num_atoms_protein * sizeof(int)
-          );
+                );
 
-          std::memcpy(
-              (void *) (p_vdw_radius()), 
+            std::memcpy(
+                p_vdw_radius(), 
                 protein.get_vdw_radius().data(), 
                 num_atoms_protein * sizeof(fp_type)
-          );
+                );
 
-
-          protein_x.copy_host2device();
-          protein_y.copy_host2device();
-          protein_z.copy_host2device();
-          p_is_hbond_acceptor.copy_host2device();
-          p_is_hbond_donor.copy_host2device();
-          p_is_hydrophobic.copy_host2device();
-          p_vdw_radius.copy_host2device();
-
+            num_atoms.copy_host2device();
+            protein_x.copy_host2device();
+            protein_y.copy_host2device();
+            protein_z.copy_host2device();
+            p_is_hbond_acceptor.copy_host2device();
+            p_is_hbond_donor.copy_host2device();
+            p_is_hydrophobic.copy_host2device();
+            p_vdw_radius.copy_host2device();
+          }
         }
 
       void prepare(batch<static_molecule> &batch) {
@@ -203,7 +209,7 @@ namespace mudock {
           std::memcpy(
               (void *) (l_interacting_pairs_second() + offset_interacting_pairs), 
                 ip_second.data(), 
-                num_interacting_pairs * sizeof(fp_type)
+                num_interacting_pairs * sizeof(int)
           );
 
           std::memcpy((void *) (l_num_interacting_pairs() + ligand_index), &num_interacting_pairs, sizeof(int));
@@ -218,8 +224,6 @@ namespace mudock {
         l_interacting_pairs_second.copy_host2device();
         l_num_interacting_pairs.copy_host2device();
 
-        
-
         // TODO ask Davide about this performance
         // Bind to the kernel function
         const auto scores_per_ligand = score_b.num_elements() / batch_ligands;
@@ -233,15 +237,16 @@ namespace mudock {
         const fp_type *x_scratch_b = (*this->scratch).template get<buffer_data_type::X_SCRATCH>().dev_pointer();
         const fp_type *y_scratch_b = (*this->scratch).template get<buffer_data_type::Y_SCRATCH>().dev_pointer();
         const fp_type *z_scratch_b = (*this->scratch).template get<buffer_data_type::Z_SCRATCH>().dev_pointer();
-  
+
         /// Pointers to protein data
-        const fp_type *protein_x_p = protein_x.dev_pointer();
-        const fp_type *protein_y_p = protein_y.dev_pointer();
-        const fp_type *protein_z_p = protein_z.dev_pointer();
-        const int *p_is_hbond_acceptor_p = p_is_hbond_acceptor.dev_pointer(); 
-        const int *p_is_hbond_donor_p = p_is_hbond_donor.dev_pointer(); 
-        const int *p_is_hydrophobic_p = p_is_hydrophobic.dev_pointer(); 
-        const fp_type *p_vdw_radius_p = p_vdw_radius.dev_pointer();
+        const int num_atoms_protein = (*device_scratch).template get<buffer_data_type::NUM_ATOMS>().host_pointer()[0];
+        const fp_type *protein_x_p =  (*device_scratch).template get<buffer_data_type::X_COORDS>().dev_pointer();
+        const fp_type *protein_y_p =  (*device_scratch).template get<buffer_data_type::Y_COORDS>().dev_pointer();
+        const fp_type *protein_z_p =  (*device_scratch).template get<buffer_data_type::Z_COORDS>().dev_pointer();
+        const int *p_is_hbond_acceptor_p =(*device_scratch).template get<buffer_data_type::PROT_H_ACCETORS>().dev_pointer();
+        const int *p_is_hbond_donor_p =  (*device_scratch).template get<buffer_data_type::PROT_H_DONORS>().dev_pointer();
+        const int *p_is_hydrophobic_p =  (*device_scratch).template get<buffer_data_type::PROT_HYDROPHOBICS>().dev_pointer();
+        const fp_type *p_vdw_radius_p = (*device_scratch).template get<buffer_data_type::PROT_VDW_RADS>().dev_pointer();
 
         // Ligand batch data
         const int *l_is_hbond_acceptor_b = l_is_hbond_acceptor.dev_pointer();
@@ -295,15 +300,6 @@ namespace mudock {
       int batch_ligands;
       int batch_atoms;
   
-      // ASK: should i put here the protein data or in a scratch device?
-      int num_atoms_protein; 
-      buffer_vector<fp_type, queue_type> protein_x; 
-      buffer_vector<fp_type, queue_type> protein_y; 
-      buffer_vector<fp_type, queue_type> protein_z;
-      buffer_vector<int, queue_type> p_is_hbond_acceptor; 
-      buffer_vector<int, queue_type> p_is_hbond_donor; 
-      buffer_vector<int, queue_type> p_is_hydrophobic; 
-      buffer_vector<fp_type, queue_type> p_vdw_radius; 
       buffer_vector<int, queue_type> l_is_hbond_acceptor; 
       buffer_vector<int, queue_type> l_is_hbond_donor; 
       buffer_vector<int, queue_type> l_is_hydrophobic;
