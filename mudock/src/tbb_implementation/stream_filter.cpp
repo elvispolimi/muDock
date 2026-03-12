@@ -49,6 +49,11 @@ namespace mudock {
 
         buf.resize(static_cast<size_t>(stream_.gcount()));
 
+        if (!buf.empty() && !std::string_view(buf).starts_with(adt_mol2_tokens::MOLECULE_TOKEN)) {
+            throw std::runtime_error(
+                "TBB stream_filter supports only ADTMOL2 format");
+        }
+
         if (!stream_.eof()) {
             size_t cut = buf.rfind(adt_mol2_tokens::MOLECULE_TOKEN);
             if (cut != std::string::npos && cut != 0) {

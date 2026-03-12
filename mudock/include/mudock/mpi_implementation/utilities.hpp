@@ -17,10 +17,9 @@
 namespace mudock {
 
 // helper: offset of previous marker token
-static std::size_t find_previous_marker(std::istream& file, std::size_t pos) {
+inline std::size_t find_previous_marker(std::istream& file, std::size_t pos, const std::string_view marker) {
     if (pos == 0) return 0;
 
-    const std::string_view marker = adt_mol2_tokens::MOLECULE_TOKEN;
     constexpr std::size_t search_block_size = 2000;
 
     std::string buffer(search_block_size, '\0');
@@ -48,7 +47,7 @@ static std::size_t find_previous_marker(std::istream& file, std::size_t pos) {
 }
 
 // Compute all ranges on rank 0; broadcast to everyone; return range for this rank.
-static std::pair<std::uint64_t, std::uint64_t>
+inline std::pair<std::uint64_t, std::uint64_t>
 mpi_splitter_bcast(const std::string& path, int rank_id, int num_ranks, MPI_Comm comm = MPI_COMM_WORLD)
 {
     if (num_ranks <= 0 || rank_id < 0 || rank_id >= num_ranks)
@@ -87,12 +86,14 @@ mpi_splitter_bcast(const std::string& path, int rank_id, int num_ranks, MPI_Comm
             // rank 0 start stays 0
             for (int r = 1; r < num_ranks; ++r) {
                 offsets[2 * r + 0] =
-                    static_cast<std::uint64_t>(find_previous_marker(file, static_cast<std::size_t>(offsets[2 * r + 0])));
+                    static_cast<std::uint64_t>(find_previous_marker(file, 
+                        static_cast<std::size_t>(offsets[2 * r + 0]), adt_mol2_tokens::MOLECULE_TOKEN));
             }
             // last rank end stays file_size
             for (int r = 0; r < num_ranks - 1; ++r) {
                 offsets[2 * r + 1] =
-                    static_cast<std::uint64_t>(find_previous_marker(file, static_cast<std::size_t>(offsets[2 * r + 1])));
+                    static_cast<std::uint64_t>(find_previous_marker(file, 
+                        static_cast<std::size_t>(offsets[2 * r + 1]), adt_mol2_tokens::MOLECULE_TOKEN));
             }
 
             // optional sanity: enforce non-decreasing and not inverted

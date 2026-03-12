@@ -4,11 +4,17 @@
 #include <string_view>
 
 namespace mudock {
-
-    static constexpr std::string_view molecule_token = adt_mol2_tokens::MOLECULE_TOKEN;
     
     parser_filter::mol_vec parser_filter::operator()(std::string_view sv) const {
         mol_vec result;
+
+        constexpr std::string_view molecule_token = adt_mol2_tokens::MOLECULE_TOKEN;
+
+        // a static assert on the supported format could be used instead
+        if (!sv.empty() && !sv.starts_with(molecule_token)) {
+            throw std::runtime_error(
+                "TBB parser_filter supports only ADTMOL2 format");
+        }
     
         while (!sv.empty()) {
             // Assume the format always starts with the molecule token
