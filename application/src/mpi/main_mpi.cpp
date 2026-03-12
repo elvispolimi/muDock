@@ -38,6 +38,14 @@ int main(int argc, char** argv) {
     }
   }
 
+  const auto in_format = mudock::parse_supported_format(args.ligand_path);
+  if (in_format != mudock::supported_format::ADTMOL2) {
+    if (rank == 0) {
+      mudock::error("MPI implementation currently supports only ADTMOL2 input format.");
+    }
+    MPI_Abort(MPI_COMM_WORLD, 3);
+  }
+
   // Each rank reads the protein
   auto protein = std::make_shared<mudock::dynamic_molecule>(
       mudock::parser<mudock::dynamic_molecule>(args.protein_path));

@@ -12,6 +12,12 @@ int main(int argc, char** argv) {
 
   MUDOCK_MARKER_INIT;
 
+  const auto in_format = mudock::parse_supported_format(args.ligand_path);
+  if (in_format != mudock::supported_format::ADTMOL2) {
+    mudock::error("TBB implementation currently supports only ADTMOL2 input format.");
+    return 1;
+  }
+
   // read and parse the target protein
   mudock::info("Reading and parsing protein ", args.protein_path, " ...");
   auto protein =

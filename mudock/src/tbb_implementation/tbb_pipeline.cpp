@@ -39,12 +39,11 @@ namespace mudock {
 
         // asynchronous thread to print the output ligands as soon as they are ready
         std::thread writer([&]{
-            bool ok=false;
             std::string buf;
             buf.reserve(1<<20);
 
             std::size_t lines = 0;
-            for (auto x = output_queue->dequeue(ok); ok; x = output_queue->dequeue(ok)) {
+            for (auto x = output_queue->dequeue(); x; x = output_queue->dequeue()) {
                 append_ligand(buf, *x);
 
                 if (++lines % 4096 == 0) {
@@ -63,7 +62,7 @@ namespace mudock {
             knobs.max_tbb_tokens,
             oneapi::tbb::make_filter<void, std::string>(
             oneapi::tbb::filter_mode::serial_in_order,
-            stream_filter(in, end)
+            stream_filter(in, knobs.max_bytes_per_token, end)
             )
             &
             oneapi::tbb::make_filter<std::string, mol_vec>(
@@ -77,12 +76,10 @@ namespace mudock {
             oneapi::tbb::make_filter<mol_vec, void>(
                 oneapi::tbb::filter_mode::serial_out_of_order,
             [&](mol_vec molecules) {
-                bool is_produced = false;
                 for (auto& p : molecules) {
                     if (p) {
-                        input_queue->enqueue(p, is_produced);
+                        input_queue->enqueue(p);
                     }
-                    if (!is_produced) break;
                 }
             }
             )
