@@ -10,7 +10,6 @@
 #include <mudock/compute/pipeline.hpp>
 #include <mudock/compute/queue.hpp>
 #include <mudock/compute/safe_queue.hpp>
-// #include <mudock/compute/safe_stack.hpp>
 #include <mudock/compute/scratchpad.hpp>
 #include <mudock/compute/stage.hpp>
 #include <mudock/compute/threadpool.hpp>

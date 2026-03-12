@@ -117,8 +117,12 @@ if(MUDOCK_ENABLE_OMP_OFFLOAD)
 endif()
 
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/src/bench" bench)
-add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/src/tests" tests)
-add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/src/mpi" mpi)
+if(MUDOCK_ENABLE_TEST)
+  add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/src/tests" tests)
+endif()
+if(MUDOCK_ENABLE_MPI)
+  add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/src/mpi" mpi)
+endif()
 
 # if(MUDOCK_ENABLE_LIKWID)
 #   # target_include_directories("${CMAKE_PROJECT_NAME}" PRIVATE

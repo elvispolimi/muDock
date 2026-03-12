@@ -3,7 +3,6 @@
 #include <memory>
 #include <mudock/compute/reorder_buffer.hpp>
 #include <mudock/compute/safe_queue.hpp>
-// #include <mudock/compute/safe_stack.hpp>
 #include <mudock/compute/stage.hpp>
 #include <mudock/compute/threadpool.hpp>
 #include <mudock/cpp_implementation/vectorization.hpp>
@@ -37,8 +36,6 @@ namespace mudock {
         bool is_stored = false;
         output_stack->enqueue(batch_ligand, is_stored);
         assert(is_stored);
-        // Used if using safe_stack instead of safe_queue
-        // output_stack->enqueue(std::make_unique<static_molecule>(std::move(*batch_ligand)));
       }
     }
 
@@ -53,8 +50,6 @@ namespace mudock {
           rob(rb),
           pipeline(std::move(_pipeline)) {}
 
-    // We could also consider to make this function templated to enable blocking/non-blocking queue
-    // For now this is only a blocking queue
     void main() {
       // process the input ligands
       bool is_retrieved = false;
@@ -67,16 +62,6 @@ namespace mudock {
           }
         }
       } while (is_retrieved);
-
-      // Used if using safe_stack instead of safe_queue
-      // auto new_ligand = input_stack->dequeue_wait();
-      // while (new_ligand) {
-      //   auto [new_batch, is_valid] = rob->add_ligand(std::move(new_ligand));
-      //   if (is_valid) {
-      //     process(new_batch);
-      //   }
-      //   new_ligand = input_stack->dequeue_wait();
-      // }
 
       // finish the half empty batches in the rob
       auto rob_is_empty = false;
