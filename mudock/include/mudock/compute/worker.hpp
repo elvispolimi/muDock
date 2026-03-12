@@ -33,9 +33,7 @@ namespace mudock {
       } catch (const std::runtime_error& e) { error("Unable to virtual screen a batch due to ", e.what()); }
 
       for (auto& batch_ligand: std::span(b.molecules.data(), b.num_ligands)) {
-        bool is_stored = false;
-        output_stack->enqueue(batch_ligand, is_stored);
-        assert(is_stored);
+        output_stack->enqueue(batch_ligand);
       }
     }
 
@@ -52,16 +50,12 @@ namespace mudock {
 
     void main() {
       // process the input ligands
-      bool is_retrieved = false;
-      do {
-        auto new_ligand = input_stack->dequeue(is_retrieved);
-        if (is_retrieved) {
-          auto [new_batch, is_valid] = rob->add_ligand(std::move(new_ligand));
-          if (is_valid) {
-            process(new_batch);
-          }
+      while (auto new_ligand = input_stack->dequeue()) {
+        auto [new_batch, is_valid] = rob->add_ligand(std::move(new_ligand));
+        if (is_valid) {
+          process(new_batch);
         }
-      } while (is_retrieved);
+      }
 
       // finish the half empty batches in the rob
       auto rob_is_empty = false;

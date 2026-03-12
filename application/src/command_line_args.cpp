@@ -52,6 +52,14 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
       po::value(&args.knobs.mutation_prob)->default_value(args.knobs.mutation_prob),
       "Probability of a mutation to happen during GA");
   knobs_description.add_options()("seed", po::value(&seed), "Seed for random values generators");
+  knobs_description.add_options()(
+      "tokens",
+      po::value(&args.knobs.max_tbb_tokens)->default_value(args.knobs.max_tbb_tokens),
+      "Max number of tokens in the TBB pipeline");
+  knobs_description.add_options()(
+      "bytes_per_token",
+      po::value(&args.knobs.max_bytes_per_token)->default_value(args.knobs.max_bytes_per_token),
+      "Max number of bytes per token in the TBB pipeline");
   // parse them
   po::options_description all("Allowed Options");
   all.add(arguments_description).add(knobs_description);

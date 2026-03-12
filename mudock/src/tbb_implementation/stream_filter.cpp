@@ -3,8 +3,8 @@
 
 namespace mudock {
     
-    stream_filter::stream_filter(std::istream& in, std::size_t end)
-    : stream_(in)
+    stream_filter::stream_filter(std::istream& in, std::size_t max_bytes_per_token, std::size_t end)
+    : stream_(in), max_bytes_per_token_(max_bytes_per_token)
     {
         if (end != std::numeric_limits<std::size_t>::max()) {
             end_ = end;
@@ -18,8 +18,9 @@ namespace mudock {
         stream_.seekg(cur);
     }
 
-    std::string stream_filter::operator()(oneapi::tbb::flow_control& fc,
-                                        std::size_t max_bytes) const {
+    std::string stream_filter::operator()(oneapi::tbb::flow_control& fc) const {
+
+        std::size_t bytes_per_token = this->max_bytes_per_token_;
         // Check empty/invalid file
         const std::streampos pos = stream_.tellg();
         if (pos == std::streampos(-1)) { 
@@ -36,10 +37,10 @@ namespace mudock {
 
         // Ensure we don't read past the end of the assigned range
         const std::size_t remaining = end_ - cur;
-        if (max_bytes > remaining) max_bytes = remaining;  
+        if (bytes_per_token > remaining) bytes_per_token = remaining;  
 
         std::string buf;
-        buf.resize(max_bytes);
+        buf.resize(bytes_per_token);
 
         stream_.read(buf.data(), buf.size());
         if (stream_.gcount() <= 0) {
@@ -48,11 +49,6 @@ namespace mudock {
         }
 
         buf.resize(static_cast<size_t>(stream_.gcount()));
-
-        if (!buf.empty() && !std::string_view(buf).starts_with(adt_mol2_tokens::MOLECULE_TOKEN)) {
-            throw std::runtime_error(
-                "TBB stream_filter supports only ADTMOL2 format");
-        }
 
         if (!stream_.eof()) {
             size_t cut = buf.rfind(adt_mol2_tokens::MOLECULE_TOKEN);

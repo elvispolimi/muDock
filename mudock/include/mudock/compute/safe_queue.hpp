@@ -84,10 +84,9 @@ namespace mudock {
       return signal_terminate;
     }
 
-    // this method attempt to remove and return an element from the queue. The output parameters tells if the
-    // returned pointer is meaningful or a null pointer.
+    // this method attempt to remove and return an element from the queue.
     // NOTE: this method might block the execution of the application.
-    value_ptr_type dequeue(bool &is_retrieved) {
+    value_ptr_type dequeue() {
       // wait until there is some event
       std::unique_lock<std::mutex> lock(queue_mutex);
       while (!signal_terminate && buffer.empty()) { // spourious events might happens!
@@ -99,20 +98,17 @@ namespace mudock {
         auto output_data = std::move(buffer.back());
         buffer.pop_back();
         inwork_available.notify_one();
-        is_retrieved = true;
         return output_data;
       } else {
         assert(signal_terminate);
-        is_retrieved = false;
         return value_ptr_type{};
       }
     }
 
-    // this method attempt to insert an element in the queue. The output flag tells if the input element has
-    // been succesfully inserted in the queue. In this case the queue owns the element and the user is not
+    // this method attempt to insert an element in the queue. In case of success the queue owns the element and the user is not
     // allowed to dereference the pointer. If the operation fails, i.e. the termination signal is set, the owner
     // of the data is still the caller
-    void enqueue(value_ptr_type &input_data, bool &is_stored) {
+    void enqueue(value_ptr_type &input_data) {
       // try to enqueue the element (if there is enough space)
       std::unique_lock<std::mutex> lock(queue_mutex);
       while (!signal_terminate && (buffer.size() >= max_buffer_size)) { // spourious events might happens!
@@ -121,14 +117,12 @@ namespace mudock {
 
       // if the terminate signal is set, do not enqueue the element
       if (signal_terminate) {
-        is_stored = false;
         return;
       }
 
       // otherwise, store the data in the back of the container
       buffer.emplace_front(std::move(input_data));
       outwork_available.notify_one();
-      is_stored = true;
       global_counter += 1;
     }
   };
