@@ -14,23 +14,28 @@
 
 namespace mudock {
 
-    static inline void print_ligand(const static_molecule& ligand) {
-        std::cout << ligand.properties.get(property_type::NAME) << " "
-                  << ligand.properties.get(property_type::SCORE) << "\n";
+    inline void append_ligand(std::string& buf, const static_molecule& ligand) {
+        buf += ligand.properties.get(property_type::NAME);
+        buf += ' ';
+        buf += ligand.properties.get(property_type::SCORE);
+        buf += '\n';
     }
 
+    static constexpr std::size_t queue_max_size = 100000;
+
+    template<typename pipeline_t>
     void run_tbb_pipeline(std::istream& in,
          const std::vector<std::string>& configurations,
          const knobs& knobs,
-         genetic_adt_pipeline& pipeline, 
+         pipeline_t& pipeline, 
          std::size_t end)   
     {
         using mol_vec = parser_filter::mol_vec;
 
         auto input_queue  = std::make_shared<mudock::safe_queue<mudock::static_molecule>>();
         auto output_queue = std::make_shared<mudock::safe_queue<mudock::static_molecule>>();
-        input_queue->initialize(1000000);
-        output_queue->initialize(1000000);
+        input_queue->initialize(queue_max_size);
+        output_queue->initialize(queue_max_size);
 
         // asynchronous thread to print the output ligands as soon as they are ready
         std::thread writer([&]{
@@ -40,10 +45,7 @@ namespace mudock {
 
             std::size_t lines = 0;
             for (auto x = output_queue->dequeue(ok); ok; x = output_queue->dequeue(ok)) {
-                buf += x->properties.get(property_type::NAME);
-                buf += ' ';
-                buf += x->properties.get(property_type::SCORE);
-                buf += '\n';
+                append_ligand(buf, *x);
 
                 if (++lines % 4096 == 0) {
                     std::cout << buf;
@@ -53,33 +55,12 @@ namespace mudock {
             if (!buf.empty()) std::cout << buf;
         });
 
-        // Helper lambdas to drain results with tbb writer stage (disabled until we integrate the writer stage in the pipeline)
-        // auto drain_ready_nb = [&]() {
-        //     mudock::safe_queue<mudock::static_molecule>::value_ptr_type x;
-        //     while (output_queue->try_dequeue(x)) {     
-        //         print_ligand(*x);
-        //     }
-        // };
-
-        // auto drain_ready = [&]() -> std::size_t {
-        //     std::size_t counter = 0;
-        //     bool is_retrieved = false;
-        //     while (auto x = output_queue->dequeue(is_retrieved)) {
-        //         print_ligand(*x);
-        //         ++counter;
-        //     }
-            
-        //     return counter;
-        // };
-
         threadpool pool;
         manager(configurations, pool, knobs, input_queue, output_queue, pipeline);
         info("Manager done: workers created");
 
-        const std::size_t effective_max_tokens = knobs.max_tbb_tokens == 0 ? 1 : knobs.max_tbb_tokens;
-
         oneapi::tbb::parallel_pipeline(
-            effective_max_tokens,
+            knobs.max_tbb_tokens,
             oneapi::tbb::make_filter<void, std::string>(
             oneapi::tbb::filter_mode::serial_in_order,
             stream_filter(in, end)
@@ -122,5 +103,12 @@ namespace mudock {
 
         info("Output drained");
     }
+
+    template void mudock::run_tbb_pipeline<mudock::genetic_adt_pipeline>(
+        std::istream&,
+        const std::vector<std::string>&,
+        const mudock::knobs&,
+        mudock::genetic_adt_pipeline&,
+        std::size_t);
 
 } // namespace mudock
