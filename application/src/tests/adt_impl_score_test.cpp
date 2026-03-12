@@ -61,17 +61,15 @@ int main(int argc, char* argv[]) {
   mudock::info("Generating score reference ...");
   auto output_queue = std::make_shared<mudock::safe_queue<mudock::static_molecule>>();
   auto input_queue  = std::make_shared<mudock::safe_queue<mudock::static_molecule>>();
-  bool is_stored  = false;
-  bool is_drained = false;
   auto ligand_in  = std::make_unique<mudock::static_molecule>(*ligand);
-  input_queue->enqueue(ligand_in, is_stored);  
+  input_queue->enqueue(ligand_in);  
   input_queue->send_terminate_signal(); // signal that no more ligand will be enqueued in the input queue
   {
     auto threadpool = mudock::threadpool();
     mudock::manager({std::string{use_cpu_conf}}, threadpool, knobs, input_queue, output_queue, pipe);
   }
   output_queue->send_terminate_signal(); // signal that no more ligand will be enqueued in the output queue
-  auto ligand_out = output_queue->dequeue(is_drained);
+  auto ligand_out = output_queue->dequeue();
   std::stringstream ss(ligand_out->properties.get(mudock::property_type::SCORE));
   mudock::fp_type reference_score;
   ss >> reference_score;
@@ -81,14 +79,14 @@ int main(int argc, char* argv[]) {
     ligand_in  = std::make_unique<mudock::static_molecule>(*ligand);
     input_queue->clear_terminate_signal(); // clear the terminate signal to be able to enqueue new ligands
     output_queue->clear_terminate_signal();
-    input_queue->enqueue(ligand_in, is_stored);
+    input_queue->enqueue(ligand_in);
     input_queue->send_terminate_signal(); // signal that no more ligand will be enqueued in the input queue
     {
       auto threadpool = mudock::threadpool();
       mudock::manager({std::string{conf}}, threadpool, knobs, input_queue, output_queue, pipe);
     }
     output_queue->send_terminate_signal(); // signal that no more ligand will be enqueued in the output queue
-    ligand_out = output_queue->dequeue(is_drained);
+    ligand_out = output_queue->dequeue();
     std::stringstream sss(ligand_out->properties.get(mudock::property_type::SCORE));
     mudock::fp_type score;
     sss >> score;

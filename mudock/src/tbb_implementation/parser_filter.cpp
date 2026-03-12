@@ -10,12 +10,6 @@ namespace mudock {
 
         constexpr std::string_view molecule_token = adt_mol2_tokens::MOLECULE_TOKEN;
 
-        // a static assert on the supported format could be used instead
-        if (!sv.empty() && !sv.starts_with(molecule_token)) {
-            throw std::runtime_error(
-                "TBB parser_filter supports only ADTMOL2 format");
-        }
-    
         while (!sv.empty()) {
             // Assume the format always starts with the molecule token
             size_t next = sv.find(molecule_token, molecule_token.size());
