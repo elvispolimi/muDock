@@ -7,8 +7,8 @@
 #SPACING 0.500
 #NELEMENTS 96 90 92
 #CENTER 3.000 7.000 12.500
-#MACROMOLECULE /home/gaccordi/repo/muDock/data/1fkb/1fkb_pocket.pdbqt
-#GRID_PARAMETER_FILE /home/gaccordi/repo/muDock/data/1fkb/1fkb_pocket.gpf
+#MACROMOLECULE 1fkb_pocket.pdbqt
+#GRID_PARAMETER_FILE 1fkb_pocket.gpf
 #
 ndim=3			# number of dimensions in the field
 dim1=97			# number of x-elements
@@ -18,9 +18,9 @@ nspace=3		# number of physical coordinates per point
 veclen=16		# number of affinity values at each point
 data=float		# data type (byte, integer, float, double)
 field=uniform		# field type (uniform, rectilinear, irregular)
-coord 1 file=/home/gaccordi/repo/muDock/data/1fkb/1fkb_pocket.maps.xyz filetype=ascii offset=0
-coord 2 file=/home/gaccordi/repo/muDock/data/1fkb/1fkb_pocket.maps.xyz filetype=ascii offset=2
-coord 3 file=/home/gaccordi/repo/muDock/data/1fkb/1fkb_pocket.maps.xyz filetype=ascii offset=4
+coord 1 file=1fkb_pocket.maps.xyz filetype=ascii offset=0
+coord 2 file=1fkb_pocket.maps.xyz filetype=ascii offset=2
+coord 3 file=1fkb_pocket.maps.xyz filetype=ascii offset=4
 label=A-affinity	# component label for variable 1
 label=C-affinity	# component label for variable 2
 label=H-affinity	# component label for variable 3
@@ -40,19 +40,19 @@ label=Desolvation	# component label for variable 15
 #
 # location of affinity grid files and how to read them
 #
-variable 1 file=/home/gaccordi/repo/muDock/data/1fkb/1fkb_pocket.A.map filetype=ascii skip=6
-variable 2 file=/home/gaccordi/repo/muDock/data/1fkb/1fkb_pocket.C.map filetype=ascii skip=6
-variable 3 file=/home/gaccordi/repo/muDock/data/1fkb/1fkb_pocket.H.map filetype=ascii skip=6
-variable 4 file=/home/gaccordi/repo/muDock/data/1fkb/1fkb_pocket.HD.map filetype=ascii skip=6
-variable 5 file=/home/gaccordi/repo/muDock/data/1fkb/1fkb_pocket.N.map filetype=ascii skip=6
-variable 6 file=/home/gaccordi/repo/muDock/data/1fkb/1fkb_pocket.NA.map filetype=ascii skip=6
-variable 7 file=/home/gaccordi/repo/muDock/data/1fkb/1fkb_pocket.OA.map filetype=ascii skip=6
-variable 8 file=/home/gaccordi/repo/muDock/data/1fkb/1fkb_pocket.SA.map filetype=ascii skip=6
-variable 9 file=/home/gaccordi/repo/muDock/data/1fkb/1fkb_pocket.Cl.map filetype=ascii skip=6
-variable 10 file=/home/gaccordi/repo/muDock/data/1fkb/1fkb_pocket.F.map filetype=ascii skip=6
-variable 11 file=/home/gaccordi/repo/muDock/data/1fkb/1fkb_pocket.S.map filetype=ascii skip=6
-variable 12 file=/home/gaccordi/repo/muDock/data/1fkb/1fkb_pocket.Br.map filetype=ascii skip=6
-variable 13 file=/home/gaccordi/repo/muDock/data/1fkb/1fkb_pocket.P.map filetype=ascii skip=6
-variable 14 file=/home/gaccordi/repo/muDock/data/1fkb/1fkb_pocket.I.map filetype=ascii skip=6
-variable 15 file=/home/gaccordi/repo/muDock/data/1fkb/1fkb_pocket.e.map filetype=ascii skip=6
-variable 16 file=/home/gaccordi/repo/muDock/data/1fkb/1fkb_pocket.d.map filetype=ascii skip=6
+variable 1 file=1fkb_pocket.A.map filetype=ascii skip=6
+variable 2 file=1fkb_pocket.C.map filetype=ascii skip=6
+variable 3 file=1fkb_pocket.H.map filetype=ascii skip=6
+variable 4 file=1fkb_pocket.HD.map filetype=ascii skip=6
+variable 5 file=1fkb_pocket.N.map filetype=ascii skip=6
+variable 6 file=1fkb_pocket.NA.map filetype=ascii skip=6
+variable 7 file=1fkb_pocket.OA.map filetype=ascii skip=6
+variable 8 file=1fkb_pocket.SA.map filetype=ascii skip=6
+variable 9 file=1fkb_pocket.Cl.map filetype=ascii skip=6
+variable 10 file=1fkb_pocket.F.map filetype=ascii skip=6
+variable 11 file=1fkb_pocket.S.map filetype=ascii skip=6
+variable 12 file=1fkb_pocket.Br.map filetype=ascii skip=6
+variable 13 file=1fkb_pocket.P.map filetype=ascii skip=6
+variable 14 file=1fkb_pocket.I.map filetype=ascii skip=6
+variable 15 file=1fkb_pocket.e.map filetype=ascii skip=6
+variable 16 file=1fkb_pocket.d.map filetype=ascii skip=6
