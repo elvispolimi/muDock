@@ -12,7 +12,7 @@
 
 This file was created at:			6:42 40" p.m., 03/13/2025
                    on host:		"fedora"
-Current Working Directory = "/home/gaccordi/repo/autodock4/autodock/build"
+Current Working Directory = "."
 
       ________________________________________________________________
 
@@ -21,7 +21,7 @@ Current Working Directory = "/home/gaccordi/repo/autodock4/autodock/build"
 
 
 Random number generator was seeded with values 326678, 1741887760.
-Docking parameter file (DPF) used for this docking:		/home/gaccordi/dataset/test_dataset/1fkb/1fkb.dpf
+Docking parameter file (DPF) used for this docking:		1fkb.dpf
 DPF> ## GENERIC SECTION
 
 DPF> autodock_parameter_version 4.2       # used by autodock to validate parameter set
@@ -36,9 +36,9 @@ DPF> ## LIGAND-SPECIFIC SECTION
 
 DPF> ligand_types C H HD N OA           # atoms types in ligand
 
-DPF> fld /home/gaccordi/dataset/test_dataset/1fkb/1fkb_pocket.maps.fld  # grid_data_file
+DPF> fld 1fkb_pocket.maps.fld  # grid_data_file
 
-Opening Grid Map Dimensions file:		/home/gaccordi/dataset/test_dataset/1fkb/1fkb_pocket.maps.fld
+Opening Grid Map Dimensions file:		1fkb_pocket.maps.fld
 Grid Point Spacing =				0.375 Angstroms
 
 Even Number of User-specified Grid Points =	80 x-points
@@ -46,30 +46,30 @@ Even Number of User-specified Grid Points =	80 x-points
 						80 z-points
 
 Coordinates of Central Grid Point of Maps =	(3.315, 5.997, 11.974)
-Macromolecule file used to create Grid Maps =	/home/gaccordi/dataset/test_dataset/1fkb/1fkb_pocket.pdbqt
-Grid Parameter file used to create Grid Maps =	/home/gaccordi/repo/autodock-tools/1fkb_pocket.gpf
+Macromolecule file used to create Grid Maps =	1fkb_pocket.pdbqt
+Grid Parameter file used to create Grid Maps =	1fkb_pocket.gpf
 Minimum coordinates in grid = (-11.685, -9.003, -3.026)
 Maximum coordinates in grid = (18.315, 20.997, 26.974)
 
-DPF> map /home/gaccordi/dataset/test_dataset/1fkb/1fkb_pocket.H.map     # atom-specific affinity map
+DPF> map 1fkb_pocket.H.map     # atom-specific affinity map
 
-DPF> map /home/gaccordi/dataset/test_dataset/1fkb/1fkb_pocket.C.map     # atom-specific affinity map
+DPF> map 1fkb_pocket.C.map     # atom-specific affinity map
 
-DPF> map /home/gaccordi/dataset/test_dataset/1fkb/1fkb_pocket.HD.map    # atom-specific affinity map
+DPF> map 1fkb_pocket.HD.map    # atom-specific affinity map
 
-DPF> map /home/gaccordi/dataset/test_dataset/1fkb/1fkb_pocket.N.map     # atom-specific affinity map
+DPF> map 1fkb_pocket.N.map     # atom-specific affinity map
 
-DPF> map /home/gaccordi/dataset/test_dataset/1fkb/1fkb_pocket.OA.map    # atom-specific affinity map
+DPF> map 1fkb_pocket.OA.map    # atom-specific affinity map
 
-DPF> elecmap /home/gaccordi/dataset/test_dataset/1fkb/1fkb_pocket.e.map # electrostatics map
+DPF> elecmap 1fkb_pocket.e.map # electrostatics map
 
-DPF> desolvmap /home/gaccordi/dataset/test_dataset/1fkb/1fkb_pocket.d.map # desolvation map
+DPF> desolvmap 1fkb_pocket.d.map # desolvation map
 
-DPF> move /home/gaccordi/dataset/test_dataset/1fkb/1fkb_ligand.pdbqt                 # small molecule
+DPF> move 1fkb_ligand.pdbqt                 # small molecule
 
 1,4-interactions will be _ignored_ in the non-bonded internal energy calculation.
 
-Ligand PDBQT file = "/home/gaccordi/dataset/test_dataset/1fkb/1fkb_ligand.pdbqt"
+Ligand PDBQT file = "1fkb_ligand.pdbqt"
 
 INPUT LIGAND PDBQT FILE:
 ________________________

@@ -5,24 +5,24 @@ smooth 0
 
 ## LIGAND-SPECIFIC SECTION
 ligand_types A C H HD N NA OA SA Cl F S Br P I             # ligand atom types
-fld /home/gaccordi/repo/muDock/data/1hii/1hii_pocket.maps.fld  # grid_data_file
-map /home/gaccordi/repo/muDock/data/1hii/1hii_pocket.A.map # atom-specific affinity map
-map /home/gaccordi/repo/muDock/data/1hii/1hii_pocket.C.map # atom-specific affinity map
-map /home/gaccordi/repo/muDock/data/1hii/1hii_pocket.H.map # atom-specific affinity map
-map /home/gaccordi/repo/muDock/data/1hii/1hii_pocket.HD.map # atom-specific affinity map
-map /home/gaccordi/repo/muDock/data/1hii/1hii_pocket.N.map # atom-specific affinity map
-map /home/gaccordi/repo/muDock/data/1hii/1hii_pocket.NA.map # atom-specific affinity map
-map /home/gaccordi/repo/muDock/data/1hii/1hii_pocket.OA.map # atom-specific affinity map
-map /home/gaccordi/repo/muDock/data/1hii/1hii_pocket.SA.map # atom-specific affinity map
-map /home/gaccordi/repo/muDock/data/1hii/1hii_pocket.Cl.map # atom-specific affinity map
-map /home/gaccordi/repo/muDock/data/1hii/1hii_pocket.F.map # atom-specific affinity map
-map /home/gaccordi/repo/muDock/data/1hii/1hii_pocket.S.map # atom-specific affinity map
-map /home/gaccordi/repo/muDock/data/1hii/1hii_pocket.Br.map # atom-specific affinity map
-map /home/gaccordi/repo/muDock/data/1hii/1hii_pocket.P.map # atom-specific affinity map
-map /home/gaccordi/repo/muDock/data/1hii/1hii_pocket.I.map # atom-specific affinity map
-elecmap /home/gaccordi/repo/muDock/data/1hii/1hii_pocket.e.map # electrostatic potential map
-dsolvmap /home/gaccordi/repo/muDock/data/1hii/1hii_pocket.d.map              # desolvation potential map
-move /home/gaccordi/repo/muDock/data/1hii/1hii_ligand.pdbqt
+fld 1hii_pocket.maps.fld  # grid_data_file
+map 1hii_pocket.A.map # atom-specific affinity map
+map 1hii_pocket.C.map # atom-specific affinity map
+map 1hii_pocket.H.map # atom-specific affinity map
+map 1hii_pocket.HD.map # atom-specific affinity map
+map 1hii_pocket.N.map # atom-specific affinity map
+map 1hii_pocket.NA.map # atom-specific affinity map
+map 1hii_pocket.OA.map # atom-specific affinity map
+map 1hii_pocket.SA.map # atom-specific affinity map
+map 1hii_pocket.Cl.map # atom-specific affinity map
+map 1hii_pocket.F.map # atom-specific affinity map
+map 1hii_pocket.S.map # atom-specific affinity map
+map 1hii_pocket.Br.map # atom-specific affinity map
+map 1hii_pocket.P.map # atom-specific affinity map
+map 1hii_pocket.I.map # atom-specific affinity map
+elecmap 1hii_pocket.e.map # electrostatic potential map
+dsolvmap 1hii_pocket.d.map              # desolvation potential map
+move 1hii_ligand.pdbqt
 ## EVALUATE LIGAND ENERGY in RECEPTOR SECTION
 epdb                                 # small molecule to be evaluated
 
