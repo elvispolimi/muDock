@@ -12,7 +12,7 @@
 
 This file was created at:			9:45 30" p.m., 04/12/2025
                    on host:		"fedora"
-Current Working Directory = "/home/gaccordi/repo/autodock4/autodock/build"
+Current Working Directory = "."
 
       ________________________________________________________________
 
@@ -21,7 +21,7 @@ Current Working Directory = "/home/gaccordi/repo/autodock4/autodock/build"
 
 
 Random number generator was seeded with values 2027544, 1744487130.
-Docking parameter file (DPF) used for this docking:		/home/gaccordi/repo/muDock/data/3fv3/3fv3_epdb.dpf
+Docking parameter file (DPF) used for this docking:		3fv3_epdb.dpf
 DPF> ## GENERIC SECTION
 
 DPF> autodock_parameter_version 4.2       # used by autodock to validate parameter set
@@ -41,9 +41,9 @@ DPF> ## LIGAND-SPECIFIC SECTION
 
 DPF> ligand_types A C H HD N NA OA SA Cl F S Br P I             # ligand atom types
 
-DPF> fld /home/gaccordi/repo/muDock/data/3fv3/3fv3_pocket.maps.fld  # grid_data_file
+DPF> fld 3fv3_pocket.maps.fld  # grid_data_file
 
-Opening Grid Map Dimensions file:		/home/gaccordi/repo/muDock/data/3fv3/3fv3_pocket.maps.fld
+Opening Grid Map Dimensions file:		3fv3_pocket.maps.fld
 Grid Point Spacing =				0.500 Angstroms
 
 Even Number of User-specified Grid Points =	86 x-points
@@ -51,48 +51,48 @@ Even Number of User-specified Grid Points =	86 x-points
 						114 z-points
 
 Coordinates of Central Grid Point of Maps =	(20.000, 24.500, 57.000)
-Macromolecule file used to create Grid Maps =	/home/gaccordi/repo/muDock/data/3fv3/3fv3_pocket.pdbqt
-Grid Parameter file used to create Grid Maps =	/home/gaccordi/repo/muDock/data/3fv3/3fv3_pocket.gpf
+Macromolecule file used to create Grid Maps =	3fv3_pocket.pdbqt
+Grid Parameter file used to create Grid Maps =	3fv3_pocket.gpf
 Minimum coordinates in grid = (-1.500, -1.500, 28.500)
 Maximum coordinates in grid = (41.500, 50.500, 85.500)
 
-DPF> map /home/gaccordi/repo/muDock/data/3fv3/3fv3_pocket.A.map # atom-specific affinity map
+DPF> map 3fv3_pocket.A.map # atom-specific affinity map
 
-DPF> map /home/gaccordi/repo/muDock/data/3fv3/3fv3_pocket.C.map # atom-specific affinity map
+DPF> map 3fv3_pocket.C.map # atom-specific affinity map
 
-DPF> map /home/gaccordi/repo/muDock/data/3fv3/3fv3_pocket.H.map # atom-specific affinity map
+DPF> map 3fv3_pocket.H.map # atom-specific affinity map
 
-DPF> map /home/gaccordi/repo/muDock/data/3fv3/3fv3_pocket.HD.map # atom-specific affinity map
+DPF> map 3fv3_pocket.HD.map # atom-specific affinity map
 
-DPF> map /home/gaccordi/repo/muDock/data/3fv3/3fv3_pocket.N.map # atom-specific affinity map
+DPF> map 3fv3_pocket.N.map # atom-specific affinity map
 
-DPF> map /home/gaccordi/repo/muDock/data/3fv3/3fv3_pocket.NA.map # atom-specific affinity map
+DPF> map 3fv3_pocket.NA.map # atom-specific affinity map
 
-DPF> map /home/gaccordi/repo/muDock/data/3fv3/3fv3_pocket.OA.map # atom-specific affinity map
+DPF> map 3fv3_pocket.OA.map # atom-specific affinity map
 
-DPF> map /home/gaccordi/repo/muDock/data/3fv3/3fv3_pocket.SA.map # atom-specific affinity map
+DPF> map 3fv3_pocket.SA.map # atom-specific affinity map
 
-DPF> map /home/gaccordi/repo/muDock/data/3fv3/3fv3_pocket.Cl.map # atom-specific affinity map
+DPF> map 3fv3_pocket.Cl.map # atom-specific affinity map
 
-DPF> map /home/gaccordi/repo/muDock/data/3fv3/3fv3_pocket.F.map # atom-specific affinity map
+DPF> map 3fv3_pocket.F.map # atom-specific affinity map
 
-DPF> map /home/gaccordi/repo/muDock/data/3fv3/3fv3_pocket.S.map # atom-specific affinity map
+DPF> map 3fv3_pocket.S.map # atom-specific affinity map
 
-DPF> map /home/gaccordi/repo/muDock/data/3fv3/3fv3_pocket.Br.map # atom-specific affinity map
+DPF> map 3fv3_pocket.Br.map # atom-specific affinity map
 
-DPF> map /home/gaccordi/repo/muDock/data/3fv3/3fv3_pocket.P.map # atom-specific affinity map
+DPF> map 3fv3_pocket.P.map # atom-specific affinity map
 
-DPF> map /home/gaccordi/repo/muDock/data/3fv3/3fv3_pocket.I.map # atom-specific affinity map
+DPF> map 3fv3_pocket.I.map # atom-specific affinity map
 
-DPF> elecmap /home/gaccordi/repo/muDock/data/3fv3/3fv3_pocket.e.map # electrostatic potential map
+DPF> elecmap 3fv3_pocket.e.map # electrostatic potential map
 
-DPF> dsolvmap /home/gaccordi/repo/muDock/data/3fv3/3fv3_pocket.d.map              # desolvation potential map
+DPF> dsolvmap 3fv3_pocket.d.map              # desolvation potential map
 
-DPF> move /home/gaccordi/repo/muDock/data/3fv3/3fv3_ligand.pdbqt
+DPF> move 3fv3_ligand.pdbqt
 
 1,4-interactions will be _ignored_ in the non-bonded internal energy calculation.
 
-Ligand PDBQT file = "/home/gaccordi/repo/muDock/data/3fv3/3fv3_ligand.pdbqt"
+Ligand PDBQT file = "3fv3_ligand.pdbqt"
 
 INPUT LIGAND PDBQT FILE:
 ________________________
