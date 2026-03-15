@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <mudock/compute/batch_multiple.hpp>
 #include <mudock/compute/queue.hpp>
 #include <mudock/grid/mdindex.hpp>
 
@@ -36,7 +37,7 @@ namespace mudock {
     void synchronize();
 
     template<class kernel_name>
-    int get_batch_size();
+    batch_multiple get_batch_multiple();
 
   private:
     struct impl;
