@@ -232,25 +232,21 @@ namespace mudock {
       (*kernel)();
     };
 
-    static int get_ligand_mem(const int max_atoms, const knobs conf) {
-      int mem{0};
+    static std::size_t get_shared_ligand_mem(const int max_atoms, const knobs conf) {
+      const int chromosomes_per_ligand = std::max(1, static_cast<int>(conf.population_number));
+      return sizeof(int) + sizeof(int) + 3 * sizeof(fp_type) * max_atoms +
+             3 * sizeof(fp_type) * max_atoms * chromosomes_per_ligand;
+    }
 
+    static std::size_t get_private_ligand_mem(const int max_atoms, const knobs) {
       const int batch_rotamers              = max_atoms - 3;
       const int tot_rotamers_atoms_in_batch = max_atoms * batch_rotamers;
-
-      mem += sizeof(int) * tot_rotamers_atoms_in_batch; //ligand fragments
-      mem += sizeof(int);                               //ligand_fragments_start
-      mem += sizeof(int) * batch_rotamers;              //frag_start_atom_indices
-      mem += sizeof(int) * batch_rotamers;              //frag_stop_atom_indices
-      mem += sizeof(int);                               //frag_indices_start
-
-      mem += sizeof(fp_type) * max_atoms * conf.population_number; //x_scratch_b
-      mem += sizeof(fp_type) * max_atoms * conf.population_number; //y_scratch_b
-      mem += sizeof(fp_type) * max_atoms * conf.population_number; //z_scratch_b
-
-      mem += sizeof(fp_type) * max_atoms; //x_coords_b
-      mem += sizeof(fp_type) * max_atoms; //y_coords_b
-      mem += sizeof(fp_type) * max_atoms; //z_coords_b
+      std::size_t mem{0};
+      mem += sizeof(int) * tot_rotamers_atoms_in_batch; // ligand fragments
+      mem += sizeof(int);                               // ligand_fragments_start
+      mem += sizeof(int) * batch_rotamers;              // frag_start_atom_indices
+      mem += sizeof(int) * batch_rotamers;              // frag_stop_atom_indices
+      mem += sizeof(int);                               // frag_indices_start
       return mem;
     }
 
