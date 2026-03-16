@@ -252,37 +252,35 @@ namespace mudock {
       (*kernel)();
     }
 
-    static int get_ligand_mem(const int max_atoms, const knobs conf) {
-      int mem{0};
+    static std::size_t get_shared_ligand_mem(const int max_atoms, const knobs conf) {
       const int scores_per_ligand = std::max(1, static_cast<int>(conf.population_number));
-      const int non_bonds_atoms   = max_atoms * max_atoms;
+      return sizeof(int) + sizeof(int) + sizeof(fp_type) * scores_per_ligand +
+             3 * sizeof(fp_type) * max_atoms * scores_per_ligand;
+    }
 
-      mem += sizeof(fp_type) * scores_per_ligand;             // scores
-      mem += sizeof(int);                                     // num atoms
-      mem += sizeof(int);                                     // num rotamers;
-      mem += sizeof(fp_type) * max_atoms * scores_per_ligand; // x scratchs
-      mem += sizeof(fp_type) * max_atoms * scores_per_ligand; // y scratchs
-      mem += sizeof(fp_type) * max_atoms * scores_per_ligand; // z scratchs
-
-      mem += sizeof(fp_type) * max_atoms;       //vols
-      mem += sizeof(fp_type) * max_atoms;       //solpars
-      mem += sizeof(fp_type) * max_atoms;       //charges
-      mem += sizeof(int) * max_atoms;           //map_offsets
-      mem += sizeof(int);                       //num_nonbond
-      mem += sizeof(int) * non_bonds_atoms;     //nonbond_a1
-      mem += sizeof(int) * non_bonds_atoms;     //nonbond_a2
-      mem += sizeof(fp_type) * non_bonds_atoms; //nonbond_cA
-      mem += sizeof(fp_type) * non_bonds_atoms; //nonbond_cB
-      mem += sizeof(int) * non_bonds_atoms;     //nonbond_xB
+    static std::size_t get_private_ligand_mem(const int max_atoms, const knobs) {
+      const int non_bonds_atoms = max_atoms * max_atoms;
+      std::size_t mem{0};
+      mem += sizeof(fp_type) * max_atoms;       // vols
+      mem += sizeof(fp_type) * max_atoms;       // solpars
+      mem += sizeof(fp_type) * max_atoms;       // charges
+      mem += sizeof(int) * max_atoms;           // map_offsets
+      mem += sizeof(int);                       // num_nonbond
+      mem += sizeof(int) * non_bonds_atoms;     // nonbond_a1
+      mem += sizeof(int) * non_bonds_atoms;     // nonbond_a2
+      mem += sizeof(fp_type) * non_bonds_atoms; // nonbond_cA
+      mem += sizeof(fp_type) * non_bonds_atoms; // nonbond_cB
+      mem += sizeof(int) * non_bonds_atoms;     // nonbond_xB
       return mem;
     }
 
     static batch_multiple get_batch_size(const int atoms,
                                          std::shared_ptr<queue_type> q,
-                                         const knobs& conf,
+                                         const knobs &conf,
                                          const size_t max_bucket_size) {
       (void) conf;
-      const auto plain_multiple_info = normalize_batch_multiple(get_adt_score_batch_multiple<queue_type>(atoms, q));
+      const auto plain_multiple_info =
+          normalize_batch_multiple(get_adt_score_batch_multiple<queue_type>(atoms, q));
       mudock::info("ADT stage plain multiple for ",
                    atoms,
                    " atoms -> total=",
