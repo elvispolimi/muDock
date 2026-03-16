@@ -155,18 +155,25 @@ namespace mudock {
       kernel->finalize();
     };
 
-    static int get_ligand_mem(const int max_atoms, const knobs conf) {
-      int mem{0};
+    static std::size_t get_shared_ligand_mem(const int max_atoms, const knobs conf) {
+      const int chromosomes_per_ligand = std::max(1, static_cast<int>(conf.population_number));
+      std::size_t mem{0};
+      mem += sizeof(int);                                         // num_atoms
+      mem += sizeof(int);                                         // num_rotamers
+      mem += sizeof(chromosome) * chromosomes_per_ligand;         // chromosomes
+      mem += sizeof(fp_type) * chromosomes_per_ligand;            // scores
+      mem += 3 * sizeof(fp_type) * max_atoms;                     // coords
+      mem += 3 * sizeof(fp_type) * max_atoms * chromosomes_per_ligand; // coord scratch
+      return mem;
+    }
 
-      mem += sizeof(int);                                 // num_rotamers
-      mem += sizeof(chromosome) * conf.population_number; // chromosomes
-      mem += sizeof(chromosome) * conf.population_number; //next population
-      mem += sizeof(fp_type) * conf.population_number;    //scores
-      mem += sizeof(chromosome);                          // best chromosomes
-      mem += sizeof(fp_type);                             // best scores
-
-      mem += scoring_t<queue_t>::get_ligand_mem(max_atoms, conf);
-      mem += geometric<queue_t>::get_ligand_mem(max_atoms, conf);
+    static std::size_t get_private_ligand_mem(const int max_atoms, const knobs conf) {
+      std::size_t mem{0};
+      mem += sizeof(chromosome) * std::max(1, static_cast<int>(conf.population_number)); // next population
+      mem += sizeof(chromosome);                                                          // best chromosomes
+      mem += sizeof(fp_type);                                                             // best scores
+      mem += scoring_t<queue_t>::get_private_ligand_mem(max_atoms, conf);
+      mem += geometric<queue_t>::get_private_ligand_mem(max_atoms, conf);
       return mem;
     }
 

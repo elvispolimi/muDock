@@ -47,7 +47,8 @@ namespace mudock {
                               std::shared_ptr<queue_type> q,
                               const knobs& conf,
                               const size_t max_mem = 1000000000) {
-      const size_t mem_per_ligand = static_cast<size_t>(mudock::adt_score<queue_type>::get_ligand_mem(atoms, conf));
+      const size_t mem_per_ligand =
+          static_cast<size_t>(mudock::adt_score<queue_type>::get_ligand_mem(atoms, conf));
       const size_t max_bucket_size = std::max<size_t>(1, max_mem / mem_per_ligand);
       mudock::info("PIPELINE(ADT) pre-resolve for ",
                    atoms,
