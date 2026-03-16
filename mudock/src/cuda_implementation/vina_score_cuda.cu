@@ -1,5 +1,3 @@
-#pragma once
-
 #include <cstdio>
 #include <mudock/compute/devices_memory.hpp>
 #include <mudock/compute/vina_score_kernel.hpp>
@@ -34,65 +32,59 @@ namespace mudock {
         return sqrt( x*x + y*y + z*z );
     }
 
-    __device__ inline fp_type gauss1(const size_t idx, const fp_type* __restrict__ dst_mtx) {
+    __device__ inline fp_type gauss1(const fp_type dst) {
         fp_type gauss1 = 0;
-        if(dst_mtx[idx] != 0) gauss1 = exp(- pow(dst_mtx[idx] / 0.5, 2));
+        if(dst != 0) gauss1 = exp(- pow(dst / 0.5, 2));
         return gauss1;
     }
 
-    __device__ inline fp_type gauss2(const size_t idx, const fp_type* __restrict__ dst_mtx) {
+    __device__ inline fp_type gauss2(const fp_type dst) {
         fp_type gauss2 = 0;
-        if(dst_mtx[idx] != 0) gauss2 = exp(- pow((dst_mtx[idx] - 3) / 2, 2));
+        if(dst != 0) gauss2 = exp(- pow((dst - 3) / 2, 2));
         return gauss2;
     }
 
-    __device__ inline fp_type repulsion(const size_t idx, const fp_type* __restrict__ dst_mtx) {
-        return pow((dst_mtx[idx] < 0) * dst_mtx[idx], 2);
+    __device__ inline fp_type repulsion(const fp_type dst) {
+        return pow((dst < 0) * dst, 2);
     }
 
-    __device__ inline fp_type hydrophobic(const size_t idx, const fp_type* __restrict__ dst_mtx, const int* __restrict__ rec_lig_is_hydrophobic) {
-        if(rec_lig_is_hydrophobic[idx] < 0) return 0; // Sentinel value, no interaction
-        bool hydro_1 = rec_lig_is_hydrophobic[idx] && (dst_mtx[idx] <= 0.5);
-        bool hydro_2_cond = rec_lig_is_hydrophobic[idx] && (dst_mtx[idx] > 0.5) && (dst_mtx[idx] < 1.5);
-        fp_type hydro_2 = 1.5 * hydro_2_cond - hydro_2_cond * dst_mtx[idx];
+    __device__ inline fp_type hydrophobic(const fp_type dst, const int rec_lig_is_hydrophobic) {
+        if(rec_lig_is_hydrophobic < 0) return 0; // Sentinel value, no interaction
+        bool hydro_1 = rec_lig_is_hydrophobic && (dst <= 0.5);
+        bool hydro_2_cond = rec_lig_is_hydrophobic && (dst > 0.5) && (dst < 1.5);
+        fp_type hydro_2 = 1.5 * hydro_2_cond - hydro_2_cond * dst;
         return hydro_1 + hydro_2;
     }
 
-    __device__ inline fp_type hbonding(const size_t idx, const fp_type* __restrict__ dst_mtx, const int* __restrict__ rec_lig_is_hb) {
-        if(rec_lig_is_hb[idx] < 0) return 0; // Sentinel value, no interaction
-        bool h_bond_1 = rec_lig_is_hb[idx] && (dst_mtx[idx] <= -0.7);
-        bool h_bond_2_cond = rec_lig_is_hb[idx] && (dst_mtx[idx] < 0) && (dst_mtx[idx] > -0.7);
-        fp_type h_bond_2 = h_bond_2_cond * (- dst_mtx[idx]) / 0.7;
+    __device__ inline fp_type hbonding(const fp_type dst, const int rec_lig_is_hb) {
+        if(rec_lig_is_hb < 0) return 0; // Sentinel value, no interaction
+        bool h_bond_1 = rec_lig_is_hb && (dst <= -0.7);
+        bool h_bond_2_cond = rec_lig_is_hb && (dst < 0) && (dst > -0.7);
+        fp_type h_bond_2 = h_bond_2_cond * (- dst) / 0.7;
         return h_bond_1 + h_bond_2;
     }
 
+    __device__ inline fp_type compute_pair_energy(
+        fp_type dx, fp_type dy, fp_type dz,
+        fp_type vdw1, fp_type vdw2,
+        bool is_hba1, bool is_hbd1, bool is_hba2, bool is_hbd2,
+        bool is_hydro1, bool is_hydro2
+        ) {
+      fp_type dst = distance(dx, dy, dz);
+      if (dst > 8) return 0;
 
-    __device__ inline fp_type score_function(
-        const fp_type* __restrict__ dst_mtx, 
-        const int* __restrict__ ij_is_hydrophobic,
-        const int* __restrict__ ij_is_hbond,
-        const size_t size
-    ) {
+      dst -= (vdw1 + vdw2);
+      int is_h = (is_hba1 && is_hbd2) || (is_hba2 && is_hbd1);
+      int is_hydro = is_hydro1 && is_hydro2;
 
-        fp_type g1 = 0; 
-        fp_type g2 = 0; 
-        fp_type rep = 0;
-        fp_type hydro = 0;
-        fp_type hbond = 0;
-
-        for(size_t i = threadIdx.x; i < size; i += blockDim.x) {
-            if(ij_is_hydrophobic[i] < 0) continue; // Sentinel value, no interaction
-            g1  += gauss1(i, dst_mtx);
-            g2  += gauss2(i, dst_mtx);
-            rep += repulsion(i, dst_mtx);
-            hydro += hydrophobic(i, dst_mtx, ij_is_hydrophobic);
-            hbond += hbonding(i, dst_mtx, ij_is_hbond);
-        }
-
-        return GAUSS1_COEFF_CUDA * g1 + GAUSS2_COEFF_CUDA * g2 + REPULSION_COEFF_CUDA * rep + HYDROPHOBIC_COEFF_CUDA * hydro + H_BOND_COEFF_CUDA * hbond;
+      return GAUSS1_COEFF_CUDA * gauss1(dst) +
+        GAUSS2_COEFF_CUDA * gauss2(dst) +
+        REPULSION_COEFF_CUDA * repulsion(dst) +
+        HYDROPHOBIC_COEFF_CUDA * hydrophobic(dst, is_hydro) +
+        H_BOND_COEFF_CUDA * hbonding(dst, is_h);
     }
 
-    __device__ inline void parse_data(
+    __device__ inline fp_type score_inter(
         /// Protein data
         const size_t num_atoms_protein,
         const fp_type* __restrict__ protein_x,
@@ -111,40 +103,27 @@ namespace mudock {
         const int* __restrict__ l_is_hbond_acceptor,
         const int* __restrict__ l_is_hbond_donor,
         const int* __restrict__ l_is_hydrophobic,
-        const fp_type* __restrict__ l_vdw_radius,
-
-        /// Output buffers
-        fp_type* __restrict__ dst_mtx,
-        int* __restrict__ is_hbond,
-        int* __restrict__ is_hydrophobic
-    ){
-
-        fp_type vdw_sum;
-        for (size_t proteinIdx = 0; proteinIdx < num_atoms_protein; proteinIdx++) {
-            for(size_t ligandIdx = threadIdx.x; ligandIdx < num_atoms_ligand; ligandIdx += blockDim.x) {
-                fp_type dst = distance(
-                    (protein_x[proteinIdx] - ligand_x[ligandIdx]),
-                    (protein_y[proteinIdx] - ligand_y[ligandIdx]),
-                    (protein_z[proteinIdx] - ligand_z[ligandIdx])
-                );
-
-                size_t idx = ligandIdx + (proteinIdx * num_atoms_ligand);
-                
-                if(dst > 8){
-                    is_hydrophobic[idx] = -1; /// Sentinel value. No interaction.
-                }
-                else{
-                    vdw_sum = p_vdw_radius[proteinIdx] + l_vdw_radius[ligandIdx];
-                    dst_mtx[idx] = dst - vdw_sum;
-                    is_hbond[idx] = (p_is_hbond_acceptor[proteinIdx] && l_is_hbond_donor[ligandIdx]) || (l_is_hbond_acceptor[ligandIdx] && p_is_hbond_donor[proteinIdx]);
-                    is_hydrophobic[idx] = p_is_hydrophobic[proteinIdx] && l_is_hydrophobic[ligandIdx];
-                }
-
-            }
+        const fp_type* __restrict__ l_vdw_radius
+        ) {
+      fp_type total = 0;
+      for (size_t pIdx = 0; pIdx < num_atoms_protein; pIdx++) {
+        for (size_t lIdx = threadIdx.x; lIdx < num_atoms_ligand; lIdx += blockDim.x) {
+          total += compute_pair_energy(
+              protein_x[pIdx] - ligand_x[lIdx],
+              protein_y[pIdx] - ligand_y[lIdx],
+              protein_z[pIdx] - ligand_z[lIdx],
+              p_vdw_radius[pIdx], l_vdw_radius[lIdx],
+              p_is_hbond_acceptor[pIdx], p_is_hbond_donor[pIdx],
+              l_is_hbond_acceptor[lIdx], l_is_hbond_donor[lIdx],
+              p_is_hydrophobic[pIdx], l_is_hydrophobic[lIdx]
+              );
         }
+      }
+      return total;       
     }
 
-    __device__ inline void parse_intra_data(
+
+    __device__ inline fp_type score_intra(
         const fp_type* __restrict__ ligand_x,
         const fp_type* __restrict__ ligand_y,
         const fp_type* __restrict__ ligand_z,
@@ -154,35 +133,23 @@ namespace mudock {
         const fp_type* __restrict__ l_vdw_radius,
         const int* __restrict__ interacting_pairs_first,
         const int* __restrict__ interacting_pairs_second,
-        const size_t num_interacting_pairs,
-
-        /// Output buffers
-        fp_type* __restrict__ intra_dst_mtx,
-        int* __restrict__ intra_is_hbond,
-        int* __restrict__ intra_is_hydrophobic
-    ){
-
-        fp_type vdw_sum;
-        for(size_t i = threadIdx.x; i < num_interacting_pairs; i += blockDim.x) {
-            int atom_1 = interacting_pairs_first[i];
-            int atom_2 = interacting_pairs_second[i];
-
-            fp_type dst = distance(
-                (ligand_x[atom_1] - ligand_x[atom_2]),
-                (ligand_y[atom_1] - ligand_y[atom_2]),
-                (ligand_z[atom_1] - ligand_z[atom_2])
+        const size_t num_interacting_pairs
+        ) {
+      fp_type total = 0;
+      for (size_t i = threadIdx.x; i < num_interacting_pairs; i += blockDim.x) {
+        int a1 = interacting_pairs_first[i];
+        int a2 = interacting_pairs_second[i];
+        total += compute_pair_energy(
+            ligand_x[a1] - ligand_x[a2],
+            ligand_y[a1] - ligand_y[a2],
+            ligand_z[a1] - ligand_z[a2],
+            l_vdw_radius[a1], l_vdw_radius[a2],
+            l_is_hbond_acceptor[a1], l_is_hbond_donor[a1],
+            l_is_hbond_acceptor[a2], l_is_hbond_donor[a2],
+            l_is_hydrophobic[a1], l_is_hydrophobic[a2]
             );
-            
-            if(dst > 8){
-                intra_is_hydrophobic[i] = -1; /// Sentinel value. No interaction.
-            }
-            else {
-                vdw_sum = l_vdw_radius[atom_1] + l_vdw_radius[atom_2];
-                intra_dst_mtx[i] = dst - vdw_sum;
-                intra_is_hbond[i] = (l_is_hbond_acceptor[atom_1] && l_is_hbond_donor[atom_2]) || (l_is_hbond_acceptor[atom_2] && l_is_hbond_donor[atom_1]);
-                intra_is_hydrophobic[i] = l_is_hydrophobic[atom_1] && l_is_hydrophobic[atom_2];
-            }
-        }
+      }
+      return total;
     }
 
     __device__ inline fp_type scoring_cuda(  
@@ -208,18 +175,10 @@ namespace mudock {
         const size_t active_torsions,
         const int* __restrict__ interacting_pairs_first,
         const int* __restrict__ interacting_pairs_second,
-        const size_t num_interacting_pairs,
-        
-        /// Buffers (worst dim: num_atoms_ligand * num_atoms_protein)
-        fp_type* __restrict__ dst_mtx,
-        int* __restrict__ is_hbond,
-        int* __restrict__ is_hydrophobic
-
+        const size_t num_interacting_pairs
     ){
-        /// TODO: essere sicuri che tutti gli elementi siano diversi dall'idrogeno
-        size_t mtx_size = 0;
 
-        parse_data(
+        fp_type inter_score = score_inter(
             num_atoms_protein,
             protein_x,
             protein_y,
@@ -228,7 +187,6 @@ namespace mudock {
             p_is_hbond_donor,
             p_is_hydrophobic,
             p_vdw_radius,
-            
             num_atoms_ligand,
             ligand_x,
             ligand_y,
@@ -236,17 +194,10 @@ namespace mudock {
             l_is_hbond_acceptor,
             l_is_hbond_donor,
             l_is_hydrophobic,
-            l_vdw_radius,
-            
-            dst_mtx, 
-            is_hbond, 
-            is_hydrophobic
+            l_vdw_radius
         );
         
-        mtx_size = num_atoms_ligand * num_atoms_protein;
-        fp_type inter_score = score_function(dst_mtx, is_hydrophobic, is_hbond, mtx_size);
-        
-        parse_intra_data(
+        fp_type intra_score = score_intra(
             ligand_x,
             ligand_y,
             ligand_z,
@@ -256,22 +207,10 @@ namespace mudock {
             l_vdw_radius,
             interacting_pairs_first,
             interacting_pairs_second,
-            num_interacting_pairs,
-            
-            dst_mtx,
-            is_hbond, 
-            is_hydrophobic
+            num_interacting_pairs
         );
 
-        mtx_size = num_interacting_pairs;
-        fp_type intra_score = score_function(dst_mtx, is_hydrophobic, is_hbond, mtx_size);
-        
         fp_type score = (inter_score + intra_score) / ( 1 + NROT_COEFF_CUDA * active_torsions);
-        
-        // printf("dst_mtx len %ld\n", dst_mtx.size());
-        // printf("intra_dst_mtx len %ld\n", intra_dst_mtx.size());
-        // printf("Score inter %f, Score intra %f, Score %f\n", inter_score, intra_score, score); 
-        
         return score;
     }
 
@@ -298,11 +237,7 @@ namespace mudock {
                               const int* __restrict__ p_is_hbond_donor,
                               const int* __restrict__ p_is_hydrophobic,
                               const fp_type* __restrict__ p_vdw_radius,
-                              fp_type *__restrict__ scores,
-                              
-                              fp_type* __restrict__ dst_mtx_b,
-                              int* __restrict__ is_hbond_b,
-                              int* __restrict__ is_hydrophobic_b
+                              fp_type *__restrict__ scores                              
                               ) {
 
     const int ligand_id       = blockIdx.x;
@@ -314,10 +249,6 @@ namespace mudock {
     const int interacting_pairs_offset = ligand_interacting_pairs_offset[ligand_id];
     const int stride       = ligand_id * atom_stride;
     
-    fp_type* dst_mtx = dst_mtx_b + num_atoms_ligand * num_atoms_protein * ligand_id;
-    int* is_hbond = is_hbond_b + num_atoms_ligand * num_atoms_protein * ligand_id;
-    int* is_hydrophobic = is_hydrophobic_b + num_atoms_ligand * num_atoms_protein * ligand_id;
-    
     const fp_type* l_scratch_x = x_scratch + stride * scores_per_ligand;
     const fp_type* l_scratch_y = y_scratch + stride * scores_per_ligand;
     const fp_type* l_scratch_z = z_scratch + stride * scores_per_ligand;
@@ -325,6 +256,7 @@ namespace mudock {
     const int* l_is_hbond_donor = ligand_is_hbond_donor + stride * scores_per_ligand;
     const int* l_is_hydrophobic = ligand_is_hydrophobic + stride * scores_per_ligand;
     const fp_type* l_vdw_radius = ligand_vdw_radius + stride * scores_per_ligand;
+
     /// TODO: check this cus i am not really sure about his behaviour in case of multiple scores per ligand
     const int* interacting_pairs_first = ligand_interacting_pairs_first + interacting_pairs_offset * scores_per_ligand;
     const int* interacting_pairs_second = ligand_interacting_pairs_second + interacting_pairs_offset * scores_per_ligand;
@@ -357,10 +289,7 @@ namespace mudock {
           active_torsions,
           interacting_pairs_first, 
           interacting_pairs_second, 
-          num_interacting_pairs,
-          dst_mtx,
-          is_hbond,
-          is_hydrophobic
+          num_interacting_pairs
           );   
 
 
@@ -407,10 +336,7 @@ namespace mudock {
                     (void*) &p_is_hbond_donor,
                     (void*) &p_is_hydrophobic,
                     (void*) &p_vdw_radius,
-                    (void*) &scores_b,
-                    (void*) &dst_mtx_b,
-                    (void*) &is_hbond_b,
-                    (void*) &is_hydrophobic_b
+                    (void*) &scores_b
     };
     constexpr_switch_bucket<0, reorder_buffer<static_molecule>::get_num_atom_clusters(), 1>(
         [&](const auto atom_index) {
