@@ -145,6 +145,7 @@ if(MUDOCK_ENABLE_CUDA)
     header_files
     "${header_path}/${header_prefix}/cuda_implementation/queue_cuda.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/adt_score_cuda.cuh"
+    "${header_path}/${header_prefix}/cuda_implementation/vina_score_cuda.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/genetic_cuda.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/cuda_random.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/cuda_utils.cuh"
@@ -157,6 +158,7 @@ if(MUDOCK_ENABLE_CUDA)
     source_files
     "${source_path}/cuda_implementation/queue_cuda.cu"
     "${source_path}/cuda_implementation/adt_score_cuda.cu"
+    "${source_path}/cuda_implementation/vina_score_cuda.cu"
     "${source_path}/cuda_implementation/genetic_cuda.cu"
     "${source_path}/cuda_implementation/cuda_random.cu"
     "${source_path}/cuda_implementation/geom_transform_cuda.cu"

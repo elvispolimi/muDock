@@ -37,7 +37,13 @@ namespace mudock {
           const int *__restrict__ interacting_pairs_first_b_, 
           const int *__restrict__ interacting_pairs_second_b_,
           const int *__restrict__ num_interacting_pairs_b_, 
+          const int *__restrict__ interacting_pairs_offset_b_, 
           fp_type *__restrict__ scores_b_,
+
+          fp_type* __restrict__ dst_mtx_b_,
+          int* __restrict__ is_hbond_b_,
+          int* __restrict__ is_hydrophobic_b_,
+
           std::shared_ptr<queue_type> q_)
             : scores_per_ligand(scores_per_ligand_),
             batch_ligands(batch_ligands_),
@@ -62,7 +68,11 @@ namespace mudock {
             interacting_pairs_first_b(interacting_pairs_first_b_),
             interacting_pairs_second_b(interacting_pairs_second_b_),
             num_interacting_pairs_b(num_interacting_pairs_b_),
+            interacting_pairs_offset_b(interacting_pairs_offset_b_),
             scores_b(scores_b_),
+            dst_mtx_b(dst_mtx_b_),
+            is_hbond_b(is_hbond_b_),
+            is_hydrophobic_b(is_hydrophobic_b_),
             q(q_) {}
 
       void operator()();
@@ -100,8 +110,13 @@ namespace mudock {
       const int* __restrict__ interacting_pairs_first_b; 
       const int* __restrict__ interacting_pairs_second_b;
       const int* __restrict__ num_interacting_pairs_b; 
+      const int* __restrict__ interacting_pairs_offset_b;
 
-      fp_type *__restrict__ scores_b;
+      fp_type* __restrict__ dst_mtx_b;
+      int* __restrict__ is_hbond_b;
+      int* __restrict__ is_hydrophobic_b;
+
+          fp_type *__restrict__ scores_b;
       std::shared_ptr<queue_type> q;
     };
 

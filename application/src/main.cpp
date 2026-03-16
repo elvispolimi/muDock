@@ -1,4 +1,5 @@
 #include "command_line_args.hpp"
+#include "mudock/compute/pipeline.hpp"
 
 #include <cassert>
 #include <fstream>
@@ -57,7 +58,8 @@ int main(int argc, char* argv[]) {
 
   // compute all the ligands according to the input configuration
   mudock::info("Virtual screening the ligands ...");
-  mudock::genetic_vina_pipeline pipe{protein};
+  //mudock::genetic_vina_pipeline pipe{protein};
+  mudock::vina_score_pipeline pipe{protein};
 
   auto output_queue = std::make_shared<mudock::safe_stack<mudock::static_molecule>>();
   {

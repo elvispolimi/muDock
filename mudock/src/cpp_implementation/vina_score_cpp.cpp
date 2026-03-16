@@ -377,6 +377,7 @@ namespace mudock {
       const int* __restrict__ interacting_pairs_first_b, 
       const int* __restrict__ interacting_pairs_second_b,
       const int* __restrict__ num_interacting_pairs_b, 
+      const int* __restrict__ interacting_pairs_offset_b, 
 
       /// Protein data
       const size_t num_atoms_protein,
@@ -391,8 +392,9 @@ namespace mudock {
         )
         {
 
-          size_t offset_interacting_pairs = 0;
+          //size_t offset_interacting_pairs = 0;
           for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
+            int offset_interacting_pairs = interacting_pairs_offset_b[ligand_index];
             const int atom_stride  = ligand_index * batch_atoms;
             const int num_atoms_ligand    = num_atoms_b[ligand_index];
 
@@ -409,7 +411,7 @@ namespace mudock {
             const int* __restrict__ interacting_pairs_first =  interacting_pairs_first_b + offset_interacting_pairs;
             const int* __restrict__ interacting_pairs_second =  interacting_pairs_second_b + offset_interacting_pairs;
             const size_t num_interacting_pairs = num_interacting_pairs_b[ligand_index];
-            offset_interacting_pairs += num_interacting_pairs;
+            // offset_interacting_pairs += num_interacting_pairs;
 
             fp_type score = vina_scoring(num_atoms_protein,
                 protein_x,
@@ -456,7 +458,8 @@ namespace mudock {
           active_torsions_b,
           interacting_pairs_first_b, 
           interacting_pairs_second_b,
-          num_interacting_pairs_b, 
+          num_interacting_pairs_b,
+          interacting_pairs_offset_b,
           num_atoms_protein,
           protein_x,
           protein_y,

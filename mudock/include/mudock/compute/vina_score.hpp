@@ -55,6 +55,10 @@ namespace mudock {
         l_interacting_pairs_first(_scratch->get_queue()),
         l_interacting_pairs_second(_scratch->get_queue()),
         l_num_interacting_pairs(_scratch->get_queue()),
+        l_interacting_pairs_offset(_scratch->get_queue()),
+        b_dst_mtx(_scratch->get_queue()),
+        b_is_hbond(_scratch->get_queue()),
+        b_is_hydrophobic(_scratch->get_queue()),
         device_scratch(_device_scratch) {
           if (!(*device_scratch).template exists<buffer_data_type::PROT_HYDROPHOBICS>()) {
             info("Removing hydrogens from protein (", protein.num_atoms(), ")...");
@@ -158,9 +162,14 @@ namespace mudock {
         l_interacting_pairs_first.alloc(MAX_INTERACTING_PAIRS_IN_BATCH);
         l_interacting_pairs_second.alloc(MAX_INTERACTING_PAIRS_IN_BATCH);
         l_num_interacting_pairs.alloc(batch_ligands);
+        l_interacting_pairs_offset.alloc(batch_ligands);
 
+        const int num_atoms_protein = (*device_scratch).template get<buffer_data_type::NUM_ATOMS>().host_pointer()[0];
+        b_dst_mtx.alloc(batch_atoms * num_atoms_protein);
+        b_is_hbond.alloc(batch_atoms * num_atoms_protein);
+        b_is_hydrophobic.alloc(batch_atoms * num_atoms_protein);
 
-        size_t offset_interacting_pairs = 0;
+        int offset_interacting_pairs = 0;
         for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
           auto &ligand = *batch.molecules[ligand_index];
 
@@ -213,6 +222,7 @@ namespace mudock {
           );
 
           std::memcpy((void *) (l_num_interacting_pairs() + ligand_index), &num_interacting_pairs, sizeof(int));
+          std::memcpy((void *) (l_interacting_pairs_offset() + ligand_index), &offset_interacting_pairs, sizeof(int));
           offset_interacting_pairs += num_interacting_pairs;
         }
 
@@ -223,6 +233,10 @@ namespace mudock {
         l_interacting_pairs_first.copy_host2device();
         l_interacting_pairs_second.copy_host2device();
         l_num_interacting_pairs.copy_host2device();
+        l_interacting_pairs_offset.copy_host2device();
+        b_dst_mtx.copy_host2device();
+        b_is_hbond.copy_host2device();
+        b_is_hydrophobic.copy_host2device();
 
         // TODO ask Davide about this performance
         // Bind to the kernel function
@@ -239,7 +253,7 @@ namespace mudock {
         const fp_type *z_scratch_b = (*this->scratch).template get<buffer_data_type::Z_SCRATCH>().dev_pointer();
 
         /// Pointers to protein data
-        const int num_atoms_protein = (*device_scratch).template get<buffer_data_type::NUM_ATOMS>().host_pointer()[0];
+        //const int num_atoms_protein = (*device_scratch).template get<buffer_data_type::NUM_ATOMS>().host_pointer()[0];
         const fp_type *protein_x_p =  (*device_scratch).template get<buffer_data_type::X_COORDS>().dev_pointer();
         const fp_type *protein_y_p =  (*device_scratch).template get<buffer_data_type::Y_COORDS>().dev_pointer();
         const fp_type *protein_z_p =  (*device_scratch).template get<buffer_data_type::Z_COORDS>().dev_pointer();
@@ -256,6 +270,10 @@ namespace mudock {
         const int *l_interacting_pairs_first_b = l_interacting_pairs_first.dev_pointer();
         const int *l_interacting_pairs_second_b = l_interacting_pairs_second.dev_pointer();
         const int *l_num_interacting_pairs_b = l_num_interacting_pairs.dev_pointer();
+        const int *l_interacting_pairs_offset_b = l_interacting_pairs_offset.dev_pointer();
+        fp_type *dst_mtx = b_dst_mtx.dev_pointer();
+        int *is_hbond = b_is_hbond.dev_pointer();
+        int *is_hydrophobic = b_is_hydrophobic.dev_pointer();
 
         fp_type *scores_b = score_b.dev_pointer();
 
@@ -283,7 +301,11 @@ namespace mudock {
             l_interacting_pairs_first_b, 
             l_interacting_pairs_second_b,
             l_num_interacting_pairs_b, 
+            l_interacting_pairs_offset_b,
             scores_b,
+dst_mtx,
+is_hbond,
+is_hydrophobic,
             q
         );
       }
@@ -307,6 +329,11 @@ namespace mudock {
       buffer_vector<int, queue_type> l_interacting_pairs_first;
       buffer_vector<int, queue_type> l_interacting_pairs_second;
       buffer_vector<int, queue_type> l_num_interacting_pairs;
+      buffer_vector<int, queue_type> l_interacting_pairs_offset;
+      
+      buffer_vector<fp_type, queue_type> b_dst_mtx;
+      buffer_vector<int, queue_type> b_is_hbond;
+      buffer_vector<int, queue_type> b_is_hydrophobic;
 
       std::shared_ptr<scratchpad<queue_type>> device_scratch;
       std::unique_ptr<vina_score_kernel<queue_type>> kernel;
