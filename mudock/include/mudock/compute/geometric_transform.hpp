@@ -250,6 +250,10 @@ namespace mudock {
       return mem;
     }
 
+    static int get_ligand_mem(const int max_atoms, const knobs conf) {
+      return static_cast<int>(get_shared_ligand_mem(max_atoms, conf) + get_private_ligand_mem(max_atoms, conf));
+    }
+
     static batch_multiple get_batch_size(const int atoms,
                                          std::shared_ptr<queue_t> q,
                                          const knobs& conf,
