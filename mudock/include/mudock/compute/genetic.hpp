@@ -63,6 +63,10 @@ namespace mudock {
     void operator()();
     void initialize();
     void finalize();
+    inline void set_population_buffers(chromosome* population_, chromosome* next_population_) {
+      population      = population_;
+      next_population = next_population_;
+    }
 
   private:
     int batch_ligands;
@@ -142,16 +146,27 @@ namespace mudock {
     };
     void operator()() {
       auto& chromosomes_b = (*this->scratch).template get<buffer_data_type::CHROMOSOMES>();
+      chromosome* current_population_p = chromosomes_b.dev_pointer();
+      chromosome* next_population_p    = next_population.dev_pointer();
 
       assert(kernel && "Kernel method not yet prepared");
+      kernel->set_population_buffers(current_population_p, next_population_p);
+      geom_trans.set_chromosomes_buffer(current_population_p);
       kernel->initialize();
 
       for (int generation = 0; generation < num_generations; ++generation) {
         geom_trans();
         score_stage();
         (*kernel)();
-        chromosomes_b.copy_device2device(next_population);
+
+        // Avoid full device-to-device copy by ping-ponging population buffers.
+        if (generation + 1 < num_generations) {
+          std::swap(current_population_p, next_population_p);
+          kernel->set_population_buffers(current_population_p, next_population_p);
+          geom_trans.set_chromosomes_buffer(current_population_p);
+        }
       }
+      kernel->set_population_buffers(current_population_p, next_population_p);
       kernel->finalize();
     };
 
