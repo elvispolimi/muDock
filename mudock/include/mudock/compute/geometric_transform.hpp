@@ -67,6 +67,7 @@ namespace mudock {
           q(q_) {}
 
     void operator()();
+    inline void set_chromosomes_buffer(const chromosome* chromosomes_b_) { chromosomes_b = chromosomes_b_; }
 
     geom_kernel(const geom_kernel&)            = default;
     geom_kernel(geom_kernel&&)                 = default;
@@ -231,6 +232,12 @@ namespace mudock {
       assert(kernel && "Kernel method not yet prepared");
       (*kernel)();
     };
+
+    inline void set_chromosomes_buffer(const chromosome* chromosomes_b_) {
+      if (kernel) {
+        kernel->set_chromosomes_buffer(chromosomes_b_);
+      }
+    }
 
     static std::size_t get_shared_ligand_mem(const int max_atoms, const knobs conf) {
       const int chromosomes_per_ligand = std::max(1, static_cast<int>(conf.population_number));
