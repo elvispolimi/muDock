@@ -6,3 +6,8 @@ build*/
 *.a
 .codex
 docs/
+data/filtered_dataset
+data/mega_ligands
+data/targets.txt
+*.csv
+*.sh
