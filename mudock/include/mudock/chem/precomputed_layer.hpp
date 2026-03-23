@@ -11,29 +11,46 @@ namespace mudock {
   struct precomputed_protein : public autodock_protein {
   
   private:
-    md_container<std::vector<fp_type>, 4> fused_data;
+    md_vector<fp_type, 4> fused_data;
+    
     // La funzione che farà il calcolo
     void prepare_fused_maps(const static_molecule& ligand);
 
   public:
-    precomputed_protein(const point3D min, const point3D max, const fp_type resolution, 
-                        dynamic_molecule& _molecule, const static_molecule& _ligand)
-        : autodock_protein(min, max, resolution, _molecule) {
+    precomputed_protein(const point3D min, 
+                        const point3D max, 
+                        const fp_type resolution, 
+                        dynamic_molecule& _molecule, 
+                        const static_molecule& _ligand)
+        : autodock_protein(min, max, resolution, _molecule) 
+    {
+       
+        const auto sx = get_size_x();
+        const auto sy = get_size_xy() / sx;
+        const auto sz = get_size_xyz() / get_size_xy();
+
+       
+        fused_data = md_vector<fp_type, 4>(sx, sy, sz, _ligand.num_atoms());
         
         prepare_fused_maps(_ligand);
     }
 
-    // L'unica differenza con il get precedente è che secondo me
-    //  invece di 'autodock_grid_type' è necessario passare l'indice dell'atomo dello specifico ligando
-    inline auto get_fused_map(const int atom_index) const {
-      return space_grid_view<const fp_type>{
+   
+    [[nodiscard]] inline auto get_fused_map(const int atom_index) {
+      
+      const auto sx = get_size_x();
+      const auto sy = get_size_xy() / sx;
+      const auto sz = get_size_xyz() / get_size_xy();
+
+      
+      return space_grid_view<fp_type>{
           get_min(),
           get_max(),
           get_center(),
-          get_eletrostatic()._inv_resolution, //non essendoci un get l'ho presa da una mappa a caso
+          get_eletrostatic()._inv_resolution,
           fused_data.get_slice(
-              md_index<4>{get_size_x(), get_size_y(), get_size_z(), atom_index},
-              md_index<3>{get_size_x(), get_size_y(), get_size_z()}
+              md_index<4>{sx, sy, sz, static_cast<std::size_t>(atom_index)},
+              md_index<3>{sx, sy, sz}
           )
       };
     }
