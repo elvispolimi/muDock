@@ -101,6 +101,7 @@ list(
   "${source_path}/chem/assign_autodock_types.cpp"
   "${source_path}/chem/autodock_babel_types.cpp"
   "${source_path}/chem/autodock_protein.cpp"
+  "${source_path}/chem/precomputed_layer.cpp"
   "${source_path}/chem/autodock_ligand.cpp"
   "${source_path}/chem/autodock_types.cpp"
   "${source_path}/chem/bond_types.cpp"
