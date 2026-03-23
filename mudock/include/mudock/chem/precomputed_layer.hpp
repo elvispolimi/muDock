@@ -13,18 +13,18 @@ namespace mudock {
   private:
     md_container<std::vector<fp_type>, 4> fused_data;
     // La funzione che farà il calcolo
-    void prepare_fused_maps(const dynamic_molecule& ligand);
+    void prepare_fused_maps(const static_molecule& ligand);
 
   public:
     precomputed_protein(const point3D min, const point3D max, const fp_type resolution, 
-                        dynamic_molecule& _molecule, const dynamic_molecule& _ligand)
+                        dynamic_molecule& _molecule, const static_molecule& _ligand)
         : autodock_protein(min, max, resolution, _molecule) {
         
         prepare_fused_maps(_ligand);
     }
 
     // L'unica differenza con il get precedente è che secondo me
-    //  invece di 'autodock_grid_type' passare l'indice dell'atomo dello specifico ligando semplifica
+    //  invece di 'autodock_grid_type' è necessario passare l'indice dell'atomo dello specifico ligando
     inline auto get_fused_map(const int atom_index) const {
       return space_grid_view<const fp_type>{
           get_min(),
