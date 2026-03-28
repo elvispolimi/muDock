@@ -34,7 +34,10 @@ namespace mudock {
         
         prepare_fused_maps(_ligand);
     }
-
+    //per il precomputed_adt_score mappa piatta da caricare diretta
+    [[nodiscard]] inline const fp_type* get_raw_data() const { 
+    return fused_data.data(); 
+}
    
     [[nodiscard]] inline auto get_fused_map(const int atom_index) {
       
