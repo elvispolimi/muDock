@@ -17,12 +17,6 @@
 #include <mudock/molecule.hpp>
 #include <mudock/type_alias.hpp>
 
-#ifdef LIKWID_PERFMON
-#include <likwid-marker.h>
-#else
-#define LIKWID_MARKER_START(regionTag)
-#define LIKWID_MARKER_STOP(regionTag)
-#endif
 
 namespace mudock {
 
@@ -134,7 +128,6 @@ namespace mudock {
       point3D min_pt{min_p[0], min_p[1], min_p[2]};
       point3D max_pt{max_p[0], max_p[1], max_p[2]};
       const fp_type resolution = (max_pt.x() - min_pt.x()) / (size_x - 1);
-      LIKWID_MARKER_START("Setup_Mappa_Fusa");    
       for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
         auto &ligand = *batch.molecules[ligand_index];
 
@@ -177,7 +170,6 @@ namespace mudock {
                     adt_ligand.atom_map_index(),
                     num_atoms * sizeof(int));
       }
-      LIKWID_MARKER_STOP("Setup_Mappa_Fusa");
       //spediamo il buffer
       fused_maps.copy_host2device();
       vols.copy_host2device();
@@ -268,9 +260,7 @@ namespace mudock {
           (((*this->scratch).template get<buffer_data_type::SCORES>().num_elements() % batch_ligands) == 0) &&
           "Number of scores is not a multiple of ligands in the batch");
       assert(kernel && "Kernel method not yet prepared");
-      LIKWID_MARKER_START("Score_Kernel_Fuso");
       (*kernel)();
-      LIKWID_MARKER_STOP("Score_Kernel_Fuso");
     }
 
   private:
