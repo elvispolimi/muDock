@@ -16,11 +16,12 @@ namespace mudock {
                                                           const fp_type offset_z,
                                                           const int num_atoms) {
     MUDOCK_PRAGMA_UNROLL(MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, BLOCK_SIZE))
-    for (int i = threadIdx.x; i < MAX_ATOMS; i += BLOCK_SIZE) {
-      if (i < num_atoms) {
-        x[i] += offset_x;
-        y[i] += offset_y;
-        z[i] += offset_z;
+    for (int i = 0; i < MAX_ATOMS; i += BLOCK_SIZE) {
+      const int atom_index = i + threadIdx.x;
+      if (atom_index < num_atoms) {
+        x[atom_index] += offset_x;
+        y[atom_index] += offset_y;
+        z[atom_index] += offset_z;
       }
     }
   }
@@ -36,11 +37,12 @@ namespace mudock {
     // compute the molecule center of mass
     fp_type c_x{0}, c_y{0}, c_z{0};
     MUDOCK_PRAGMA_UNROLL(MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, BLOCK_SIZE))
-    for (int i = threadIdx.x; i < MAX_ATOMS; i += BLOCK_SIZE) {
-      if (i < num_atoms) {
-        c_x += x[i];
-        c_y += y[i];
-        c_z += z[i];
+    for (int i = 0; i < MAX_ATOMS; i += BLOCK_SIZE) {
+      const int atom_index = i + threadIdx.x;
+      if (atom_index < num_atoms) {
+        c_x += x[atom_index];
+        c_y += y[atom_index];
+        c_z += z[atom_index];
       }
     }
     c_x /= num_atoms;
@@ -50,13 +52,13 @@ namespace mudock {
     // Intra warp reduction
     MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
     for (int offset = BLOCK_SIZE / 2; offset > 0; offset /= 2) {
-      c_x += __shfl_down_sync(0xffffffff, c_x, offset);
-      c_y += __shfl_down_sync(0xffffffff, c_y, offset);
-      c_z += __shfl_down_sync(0xffffffff, c_z, offset);
+      c_x += __shfl_down_sync(0xffffffff, c_x, offset, BLOCK_SIZE);
+      c_y += __shfl_down_sync(0xffffffff, c_y, offset, BLOCK_SIZE);
+      c_z += __shfl_down_sync(0xffffffff, c_z, offset, BLOCK_SIZE);
     }
-    c_x = __shfl_sync(0xffffffff, c_x, 0);
-    c_y = __shfl_sync(0xffffffff, c_y, 0);
-    c_z = __shfl_sync(0xffffffff, c_z, 0);
+    c_x = __shfl_sync(0xffffffff, c_x, 0, BLOCK_SIZE);
+    c_y = __shfl_sync(0xffffffff, c_y, 0, BLOCK_SIZE);
+    c_z = __shfl_sync(0xffffffff, c_z, 0, BLOCK_SIZE);
 
     // compute the angles sine and cosine
     const auto rad_x = deg_to_rad(angle_x), rad_y = deg_to_rad(angle_y), rad_z = deg_to_rad(angle_z);
@@ -77,12 +79,14 @@ namespace mudock {
 
     // apply the rotation matrix
     MUDOCK_PRAGMA_UNROLL(MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, BLOCK_SIZE))
-    for (int i = threadIdx.x; i < MAX_ATOMS; i += BLOCK_SIZE) {
-      if (i < num_atoms) {
-        const auto translated_x = x[i] - c_x, translated_y = y[i] - c_y, translated_z = z[i] - c_z;
-        x[i] = translated_x * m00 + translated_y * m01 + translated_z * m02 + +c_x;
-        y[i] = translated_x * m10 + translated_y * m11 + translated_z * m12 + +c_y;
-        z[i] = translated_x * m20 + translated_y * m21 + translated_z * m22 + +c_z;
+    for (int i = 0; i < MAX_ATOMS; i += BLOCK_SIZE) {
+      const int atom_index = i + threadIdx.x;
+      if (atom_index < num_atoms) {
+        const auto translated_x = x[atom_index] - c_x, translated_y = y[atom_index] - c_y,
+                   translated_z = z[atom_index] - c_z;
+        x[atom_index]           = translated_x * m00 + translated_y * m01 + translated_z * m02 + c_x;
+        y[atom_index]           = translated_x * m10 + translated_y * m11 + translated_z * m12 + c_y;
+        z[atom_index]           = translated_x * m20 + translated_y * m21 + translated_z * m22 + c_z;
       }
     }
   }
@@ -140,12 +144,13 @@ namespace mudock {
 
     // apply the rotation matrix
     MUDOCK_PRAGMA_UNROLL(MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, BLOCK_SIZE))
-    for (int i = threadIdx.x; i < MAX_ATOMS; i += BLOCK_SIZE) {
-      if (i < num_atoms && bitmask[i] != 0) {
-        const auto prev_x = x[i], prev_y = y[i], prev_z = z[i];
-        x[i] = prev_x * m00 + prev_y * m01 + prev_z * m02 + m03;
-        y[i] = prev_x * m10 + prev_y * m11 + prev_z * m12 + m13;
-        z[i] = prev_x * m20 + prev_y * m21 + prev_z * m22 + m23;
+    for (int i = 0; i < MAX_ATOMS; i += BLOCK_SIZE) {
+      const int atom_index = i + threadIdx.x;
+      if (atom_index < num_atoms && bitmask[atom_index] != 0) {
+        const auto prev_x = x[atom_index], prev_y = y[atom_index], prev_z = z[atom_index];
+        x[atom_index]     = prev_x * m00 + prev_y * m01 + prev_z * m02 + m03;
+        y[atom_index]     = prev_x * m10 + prev_y * m11 + prev_z * m12 + m13;
+        z[atom_index]     = prev_x * m20 + prev_y * m21 + prev_z * m22 + m23;
       }
     }
   }
@@ -166,9 +171,10 @@ namespace mudock {
                              const int* __restrict__ frag_indices_start,
                              const int* __restrict__ num_rotamers_b,
                              const int* __restrict__ num_atoms_b) {
-    assert(blockDim.x == warpSize && "apply_cuda requires blockDim.x == warpSize");
     const int ligand_id       = blockIdx.x;
     const int local_thread_id = threadIdx.x;
+    assert(blockDim.x == BLOCK_SIZE && warpSize == BLOCK_SIZE &&
+           "Warpsize and the number of thread per block does not coincide");
 
     const int num_atoms    = num_atoms_b[ligand_id];
     const int num_rotamers = num_rotamers_b[ligand_id];
@@ -191,7 +197,8 @@ namespace mudock {
       fp_type* __restrict__ z_scratch_chromosome = l_scratch_z + chromosome_index * atom_stride;
       // Copy original coordinates
       MUDOCK_PRAGMA_UNROLL(MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, BLOCK_SIZE))
-      for (int atom_index = local_thread_id; atom_index < MAX_ATOMS; atom_index += BLOCK_SIZE) {
+      for (int i = 0; i < MAX_ATOMS; i += BLOCK_SIZE) {
+        const int atom_index = i + local_thread_id;
         if (atom_index < num_atoms) {
           x_scratch_chromosome[atom_index] = l_original_x[atom_index];
           y_scratch_chromosome[atom_index] = l_original_y[atom_index];

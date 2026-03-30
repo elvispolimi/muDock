@@ -44,11 +44,7 @@ namespace mudock {
       tex_desc.addressMode[0] = cudaAddressModeClamp;
       tex_desc.addressMode[1] = cudaAddressModeClamp;
       tex_desc.addressMode[2] = cudaAddressModeClamp;
-#ifdef MUDOCK_TEST
       tex_desc.filterMode = cudaFilterModePoint;
-#else
-      tex_desc.filterMode = cudaFilterModeLinear;
-#endif
       tex_desc.readMode         = cudaReadModeElementType;
       tex_desc.normalizedCoords = false;
 

@@ -21,6 +21,7 @@ function(hip_separable_compilation target)
       DEPENDS ${OBJECTS_ARGS} libmudock
       VERBATIM)
     add_custom_target(${target}_device_link_obj ALL DEPENDS ${DEVICE_LINK_OBJ})
+    add_dependencies(${target} ${target}_device_link_obj)
     target_link_libraries(${target} ${DEVICE_LINK_OBJ})
   endif()
 endfunction()
