@@ -4,6 +4,7 @@
 #include <chrono>
 #include <condition_variable>
 #include <cassert>
+#include <cstdlib>
 #include <fstream>
 #include <iostream>
 #include <mutex>
@@ -142,6 +143,8 @@ int main(int argc, char* argv[]) {
         mudock::info("Time limit reached: discarded ",
                      dropped_by_timeout.load(std::memory_order_relaxed),
                      " pending ligand(s) from input queue.");
+        mudock::info("Time limit reached: forcing immediate process termination.");
+        std::_Exit(EXIT_SUCCESS);
       });
     }
 
