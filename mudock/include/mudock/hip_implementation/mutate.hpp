@@ -1,8 +1,8 @@
 #pragma once
 
 #include <mudock/cpp_implementation/chromosome.hpp>
-#include <mudock/hip_implementation/queue_hip.hpp>
 #include <mudock/hip_implementation/hip_utils.hpp>
+#include <mudock/hip_implementation/queue_hip.hpp>
 #include <mudock/molecule.hpp>
 #include <mudock/type_alias.hpp>
 #include <mudock/utils.hpp>
@@ -51,6 +51,7 @@ namespace mudock {
     c_z /= num_atoms;
 
     // Intra warp reduction
+    MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
     for (int offset = BLOCK_SIZE / 2; offset > 0; offset /= 2) {
       c_x += SHFL_DOWN(BITLANE_MASK, c_x, offset, BLOCK_SIZE);
       c_y += SHFL_DOWN(BITLANE_MASK, c_y, offset, BLOCK_SIZE);
@@ -145,7 +146,7 @@ namespace mudock {
     MUDOCK_PRAGMA_UNROLL(MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, BLOCK_SIZE))
     for (int i = 0; i < MAX_ATOMS; i += BLOCK_SIZE) {
       const int atom_index = i + threadIdx.x;
-      if (atom_index < num_atoms && bitmask[i] != 0) {
+      if (atom_index < num_atoms && bitmask[atom_index] != 0) {
         const auto prev_x = x[atom_index], prev_y = y[atom_index], prev_z = z[atom_index];
         x[atom_index] = prev_x * m00 + prev_y * m01 + prev_z * m02 + m03;
         y[atom_index] = prev_x * m10 + prev_y * m11 + prev_z * m12 + m13;
