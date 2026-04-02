@@ -20,7 +20,6 @@ namespace mudock {
   #define MAX_INTERACTING_PAIRS_IN_BATCH 10000
 
   template<typename molecule_type>
-    // TODO pass the pointer not the reference
     size_t remove_hydrogens(molecule_type& molecule) {
       size_t out = 0;
         for(int atom = 0; atom < molecule.num_atoms();) {                   
@@ -58,9 +57,9 @@ namespace mudock {
         l_interacting_pairs_offset(_scratch->get_queue()),
         device_scratch(_device_scratch) {
           if (!(*device_scratch).template exists<buffer_data_type::PROT_HYDROPHOBICS>()) {
-            info("Removing hydrogens from protein (", protein.num_atoms(), ")...");
-            size_t removed = remove_hydrogens(protein);           
-            printf("Protein size reduced by %zu\n", removed);
+            info("Removing hydrogens from ligand (", protein.num_atoms(), ")...");
+            remove_hydrogens(protein);           
+            info("Protein size reduced to ", protein.num_atoms());
 
             int num_atoms_protein = protein.num_atoms();
 
@@ -165,9 +164,9 @@ namespace mudock {
         for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
           auto &ligand = *batch.molecules[ligand_index];
 
-          info("Removing hydrogens from ligand...");
-          size_t removed = remove_hydrogens(ligand);           
-          printf("Size reduced by %zu\n", removed);
+          info("Removing hydrogens from ligand of size ", ligand.num_atoms());
+          remove_hydrogens(ligand);           
+          info("Ligand size reduced to", ligand.num_atoms());
 
           const int stride_atoms = ligand_index * batch_atoms; 
           const int num_atoms = ligand.num_atoms();

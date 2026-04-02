@@ -17,6 +17,12 @@
 /// Score inter -15.313681, Score intra -1.478089, Score -10.219815 <- with no parallelisation
 /// Score inter -15.313679, Score intra -1.478089, Score -10.219813 <- real
 
+
+/*
+ *  TODO: try to remove all the vdw buffers, since they just depend on the atom type it can be called only when needed reducing the 
+ *  GPU memory consuption
+ */
+
 #define BUCKET_MULTIPLIER 3
 
 namespace mudock {
@@ -264,6 +270,7 @@ namespace mudock {
     fp_type* scores_l = scores + ligand_id * scores_per_ligand;
 
     for (int scores_index = 0; scores_index < scores_per_ligand; ++scores_index) {
+
       // Copy original coordinates
       const fp_type* ligand_x = l_scratch_x + scores_index * atom_stride;
       const fp_type* ligand_y = l_scratch_y + scores_index * atom_stride;

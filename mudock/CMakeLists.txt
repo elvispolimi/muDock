@@ -446,4 +446,4 @@ endif()
 # ### Declare the install step
 # ##############################################################################
 
-# at the moment wedon't deploy the library
+# at the moment we don't deploy the library
