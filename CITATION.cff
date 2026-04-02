@@ -1,0 +1,19 @@
+cff-version: 1.0.0
+title: muDock
+message: If you use this software, please cite it as below.
+type: software
+authors:
+  - family-names: Accordi
+    given-names: Gianluca
+    affiliation: Politecnico di Milano
+  - family-names: Gadioli
+    given-names: Davide
+    affiliation: Politecnico di Milano
+  - family-names: Beltrame
+    given-names: Leonardo
+    affiliation: Politecnico di Milano
+version: 1.0.0
+date-released: 2026-04-02
+license: Apache-2.0
+repository-code: https://github.com/elvispolimi/muDock/tree/v1.0.0
+doi: 10.5281/zenodo.19384509
