@@ -56,7 +56,7 @@ namespace mudock {
         auto &prot_index_x   = (*device_scratch).template get<buffer_data_type::PROT_SIZE_X>();
         auto &prot_index_xy  = (*device_scratch).template get<buffer_data_type::PROT_SIZE_XY>();
         auto &prot_index_xyz = (*device_scratch).template get<buffer_data_type::PROT_SIZE_XYZ>();
-        // auto &prot_grid_maps = (*device_scratch).template get<buffer_data_type::PROT_GRID_MAPS>();
+        auto &prot_grid_maps = (*device_scratch).template get<buffer_data_type::PROT_GRID_MAPS>();
 
         prot_min.alloc(3);
         prot_max.alloc(3);
@@ -64,7 +64,7 @@ namespace mudock {
         prot_index_x.alloc(1);
         prot_index_xy.alloc(1);
         prot_index_xyz.alloc(1);
-        // prot_grid_maps.alloc(adt_prot.get_size_xyz() * num_autodock_grids());
+        prot_grid_maps.alloc(adt_prot.get_size_xyz() * num_autodock_grids());
 
         std::memcpy(prot_min(), adt_prot.get_min_p(), 3 * sizeof(fp_type));
         std::memcpy(prot_max(), adt_prot.get_max_p(), 3 * sizeof(fp_type));
@@ -72,9 +72,9 @@ namespace mudock {
         prot_index_x()[0]   = adt_prot.get_size_x();
         prot_index_xy()[0]  = adt_prot.get_size_xy();
         prot_index_xyz()[0] = adt_prot.get_size_xyz();
-        // std::memcpy(prot_grid_maps(),
-        //             adt_prot.get_maps_pointer(),
-        //             adt_prot.get_map_flat_size() * num_autodock_grids() * sizeof(fp_type));
+         std::memcpy(prot_grid_maps(),
+                     adt_prot.get_maps_pointer(),
+                     adt_prot.get_map_flat_size() * num_autodock_grids() * sizeof(fp_type));
 
         prot_min.copy_host2device();
         prot_max.copy_host2device();
@@ -86,10 +86,12 @@ namespace mudock {
         // prot_grid_maps.copy_host2device();
       }
     }
+    
 
     void prepare(batch<static_molecule> &batch) {
       batch_ligands                = batch.num_ligands;
-      batch_atoms                  = batch.batch_max_atoms;
+      if(batch_ligands == 1){batch_atoms = batch.molecules[0]->num_atoms();}
+      else{batch_atoms = batch.batch_max_atoms;}
       const int batch_non_bonds    = batch_ligands * batch_atoms * batch_atoms;
       const int tot_atoms_in_batch = batch_ligands * batch_atoms;
       auto q                       = (*this->scratch).get_queue();
@@ -104,7 +106,6 @@ namespace mudock {
       }
       const int map_flat_size =
           (*device_scratch).template get<buffer_data_type::PROT_SIZE_XYZ>().host_pointer()[0];
-      const int size_x = (*device_scratch).template get<buffer_data_type::PROT_SIZE_X>().host_pointer()[0];
       vols.alloc(tot_atoms_in_batch);
       solpars.alloc(tot_atoms_in_batch);
       charges.alloc(tot_atoms_in_batch);
@@ -120,14 +121,16 @@ namespace mudock {
       nonbond_cB.alloc(batch_non_bonds);
       nonbond_xB.alloc(batch_non_bonds);
 
-      
-      //ripesco min e max che mi servono nella costruzione del precomputed_layer
-      const fp_type* min_p = (*device_scratch).template get<buffer_data_type::PROT_MIN>().host_pointer();
-      const fp_type* max_p = (*device_scratch).template get<buffer_data_type::PROT_MAX>().host_pointer();
-      //impacchettati visto che non prende i puntatori ma i punti3D
-      point3D min_pt{min_p[0], min_p[1], min_p[2]};
-      point3D max_pt{max_p[0], max_p[1], max_p[2]};
-      const fp_type resolution = (max_pt.x() - min_pt.x()) / (size_x - 1);
+      const int dim_x = (*device_scratch).template get<buffer_data_type::PROT_SIZE_X>().host_pointer()[0];
+      const int dim_xy = (*device_scratch).template get<buffer_data_type::PROT_SIZE_XY>().host_pointer()[0];
+      const int dim_xyz = (*device_scratch).template get<buffer_data_type::PROT_SIZE_XYZ>().host_pointer()[0];
+
+      const int sx = dim_x;
+      const int sy = dim_xy / dim_x;
+      const int sz = dim_xyz / dim_xy;
+
+      const fp_type *grid_maps = (*device_scratch).template get<buffer_data_type::PROT_GRID_MAPS>().host_pointer();
+
       for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
         auto &ligand = *batch.molecules[ligand_index];
 
@@ -155,9 +158,11 @@ namespace mudock {
                     adt_ligand.non_bond_xB(),
                     non_bond_size * sizeof(int));
         num_nonbond()[ligand_index + 1] = num_nonbond()[ligand_index] + non_bond_size;
+
         //creazione mia nuova mappa fusa
-        precomputed_protein my_fused_prot(min_pt, max_pt, resolution, base_protein, ligand);
+        precomputed_protein my_fused_prot(grid_maps, sx, sy, sz, ligand);
         // Autodock typing
+
         std::memcpy((void *) (vols() + stride_atoms), adt_ligand.vol(), num_atoms * sizeof(fp_type));
         std::memcpy((void *) (solpars() + stride_atoms), adt_ligand.solpar(), num_atoms * sizeof(fp_type));
         std::memcpy((void *) (charges() + stride_atoms), ligand.charge(), num_atoms * sizeof(fp_type));

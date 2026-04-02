@@ -4,6 +4,9 @@
 #include <mudock/likwid_utils.hpp>
 #include <mudock/cpp_implementation/precomputed_adt_score_cpp.hpp>
 
+#include <chrono>  
+#include <iostream>
+
 #define FLATTENED_2D(x, y, index_x)              ((y) * index_x + (x))
 #define FLATTENED_3D(x, y, z, index_x, index_xy) (index_xy * (z) + (y) * index_x + (x))
 
@@ -51,7 +54,7 @@ namespace mudock {
                           const int map_index_x,
                           const int map_index_xy,
                           const int map_index_xyz,
-                          fp_type *__restrict__ scores_b) {
+                          fp_type *__restrict__ scores_b) {                        
     for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
       const int atom_stride  = ligand_index * batch_atoms;
       const int num_atoms    = num_atoms_b[ligand_index];
@@ -145,6 +148,11 @@ MUDOCK_CPP_MARKER_START("Fase_Scoring");
           }
         }
         MUDOCK_CPP_MARKER_STOP("Fase_Scoring");
+
+        // auto t_end = std::chrono::high_resolution_clock::now();
+        // std::chrono::duration<double> t_diff = t_end - t_start;
+        // std::cout << "[PROFILAZIONE CUSTOM] Tempo calcolo score: " << t_diff.count() << " secondi" << std::endl;
+
         fp_type elect_total_eintcal{0}, emap_total_eintcal{0}, dmap_total_eintcal{0};
         if (num_rotamers > 0) {
 #pragma omp simd
@@ -209,6 +217,8 @@ MUDOCK_CPP_MARKER_START("Fase_Scoring");
 
   template<>
   void precomputed_adt_score_kernel<queue_cpp>::operator()() {
+    //cronometro
+    auto t_start = std::chrono::high_resolution_clock::now();
     q->invoke_kernel<this->adt_region_name>(precomputed_calc_energy,
                                             batch_atoms,
                                             batch_ligands,
@@ -236,5 +246,11 @@ MUDOCK_CPP_MARKER_START("Fase_Scoring");
                                             map_index_xy,
                                             map_index_xyz,
                                             scores_b);
+
+  auto t_end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> t_diff = t_end - t_start;
+    
+    total_kernel_time += t_diff.count();
+    total_calls++;
   }
 } // namespace mudock
