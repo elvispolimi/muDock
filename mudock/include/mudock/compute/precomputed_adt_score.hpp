@@ -43,9 +43,8 @@ namespace mudock {
           nonbond_cA(_scratch->get_queue()),
           nonbond_cB(_scratch->get_queue()),
           nonbond_xB(_scratch->get_queue()),
-          device_scratch(_device_scratch),
-          //riferimento alla proteina base dato che ci servirà dopo
-          base_protein(protein) {
+          device_scratch(_device_scratch)
+          {
             //controllo su PROT_MIN per vedere se è andato bene 
       if (!(*device_scratch).template exists<buffer_data_type::PROT_MIN>()) {
         autodock_protein adt_prot(protein);
@@ -160,7 +159,7 @@ namespace mudock {
         num_nonbond()[ligand_index + 1] = num_nonbond()[ligand_index] + non_bond_size;
 
         //creazione mia nuova mappa fusa
-        precomputed_protein my_fused_prot(grid_maps, sx, sy, sz, ligand);
+        precomputed_protein my_fused_prot(grid_maps, sx, sy, sz, adt_ligand, ligand);
         // Autodock typing
 
         std::memcpy((void *) (vols() + stride_atoms), adt_ligand.vol(), num_atoms * sizeof(fp_type));
@@ -287,7 +286,6 @@ namespace mudock {
     buffer_vector<fp_type, queue_type> nonbond_cB;
     buffer_vector<int, queue_type> nonbond_xB;  
     std::shared_ptr<scratchpad<queue_type>> device_scratch;
-    dynamic_molecule& base_protein; // <-- Aggiunta
     std::unique_ptr<precomputed_adt_score_kernel<queue_type>> kernel;
 
     void teardown_impl(batch<static_molecule> &batch) override {

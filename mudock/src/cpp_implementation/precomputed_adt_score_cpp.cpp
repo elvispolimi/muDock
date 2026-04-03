@@ -82,7 +82,7 @@ namespace mudock {
         //contatore unico (una sola interpolazione)
         fp_type fused_total_trilinear = 0;
 MUDOCK_CPP_MARKER_START("Fase_Scoring");
-#pragma omp simd
+#pragma omp simd 
         for (int index = 0; index < num_atoms; ++index) {
           fp_type coord[3]{scratch_x_l[index], scratch_y_l[index], scratch_z_l[index]};
 
@@ -149,13 +149,10 @@ MUDOCK_CPP_MARKER_START("Fase_Scoring");
         }
         MUDOCK_CPP_MARKER_STOP("Fase_Scoring");
 
-        // auto t_end = std::chrono::high_resolution_clock::now();
-        // std::chrono::duration<double> t_diff = t_end - t_start;
-        // std::cout << "[PROFILAZIONE CUSTOM] Tempo calcolo score: " << t_diff.count() << " secondi" << std::endl;
 
         fp_type elect_total_eintcal{0}, emap_total_eintcal{0}, dmap_total_eintcal{0};
         if (num_rotamers > 0) {
-#pragma omp simd
+#pragma omp simd 
           for (int i = 0; i < num_nonbonds; ++i) {
             const int &a1 = nonbond_a1_l[i];
             const int &a2 = nonbond_a2_l[i];

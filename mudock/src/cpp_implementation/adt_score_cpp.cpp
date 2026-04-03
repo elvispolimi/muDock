@@ -132,6 +132,7 @@ namespace mudock {
 
             // Precompute flattened indices
             const int base_index = FLATTENED_3D(u0, v0, w0, map_index_x, map_index_xy);
+            
             // Trilinear Interpolationp
             elect_total_trilinear +=
                 trilinear_interpolation(electro_map + base_index, coeffs, map_index_x, map_index_xy) *
