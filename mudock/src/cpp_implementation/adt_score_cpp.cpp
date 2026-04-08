@@ -25,6 +25,20 @@ namespace mudock {
     return value;
   }
 
+  inline void get_grid_values(const fp_type *__restrict__ map,
+                              const int &map_index_x,
+                              const int &map_index_xy,
+                              const fp_type* (&out_values)[8]) {
+    out_values[0] = &map[0];
+    out_values[1] = &map[map_index_xy];
+    out_values[2] = &map[map_index_x];
+    out_values[3] = &map[map_index_x + map_index_xy];
+    out_values[4] = &map[1];
+    out_values[5] = &map[1 + map_index_xy];
+    out_values[6] = &map[1 + map_index_x];
+    out_values[7] = &map[1 + map_index_x + map_index_xy];
+  }
+
   inline void calc_energy(const int batch_atoms,
                           const int batch_ligands,
                           const int scores_per_ligand,
@@ -79,6 +93,9 @@ namespace mudock {
         fp_type elect_total_trilinear = 0;
         fp_type emap_total_trilinear  = 0;
         fp_type dmap_total_trilinear  = 0;
+        fp_type gx = 0;
+        fp_type gy = 0;
+        fp_type gz = 0;
         const fp_type *electro_map = grid_maps + map_index_xyz * static_cast<int>(autodock_grid_type::ELEC);
         const fp_type *desolv_map  = grid_maps + map_index_xyz * static_cast<int>(autodock_grid_type::DESOLV);
 
@@ -95,6 +112,7 @@ namespace mudock {
             const fp_type epenalty = dist * ENERGYPENALTY;
             elect_total_trilinear += epenalty;
             emap_total_trilinear += epenalty;
+            // TODO gestire calcolo gradiente in questo if
           } else {
             const auto &atom_charge = charge_l[index];
             const fp_type *atom_map = grid_maps + map_offsets_l[index];
@@ -135,11 +153,33 @@ namespace mudock {
             elect_total_trilinear +=
                 trilinear_interpolation(electro_map + base_index, coeffs, map_index_x, map_index_xy) *
                 atom_charge;
+
+            const fp_type* grid_values[8];
+            get_grid_values(electro_map + base_index, map_index_x, map_index_xy, grid_values);
+            // TODO non penso ci sia bisogno di moltiplicare per inv_spacing perché viene già fatto quando normalizza coord[]? controllare. LA QUESTIONE VALE PER TUTTE E TRE LE ENERGIE
+            gx += atom_charge * (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
+            gy += atom_charge * (p1w * (p1u * (grid_values[2] - grid_values[0]) + p0u * (grid_values[6] - grid_values[4])) + p0w * (p1u * (grid_values[3] - grid_values[1]) + p0u * (grid_values[7] - grid_values[5])));
+            gz += atom_charge * (p1v * (p1u * (grid_values[1] - grid_values[0]) + p0u * (grid_values[5] - grid_values[4])) + p0v * (p1u * (grid_values[3] - grid_values[2]) + p0u * (grid_values[7] - grid_values[6])));
+
             emap_total_trilinear +=
                 trilinear_interpolation(atom_map + base_index, coeffs, map_index_x, map_index_xy);
+
+            get_grid_values(atom_map + base_index, map_index_x, map_index_xy, grid_values);
+            gx += (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
+            gy += (p1w * (p1u * (grid_values[2] - grid_values[0]) + p0u * (grid_values[6] - grid_values[4])) + p0w * (p1u * (grid_values[3] - grid_values[1]) + p0u * (grid_values[7] - grid_values[5])));
+            gz += (p1v * (p1u * (grid_values[1] - grid_values[0]) + p0u * (grid_values[5] - grid_values[4])) + p0v * (p1u * (grid_values[3] - grid_values[2]) + p0u * (grid_values[7] - grid_values[6])));
+            
             dmap_total_trilinear +=
                 trilinear_interpolation(desolv_map + base_index, coeffs, map_index_x, map_index_xy) *
                 std::fabs(atom_charge);
+
+            get_grid_values(desolv_map + base_index, map_index_x, map_index_xy, grid_values);
+            gx += std::fabs(atom_charge) * (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
+            gy += std::fabs(atom_charge) * (p1w * (p1u * (grid_values[2] - grid_values[0]) + p0u * (grid_values[6] - grid_values[4])) + p0w * (p1u * (grid_values[3] - grid_values[1]) + p0u * (grid_values[7] - grid_values[5])));
+            gz += std::fabs(atom_charge) * (p1v * (p1u * (grid_values[1] - grid_values[0]) + p0u * (grid_values[5] - grid_values[4])) + p0v * (p1u * (grid_values[3] - grid_values[2]) + p0u * (grid_values[7] - grid_values[6])));
+          
+            // TODO store these gradients somewhere
+
           }
         }
 
