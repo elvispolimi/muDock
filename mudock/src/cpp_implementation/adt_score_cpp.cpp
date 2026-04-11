@@ -163,31 +163,30 @@ namespace mudock {
                 trilinear_interpolation(electro_map + base_index, coeffs, map_index_x, map_index_xy) *
                 atom_charge;
 
-            const fp_type* grid_values[8];
-            get_grid_values(electro_map + base_index, map_index_x, map_index_xy, grid_values);
-            // TODO non penso ci sia bisogno di moltiplicare per inv_spacing perché viene già fatto quando normalizza coord[]? controllare. LA QUESTIONE VALE PER TUTTE E TRE LE ENERGIE
-            dE_dx += atom_charge * (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
-            dE_dy += atom_charge * (p1w * (p1u * (grid_values[2] - grid_values[0]) + p0u * (grid_values[6] - grid_values[4])) + p0w * (p1u * (grid_values[3] - grid_values[1]) + p0u * (grid_values[7] - grid_values[5])));
-            dE_dz += atom_charge * (p1v * (p1u * (grid_values[1] - grid_values[0]) + p0u * (grid_values[5] - grid_values[4])) + p0v * (p1u * (grid_values[3] - grid_values[2]) + p0u * (grid_values[7] - grid_values[6])));
-
             emap_total_trilinear +=
                 trilinear_interpolation(atom_map + base_index, coeffs, map_index_x, map_index_xy);
 
-            get_grid_values(atom_map + base_index, map_index_x, map_index_xy, grid_values);
-            dE_dx += (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
-            dE_dy += (p1w * (p1u * (grid_values[2] - grid_values[0]) + p0u * (grid_values[6] - grid_values[4])) + p0w * (p1u * (grid_values[3] - grid_values[1]) + p0u * (grid_values[7] - grid_values[5])));
-            dE_dz += (p1v * (p1u * (grid_values[1] - grid_values[0]) + p0u * (grid_values[5] - grid_values[4])) + p0v * (p1u * (grid_values[3] - grid_values[2]) + p0u * (grid_values[7] - grid_values[6])));
-            
             dmap_total_trilinear +=
                 trilinear_interpolation(desolv_map + base_index, coeffs, map_index_x, map_index_xy) *
                 std::fabs(atom_charge);
 
-            get_grid_values(desolv_map + base_index, map_index_x, map_index_xy, grid_values);
-            dE_dx += std::fabs(atom_charge) * (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
-            dE_dy += std::fabs(atom_charge) * (p1w * (p1u * (grid_values[2] - grid_values[0]) + p0u * (grid_values[6] - grid_values[4])) + p0w * (p1u * (grid_values[3] - grid_values[1]) + p0u * (grid_values[7] - grid_values[5])));
-            dE_dz += std::fabs(atom_charge) * (p1v * (p1u * (grid_values[1] - grid_values[0]) + p0u * (grid_values[5] - grid_values[4])) + p0v * (p1u * (grid_values[3] - grid_values[2]) + p0u * (grid_values[7] - grid_values[6])));
-          
-            // TODO store these gradients somewhere
+            // TODO Implementation draft: the main problem is where to store these terms (tot_dE_dx/y/z)
+            // const fp_type* grid_values[8];
+            // get_grid_values(electro_map + base_index, map_index_x, map_index_xy, grid_values);
+            // // TODO non penso ci sia bisogno di moltiplicare per inv_spacing perché viene già fatto quando normalizza coord[]? controllare. LA QUESTIONE VALE PER TUTTE E TRE LE ENERGIE
+            // dE_dx += atom_charge * (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
+            // dE_dy += atom_charge * (p1w * (p1u * (grid_values[2] - grid_values[0]) + p0u * (grid_values[6] - grid_values[4])) + p0w * (p1u * (grid_values[3] - grid_values[1]) + p0u * (grid_values[7] - grid_values[5])));
+            // dE_dz += atom_charge * (p1v * (p1u * (grid_values[1] - grid_values[0]) + p0u * (grid_values[5] - grid_values[4])) + p0v * (p1u * (grid_values[3] - grid_values[2]) + p0u * (grid_values[7] - grid_values[6])));
+
+            // get_grid_values(atom_map + base_index, map_index_x, map_index_xy, grid_values);
+            // dE_dx += (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
+            // dE_dy += (p1w * (p1u * (grid_values[2] - grid_values[0]) + p0u * (grid_values[6] - grid_values[4])) + p0w * (p1u * (grid_values[3] - grid_values[1]) + p0u * (grid_values[7] - grid_values[5])));
+            // dE_dz += (p1v * (p1u * (grid_values[1] - grid_values[0]) + p0u * (grid_values[5] - grid_values[4])) + p0v * (p1u * (grid_values[3] - grid_values[2]) + p0u * (grid_values[7] - grid_values[6])));            
+
+            // get_grid_values(desolv_map + base_index, map_index_x, map_index_xy, grid_values);
+            // dE_dx += std::fabs(atom_charge) * (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
+            // dE_dy += std::fabs(atom_charge) * (p1w * (p1u * (grid_values[2] - grid_values[0]) + p0u * (grid_values[6] - grid_values[4])) + p0w * (p1u * (grid_values[3] - grid_values[1]) + p0u * (grid_values[7] - grid_values[5])));
+            // dE_dz += std::fabs(atom_charge) * (p1v * (p1u * (grid_values[1] - grid_values[0]) + p0u * (grid_values[5] - grid_values[4])) + p0v * (p1u * (grid_values[3] - grid_values[2]) + p0u * (grid_values[7] - grid_values[6])));
 
           }
         }
@@ -252,9 +251,10 @@ namespace mudock {
         const fp_type total_eintcal   = emap_total_eintcal + elect_total_eintcal + dmap_total_eintcal;
         scores_l[scores_index]        = total_trilinear + total_eintcal + tors_free_energy;
 
-        tot_dE_dx[scores_index] = dE_dx;
-        tot_dE_dy[scores_index] = dE_dy;
-        tot_dE_dz[scores_index] = dE_dz;
+        // TODO Implementation draft: see draft above with dE_dx/y/z computation
+        // tot_dE_dx[scores_index] = dE_dx;
+        // tot_dE_dy[scores_index] = dE_dy;
+        // tot_dE_dz[scores_index] = dE_dz;
         
       }
     }

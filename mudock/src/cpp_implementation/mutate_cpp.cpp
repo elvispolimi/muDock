@@ -59,13 +59,66 @@ namespace mudock {
     const auto m21 = sx * cy;
     const auto m22 = cx * cy;
 
-// apply the rotation matrix
+    // TODO hardcoded derivatives, I don't like it. Here i calculate the derivative of the rotation matrix define above w.r.t
+    // every rotation angle.
+    // Alternatively: 1) use torque ; 2) use quaternions
+
+    //derivative w.r.t. angle_x
+    const auto dm00_dangle_x = 0;
+    const auto dm01_dangle_x = cx * sy * cz + sx * sz;
+    const auto dm02_dangle_x = -sx * sy * cz + cx * sz;
+    const auto dm10_dangle_x = 0;
+    const auto dm11_dangle_x = cx * sy * sz - sx * cz;
+    const auto dm12_dangle_x = -sx * sy * sz - cx * cz;
+    const auto dm20_dangle_x = 0;
+    const auto dm21_dangle_x = cx * cy;
+    const auto dm22_dangle_x = -sx * cy;
+    
+    // derivative w.r.t. angle_y
+    const auto dm00_dangle_y = -sy * cz;
+    const auto dm01_dangle_y = sx * cy * cz;
+    const auto dm02_dangle_y = cx * cy * cz;
+    const auto dm10_dangle_y = -sy * sz;
+    const auto dm11_dangle_y = sx * cy * sz;
+    const auto dm12_dangle_y = cx * cy * sz;
+    const auto dm20_dangle_y = -cy;
+    const auto dm21_dangle_y = -sx * sy;
+    const auto dm22_dangle_y = -cx * sy;
+
+    // derivative w.r.t. angle_z
+    const auto dm00_dangle_z = -cy * sz;
+    const auto dm01_dangle_z = -sz * sx * sy - cx * cz;
+    const auto dm02_dangle_z = -sz * cx * sy + sx * cz;
+    const auto dm10_dangle_z = cy * cz;
+    const auto dm11_dangle_z = sx * sy * cz - cx * sz;
+    const auto dm12_dangle_z = cx * sy * cz + sx * sz;
+    const auto dm20_dangle_z = 0;
+    const auto dm21_dangle_z = 0;
+    const auto dm22_dangle_z = 0;
+
+// apply the rotation matrix and compute derivatives
 #pragma omp simd
     for (int i = 0; i < num_atoms; ++i) {
       const auto translated_x = x[i] - c.x(), translated_y = y[i] - c.y(), translated_z = z[i] - c.z();
       x[i] = translated_x * m00 + translated_y * m01 + translated_z * m02 + c.x();
       y[i] = translated_x * m10 + translated_y * m11 + translated_z * m12 + c.y();
       z[i] = translated_x * m20 + translated_y * m21 + translated_z * m22 + c.z();
+
+
+      // TODO Implementation draft: the main problem is where to store these terms (dx/y/z_dangle_x/y/z)
+      // // TODO check if removing + c.x/y/z() was correct
+      // dx_dangle_x[i] = translated_x * dm00_dangle_x + translated_y * dm01_dangle_x + translated_z * dm02_dangle_x;
+      // dy_dangle_x[i] = translated_x * dm10_dangle_x + translated_y * dm11_dangle_x + translated_z * dm12_dangle_x;
+      // dz_dangle_x[i] = translated_x * dm20_dangle_x + translated_y * dm21_dangle_x + translated_z * dm22_dangle_x;
+
+      // dx_dangle_y[i] = translated_x * dm00_dangle_y + translated_y * dm01_dangle_y + translated_z * dm02_dangle_y;
+      // dy_dangle_y[i] = translated_x * dm10_dangle_y + translated_y * dm11_dangle_y + translated_z * dm12_dangle_y;
+      // dz_dangle_y[i] = translated_x * dm20_dangle_y + translated_y * dm21_dangle_y + translated_z * dm22_dangle_y;
+
+      // dx_dangle_z[i] = translated_x * dm00_dangle_z + translated_y * dm01_dangle_z + translated_z * dm02_dangle_z;
+      // dy_dangle_z[i] = translated_x * dm10_dangle_z + translated_y * dm11_dangle_z + translated_z * dm12_dangle_z;
+      // dz_dangle_z[i] = translated_x * dm20_dangle_z + translated_y * dm21_dangle_z + translated_z * dm22_dangle_z;
+
     }
   }
 
