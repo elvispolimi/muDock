@@ -64,7 +64,10 @@ namespace mudock {
                           const int map_index_x,
                           const int map_index_xy,
                           const int map_index_xyz,
-                          fp_type *__restrict__ scores_b) {
+                          fp_type *__restrict__ scores_b,
+                          fp_type *__restrict__ x_forces_b,
+                          fp_type *__restrict__ y_forces_b,
+                          fp_type *__restrict__ z_forces_b) {
     for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
       const int atom_stride  = ligand_index * batch_atoms;
       const int num_atoms    = num_atoms_b[ligand_index];
@@ -84,7 +87,12 @@ namespace mudock {
       const fp_type *nonbond_cB_l           = nonbond_cB_b + num_nonbonds_b[ligand_index];
       const int *nonbond_xB_l               = nonbond_xB_b + num_nonbonds_b[ligand_index];
 
-      fp_type *__restrict__ scores_l = scores_b + ligand_index * scores_per_ligand;
+      fp_type *__restrict__ scores_l  = scores_b + ligand_index * scores_per_ligand;
+
+      fp_type *__restrict__ tot_dE_dx  = x_forces_b + ligand_index * scores_per_ligand;
+      fp_type *__restrict__ tot_dE_dy  = y_forces_b + ligand_index * scores_per_ligand;
+      fp_type *__restrict__ tot_dE_dz  = z_forces_b + ligand_index * scores_per_ligand;
+
       for (int scores_index = 0; scores_index < scores_per_ligand; ++scores_index) {
         const fp_type *__restrict__ scratch_x_l = scratch_x + scores_index * batch_atoms;
         const fp_type *__restrict__ scratch_y_l = scratch_y + scores_index * batch_atoms;
@@ -93,9 +101,10 @@ namespace mudock {
         fp_type elect_total_trilinear = 0;
         fp_type emap_total_trilinear  = 0;
         fp_type dmap_total_trilinear  = 0;
-        fp_type gx = 0;
-        fp_type gy = 0;
-        fp_type gz = 0;
+        fp_type dE_dx = 0;
+        fp_type dE_dy = 0;
+        fp_type dE_dz = 0;
+
         const fp_type *electro_map = grid_maps + map_index_xyz * static_cast<int>(autodock_grid_type::ELEC);
         const fp_type *desolv_map  = grid_maps + map_index_xyz * static_cast<int>(autodock_grid_type::DESOLV);
 
@@ -157,26 +166,26 @@ namespace mudock {
             const fp_type* grid_values[8];
             get_grid_values(electro_map + base_index, map_index_x, map_index_xy, grid_values);
             // TODO non penso ci sia bisogno di moltiplicare per inv_spacing perché viene già fatto quando normalizza coord[]? controllare. LA QUESTIONE VALE PER TUTTE E TRE LE ENERGIE
-            gx += atom_charge * (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
-            gy += atom_charge * (p1w * (p1u * (grid_values[2] - grid_values[0]) + p0u * (grid_values[6] - grid_values[4])) + p0w * (p1u * (grid_values[3] - grid_values[1]) + p0u * (grid_values[7] - grid_values[5])));
-            gz += atom_charge * (p1v * (p1u * (grid_values[1] - grid_values[0]) + p0u * (grid_values[5] - grid_values[4])) + p0v * (p1u * (grid_values[3] - grid_values[2]) + p0u * (grid_values[7] - grid_values[6])));
+            dE_dx += atom_charge * (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
+            dE_dy += atom_charge * (p1w * (p1u * (grid_values[2] - grid_values[0]) + p0u * (grid_values[6] - grid_values[4])) + p0w * (p1u * (grid_values[3] - grid_values[1]) + p0u * (grid_values[7] - grid_values[5])));
+            dE_dz += atom_charge * (p1v * (p1u * (grid_values[1] - grid_values[0]) + p0u * (grid_values[5] - grid_values[4])) + p0v * (p1u * (grid_values[3] - grid_values[2]) + p0u * (grid_values[7] - grid_values[6])));
 
             emap_total_trilinear +=
                 trilinear_interpolation(atom_map + base_index, coeffs, map_index_x, map_index_xy);
 
             get_grid_values(atom_map + base_index, map_index_x, map_index_xy, grid_values);
-            gx += (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
-            gy += (p1w * (p1u * (grid_values[2] - grid_values[0]) + p0u * (grid_values[6] - grid_values[4])) + p0w * (p1u * (grid_values[3] - grid_values[1]) + p0u * (grid_values[7] - grid_values[5])));
-            gz += (p1v * (p1u * (grid_values[1] - grid_values[0]) + p0u * (grid_values[5] - grid_values[4])) + p0v * (p1u * (grid_values[3] - grid_values[2]) + p0u * (grid_values[7] - grid_values[6])));
+            dE_dx += (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
+            dE_dy += (p1w * (p1u * (grid_values[2] - grid_values[0]) + p0u * (grid_values[6] - grid_values[4])) + p0w * (p1u * (grid_values[3] - grid_values[1]) + p0u * (grid_values[7] - grid_values[5])));
+            dE_dz += (p1v * (p1u * (grid_values[1] - grid_values[0]) + p0u * (grid_values[5] - grid_values[4])) + p0v * (p1u * (grid_values[3] - grid_values[2]) + p0u * (grid_values[7] - grid_values[6])));
             
             dmap_total_trilinear +=
                 trilinear_interpolation(desolv_map + base_index, coeffs, map_index_x, map_index_xy) *
                 std::fabs(atom_charge);
 
             get_grid_values(desolv_map + base_index, map_index_x, map_index_xy, grid_values);
-            gx += std::fabs(atom_charge) * (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
-            gy += std::fabs(atom_charge) * (p1w * (p1u * (grid_values[2] - grid_values[0]) + p0u * (grid_values[6] - grid_values[4])) + p0w * (p1u * (grid_values[3] - grid_values[1]) + p0u * (grid_values[7] - grid_values[5])));
-            gz += std::fabs(atom_charge) * (p1v * (p1u * (grid_values[1] - grid_values[0]) + p0u * (grid_values[5] - grid_values[4])) + p0v * (p1u * (grid_values[3] - grid_values[2]) + p0u * (grid_values[7] - grid_values[6])));
+            dE_dx += std::fabs(atom_charge) * (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
+            dE_dy += std::fabs(atom_charge) * (p1w * (p1u * (grid_values[2] - grid_values[0]) + p0u * (grid_values[6] - grid_values[4])) + p0w * (p1u * (grid_values[3] - grid_values[1]) + p0u * (grid_values[7] - grid_values[5])));
+            dE_dz += std::fabs(atom_charge) * (p1v * (p1u * (grid_values[1] - grid_values[0]) + p0u * (grid_values[5] - grid_values[4])) + p0v * (p1u * (grid_values[3] - grid_values[2]) + p0u * (grid_values[7] - grid_values[6])));
           
             // TODO store these gradients somewhere
 
@@ -187,6 +196,7 @@ namespace mudock {
         if (num_rotamers > 0) {
 #pragma omp simd
           for (int i = 0; i < num_nonbonds; ++i) {
+            // TODO calcolo gradiente INTRAMOLECULAR ENERGY
             const int &a1 = nonbond_a1_l[i];
             const int &a2 = nonbond_a2_l[i];
 
@@ -241,6 +251,11 @@ namespace mudock {
         const fp_type total_trilinear = emap_total_trilinear + elect_total_trilinear + dmap_total_trilinear;
         const fp_type total_eintcal   = emap_total_eintcal + elect_total_eintcal + dmap_total_eintcal;
         scores_l[scores_index]        = total_trilinear + total_eintcal + tors_free_energy;
+
+        tot_dE_dx[scores_index] = dE_dx;
+        tot_dE_dy[scores_index] = dE_dy;
+        tot_dE_dz[scores_index] = dE_dz;
+        
       }
     }
   };
@@ -273,6 +288,9 @@ namespace mudock {
                                             map_index_x,
                                             map_index_xy,
                                             map_index_xyz,
-                                            scores_b);
+                                            scores_b,
+                                            x_forces_b,
+                                            y_forces_b,
+                                            z_forces_b);
   }
 } // namespace mudock
