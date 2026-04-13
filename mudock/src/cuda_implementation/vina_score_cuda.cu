@@ -17,12 +17,6 @@
 /// Score inter -15.313681, Score intra -1.478089, Score -10.219815 <- with no parallelisation
 /// Score inter -15.313679, Score intra -1.478089, Score -10.219813 <- real
 
-
-/*
- *  TODO: try to remove all the vdw buffers, since they just depend on the atom type it can be called only when needed reducing the 
- *  GPU memory consuption
- */
-
 #define BUCKET_MULTIPLIER 3
 
 namespace mudock {
@@ -258,14 +252,14 @@ namespace mudock {
     const fp_type* l_scratch_x = x_scratch + stride * scores_per_ligand;
     const fp_type* l_scratch_y = y_scratch + stride * scores_per_ligand;
     const fp_type* l_scratch_z = z_scratch + stride * scores_per_ligand;
-    const int* l_is_hbond_acceptor = ligand_is_hbond_acceptor + stride * scores_per_ligand;
-    const int* l_is_hbond_donor = ligand_is_hbond_donor + stride * scores_per_ligand;
-    const int* l_is_hydrophobic = ligand_is_hydrophobic + stride * scores_per_ligand;
-    const fp_type* l_vdw_radius = ligand_vdw_radius + stride * scores_per_ligand;
+    const int* l_is_hbond_acceptor = ligand_is_hbond_acceptor + stride;
+    const int* l_is_hbond_donor = ligand_is_hbond_donor + stride;
+    const int* l_is_hydrophobic = ligand_is_hydrophobic + stride;
+    const fp_type* l_vdw_radius = ligand_vdw_radius + stride;
 
     /// TODO: check this cus i am not really sure about his behaviour in case of multiple scores per ligand
-    const int* interacting_pairs_first = ligand_interacting_pairs_first + interacting_pairs_offset * scores_per_ligand;
-    const int* interacting_pairs_second = ligand_interacting_pairs_second + interacting_pairs_offset * scores_per_ligand;
+    const int* interacting_pairs_first = ligand_interacting_pairs_first + interacting_pairs_offset;
+    const int* interacting_pairs_second = ligand_interacting_pairs_second + interacting_pairs_offset;
 
     fp_type* scores_l = scores + ligand_id * scores_per_ligand;
 
@@ -299,7 +293,7 @@ namespace mudock {
           num_interacting_pairs
           );   
 
-
+      __syncwarp();
 #ifdef MUDOCK_TEST
 #else
 #endif

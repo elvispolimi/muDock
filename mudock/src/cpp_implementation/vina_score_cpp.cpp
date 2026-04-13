@@ -91,7 +91,7 @@ namespace mudock {
       }
     }
 
-    info("Total interacting pairs: ", out.first.size());
+    // info("Total interacting pairs: ", out.first.size());
     return out;
   }
 

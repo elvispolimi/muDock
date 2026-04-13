@@ -17,7 +17,7 @@
 
 namespace mudock {
   
-  #define MAX_INTERACTING_PAIRS_IN_BATCH 10000
+  #define MAX_INTERACTING_PAIRS_IN_BATCH (1000000)
 
   template<typename molecule_type>
     size_t remove_hydrogens(molecule_type& molecule) {
@@ -164,9 +164,9 @@ namespace mudock {
         for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
           auto &ligand = *batch.molecules[ligand_index];
 
-          info("Removing hydrogens from ligand of size ", ligand.num_atoms());
+          // int old_size = ligand.num_atoms();
           remove_hydrogens(ligand);           
-          info("Ligand size reduced to", ligand.num_atoms());
+          // info("Ligand size reduced ", old_size, " -> ", ligand.num_atoms());
 
           const int stride_atoms = ligand_index * batch_atoms; 
           const int num_atoms = ligand.num_atoms();
@@ -198,7 +198,9 @@ namespace mudock {
           auto [ip_first, ip_second] = get_interactive_pairs(ligand);
           int num_interacting_pairs = ip_first.size();
 
-          assert(offset_interacting_pairs + num_interacting_pairs <= MAX_INTERACTING_PAIRS_IN_BATCH && "Number of interacting pairs exceeded the limit\n");
+          if (offset_interacting_pairs + num_interacting_pairs > MAX_INTERACTING_PAIRS_IN_BATCH) {
+            throw std::runtime_error("Batch limit exceeded: " + std::to_string(offset_interacting_pairs + num_interacting_pairs));
+          }
 
           std::memcpy(
               (void *) (l_interacting_pairs_first() + offset_interacting_pairs), 
