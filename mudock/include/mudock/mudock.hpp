@@ -1,5 +1,6 @@
 #pragma once
 
+#include <mudock/alpaka_implementation.hpp>
 #include <mudock/batch.hpp>
 #include <mudock/chem.hpp>
 #include <mudock/compute.hpp>
