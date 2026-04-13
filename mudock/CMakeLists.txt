@@ -80,6 +80,7 @@ list(
   "${header_path}/${header_prefix}/tbb_implementation/runtime_services.hpp"
   "${header_path}/${header_prefix}/tbb_implementation/tbb_pipeline.hpp"
   "${header_path}/${header_prefix}/batch.hpp"
+  "${header_path}/${header_prefix}/alpaka_implementation.hpp"
   "${header_path}/${header_prefix}/chem.hpp"
   "${header_path}/${header_prefix}/compute.hpp"
   "${header_path}/${header_prefix}/format.hpp"
@@ -231,6 +232,15 @@ if(MUDOCK_ENABLE_SYCL)
       "${source_path}/sycl_implementation/sycl_random.cpp"
       "${source_path}/sycl_implementation/genetic_sycl.cpp"
       "${source_path}/sycl_implementation/sycl_kernel_lock.cpp"
+  )
+endif()
+
+if(MUDOCK_ENABLE_ALPAKA)
+  list(
+    APPEND
+    header_files
+    "${header_path}/${header_prefix}/alpaka_implementation/alpaka_implementation.hpp"
+    "${header_path}/${header_prefix}/alpaka_implementation/queue_alpaka.hpp"
   )
 endif()
 
@@ -494,6 +504,11 @@ if(MUDOCK_ENABLE_SYCL)
   add_dependencies(libmudock sycl_targets)
   target_link_directories(libmudock PUBLIC "${LLVM_LIBRARY_DIRS}")
   target_link_libraries(libmudock PRIVATE sycl)
+endif()
+
+if(MUDOCK_ENABLE_ALPAKA)
+  target_compile_definitions(libmudock PUBLIC MUDOCK_USE_ALPAKA)
+  target_link_libraries(libmudock PUBLIC alpaka::alpaka)
 endif()
 
 if(MUDOCK_ENABLE_OMP)

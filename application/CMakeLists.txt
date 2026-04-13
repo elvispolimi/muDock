@@ -52,6 +52,21 @@ if(MUDOCK_ENABLE_MPI)
   target_link_libraries("${CMAKE_PROJECT_NAME}" PRIVATE MPI::MPI_CXX)
 endif()
 
+if(MUDOCK_ENABLE_ALPAKA)
+  add_executable_mudock(test_alpaka_smoke
+                        "${CMAKE_CURRENT_SOURCE_DIR}/src/alpaka_smoke_test.cpp")
+  target_include_directories(test_alpaka_smoke PRIVATE "${header_path}")
+  set_target_properties(
+    test_alpaka_smoke
+    PROPERTIES CXX_STANDARD 20
+               CXX_STANDARD_REQUIRED ON
+               CXX_EXTENSIONS OFF)
+  target_link_libraries(test_alpaka_smoke libmudock)
+  if(NOT MUDOCK_ENABLE_OMP)
+    target_compile_options(test_alpaka_smoke PRIVATE -Wno-unknown-pragmas)
+  endif()
+endif()
+
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/src/bench" bench)
 if(MUDOCK_ENABLE_TEST)
   add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/src/tests" tests)

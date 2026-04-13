@@ -212,8 +212,12 @@ endif()
 
 # SYCL
 option(MUDOCK_ENABLE_SYCL "Enable the SYCL kernel implementation" OFF)
+<<<<<<< HEAD
 set(MUDOCK_SYCL_EXTRA_FLAGS "" CACHE STRING "Extra SYCL flags appended to both oneAPI compile and link steps")
 set(MUDOCK_SYCL_EXTRA_COMPILE_FLAGS "" CACHE STRING "Extra SYCL flags appended only to oneAPI compile steps")
+=======
+option(MUDOCK_ENABLE_ALPAKA "Enable the Alpaka backend skeleton" OFF)
+>>>>>>> 25915a6f (Added first alpaka integration (and dependency))
 set(MUDOCK_SYCL_EXTRA_LINK_FLAGS "" CACHE STRING "Extra SYCL link flags appended to the clang++ link step")
 set(MUDOCK_SYC_EXTRA_LINK_FLAGS "" CACHE STRING "Deprecated alias for MUDOCK_SYCL_EXTRA_LINK_FLAGS")
 set(MUDOCK_SYCL_WG_SIZE "" CACHE STRING "SYCL work-group size override for kernels (e.g. 32 or 64)")
@@ -524,6 +528,15 @@ endforeach()
 # ##############################################################################
 # ### Add each component that compose this project
 # ##############################################################################
+if(MUDOCK_ENABLE_ALPAKA)
+  set(alpaka_BUILD_EXAMPLES OFF CACHE BOOL "Build the examples" FORCE)
+  set(alpaka_BUILD_BENCHMARKS OFF CACHE BOOL "Build the benchmarks" FORCE)
+  if(NOT DEFINED alpaka_ACC_CPU_B_SEQ_T_SEQ_ENABLE)
+    set(alpaka_ACC_CPU_B_SEQ_T_SEQ_ENABLE ON CACHE BOOL "Enable the serial CPU back-end" FORCE)
+  endif()
+  add_subdirectory(alpaka)
+endif()
+
 add_subdirectory(application)
 add_subdirectory(mudock)
 
@@ -634,6 +647,8 @@ if(MUDOCK_ENABLE_HIP)
 endif()
 
 mudock_print_config("Enable SYCL" "${MUDOCK_ENABLE_SYCL}" "MUDOCK_ENABLE_SYCL")
+
+mudock_print_config("Enable Alpaka" "${MUDOCK_ENABLE_ALPAKA}" "MUDOCK_ENABLE_ALPAKA")
 
 if(MUDOCK_ENABLE_SYCL)
   mudock_print_config("Target SYCL architecture" "${SYCL_TARGETS}"
