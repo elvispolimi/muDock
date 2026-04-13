@@ -63,38 +63,38 @@ namespace mudock {
     // every rotation angle.
     // Alternatively: 1) use torque ; 2) use quaternions
 
-    //derivative w.r.t. angle_x
-    const auto dm00_dangle_x = 0;
-    const auto dm01_dangle_x = cx * sy * cz + sx * sz;
-    const auto dm02_dangle_x = -sx * sy * cz + cx * sz;
-    const auto dm10_dangle_x = 0;
-    const auto dm11_dangle_x = cx * sy * sz - sx * cz;
-    const auto dm12_dangle_x = -sx * sy * sz - cx * cz;
-    const auto dm20_dangle_x = 0;
-    const auto dm21_dangle_x = cx * cy;
-    const auto dm22_dangle_x = -sx * cy;
+    // //derivative w.r.t. angle_x
+    // const auto dm00_dangle_x = 0;
+    // const auto dm01_dangle_x = cx * sy * cz + sx * sz;
+    // const auto dm02_dangle_x = -sx * sy * cz + cx * sz;
+    // const auto dm10_dangle_x = 0;
+    // const auto dm11_dangle_x = cx * sy * sz - sx * cz;
+    // const auto dm12_dangle_x = -sx * sy * sz - cx * cz;
+    // const auto dm20_dangle_x = 0;
+    // const auto dm21_dangle_x = cx * cy;
+    // const auto dm22_dangle_x = -sx * cy;
     
-    // derivative w.r.t. angle_y
-    const auto dm00_dangle_y = -sy * cz;
-    const auto dm01_dangle_y = sx * cy * cz;
-    const auto dm02_dangle_y = cx * cy * cz;
-    const auto dm10_dangle_y = -sy * sz;
-    const auto dm11_dangle_y = sx * cy * sz;
-    const auto dm12_dangle_y = cx * cy * sz;
-    const auto dm20_dangle_y = -cy;
-    const auto dm21_dangle_y = -sx * sy;
-    const auto dm22_dangle_y = -cx * sy;
+    // // derivative w.r.t. angle_y
+    // const auto dm00_dangle_y = -sy * cz;
+    // const auto dm01_dangle_y = sx * cy * cz;
+    // const auto dm02_dangle_y = cx * cy * cz;
+    // const auto dm10_dangle_y = -sy * sz;
+    // const auto dm11_dangle_y = sx * cy * sz;
+    // const auto dm12_dangle_y = cx * cy * sz;
+    // const auto dm20_dangle_y = -cy;
+    // const auto dm21_dangle_y = -sx * sy;
+    // const auto dm22_dangle_y = -cx * sy;
 
-    // derivative w.r.t. angle_z
-    const auto dm00_dangle_z = -cy * sz;
-    const auto dm01_dangle_z = -sz * sx * sy - cx * cz;
-    const auto dm02_dangle_z = -sz * cx * sy + sx * cz;
-    const auto dm10_dangle_z = cy * cz;
-    const auto dm11_dangle_z = sx * sy * cz - cx * sz;
-    const auto dm12_dangle_z = cx * sy * cz + sx * sz;
-    const auto dm20_dangle_z = 0;
-    const auto dm21_dangle_z = 0;
-    const auto dm22_dangle_z = 0;
+    // // derivative w.r.t. angle_z
+    // const auto dm00_dangle_z = -cy * sz;
+    // const auto dm01_dangle_z = -sz * sx * sy - cx * cz;
+    // const auto dm02_dangle_z = -sz * cx * sy + sx * cz;
+    // const auto dm10_dangle_z = cy * cz;
+    // const auto dm11_dangle_z = sx * sy * cz - cx * sz;
+    // const auto dm12_dangle_z = cx * sy * cz + sx * sz;
+    // const auto dm20_dangle_z = 0;
+    // const auto dm21_dangle_z = 0;
+    // const auto dm22_dangle_z = 0;
 
 // apply the rotation matrix and compute derivatives
 #pragma omp simd
@@ -175,6 +175,11 @@ namespace mudock {
         ((origz * (u2 + v2) - w * (origx * u + origy * v)) * one_minus_c + (origx * v - origy * u) * ls) *
         inv_l2;
 
+    // const fp_type inv_l = 1.0 / std::sqrt(l2);
+    // const fp_type ux = u * inv_l;
+    // const fp_type uy = v * inv_l;
+    // const fp_type uz = w * inv_l;
+
 // apply the rotation matrix
 #pragma omp simd
     for (int i = 0; i < num_atoms; ++i) {
@@ -183,6 +188,24 @@ namespace mudock {
         x[i] = prev_x * m00 + prev_y * m01 + prev_z * m02 + m03;
         y[i] = prev_x * m10 + prev_y * m11 + prev_z * m12 + m13;
         z[i] = prev_x * m20 + prev_y * m21 + prev_z * m22 + m23;
+
+        // // dX'/dangle = cross_product(u, X')
+
+        // // relative to rotation origin
+        // const fp_type rx = x[i] - origx;
+        // const fp_type ry = y[i] - origy;
+        // const fp_type rz = z[i] - origz;
+
+        // // cross(axis, rel)
+        // const fp_type cx = uy * rz - uz * ry;
+        // const fp_type cy = uz * rx - ux * rz;
+        // const fp_type cz = ux * ry - uy * rx;
+
+        // TODO store this somewhere
+        // dx_dangle_k[i] = cx;
+        // dx_dangle_k[i] = cy;
+        // dx_dangle_k[i] = cz; 
+
       }
     }
   }

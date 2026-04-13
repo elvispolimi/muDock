@@ -39,6 +39,22 @@ namespace mudock {
     out_values[7] = &map[1 + map_index_x + map_index_xy];
   }
 
+  inline vec3 cross_product(vec3& u, 
+                    vec3& v){
+    vec3 result;
+    result.x = u.y * v.z - v.y * u.z;
+    result.y = v.x * u.z - u.x * v.z;
+    result.z = u.x * v.y - v.x * u.y;
+    return result;
+  }
+
+  inline fp_type dot_product(vec3& u, 
+                    vec3& v){
+    fp_type result;
+    result = u.x * v.x + u.y * v.y + u.z * v.z;
+    return result;
+  }
+
   inline void calc_energy(const int batch_atoms,
                           const int batch_ligands,
                           const int scores_per_ligand,
@@ -101,9 +117,15 @@ namespace mudock {
         fp_type elect_total_trilinear = 0;
         fp_type emap_total_trilinear  = 0;
         fp_type dmap_total_trilinear  = 0;
-        fp_type dE_dx = 0;
-        fp_type dE_dy = 0;
-        fp_type dE_dz = 0;
+        
+        vec3 dE_dX[num_atoms]                 = {0};
+        vec3 dX_dalpha[num_atoms]             = {0};
+        vec3 dX_dbeta[num_atoms]              = {0};
+        vec3 dX_dgamma[num_atoms]             = {0};
+        vec3 dX_drot[num_rotamers][num_atoms] = {0};
+
+        // gradient = dE/dx, dE/dy, dE/dz, dE/dalpha, dE/dbeta, dE/dgamma, dE/d_tors_1, ..., dE/d_tors_n
+        fp_type gradient[6+num_rotamers] = {0};
 
         const fp_type *electro_map = grid_maps + map_index_xyz * static_cast<int>(autodock_grid_type::ELEC);
         const fp_type *desolv_map  = grid_maps + map_index_xyz * static_cast<int>(autodock_grid_type::DESOLV);
@@ -112,16 +134,20 @@ namespace mudock {
         for (int index = 0; index < num_atoms; ++index) {
           fp_type coord[3]{scratch_x_l[index], scratch_y_l[index], scratch_z_l[index]};
 
+          const auto diff_x      = coord[0] - center[0];
+          const auto diff_y      = coord[1] - center[1];
+          const auto diff_z      = coord[2] - center[2];
+
           if (coord[0] < minimum[0] || coord[0] > maximum[0] || coord[1] < minimum[1] ||
               coord[1] > maximum[1] || coord[2] < minimum[2] || coord[2] > maximum[2]) {
-            const auto diff_x      = coord[0] - center[0];
-            const auto diff_y      = coord[1] - center[1];
-            const auto diff_z      = coord[2] - center[2];
             const fp_type dist     = diff_x * diff_x + diff_y * diff_y + diff_z * diff_z;
             const fp_type epenalty = dist * ENERGYPENALTY;
             elect_total_trilinear += epenalty;
             emap_total_trilinear += epenalty;
             // TODO gestire calcolo gradiente in questo if
+            // dE_dX.x +=
+            // dE_dX.y +=
+            // dE_dX.z +=
           } else {
             const auto &atom_charge = charge_l[index];
             const fp_type *atom_map = grid_maps + map_offsets_l[index];
@@ -170,23 +196,39 @@ namespace mudock {
                 trilinear_interpolation(desolv_map + base_index, coeffs, map_index_x, map_index_xy) *
                 std::fabs(atom_charge);
 
-            // TODO Implementation draft: the main problem is where to store these terms (tot_dE_dx/y/z)
-            // const fp_type* grid_values[8];
-            // get_grid_values(electro_map + base_index, map_index_x, map_index_xy, grid_values);
-            // // TODO non penso ci sia bisogno di moltiplicare per inv_spacing perché viene già fatto quando normalizza coord[]? controllare. LA QUESTIONE VALE PER TUTTE E TRE LE ENERGIE
-            // dE_dx += atom_charge * (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
-            // dE_dy += atom_charge * (p1w * (p1u * (grid_values[2] - grid_values[0]) + p0u * (grid_values[6] - grid_values[4])) + p0w * (p1u * (grid_values[3] - grid_values[1]) + p0u * (grid_values[7] - grid_values[5])));
-            // dE_dz += atom_charge * (p1v * (p1u * (grid_values[1] - grid_values[0]) + p0u * (grid_values[5] - grid_values[4])) + p0v * (p1u * (grid_values[3] - grid_values[2]) + p0u * (grid_values[7] - grid_values[6])));
+            const fp_type* grid_values[8];
+            get_grid_values(electro_map + base_index, map_index_x, map_index_xy, grid_values);
+            // TODO non penso ci sia bisogno di moltiplicare per inv_spacing perché viene già fatto quando normalizza coord[]? controllare. LA QUESTIONE VALE PER TUTTE E TRE LE ENERGIE
+            dE_dX[index].x += atom_charge * (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
+            dE_dX[index].y += atom_charge * (p1w * (p1u * (grid_values[2] - grid_values[0]) + p0u * (grid_values[6] - grid_values[4])) + p0w * (p1u * (grid_values[3] - grid_values[1]) + p0u * (grid_values[7] - grid_values[5])));
+            dE_dX[index].z += atom_charge * (p1v * (p1u * (grid_values[1] - grid_values[0]) + p0u * (grid_values[5] - grid_values[4])) + p0v * (p1u * (grid_values[3] - grid_values[2]) + p0u * (grid_values[7] - grid_values[6])));
 
-            // get_grid_values(atom_map + base_index, map_index_x, map_index_xy, grid_values);
-            // dE_dx += (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
-            // dE_dy += (p1w * (p1u * (grid_values[2] - grid_values[0]) + p0u * (grid_values[6] - grid_values[4])) + p0w * (p1u * (grid_values[3] - grid_values[1]) + p0u * (grid_values[7] - grid_values[5])));
-            // dE_dz += (p1v * (p1u * (grid_values[1] - grid_values[0]) + p0u * (grid_values[5] - grid_values[4])) + p0v * (p1u * (grid_values[3] - grid_values[2]) + p0u * (grid_values[7] - grid_values[6])));            
+            get_grid_values(atom_map + base_index, map_index_x, map_index_xy, grid_values);
+            dE_dX[index].x += (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
+            dE_dX[index].y += (p1w * (p1u * (grid_values[2] - grid_values[0]) + p0u * (grid_values[6] - grid_values[4])) + p0w * (p1u * (grid_values[3] - grid_values[1]) + p0u * (grid_values[7] - grid_values[5])));
+            dE_dX[index].z += (p1v * (p1u * (grid_values[1] - grid_values[0]) + p0u * (grid_values[5] - grid_values[4])) + p0v * (p1u * (grid_values[3] - grid_values[2]) + p0u * (grid_values[7] - grid_values[6])));            
+            
+            get_grid_values(desolv_map + base_index, map_index_x, map_index_xy, grid_values);
+            dE_dX[index].x += std::fabs(atom_charge) * (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
+            dE_dX[index].y += std::fabs(atom_charge) * (p1w * (p1u * (grid_values[2] - grid_values[0]) + p0u * (grid_values[6] - grid_values[4])) + p0w * (p1u * (grid_values[3] - grid_values[1]) + p0u * (grid_values[7] - grid_values[5])));
+            dE_dX[index].z += std::fabs(atom_charge) * (p1v * (p1u * (grid_values[1] - grid_values[0]) + p0u * (grid_values[5] - grid_values[4])) + p0v * (p1u * (grid_values[3] - grid_values[2]) + p0u * (grid_values[7] - grid_values[6])));
 
-            // get_grid_values(desolv_map + base_index, map_index_x, map_index_xy, grid_values);
-            // dE_dx += std::fabs(atom_charge) * (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
-            // dE_dy += std::fabs(atom_charge) * (p1w * (p1u * (grid_values[2] - grid_values[0]) + p0u * (grid_values[6] - grid_values[4])) + p0w * (p1u * (grid_values[3] - grid_values[1]) + p0u * (grid_values[7] - grid_values[5])));
-            // dE_dz += std::fabs(atom_charge) * (p1v * (p1u * (grid_values[1] - grid_values[0]) + p0u * (grid_values[5] - grid_values[4])) + p0v * (p1u * (grid_values[3] - grid_values[2]) + p0u * (grid_values[7] - grid_values[6])));
+            // Compute dX/d_rot
+            // alpha -> rotation on z-axis
+            // TODO check if it is correct to use diff_x/y/z
+            // TODO check if it is fine to consider infinitesimal rotations so we can just use the versors as u or we shuold consider the composition of rotations in order
+            const vec3 x_i = {diff_x, diff_y, diff_z};
+            const vec3 z_axis = {0, 0, 1};
+            const vec3 y_axis = {0, 1, 0};
+            const vec3 x_axis = {1, 0, 0};
+
+            dX_dalpha[i] = cross_product(z_axis, x_i);
+            dX_dbeta[i]  = cross_product(y_axis, x_i);
+            dX_dgamma[i] = cross_product(x_axis, x_i);
+
+
+            // Compute dE/d_tors
+
 
           }
         }
@@ -251,10 +293,30 @@ namespace mudock {
         const fp_type total_eintcal   = emap_total_eintcal + elect_total_eintcal + dmap_total_eintcal;
         scores_l[scores_index]        = total_trilinear + total_eintcal + tors_free_energy;
 
-        // TODO Implementation draft: see draft above with dE_dx/y/z computation
-        // tot_dE_dx[scores_index] = dE_dx;
-        // tot_dE_dy[scores_index] = dE_dy;
-        // tot_dE_dz[scores_index] = dE_dz;
+
+        // Accumulate gradient over atoms: dE/dtheta = SUM_i(dE/dX_i * dX_i/dtheta)
+        for (int index = 0; index < num_atoms; ++index){
+          gradient[0] += dE_dX.x[index];
+          gradient[1] += dE_dX.y[index];
+          gradient[2] += dE_dX.z[index];
+
+          gradient[3] += dot_product(dE_dX[index], dX_dalpha[i]);
+          gradient[4] += dot_product(dE_dX[index], dX_dbeta[i]);
+          gradient[5] += dot_product(dE_dX[index], dX_dgamma[i]);
+        }
+
+        for (int rotamer = 6; rotamer < 6 + num_rotamers; ++rotamer) {
+          for (int index = 0; index < num_atoms; ++index) {
+            gradient[rotamer] += dot_product(dE_dX[index], dX_drot[rotamer][i]);
+          }
+        }
+
+        // TODO manage the gradient buffer, this assignment is not correct
+        gradient_l[scores_index] = gradient;
+
+        tot_dE_dx[scores_index] = dE_dx;
+        tot_dE_dy[scores_index] = dE_dy;
+        tot_dE_dz[scores_index] = dE_dz;
         
       }
     }
