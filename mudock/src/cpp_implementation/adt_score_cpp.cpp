@@ -230,7 +230,6 @@ namespace mudock {
         if (num_rotamers > 0) {
 #pragma omp simd
           for (int i = 0; i < num_nonbonds; ++i) {
-            // TODO calcolo derivata INTRAMOLECULAR ENERGY
             const int &a1 = nonbond_a1_l[i];
             const int &a2 = nonbond_a2_l[i];
 
@@ -251,6 +250,32 @@ namespace mudock {
                 charge_l[a1] * charge_l[a2] * ELECSCALE * autodock_parameters::coeff_estat * r_dielectric;
             elect_total_eintcal += e_elec;
 
+            // Electrostatic derivative
+            const fp_type exp_term =
+                std::exp(mehler_solmajer::lambda_B * distance);
+
+            const fp_type denom =
+                (fp_type{1} + mehler_solmajer::rk * exp_term);
+
+            const fp_type epsilon =
+                mehler_solmajer::A +
+                mehler_solmajer::B / denom;
+
+            const fp_type epsilon_prime =
+                -mehler_solmajer::B *
+                mehler_solmajer::rk *
+                mehler_solmajer::lambda_B *
+                exp_term / (denom * denom);
+
+            const fp_type C =
+                charge_l[a1] * charge_l[a2] *
+                ELECSCALE * autodock_parameters::coeff_estat;
+
+            const fp_type f = distance * epsilon;
+            const fp_type f_prime = epsilon + distance * epsilon_prime;
+
+            const fp_type dE_dr_elec = -C * f_prime / (f * f);
+
             // Calcuare desolv
             const fp_type nb_desolv = (vol_l[a2] * (solpar_l[a1] + qsolpar * std::fabs(charge_l[a1])) +
                                        vol_l[a1] * (solpar_l[a2] + qsolpar * std::fabs(charge_l[a2])));
@@ -258,6 +283,11 @@ namespace mudock {
             const fp_type e_desolv = autodock_parameters::coeff_desolv *
                                      std::exp(fp_type{-0.5} / (sigma_square) *distance_two_clamp) * nb_desolv;
             dmap_total_eintcal += e_desolv;
+
+            // Desolvation derivative
+            const fp_type dE_dr_desolv = (-distance / sigma_square) * e_desolv;
+
+
             fp_type e_vdW_Hb{0};
             if (distance_two_clamp < nbc2) {
               //  Find internal energy parameters, i.e.  epsilon and r-equilibrium values...
@@ -275,9 +305,35 @@ namespace mudock {
                 const fp_type rB        = std::exp(static_cast<fp_type>(xB) * log_distance);
 
                 e_vdW_Hb = std::min(EINTCLAMP, (cA / rA - cB / rB));
+                
+                // VdW derivative
+                // TODO fix rA and derivative
+                const fp_type rA1 = rA * inv_r; // r^{-(xA+1)}
+                const fp_type rB1 = rB * inv_r; // r^{-(xB+1)}
+                dE_dr_vdw = -xA * cA * rA1 + xB * cB * rB1;
               }
             }
             emap_total_eintcal += e_vdW_Hb;
+
+
+            const fp_type dE_dr =
+                dE_dr_elec +
+                dE_dr_desolv +
+                dE_dr_vdw;
+
+            // Accumulate into dE_dX
+            const fp_type gx = dE_dr * dir_x;
+            const fp_type gy = dE_dr * dir_y;
+            const fp_type gz = dE_dr * dir_z;
+
+            dE_dX[a1].x += gx;
+            dE_dX[a1].y += gy;
+            dE_dX[a1].z += gz;
+
+            dE_dX[a2].x -= gx;
+            dE_dX[a2].y -= gy;
+            dE_dX[a2].z -= gz;
+
           }
         }
         const fp_type tors_free_energy = num_rotamers * autodock_parameters::coeff_tors;
