@@ -18,6 +18,7 @@
 /// Score inter -15.313679, Score intra -1.478089, Score -10.219813 <- real
 
 #define BUCKET_MULTIPLIER 3
+#define MAX_LIGAND_ATOMS 256
 
     /**
      *  TODO: add the boolean problem in the relation https://gemini.google.com/share/eb3cf48bb2eb
@@ -25,6 +26,10 @@
 
 
 namespace mudock {
+  
+    typedef struct {
+      fp_type x, y, z;
+    } coords_t;
 
     __device__ static constexpr fp_type GAUSS1_COEFF_CUDA{- 0.035579f};
     __device__ static constexpr fp_type GAUSS2_COEFF_CUDA{- 0.005156f};
@@ -71,17 +76,18 @@ namespace mudock {
         bool is_hydro1, bool is_hydro2
         ) {
       fp_type dst = distance(dx, dy, dz);
-      if (dst > 8) return 0;
 
       dst -= (vdw1 + vdw2);
       bool is_h = (is_hba1 & is_hbd2) | (is_hba2 & is_hbd1);
       bool is_hydro = is_hydro1 & is_hydro2;
 
-      return GAUSS1_COEFF_CUDA * gauss1(dst) +
+      fp_type res = GAUSS1_COEFF_CUDA * gauss1(dst) +
         GAUSS2_COEFF_CUDA * gauss2(dst) +
         REPULSION_COEFF_CUDA * repulsion(dst) +
         HYDROPHOBIC_COEFF_CUDA * hydrophobic(dst, is_hydro) +
         H_BOND_COEFF_CUDA * hbonding(dst, is_h);
+
+      return (dst <= 8.0f) ? res : 0.0f;
     }
 
     __device__ inline fp_type score_inter(
@@ -97,9 +103,7 @@ namespace mudock {
 
         ///Ligand data
         const size_t num_atoms_ligand,
-        const fp_type* __restrict__ ligand_x,
-        const fp_type* __restrict__ ligand_y,
-        const fp_type* __restrict__ ligand_z,
+        const coords_t* ligand_coords, 
         const int* __restrict__ l_is_hbond_acceptor,
         const int* __restrict__ l_is_hbond_donor,
         const int* __restrict__ l_is_hydrophobic,
@@ -107,15 +111,24 @@ namespace mudock {
         ) {
       fp_type total = 0;
       for (size_t pIdx = 0; pIdx < num_atoms_protein; pIdx++) {
+
+        fp_type px = protein_x[pIdx];
+        fp_type py = protein_y[pIdx];
+        fp_type pz = protein_z[pIdx];
+        fp_type prv = p_vdw_radius[pIdx];
+        int phba = p_is_hbond_acceptor[pIdx];
+        int phbd = p_is_hbond_donor[pIdx];
+        int phf = p_is_hydrophobic[pIdx];
+
         for (size_t lIdx = threadIdx.x; lIdx < num_atoms_ligand; lIdx += blockDim.x) {
           total += compute_pair_energy(
-              protein_x[pIdx] - ligand_x[lIdx],
-              protein_y[pIdx] - ligand_y[lIdx],
-              protein_z[pIdx] - ligand_z[lIdx],
-              p_vdw_radius[pIdx], l_vdw_radius[lIdx],
-              p_is_hbond_acceptor[pIdx], p_is_hbond_donor[pIdx],
+              px - ligand_coords[lIdx].x,
+              py - ligand_coords[lIdx].y,
+              pz - ligand_coords[lIdx].z,
+              prv, l_vdw_radius[lIdx],
+              phba, phbd,
               l_is_hbond_acceptor[lIdx], l_is_hbond_donor[lIdx],
-              p_is_hydrophobic[pIdx], l_is_hydrophobic[lIdx]
+              phf, l_is_hydrophobic[lIdx]
               );
         }
       }
@@ -124,9 +137,7 @@ namespace mudock {
 
 
     __device__ inline fp_type score_intra(
-        const fp_type* __restrict__ ligand_x,
-        const fp_type* __restrict__ ligand_y,
-        const fp_type* __restrict__ ligand_z,
+        const coords_t* ligand_coords, 
         const int* __restrict__ l_is_hbond_acceptor,
         const int* __restrict__ l_is_hbond_donor,
         const int* __restrict__ l_is_hydrophobic,
@@ -140,9 +151,9 @@ namespace mudock {
         int a1 = interacting_pairs_first[i];
         int a2 = interacting_pairs_second[i];
         total += compute_pair_energy(
-            ligand_x[a1] - ligand_x[a2],
-            ligand_y[a1] - ligand_y[a2],
-            ligand_z[a1] - ligand_z[a2],
+            ligand_coords[a1].x - ligand_coords[a2].x,
+            ligand_coords[a1].y - ligand_coords[a2].y,
+            ligand_coords[a1].z - ligand_coords[a2].z,
             l_vdw_radius[a1], l_vdw_radius[a2],
             l_is_hbond_acceptor[a1], l_is_hbond_donor[a1],
             l_is_hbond_acceptor[a2], l_is_hbond_donor[a2],
@@ -165,9 +176,7 @@ namespace mudock {
 
         ///Ligand data
         const size_t num_atoms_ligand,
-        const fp_type* __restrict__ ligand_x,
-        const fp_type* __restrict__ ligand_y,
-        const fp_type* __restrict__ ligand_z,
+        const coords_t* ligand_coords, 
         const int* __restrict__ l_is_hbond_acceptor,
         const int* __restrict__ l_is_hbond_donor,
         const int* __restrict__ l_is_hydrophobic,
@@ -188,9 +197,7 @@ namespace mudock {
             p_is_hydrophobic,
             p_vdw_radius,
             num_atoms_ligand,
-            ligand_x,
-            ligand_y,
-            ligand_z,
+            ligand_coords,
             l_is_hbond_acceptor,
             l_is_hbond_donor,
             l_is_hydrophobic,
@@ -198,9 +205,7 @@ namespace mudock {
         );
         
         fp_type intra_score = score_intra(
-            ligand_x,
-            ligand_y,
-            ligand_z,
+            ligand_coords,
             l_is_hbond_acceptor,
             l_is_hbond_donor,
             l_is_hydrophobic,
@@ -263,12 +268,18 @@ namespace mudock {
 
     fp_type* scores_l = scores + ligand_id * scores_per_ligand;
 
+    __shared__ coords_t ligand_coords[MAX_LIGAND_ATOMS];
+
     for (int scores_index = 0; scores_index < scores_per_ligand; ++scores_index) {
 
       // Copy original coordinates
-      const fp_type* ligand_x = l_scratch_x + scores_index * atom_stride;
-      const fp_type* ligand_y = l_scratch_y + scores_index * atom_stride;
-      const fp_type* ligand_z = l_scratch_z + scores_index * atom_stride;
+      for (int i = local_thread_id; i < num_atoms_ligand; i += blockDim.x) {
+        ligand_coords[i].x = l_scratch_x[scores_index * atom_stride + i];
+        ligand_coords[i].y = l_scratch_y[scores_index * atom_stride + i];
+        ligand_coords[i].z = l_scratch_z[scores_index * atom_stride + i];
+      }
+
+      __syncwarp();
 
       // Calculate energy 
       fp_type result = scoring_cuda(num_atoms_protein, 
@@ -280,9 +291,7 @@ namespace mudock {
           p_is_hydrophobic, 
           p_vdw_radius, 
           num_atoms_ligand, 
-          ligand_x, 
-          ligand_y, 
-          ligand_z, 
+          ligand_coords,
           l_is_hbond_acceptor,
           l_is_hbond_donor,
           l_is_hydrophobic,
