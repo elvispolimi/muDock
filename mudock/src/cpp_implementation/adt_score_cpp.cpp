@@ -39,8 +39,8 @@ namespace mudock {
     out_values[7] = &map[1 + map_index_x + map_index_xy];
   }
 
-  inline vec3 cross_product(vec3& u, 
-                    vec3& v){
+  inline vec3 cross_product(const vec3& u, 
+                            const vec3& v){
     vec3 result;
     result.x = u.y * v.z - v.y * u.z;
     result.y = v.x * u.z - u.x * v.z;
@@ -215,9 +215,9 @@ namespace mudock {
             const vec3 y_axis = {0, 1, 0};
             const vec3 x_axis = {1, 0, 0};
 
-            dX_dalpha[i] = cross_product(z_axis, x_i);
-            dX_dbeta[i]  = cross_product(y_axis, x_i);
-            dX_dgamma[i] = cross_product(x_axis, x_i);
+            dX_dalpha[index] = cross_product(z_axis, x_i);
+            dX_dbeta[index]  = cross_product(y_axis, x_i);
+            dX_dgamma[index] = cross_product(x_axis, x_i);
 
 
             // Compute dE/d_tors
@@ -289,13 +289,13 @@ namespace mudock {
 
         // Accumulate gradient over atoms: dE/dtheta = SUM_i(dE/dX_i * dX_i/dtheta)
         for (int index = 0; index < num_atoms; ++index){
-          gradient[0] += dE_dX.x[index];
-          gradient[1] += dE_dX.y[index];
-          gradient[2] += dE_dX.z[index];
+          gradient[0] += dE_dX[index].x;
+          gradient[1] += dE_dX[index].y;
+          gradient[2] += dE_dX[index].z;
 
-          gradient[3] += dot_product(dE_dX[index], dX_dalpha[i]);
-          gradient[4] += dot_product(dE_dX[index], dX_dbeta[i]);
-          gradient[5] += dot_product(dE_dX[index], dX_dgamma[i]);
+          gradient[3] += dot_product(dE_dX[index], dX_dalpha[index]);
+          gradient[4] += dot_product(dE_dX[index], dX_dbeta[index]);
+          gradient[5] += dot_product(dE_dX[index], dX_dgamma[index]);
         }
 
         for (int rotamer = 6; rotamer < 6 + num_rotamers; ++rotamer) {
