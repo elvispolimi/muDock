@@ -80,10 +80,7 @@ namespace mudock {
                           const int map_index_x,
                           const int map_index_xy,
                           const int map_index_xyz,
-                          fp_type *__restrict__ scores_b,
-                          fp_type *__restrict__ x_forces_b,
-                          fp_type *__restrict__ y_forces_b,
-                          fp_type *__restrict__ z_forces_b) {
+                          fp_type *__restrict__ scores_b) {
     for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
       const int atom_stride  = ligand_index * batch_atoms;
       const int num_atoms    = num_atoms_b[ligand_index];
@@ -104,10 +101,6 @@ namespace mudock {
       const int *nonbond_xB_l               = nonbond_xB_b + num_nonbonds_b[ligand_index];
 
       fp_type *__restrict__ scores_l  = scores_b + ligand_index * scores_per_ligand;
-
-      fp_type *__restrict__ tot_dE_dx  = x_forces_b + ligand_index * scores_per_ligand;
-      fp_type *__restrict__ tot_dE_dy  = y_forces_b + ligand_index * scores_per_ligand;
-      fp_type *__restrict__ tot_dE_dz  = z_forces_b + ligand_index * scores_per_ligand;
 
       for (int scores_index = 0; scores_index < scores_per_ligand; ++scores_index) {
         const fp_type *__restrict__ scratch_x_l = scratch_x + scores_index * batch_atoms;
@@ -237,7 +230,7 @@ namespace mudock {
         if (num_rotamers > 0) {
 #pragma omp simd
           for (int i = 0; i < num_nonbonds; ++i) {
-            // TODO calcolo gradiente INTRAMOLECULAR ENERGY
+            // TODO calcolo derivata INTRAMOLECULAR ENERGY
             const int &a1 = nonbond_a1_l[i];
             const int &a2 = nonbond_a2_l[i];
 
@@ -313,10 +306,6 @@ namespace mudock {
 
         // TODO manage the gradient buffer, this assignment is not correct
         gradient_l[scores_index] = gradient;
-
-        tot_dE_dx[scores_index] = dE_dx;
-        tot_dE_dy[scores_index] = dE_dy;
-        tot_dE_dz[scores_index] = dE_dz;
         
       }
     }
@@ -350,9 +339,6 @@ namespace mudock {
                                             map_index_x,
                                             map_index_xy,
                                             map_index_xyz,
-                                            scores_b,
-                                            x_forces_b,
-                                            y_forces_b,
-                                            z_forces_b);
+                                            scores_b);
   }
 } // namespace mudock
