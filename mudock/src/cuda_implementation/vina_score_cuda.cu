@@ -19,49 +19,49 @@
 
 #define BUCKET_MULTIPLIER 3
 
+    /**
+     *  TODO: add the boolean problem in the relation https://gemini.google.com/share/eb3cf48bb2eb
+     */
+
+
 namespace mudock {
 
-    __device__ static constexpr fp_type GAUSS1_COEFF_CUDA{- 0.035579};
-    __device__ static constexpr fp_type GAUSS2_COEFF_CUDA{- 0.005156};
-    __device__ static constexpr fp_type REPULSION_COEFF_CUDA{0.840245};
-    __device__ static constexpr fp_type HYDROPHOBIC_COEFF_CUDA{- 0.035069};
-    __device__ static constexpr fp_type H_BOND_COEFF_CUDA{- 0.587439};
-    __device__ static constexpr fp_type NROT_COEFF_CUDA{0.05846};
+    __device__ static constexpr fp_type GAUSS1_COEFF_CUDA{- 0.035579f};
+    __device__ static constexpr fp_type GAUSS2_COEFF_CUDA{- 0.005156f};
+    __device__ static constexpr fp_type REPULSION_COEFF_CUDA{0.840245f};
+    __device__ static constexpr fp_type HYDROPHOBIC_COEFF_CUDA{- 0.035069f};
+    __device__ static constexpr fp_type H_BOND_COEFF_CUDA{- 0.587439f};
+    __device__ static constexpr fp_type NROT_COEFF_CUDA{0.05846f};
 
     __device__ inline fp_type distance(fp_type x, fp_type y, fp_type z) {
         return sqrt( x*x + y*y + z*z );
     }
 
     __device__ inline fp_type gauss1(const fp_type dst) {
-        fp_type gauss1 = 0;
-        if(dst != 0) gauss1 = exp(- pow(dst / 0.5, 2));
-        return gauss1;
+      fp_type x = dst * 2.0f;
+      return (dst != 0.0f) ? expf(-(x*x)) : 0.0f;
     }
 
     __device__ inline fp_type gauss2(const fp_type dst) {
-        fp_type gauss2 = 0;
-        if(dst != 0) gauss2 = exp(- pow((dst - 3) / 2, 2));
-        return gauss2;
+      fp_type x = (dst - 3) * 0.5f;
+      return (dst != 0.0f) ? expf(-(x*x)) : 0.0f;
     }
 
     __device__ inline fp_type repulsion(const fp_type dst) {
-        return pow((dst < 0) * dst, 2);
+      return (dst < 0.0f) ? dst*dst : 0.0f;
     }
-
-    __device__ inline fp_type hydrophobic(const fp_type dst, const int rec_lig_is_hydrophobic) {
-        if(rec_lig_is_hydrophobic < 0) return 0; // Sentinel value, no interaction
-        bool hydro_1 = rec_lig_is_hydrophobic && (dst <= 0.5);
-        bool hydro_2_cond = rec_lig_is_hydrophobic && (dst > 0.5) && (dst < 1.5);
-        fp_type hydro_2 = 1.5 * hydro_2_cond - hydro_2_cond * dst;
+    __device__ inline fp_type hydrophobic(const fp_type dst, const bool rec_lig_is_hydrophobic) {
+      if(!rec_lig_is_hydrophobic) return 0.0f;
+        fp_type hydro_1 = (dst <= 0.5f) ? 1.0f : 0.0f;
+        fp_type hydro_2 = (dst > 0.5f & dst < 1.5f) ? (1.5f - dst) : 0.0f;
         return hydro_1 + hydro_2;
     }
 
-    __device__ inline fp_type hbonding(const fp_type dst, const int rec_lig_is_hb) {
-        if(rec_lig_is_hb < 0) return 0; // Sentinel value, no interaction
-        bool h_bond_1 = rec_lig_is_hb && (dst <= -0.7);
-        bool h_bond_2_cond = rec_lig_is_hb && (dst < 0) && (dst > -0.7);
-        fp_type h_bond_2 = h_bond_2_cond * (- dst) / 0.7;
-        return h_bond_1 + h_bond_2;
+    __device__ inline fp_type hbonding(const fp_type dst, const bool rec_lig_is_hb) {
+      if(!rec_lig_is_hb) return 0.0f;
+      fp_type h_bond_1 = (dst <= -0.7f) ? 1.0f : 0.0f;
+      fp_type h_bond_2 = (dst < 0.0f & dst > -0.7f) ? (-dst * 1.42857f ) : 0.0f;  // 1.4285714285714286 = 1/0.7f
+      return h_bond_1 + h_bond_2;
     }
 
     __device__ inline fp_type compute_pair_energy(
@@ -74,8 +74,8 @@ namespace mudock {
       if (dst > 8) return 0;
 
       dst -= (vdw1 + vdw2);
-      int is_h = (is_hba1 && is_hbd2) || (is_hba2 && is_hbd1);
-      int is_hydro = is_hydro1 && is_hydro2;
+      bool is_h = (is_hba1 & is_hbd2) | (is_hba2 & is_hbd1);
+      bool is_hydro = is_hydro1 & is_hydro2;
 
       return GAUSS1_COEFF_CUDA * gauss1(dst) +
         GAUSS2_COEFF_CUDA * gauss2(dst) +
