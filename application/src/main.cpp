@@ -1,15 +1,13 @@
 #include "command_line_args.hpp"
 
 #include <atomic>
+#include <cassert>
 #include <chrono>
 #include <condition_variable>
-#include <cassert>
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
-#include <mutex>
 #include <memory>
-#include <thread>
 #include <mudock/chem/autodock_grid_types.hpp>
 #include <mudock/compute/manager.hpp>
 #include <mudock/format/reader.hpp>
@@ -17,6 +15,8 @@
 #include <mudock/likwid_utils.hpp>
 #include <mudock/molecule.hpp>
 #include <mudock/mudock.hpp>
+#include <mutex>
+#include <thread>
 
 int main(int argc, char* argv[]) {
   const auto args = parse_command_line_arguments(argc, argv);
@@ -44,7 +44,7 @@ int main(int argc, char* argv[]) {
         mudock::info("Parsing ", ligands_description.size(), " ligand(s) ...");
         if constexpr (format == mudock::supported_format::ADTMOL2) {
 #ifdef _OPENMP
-#pragma omp parallel for shared(input_queue)
+  #pragma omp parallel for shared(input_queue)
 #endif
           for (const auto& description: ligands_description) {
             auto ligand = std::make_unique<mudock::static_molecule>(
@@ -83,9 +83,9 @@ int main(int argc, char* argv[]) {
         auto prev_time             = std::chrono::high_resolution_clock::now();
         while (true) {
           std::unique_lock<std::mutex> lock(observer_mutex);
-          const bool stop = observer_cv.wait_for(lock,
-                                                 std::chrono::duration<double>(*args.observer),
-                                                 [&]() { return observer_stop; });
+          const bool stop = observer_cv.wait_for(lock, std::chrono::duration<double>(*args.observer), [&]() {
+            return observer_stop;
+          });
           if (stop) {
             break;
           }
@@ -96,7 +96,7 @@ int main(int argc, char* argv[]) {
           const std::size_t in_backlog    = input_queue->size();
 
           const std::chrono::duration<double> dt = now - prev_time;
-          const std::size_t delta_processed       = now_processed - prev_processed;
+          const std::size_t delta_processed      = now_processed - prev_processed;
           const double inst_throughput =
               dt.count() > 0.0 ? static_cast<double>(delta_processed) / dt.count() : 0.0;
           const std::chrono::duration<double> total = now - start;
@@ -139,8 +139,8 @@ int main(int argc, char* argv[]) {
         mudock::info("Time limit reached: discarded ",
                      dropped_by_timeout.load(std::memory_order_relaxed),
                      " pending ligand(s) from input queue.");
-        mudock::info("Time limit reached: forcing immediate process termination.");
-        std::_Exit(EXIT_SUCCESS);
+        // mudock::info("Time limit reached: forcing immediate process termination.");
+        // std::_Exit(EXIT_SUCCESS);
       });
     }
 
