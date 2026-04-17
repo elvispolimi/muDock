@@ -240,6 +240,12 @@ namespace mudock {
             const fp_type distance_two_clamp = std::max(distance_two, RMIN_ELEC_SQUARE);
             const fp_type distance           = std::sqrt(distance_two_clamp);
 
+            const fp_type inv_r = fp_type{1} / distance;
+
+            const fp_type dir_x = diff_x * inv_r;
+            const fp_type dir_y = diff_y * inv_r;
+            const fp_type dir_z = diff_z * inv_r;
+
             //  Calculate  Electrostatic  Energy
             const fp_type epsilon =
                 mehler_solmajer::A +
@@ -300,11 +306,12 @@ namespace mudock {
                 const fp_type cA = nonbond_cA_l[i];
                 const fp_type cB = nonbond_cB_l[i];
 
+                // r^{-x}
                 const auto log_distance = std::log(distance);
-                const fp_type rA        = std::exp(static_cast<fp_type>(xA) * log_distance);
-                const fp_type rB        = std::exp(static_cast<fp_type>(xB) * log_distance);
+                const fp_type rA        = std::exp(-static_cast<fp_type>(xA) * log_distance);
+                const fp_type rB        = std::exp(-static_cast<fp_type>(xB) * log_distance);
 
-                e_vdW_Hb = std::min(EINTCLAMP, (cA / rA - cB / rB));
+                e_vdW_Hb = std::min(EINTCLAMP, (cA * rA - cB * rB));
                 
                 // VdW derivative
                 // TODO fix rA and derivative
@@ -315,11 +322,7 @@ namespace mudock {
             }
             emap_total_eintcal += e_vdW_Hb;
 
-
-            const fp_type dE_dr =
-                dE_dr_elec +
-                dE_dr_desolv +
-                dE_dr_vdw;
+            const fp_type dE_dr = dE_dr_elec + dE_dr_desolv + dE_dr_vdw;
 
             // Accumulate into dE_dX
             const fp_type gx = dE_dr * dir_x;
