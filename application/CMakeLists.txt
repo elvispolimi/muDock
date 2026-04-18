@@ -55,47 +55,17 @@ if(NOT MUDOCK_ENABLE_OMP)
 endif()
 
 # add the dependencies
+target_link_libraries(
+  ${CMAKE_PROJECT_NAME}
+  libmudock
+  Boost::program_options
+  Boost::context
+  pthread
+  m
+  stdc++)
+
 if(MUDOCK_ENABLE_SYCL)
-  string(FIND "${ACPP_TARGETS}" "omp" SUBSTRING_INDEX)
-  if(SUBSTRING_INDEX GREATER -1)
-    target_link_libraries("${CMAKE_PROJECT_NAME}" omp)
-    target_link_libraries("${CMAKE_PROJECT_NAME}_tbb" omp)  
-  endif()
-  target_link_libraries(
-    ${CMAKE_PROJECT_NAME}
-    libmudock
-    Boost::program_options
-    Boost::context
-    pthread
-    Boost::fiber
-    m
-    stdc++)
-  target_link_libraries(
-    "${CMAKE_PROJECT_NAME}_tbb"
-    libmudock
-    Boost::program_options
-    Boost::context
-    pthread
-    Boost::fiber
-    m
-    stdc++)
-else()
-  target_link_libraries(
-    ${CMAKE_PROJECT_NAME}
-    libmudock
-    Boost::program_options
-    Boost::context
-    pthread
-    m
-    stdc++)
-  target_link_libraries(
-    "${CMAKE_PROJECT_NAME}_tbb"
-    libmudock
-    Boost::program_options
-    Boost::context
-    pthread
-    m
-    stdc++)
+  target_link_libraries("${CMAKE_PROJECT_NAME}" Boost::fiber)
 endif()
 
 if(MUDOCK_ENABLE_GH)

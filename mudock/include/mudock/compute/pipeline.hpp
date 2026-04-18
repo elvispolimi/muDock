@@ -30,13 +30,16 @@ namespace mudock {
     std::shared_ptr<dynamic_molecule> protein;
   };
 
-  struct adt_score_pipeline: pipeline {
+  template<template<typename> typename scoring_t>
+  struct scoring_pipeline: pipeline {
+    using pipeline::pipeline;
+
     template<typename queue_type>
-    adt_score<queue_type> get_pipeline(const knobs& conf,
+    scoring_t<queue_type> get_pipeline(const knobs& conf,
                                        const int id,
                                        const device_type dev_type,
                                        std::shared_ptr<scratchpad<queue_type>> device_scratch) {
-      return mudock::adt_score<queue_type>(
+      return scoring_t<queue_type>(
           std::make_shared<mudock::scratchpad<queue_type>>(conf, id, dev_type),
           device_scratch,
           *protein);
@@ -48,32 +51,42 @@ namespace mudock {
                               const knobs& conf,
                               const size_t max_mem = 1000000000) {
       const size_t mem_per_ligand =
-          static_cast<size_t>(mudock::adt_score<queue_type>::get_ligand_mem(atoms, conf));
+          static_cast<size_t>(scoring_t<queue_type>::get_ligand_mem(atoms, conf));
       const size_t max_bucket_size = std::max<size_t>(1, max_mem / mem_per_ligand);
-      mudock::info("PIPELINE(ADT) pre-resolve for ",
-                   atoms,
-                   " atoms: mem_budget=",
-                   max_mem,
-                   " B, mem_per_ligand=",
-                   mem_per_ligand,
-                   " B, max_bucket_size=",
-                   max_bucket_size);
-      return resolve_bucket_size("PIPELINE(ADT)", atoms, max_bucket_size, mem_per_ligand, [&]() {
-        return mudock::adt_score<queue_type>::get_batch_size(atoms, q, conf, max_bucket_size);
-      });
+      mudock::stage_bucket_trace("PIPELINE(",
+                                 scoring_t<queue_type>::stage_name,
+                                 ") pre-resolve for ",
+                                 atoms,
+                                 " atoms: mem_budget=",
+                                 max_mem,
+                                 " B, mem_per_ligand=",
+                                 mem_per_ligand,
+                                 " B, max_bucket_size=",
+                                 max_bucket_size);
+      return resolve_stage_bucket_size(scoring_t<queue_type>::stage_name,
+                                       atoms,
+                                       max_bucket_size,
+                                       mem_per_ligand,
+                                       [&]() {
+                                         return scoring_t<queue_type>::get_batch_size(atoms,
+                                                                                       q,
+                                                                                       conf,
+                                                                                       max_bucket_size);
+                                       });
     }
   };
 
-  struct genetic_adt_pipeline: pipeline {
+  template<template<typename> typename scoring_t>
+  struct genetic_scoring_pipeline: pipeline {
+    using pipeline::pipeline;
+
     template<typename queue_type>
-    genetic<queue_type, adt_score> get_pipeline(const knobs& conf,
+    genetic<queue_type, scoring_t> get_pipeline(const knobs& conf,
                                                 const int id,
                                                 const device_type dev_type,
                                                 std::shared_ptr<scratchpad<queue_type>> device_scratch) {
       auto q = std::make_shared<mudock::scratchpad<queue_type>>(conf, id, dev_type);
-      return genetic<queue_type, adt_score>(q,
-                                            *protein,
-                                            mudock::adt_score<queue_type>(q, device_scratch, *protein));
+      return genetic<queue_type, scoring_t>(q, *protein, scoring_t<queue_type>(q, device_scratch, *protein));
     }
 
     template<typename queue_type>
@@ -82,19 +95,31 @@ namespace mudock {
                               const knobs& conf,
                               const size_t max_mem = 1000000000) {
       const size_t mem_per_ligand =
-          static_cast<size_t>(genetic<queue_type, adt_score>::get_ligand_mem(atoms, conf));
+          static_cast<size_t>(genetic<queue_type, scoring_t>::get_ligand_mem(atoms, conf));
       const size_t max_bucket_size = std::max<size_t>(1, max_mem / mem_per_ligand);
-      mudock::info("PIPELINE(GENETIC) pre-resolve for ",
-                   atoms,
-                   " atoms: mem_budget=",
-                   max_mem,
-                   " B, mem_per_ligand=",
-                   mem_per_ligand,
-                   " B, max_bucket_size=",
-                   max_bucket_size);
-      return resolve_bucket_size("PIPELINE(GENETIC)", atoms, max_bucket_size, mem_per_ligand, [&]() {
-        return genetic<queue_type, adt_score>::get_batch_size(atoms, q, conf, max_bucket_size);
-      });
+      mudock::stage_bucket_trace("PIPELINE(",
+                                 genetic<queue_type, scoring_t>::stage_name,
+                                 ") pre-resolve for ",
+                                 atoms,
+                                 " atoms: mem_budget=",
+                                 max_mem,
+                                 " B, mem_per_ligand=",
+                                 mem_per_ligand,
+                                 " B, max_bucket_size=",
+                                 max_bucket_size);
+      return resolve_stage_bucket_size(genetic<queue_type, scoring_t>::stage_name,
+                                       atoms,
+                                       max_bucket_size,
+                                       mem_per_ligand,
+                                       [&]() {
+                                         return genetic<queue_type, scoring_t>::get_batch_size(atoms,
+                                                                                                q,
+                                                                                                conf,
+                                                                                                max_bucket_size);
+                                       });
     }
   };
+
+  using adt_score_pipeline   = scoring_pipeline<adt_score>;
+  using genetic_adt_pipeline = genetic_scoring_pipeline<adt_score>;
 } // namespace mudock

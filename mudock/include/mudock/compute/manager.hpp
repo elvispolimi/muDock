@@ -22,8 +22,44 @@
 #include <mudock/utils.hpp>
 #include <ranges>
 #include <stdexcept>
+#include <string>
+#include <vector>
 
 namespace mudock {
+  inline std::vector<std::string> parse_worker_configuration(const std::string& configuration) {
+    std::vector<std::string> parts;
+    for (auto v: configuration | std::views::split(':')) parts.emplace_back(v.begin(), v.end());
+
+    if (parts.size() < 3 || parts.size() > 5) {
+      throw std::runtime_error("Invalid device configuration '" + configuration +
+                               "'. Expected IMPLEMENTATION:DEVICE:IDS[:WORKERS][:MEMORY_BYTES].");
+    }
+    if (parts[0].empty() || parts[1].empty() || parts[2].empty()) {
+      throw std::runtime_error("Invalid device configuration '" + configuration +
+                               "'. Implementation, device, and ids must be non-empty.");
+    }
+    return parts;
+  }
+
+  inline std::size_t parse_positive_size_field(const std::vector<std::string>& parts,
+                                               const std::size_t index,
+                                               const char* field_name,
+                                               const std::size_t default_value) {
+    if (parts.size() <= index) {
+      return default_value;
+    }
+
+    std::size_t value = 0;
+    try {
+      value = std::stoull(parts[index]);
+    } catch (const std::exception&) {
+      throw std::runtime_error(std::string{"Invalid "} + field_name + " value '" + parts[index] + "'.");
+    }
+    if (value == 0) {
+      throw std::runtime_error(std::string{field_name} + " must be greater than zero.");
+    }
+    return value;
+  }
 
   template<typename queue_type, typename pipeline_t>
     requires std::derived_from<queue_type, queue>
@@ -59,16 +95,16 @@ namespace mudock {
                                 std::shared_ptr<safe_queue<static_molecule>>& output_molecules,
                                 pipeline_t& pipe) {
     const std::size_t workers_per_device =
-        (parts.size() > 3) ? std::stoul(parts[3]) : static_cast<std::size_t>(2);
+        parse_positive_size_field(parts, 3, "workers_per_device", static_cast<std::size_t>(2));
     const std::size_t mem_per_device =
-        (parts.size() > 4) ? std::stoul(parts[4]) : static_cast<std::size_t>(1000000000);
-    auto q_b                               = std::make_shared<queue_type>(0, device_type::GPU);
-    std::function<int(const int)> get_size = [q_b, &knobs, mem_per_device](const int x) {
-      return pipeline_t::template get_batch_size<queue_type>(x, q_b, knobs, mem_per_device);
-    };
-    auto rob = std::make_shared<reorder_buffer<static_molecule>>(get_size);
+        parse_positive_size_field(parts, 4, "memory_bytes", static_cast<std::size_t>(1000000000));
 
     for (const auto id: parse_ids(parts[2])) {
+      auto q_b                               = std::make_shared<queue_type>(id, device_type::GPU);
+      std::function<int(const int)> get_size = [q_b, &knobs, mem_per_device](const int x) {
+        return pipeline_t::template get_batch_size<queue_type>(x, q_b, knobs, mem_per_device);
+      };
+      auto rob = std::make_shared<reorder_buffer<static_molecule>>(get_size);
       mudock::info("Starting GPU device ",
                    id,
                    " with ",
@@ -96,11 +132,7 @@ namespace mudock {
                std::shared_ptr<safe_queue<static_molecule>>& output_molecules,
                pipeline_t& pipe) {
     for (auto& configuration: configurations) {
-      std::vector<std::string> parts;
-
-      for (auto v: configuration | std::views::split(':')) parts.emplace_back(v.begin(), v.end());
-
-      // parts[0], parts[1], parts[2]
+      const auto parts = parse_worker_configuration(configuration);
       auto dev_t  = get_device_type(parts[1]);
       auto impl_t = get_impl_type(parts[0]);
       switch (dev_t) {
