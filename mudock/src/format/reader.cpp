@@ -4,6 +4,7 @@
 #include <cassert>
 #include <fstream>
 #include <memory>
+#include <mudock/format/mol2.hpp>
 #include <mudock/format/ob_wrapper.hpp>
 #include <mudock/format/reader.hpp>
 #include <mudock/log.hpp>
@@ -72,6 +73,14 @@ namespace mudock {
     molecule_type mol;
     ob_mol_wrapper ob_mol = parser<format, ob_mol_wrapper>(description);
     convert(mol, ob_mol, rotor_check);
+    return mol;
+  }
+  // MOL2
+  template<class molecule_type>
+    requires is_molecule<molecule_type>
+  molecule_type parser_impl_mol2(const std::string_view description) {
+    molecule_type mol;
+    mol2::parse(mol, description);
     return mol;
   }
   // PDBQT
