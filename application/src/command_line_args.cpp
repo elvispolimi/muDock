@@ -68,26 +68,27 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
 
   // handle the help message
   if (vm.count("help") > 0) {
-    std::cout << "This application reads from the standard input a ligand library in mol2 format. It will"
+    std::cout << "This application reads ligands from --ligand and prints one score per output line."
               << std::endl;
-    std::cout << "print on the standard output the score of each of them" << std::endl;
     std::cout << std::endl;
     std::cout << "USAGE: " << argv[0] << " --protein " << args.protein_path << " --ligand "
-              << args.ligand_path << " --use " << use_cpu_conf << " [KNOBS] " << std::endl;
+              << args.ligand_path << " --use " << use_cpu_conf << " [MORE_CONFIGS...] [KNOBS] " << std::endl;
     std::cout << std::endl;
     std::cout << arguments_description << std::endl;
     std::cout << std::endl;
     std::cout << knobs_description << std::endl;
     std::cout << std::endl;
-    std::cout << "The use flag is basically a list that describes which implementation the user" << std::endl
-              << "would like to use and on which hardware it want to be run" << std::endl
+    std::cout << "The use flag accepts one or more configurations that describe which implementation" << std::endl
+              << "should run on which hardware." << std::endl
               << "It has the following grammar: " << std::endl
-              << "  CONFIGURATION  -> IMPL_DESC[;IMPL_DESC]*" << std::endl
-              << "  IMPL_DESC      -> IMPLEMENTATION:DEVICE:IDS" << std::endl
-              << "  IMPLEMENTATION -> CUDA|CPP" << std::endl
+              << "  --use CONFIGURATION [CONFIGURATION ...]" << std::endl
+              << "  CONFIGURATION  -> IMPLEMENTATION:DEVICE:IDS[:WORKERS][:MEMORY_BYTES]" << std::endl
+              << "  IMPLEMENTATION -> backend token such as CPP, CUDA, HIP, SYCL, GH, XSIMD" << std::endl
               << "  DEVICE         -> CPU|GPU" << std::endl
               << "  IDS            -> GROUP[,GROUP]*" << std::endl
               << "  GROUP          -> <device_id>|<device_id>-<device_id>" << std::endl
+              << "  WORKERS        -> number of workers per GPU device (optional)" << std::endl
+              << "  MEMORY_BYTES   -> per-device bucket memory budget in bytes (optional)" << std::endl
               << "The <device_id> number is directly related to the device id, while the option" << std::endl
               << "<device_id>-<device_id> can be used to specify a range" << std::endl;
     exit(EXIT_SUCCESS);

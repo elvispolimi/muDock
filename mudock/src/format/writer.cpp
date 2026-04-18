@@ -4,6 +4,7 @@
 #include <fstream>
 #include <memory>
 #include <mudock/format/adt_mol2.hpp>
+#include <mudock/format/mol2.hpp>
 #include <mudock/format/ob_wrapper.hpp>
 #include <mudock/format/supported_format.hpp>
 #include <mudock/format/writer.hpp>
@@ -79,15 +80,17 @@ namespace mudock {
   // MOL2
   template<>
   void writer<supported_format::MOL2>(const ob_mol_wrapper& mol, std::ofstream& ofs) {
-    ob_writer<supported_format::MOL2>(mol, ofs);
+    dynamic_molecule s_mol;
+    convert(s_mol, mol);
+    writer<supported_format::MOL2>(s_mol, ofs);
   };
   template<>
   void writer<supported_format::MOL2>(const static_molecule& mol, std::ofstream& ofs) {
-    writer_impl<supported_format::MOL2>(mol, ofs);
+    mol2::print(mol, ofs);
   }
   template<>
   void writer<supported_format::MOL2>(const dynamic_molecule& mol, std::ofstream& ofs) {
-    writer_impl<supported_format::MOL2>(mol, ofs);
+    mol2::print(mol, ofs);
   }
 
   // PDB

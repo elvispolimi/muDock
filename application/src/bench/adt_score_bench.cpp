@@ -31,27 +31,39 @@ int main(int argc, char* argv[]) {
         auto input_text   = read_from_stream(std::ifstream(args.ligand_path));
         mudock::splitter<mudock::type_of_format<static_cast<mudock::supported_format>(format_index())>> split;
         auto ligands_description = split(std::move(input_text));
-        ligands_description.emplace_back(split.flush());
-        input_queue->initialize(ligands_description.size());
+        if (auto remainder = split.flush(); !remainder.empty()) {
+          ligands_description.emplace_back(std::move(remainder));
+          input_queue->initialize(ligands_description.size());
+        }
 
         mudock::info("Parsing ", ligands_description.size(), " ligand(s) ...");
-        if constexpr (format == mudock::supported_format::ADTMOL2) {
+        std::atomic<std::size_t> skipped_ligands{0};
+        if constexpr (format == mudock::supported_format::ADTMOL2 || format == mudock::supported_format::MOL2) {
 #ifdef _OPENMP
-#pragma omp parallel for shared(input_queue)
+#pragma omp parallel for shared(input_queue, ligands_description, skipped_ligands)
 #endif
-          for (const auto& description: ligands_description) {
-            auto ligand = std::make_unique<mudock::static_molecule>(
-                mudock::parser<mudock::supported_format::ADTMOL2, mudock::static_molecule>(description));
-            input_queue->enqueue(ligand);
-          }
-        } else {
-          for (const auto& description: ligands_description) {
+          for (std::size_t ligand_index = 0; ligand_index < ligands_description.size(); ++ligand_index) {
             try {
               auto ligand = std::make_unique<mudock::static_molecule>(
-                  mudock::parser<format, mudock::static_molecule>(description));
-              input_queue->enqueue(ligand);
-            } catch (...) {}
+                  mudock::parser<format, mudock::static_molecule>(ligands_description[ligand_index]));
+              input_queue->enqueue(std::move(ligand));
+            } catch (...) {
+              skipped_ligands.fetch_add(1, std::memory_order_relaxed);
+            }
           }
+        } else {
+          for (std::size_t ligand_index = 0; ligand_index < ligands_description.size(); ++ligand_index) {
+            try {
+              auto ligand = std::make_unique<mudock::static_molecule>(
+                  mudock::parser<format, mudock::static_molecule>(ligands_description[ligand_index]));
+              input_queue->enqueue(std::move(ligand));
+            } catch (...) {
+              skipped_ligands.fetch_add(1, std::memory_order_relaxed);
+            }
+          }
+        }
+        if (const auto skipped = skipped_ligands.load(std::memory_order_relaxed); skipped > 0) {
+          mudock::error("Skipped ", skipped, " ligand(s) due to parse errors.");
         }
       },
       in_format);
@@ -61,8 +73,8 @@ int main(int argc, char* argv[]) {
   mudock::info("Running score-only benchmark ...");
   mudock::info("Scores per ligand (population): ", args.knobs.population_number);
 
-  mudock::adt_score_pipeline pipe{protein};
-  auto output_queue = std::make_shared<mudock::safe_queue<mudock::static_molecule>>();
+  mudock::scoring_pipeline<mudock::adt_score> pipe{protein};
+  auto output_queue = std::make_shared<mudock::safe_stack<mudock::static_molecule>>();
   output_queue->initialize(input_queue->size());
 
   const auto start = std::chrono::high_resolution_clock::now();

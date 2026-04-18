@@ -43,12 +43,10 @@ namespace mudock {
                    const fp_type* map_min,
                    const fp_type* map_max,
                    const fp_type* map_center,
-                   const int map_index_x,
-                   const int map_index_xy,
                    const int map_index_xyz,
                    const fp_type* map_grids) {
     // Thread-safe, exactly-once init per device:
-    cuda_texture_memory.init(dev, map_index_x, map_index_xy, map_index_xyz, map_grids, num_autodock_grids());
+    cuda_texture_memory.init(dev, map_index_xyz, num_autodock_grids(), map_grids);
     cuda_constant_memory.init(
         dev,
         std::function<std::unique_ptr<fp_type>()>([&]() {
@@ -70,17 +68,19 @@ namespace mudock {
   }
 
   __device__ __forceinline__ fp_type trilinear_interpolation_cuda(const int coord[],
-                                                                  cudaTextureObject_t& tex,
-                                                                  const fp_type* __restrict__ coeffs) {
+                                                                  const fp_type* __restrict__ map,
+                                                                  const fp_type* __restrict__ coeffs,
+                                                                  const int& map_index_x,
+                                                                  const int& map_index_xy) {
     fp_type value{0};
-    value = coeffs[0] * tex3D<fp_type>(tex, coord[0], coord[1], coord[2]) + value;
-    value = coeffs[1] * tex3D<fp_type>(tex, coord[0], coord[1], coord[2] + 1) + value;
-    value = coeffs[2] * tex3D<fp_type>(tex, coord[0], coord[1] + 1, coord[2]) + value;
-    value = coeffs[3] * tex3D<fp_type>(tex, coord[0], coord[1] + 1, coord[2] + 1) + value;
-    value = coeffs[4] * tex3D<fp_type>(tex, coord[0] + 1, coord[1], coord[2]) + value;
-    value = coeffs[5] * tex3D<fp_type>(tex, coord[0] + 1, coord[1], coord[2] + 1) + value;
-    value = coeffs[6] * tex3D<fp_type>(tex, coord[0] + 1, coord[1] + 1, coord[2]) + value;
-    value = coeffs[7] * tex3D<fp_type>(tex, coord[0] + 1, coord[1] + 1, coord[2] + 1) + value;
+    value = coeffs[0] * map[0] + value;
+    value = coeffs[1] * map[map_index_xy] + value;
+    value = coeffs[2] * map[map_index_x] + value;
+    value = coeffs[3] * map[map_index_x + map_index_xy] + value;
+    value = coeffs[4] * map[1] + value;
+    value = coeffs[5] * map[1 + map_index_xy] + value;
+    value = coeffs[6] * map[1 + map_index_x] + value;
+    value = coeffs[7] * map[1 + map_index_x + map_index_xy] + value;
 
     return value;
   }
@@ -102,11 +102,14 @@ namespace mudock {
                               const fp_type* __restrict__ nonbond_cA,
                               const fp_type* __restrict__ nonbond_cB,
                               const int* __restrict__ nonbond_xB,
-                              cudaTextureObject_t* atom_textures,
+                              const int map_index_x,
+                              const int map_index_xy,
+                              const int map_index_xyz,
+                              const fp_type* __restrict__ grid_maps,
                               const int* __restrict__ atom_tex_indexes,
                               fp_type* __restrict__ scores) {
-    cudaTextureObject_t& electro_texture = atom_textures[static_cast<int>(autodock_grid_type::ELEC)];
-    cudaTextureObject_t& desolv_texture  = atom_textures[static_cast<int>(autodock_grid_type::DESOLV)];
+    const fp_type* electro_map = grid_maps + map_index_xyz * static_cast<int>(autodock_grid_type::ELEC);
+    const fp_type* desolv_map  = grid_maps + map_index_xyz * static_cast<int>(autodock_grid_type::DESOLV);
 
     const int ligand_id       = blockIdx.x;
     const int local_thread_id = threadIdx.x;
@@ -166,9 +169,6 @@ namespace mudock {
             coord_tex[1]       = (coord_tex[1] - map_min_const[1]) * inv_spacing;
             coord_tex[2]       = (coord_tex[2] - map_min_const[2]) * inv_spacing;
             const auto& charge = l_charge[atom_index];
-
-            //  TODO check approximations with in hardware interpolation
-#ifdef MUDOCK_TEST
             const int u0      = coord_tex[0];
             const fp_type p0u = coord_tex[0] - static_cast<fp_type>(u0);
             const fp_type p1u = fp_type{1} - p0u;
@@ -195,27 +195,17 @@ namespace mudock {
                                        pu[1] * pv[1] * pw[0],
                                        pu[1] * pv[1] * pw[1]};
             const int int_coord[3]  = {u0, v0, w0};
+            const int base_index    = FLATTENED_3D(u0, v0, w0, map_index_x, map_index_xy);
+            const fp_type* atom_map = grid_maps + l_atom_tex_indexes[atom_index];
 
             elect_total_trilinear +=
-                trilinear_interpolation_cuda(int_coord, electro_texture, coeffs) * charge;
-            dmap_total_trilinear +=
-                trilinear_interpolation_cuda(int_coord, desolv_texture, coeffs) * fabsf(charge);
-            emap_total_trilinear +=
-                trilinear_interpolation_cuda(int_coord,
-                                             atom_textures[l_atom_tex_indexes[atom_index]],
-                                             coeffs);
-#else
-            elect_total_trilinear +=
-                tex3D<fp_type>(electro_texture, coord_tex[0] + 0.5, coord_tex[1] + 0.5, coord_tex[2] + 0.5) *
+                trilinear_interpolation_cuda(int_coord, electro_map + base_index, coeffs, map_index_x, map_index_xy) *
                 charge;
             dmap_total_trilinear +=
-                tex3D<fp_type>(desolv_texture, coord_tex[0] + 0.5, coord_tex[1] + 0.5, coord_tex[2] + 0.5) *
+                trilinear_interpolation_cuda(int_coord, desolv_map + base_index, coeffs, map_index_x, map_index_xy) *
                 fabsf(charge);
-            emap_total_trilinear += tex3D<fp_type>(atom_textures[l_atom_tex_indexes[atom_index]],
-                                                   coord_tex[0] + 0.5,
-                                                   coord_tex[1] + 0.5,
-                                                   coord_tex[2] + 0.5);
-#endif
+            emap_total_trilinear +=
+                trilinear_interpolation_cuda(int_coord, atom_map + base_index, coeffs, map_index_x, map_index_xy);
           }
         }
       }
@@ -288,7 +278,7 @@ namespace mudock {
   template<>
   void adt_score_kernel<queue_cuda>::operator()() {
     const int dev_id = q->get_id();
-    init_device(dev_id, minimum, maximum, center, map_index_x, map_index_xy, map_index_xyz, grid_maps);
+    init_device(dev_id, minimum, maximum, center, map_index_xyz, grid_maps);
 
     void* args[] = {(void*) &batch_atoms,
                     (void*) &scores_per_ligand,
@@ -306,7 +296,10 @@ namespace mudock {
                     (void*) &nonbond_cA_b,
                     (void*) &nonbond_cB_b,
                     (void*) &nonbond_xB_b,
-                    (void*) &(*cuda_texture_memory.v[dev_id].data).textures_dev_p,
+                    (void*) &map_index_x,
+                    (void*) &map_index_xy,
+                    (void*) &map_index_xyz,
+                    (void*) &(*cuda_texture_memory.v[dev_id].data).tex_dev,
                     (void*) &map_offsets_b,
                     (void*) &scores_b};
     constexpr_switch_bucket<0, reorder_buffer<static_molecule>::get_num_atom_clusters(), 1>(

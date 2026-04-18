@@ -6,26 +6,30 @@
 #include <mudock/compute/batch_multiple.hpp>
 #include <mudock/log.hpp>
 #include <stdexcept>
+#include <utility>
 
 namespace mudock {
   template<class get_multiple_t>
-  inline int resolve_bucket_size(const char* backend_name,
-                                 const int atoms,
-                                 const size_t max_bucket_size,
-                                 const size_t mem_per_ligand_bytes,
-                                 get_multiple_t&& get_default_multiple) {
-#ifdef MUDOCK_ADT_BUCKET_OVERRIDE
+  inline int resolve_stage_bucket_size(const char* stage_name,
+                                       const int atoms,
+                                       const size_t max_bucket_size,
+                                       const size_t mem_per_ligand_bytes,
+                                       get_multiple_t&& get_default_multiple) {
+#ifdef MUDOCK_STAGE_BUCKET_OVERRIDE
     (void) get_default_multiple;
-    static_assert(MUDOCK_ADT_BUCKET_OVERRIDE > 0,
-                  "MUDOCK_ADT_BUCKET_OVERRIDE must be > 0.");
-    const int capped                 = std::min<int>(MUDOCK_ADT_BUCKET_OVERRIDE, max_bucket_size);
+#endif
+#ifdef MUDOCK_STAGE_BUCKET_OVERRIDE
+    static_assert(MUDOCK_STAGE_BUCKET_OVERRIDE > 0,
+                  "MUDOCK_STAGE_BUCKET_OVERRIDE must be > 0.");
+    constexpr int stage_bucket_override = MUDOCK_STAGE_BUCKET_OVERRIDE;
+    const int capped                 = std::min<int>(stage_bucket_override, max_bucket_size);
     const size_t estimated_mem_bytes = static_cast<size_t>(capped) * mem_per_ligand_bytes;
     const double estimated_mem_mib   = static_cast<double>(estimated_mem_bytes) / (1024.0 * 1024.0);
-    mudock::info(backend_name,
-                 " Bucket size for ",
+    mudock::stage_bucket_trace(stage_name,
+                 " stage bucket for ",
                  atoms,
                  " atoms override -> ",
-                 MUDOCK_ADT_BUCKET_OVERRIDE,
+                 stage_bucket_override,
                  ", capped -> ",
                  capped,
                  ", estimated device memory -> ",
@@ -44,10 +48,10 @@ namespace mudock {
     double effective_multiplier = 1.0;
     int bucket_size             = 1;
 
-  #ifdef MUDOCK_ADT_BUCKET_MULTIPLE_OVERRIDE
-    static_assert(MUDOCK_ADT_BUCKET_MULTIPLE_OVERRIDE > 0,
-                  "MUDOCK_ADT_BUCKET_MULTIPLE_OVERRIDE must be > 0.");
-    const double override_multiplier = static_cast<double>(MUDOCK_ADT_BUCKET_MULTIPLE_OVERRIDE);
+  #ifdef MUDOCK_STAGE_BUCKET_MULTIPLE_OVERRIDE
+    static_assert(MUDOCK_STAGE_BUCKET_MULTIPLE_OVERRIDE > 0,
+                  "MUDOCK_STAGE_BUCKET_MULTIPLE_OVERRIDE must be > 0.");
+    const double override_multiplier = static_cast<double>(MUDOCK_STAGE_BUCKET_MULTIPLE_OVERRIDE);
     effective_multiplier            = override_multiplier;
     bucket_size = static_cast<int>(std::llround(static_cast<double>(base_multiple) * effective_multiplier));
     if (bucket_size <= 0)
@@ -55,8 +59,8 @@ namespace mudock {
 
     const size_t estimated_mem_bytes = static_cast<size_t>(bucket_size) * mem_per_ligand_bytes;
     const double estimated_mem_mib   = static_cast<double>(estimated_mem_bytes) / (1024.0 * 1024.0);
-    mudock::info(backend_name,
-                 " Bucket size for ",
+    mudock::stage_bucket_trace(stage_name,
+                 " stage bucket for ",
                  atoms,
                  " atoms base multiple ",
                  base_multiple,
@@ -70,11 +74,11 @@ namespace mudock {
                  estimated_mem_mib,
                  " MiB)");
   #else
-  #ifdef MUDOCK_ADT_BUCKET_POLICY_MEMORY_ONLY
+  #if defined(MUDOCK_STAGE_BUCKET_POLICY_MAX_UTILIZATION)
     bucket_size = std::max<int>(1, static_cast<int>(max_bucket_size));
     effective_multiplier =
         static_cast<double>(bucket_size) / static_cast<double>(base_multiple);
-  #elif defined(MUDOCK_ADT_BUCKET_POLICY_ALIGNED_PER_SM)
+  #elif defined(MUDOCK_STAGE_BUCKET_POLICY_SM_ALIGNED)
     const int per_sm_multiple = std::max(1, base_multiple_info.active_blocks_per_sm);
     bucket_size = static_cast<int>((max_bucket_size / static_cast<size_t>(per_sm_multiple)) *
                                    static_cast<size_t>(per_sm_multiple));
@@ -92,8 +96,8 @@ namespace mudock {
 
     const size_t estimated_mem_bytes = static_cast<size_t>(bucket_size) * mem_per_ligand_bytes;
     const double estimated_mem_mib   = static_cast<double>(estimated_mem_bytes) / (1024.0 * 1024.0);
-    mudock::info(backend_name,
-                 " Bucket size for ",
+    mudock::stage_bucket_trace(stage_name,
+                 " stage bucket for ",
                  atoms,
                  " atoms base multiple ",
                  base_multiple,
@@ -102,12 +106,12 @@ namespace mudock {
                  ", num_sms=",
                  base_multiple_info.num_sms,
                  ")",
-  #ifdef MUDOCK_ADT_BUCKET_POLICY_MEMORY_ONLY
-                 ", memory-only multiplier ",
-  #elif defined(MUDOCK_ADT_BUCKET_POLICY_ALIGNED_PER_SM)
-                 ", aligned-per-sm multiplier ",
+  #if defined(MUDOCK_STAGE_BUCKET_POLICY_MAX_UTILIZATION)
+                 ", max-utilization multiplier ",
+  #elif defined(MUDOCK_STAGE_BUCKET_POLICY_SM_ALIGNED)
+                 ", sm-aligned multiplier ",
   #else
-                 ", aligned-per-gpu multiplier ",
+                 ", device-aligned multiplier ",
   #endif
                  effective_multiplier,
                  ", max bucket size ",

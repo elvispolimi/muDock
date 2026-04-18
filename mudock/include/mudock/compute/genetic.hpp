@@ -88,6 +88,8 @@ namespace mudock {
   template<typename queue_t, template<typename> typename scoring_t>
     requires std::derived_from<queue_t, queue> && std::derived_from<scoring_t<queue_t>, scoring<queue_t>>
   struct genetic: public docking<queue_t> {
+    static constexpr const char stage_name[] = "GENETIC";
+
     genetic(std::shared_ptr<scratchpad<queue_t>> _scratch,
             dynamic_molecule& protein,
             scoring_t<queue_t> _scoring)
@@ -235,29 +237,29 @@ namespace mudock {
       }
 #endif
       selected_info = normalize_batch_multiple(selected_info);
-      mudock::info("GENETIC stage combine for ",
-                   atoms,
-                   " atoms: score_multiple=",
-                   score_total,
-                   " (",
-                   score_bucket_info.active_blocks_per_sm,
-                   "x",
-                   score_bucket_info.num_sms,
-                   "), geom_multiple=",
-                   geom_total,
-                   " (",
-                   geom_bucket_info.active_blocks_per_sm,
-                   "x",
-                   geom_bucket_info.num_sms,
-                   ") policy=",
-                   combine_policy,
-                   " -> selected_plain_multiple=",
-                   selected_info.total_multiple(),
-                   " (",
-                   selected_info.active_blocks_per_sm,
-                   "x",
-                   selected_info.num_sms,
-                   ")");
+      mudock::stage_bucket_trace("GENETIC stage combine for ",
+                                 atoms,
+                                 " atoms: score_multiple=",
+                                 score_total,
+                                 " (",
+                                 score_bucket_info.active_blocks_per_sm,
+                                 "x",
+                                 score_bucket_info.num_sms,
+                                 "), geom_multiple=",
+                                 geom_total,
+                                 " (",
+                                 geom_bucket_info.active_blocks_per_sm,
+                                 "x",
+                                 geom_bucket_info.num_sms,
+                                 ") policy=",
+                                 combine_policy,
+                                 " -> selected_plain_multiple=",
+                                 selected_info.total_multiple(),
+                                 " (",
+                                 selected_info.active_blocks_per_sm,
+                                 "x",
+                                 selected_info.num_sms,
+                                 ")");
       return selected_info;
     }
 
