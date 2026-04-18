@@ -1,7 +1,6 @@
 #include <boost/graph/breadth_first_search.hpp>
 #include <boost/graph/connected_components.hpp>
 #include <cassert>
-#include <gsl/pointers>
 #include <mudock/grid.hpp>
 #include <mudock/molecule.hpp>
 #include <mudock/molecule/constraints.hpp>
@@ -85,8 +84,8 @@ namespace mudock {
   // Utility function that fill the information of the fragments
   //===------------------------------------------------------------------------------------------------------
   void fill_fragment_mask(std::span<fragments<static_containers>::value_type> mask,
-                          gsl::not_null<int *> start_index,
-                          gsl::not_null<int *> stop_index,
+                          int& start_index,
+                          int& stop_index,
                           const edge_description &rotatable_bond,
                           molecule_graph_type &g) {
     const auto source_vertex = rotatable_bond.source;
@@ -97,12 +96,12 @@ namespace mudock {
     boost::breadth_first_search(g, dest_vertex, boost::visitor(atom_counter{counter_dest}));
     if (counter_source > counter_dest) {
       boost::breadth_first_search(g, dest_vertex, boost::visitor(bitmask_setter{mask}));
-      *start_index.get() = g[source_vertex].atom_index;
-      *stop_index.get()  = g[dest_vertex].atom_index;
+      start_index = g[source_vertex].atom_index;
+      stop_index  = g[dest_vertex].atom_index;
     } else {
       boost::breadth_first_search(g, source_vertex, boost::visitor(bitmask_setter{mask}));
-      *start_index.get() = g[dest_vertex].atom_index;
-      *stop_index.get()  = g[source_vertex].atom_index;
+      start_index = g[dest_vertex].atom_index;
+      stop_index  = g[source_vertex].atom_index;
     }
     mask[g[source_vertex].atom_index] = fragments<static_containers>::value_type{2};
     mask[g[dest_vertex].atom_index]   = fragments<static_containers>::value_type{3};
@@ -143,8 +142,8 @@ namespace mudock {
     // fill the fragment data structures
     for (int i{0}; i < num_rotatable_edges; ++i) {
       fill_fragment_mask(get_mask(i),
-                         &start_atom_indices[i],
-                         &stop_atom_indices[i],
+                         start_atom_indices[i],
+                         stop_atom_indices[i],
                          rotatable_edges[i],
                          graph);
     }
@@ -177,8 +176,8 @@ namespace mudock {
     // fill the fragment data structures
     for (int i{0}; i < num_rotatable_edges; ++i) {
       fill_fragment_mask(get_mask(i),
-                         &start_atom_indices[i],
-                         &stop_atom_indices[i],
+                         start_atom_indices[i],
+                         stop_atom_indices[i],
                          rotatable_edges[i],
                          graph);
     }

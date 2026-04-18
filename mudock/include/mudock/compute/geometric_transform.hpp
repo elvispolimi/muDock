@@ -267,18 +267,18 @@ namespace mudock {
                                          const size_t max_bucket_size) {
       (void) conf;
       const auto plain_multiple_info = normalize_batch_multiple(get_geom_transform_batch_multiple<queue_t>(atoms, q));
-      mudock::info("GEOM stage plain multiple for ",
-                   atoms,
-                   " atoms -> total=",
-                   plain_multiple_info.total_multiple(),
-                   " (active_blocks_per_sm=",
-                   plain_multiple_info.active_blocks_per_sm,
-                   ", num_sms=",
-                   plain_multiple_info.num_sms,
-                   ")",
-                   " (max_bucket_size hint=",
-                   max_bucket_size,
-                   ")");
+      mudock::stage_bucket_trace("GEOM stage plain multiple for ",
+                                 atoms,
+                                 " atoms -> total=",
+                                 plain_multiple_info.total_multiple(),
+                                 " (active_blocks_per_sm=",
+                                 plain_multiple_info.active_blocks_per_sm,
+                                 ", num_sms=",
+                                 plain_multiple_info.num_sms,
+                                 ")",
+                                 " (max_bucket_size hint=",
+                                 max_bucket_size,
+                                 ")");
       return plain_multiple_info;
     }
 

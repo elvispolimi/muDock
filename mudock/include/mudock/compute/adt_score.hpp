@@ -28,6 +28,8 @@ namespace mudock {
   // TODO check that the object type and the kernel impl are the same
   template<typename queue_type>
   struct adt_score: public scoring<queue_type> {
+    static constexpr const char stage_name[] = "ADT";
+
     adt_score(std::shared_ptr<scratchpad<queue_type>> _scratch,
               std::shared_ptr<scratchpad<queue_type>> _device_scratch,
               dynamic_molecule &protein)
@@ -285,18 +287,18 @@ namespace mudock {
       (void) conf;
       const auto plain_multiple_info =
           normalize_batch_multiple(get_adt_score_batch_multiple<queue_type>(atoms, q));
-      mudock::info("ADT stage plain multiple for ",
-                   atoms,
-                   " atoms -> total=",
-                   plain_multiple_info.total_multiple(),
-                   " (active_blocks_per_sm=",
-                   plain_multiple_info.active_blocks_per_sm,
-                   ", num_sms=",
-                   plain_multiple_info.num_sms,
-                   ")",
-                   " (max_bucket_size hint=",
-                   max_bucket_size,
-                   ")");
+      mudock::stage_bucket_trace("ADT stage plain multiple for ",
+                                 atoms,
+                                 " atoms -> total=",
+                                 plain_multiple_info.total_multiple(),
+                                 " (active_blocks_per_sm=",
+                                 plain_multiple_info.active_blocks_per_sm,
+                                 ", num_sms=",
+                                 plain_multiple_info.num_sms,
+                                 ")",
+                                 " (max_bucket_size hint=",
+                                 max_bucket_size,
+                                 ")");
       return plain_multiple_info;
     }
 

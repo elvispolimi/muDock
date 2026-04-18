@@ -56,7 +56,7 @@ int main(int argc, char* argv[]) {
   auto ligand =
       std::make_shared<mudock::static_molecule>(mudock::parser<mudock::static_molecule>(ligand_path));
 
-  mudock::adt_score_pipeline pipe{protein};
+  mudock::scoring_pipeline<mudock::adt_score> pipe{protein};
 
   mudock::info("Generating score reference ...");
   auto output_queue = std::make_shared<mudock::safe_queue<mudock::static_molecule>>();

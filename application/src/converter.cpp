@@ -48,9 +48,12 @@ int main(int argc, char* argv[]) {
         auto input_text = read_from_stream(std::ifstream(input_file));
         mudock::splitter<mudock::type_of_format<in_format>> split;
         auto ligands_description = split(std::move(input_text));
-        ligands_description.emplace_back(split.flush());
+        if (auto remainder = split.flush(); !remainder.empty()) {
+          ligands_description.emplace_back(std::move(remainder));
+        }
         // parse the input ligands and put them in a stack that we can compute
         mudock::info("Parsing ", ligands_description.size(), " compound(s) ...");
+        std::size_t skipped_compounds = 0;
         constexpr_switch<0, mudock::get_num_supported_format(), 1>(
             [&](const auto format_index_out) {
               constexpr mudock::supported_format out_format =
@@ -64,10 +67,15 @@ int main(int argc, char* argv[]) {
                   mudock::writer<out_format, mudock::dynamic_molecule>(
                       mudock::parser<in_format, mudock::dynamic_molecule>(description),
                       ofs);
-                } catch (...) {}
+                } catch (...) {
+                  ++skipped_compounds;
+                }
               }
             },
             out_file_format);
+        if (skipped_compounds > 0) {
+          mudock::error("Skipped ", skipped_compounds, " compound(s) due to parse or write errors.");
+        }
       },
       in_file_format);
 

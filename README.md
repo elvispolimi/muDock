@@ -26,9 +26,6 @@ Required:
 - Boost (components: `program_options`, `graph`, `fiber`)
 - OpenBabel3
 
-Fetched automatically:
-- Microsoft GSL (via CMake FetchContent)
-
 Optional (enabled via build flags):
 - OpenMP (CPU parallelism)
 - CUDA Toolkit (with `curand`) for CUDA backend
@@ -62,12 +59,16 @@ Key configuration options:
 - `MUDOCK_ENABLE_GH` — Google Highway vectorization
 - `MUDOCK_ENABLE_XSIMD` — xsimd vectorization
 - `MUDOCK_ENABLE_LIKWID` — LIKWID profiling
+- `MUDOCK_ATOM_CLUSTER_LEVEL` — ligand atom-cluster granularity: `OFF`, `MEDIUM`, `LARGE`, `EXTREME`
+- `MUDOCK_STAGE_BUCKET_POLICY` — stage bucket sizing policy: `DEVICE_ALIGNED`, `SM_ALIGNED`, `MAX_UTILIZATION`
+- `MUDOCK_STAGE_BUCKET_OVERRIDE`, `MUDOCK_STAGE_BUCKET_MULTIPLE_OVERRIDE` — explicit stage bucket overrides
+- `MUDOCK_ENABLE_STAGE_BUCKET_TRACE` — verbose runtime logging for stage bucket selection
 - `MUDOCK_ENABLE_TEST` — enable tests (not allowed in Release)
 
 GPU/accelerator target configuration:
 
 - `MUDOCK_GPU_ARCHITECTURES` — format `platform:arch`
-  - Examples: `cuda:sm_80`, `amd:gfx90a`, `intel:gen12`
+  - Examples: `nvidia:sm_80`, `amd:gfx90a`, `intel:gen12`
 - `MUDOCK_CPU_ARCHITECTURES`, `MUDOCK_CPU_TARGET`, `MUDOCK_CPU_TUNE` — fine-tune CPU codegen
 
 Example: CUDA build targeting SM80:
@@ -75,7 +76,7 @@ Example: CUDA build targeting SM80:
 ```bash
 cmake -S /path/to/muDock -B /path/to/muDock/build \
   -DMUDOCK_ENABLE_CUDA=ON \
-  -DMUDOCK_GPU_ARCHITECTURES=cuda:sm_80 \
+  -DMUDOCK_GPU_ARCHITECTURES=nvidia:sm_80 \
   -DCMAKE_BUILD_TYPE=Release
 cmake --build /path/to/muDock/build
 ```
@@ -111,7 +112,7 @@ Supported formats (by file extension):
 - `pdb`
 - `adtmol2`
 
-Note on `adtmol2`: the converter can produce `adtmol2`, and muDock can parse it for Autodock-like scoring with ligands parsed in parallel. Other formats are currently parsed sequentially.
+Note on ligand parsing: `adtmol2` and `mol2` now use muDock's native parser and can be split and parsed in parallel. `adtmol2` still carries extra AutoDock-specific fields, while plain `mol2` remains a generic interchange format.
 
 ## Tests
 
