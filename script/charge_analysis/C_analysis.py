@@ -85,3 +85,21 @@ if len(cariche_totali) > 0:
     plt.grid(axis='y', alpha=0.75)
     
     plt.show()
+
+    NUM_BINS = 30 
+    
+    print(f"\n--- GENERAZIONE THRESHOLD NON-LINEARI ({NUM_BINS} BIN) ---")
+    
+    cariche_pulite = cariche_array[(cariche_array >= p1) & (cariche_array <= p99)]
+    percentuali_taglio = np.linspace(0, 100, NUM_BINS + 1)[1:-1]
+    
+   # 3. Troviamo il valore esatto della carica a quelle percentuali
+    thresholds_grezzi = np.percentile(cariche_pulite, percentuali_taglio)
+    
+    # Eliminiamo i duplicati, Se 5 bin cadono su 0.0, ne teniamo solo uno.
+    thresholds_unici = np.unique(thresholds_grezzi)
+    thresholds_str = ", ".join([f"{t:.5f}" for t in thresholds_unici])
+    print("\nCopia e incolla questa riga nel costruttore della tua classe C++:")
+    print("std::vector<fp_type> thresholds = {")
+    print(f"    {thresholds_str}")
+    print("};")
