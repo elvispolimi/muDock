@@ -4,6 +4,7 @@
 
 function(add_sycl_files SYCL_SOURCES HEADER_PATH HEADER_FILES OUTPUT)
   set(GENERATED_CPP_SOURCES "")
+  set(SYCL_SYSTEM_INCLUDE_FLAGS "")
   string(TOUPPER "${CMAKE_BUILD_TYPE}" BUILD_TYPE_UPPER)
   get_target_property(MUDOCK_DEFINES libmudock COMPILE_DEFINITIONS)
   string(REPLACE ";" ";-D" MUDOCK_DEFINES "${MUDOCK_DEFINES}")
@@ -11,6 +12,14 @@ function(add_sycl_files SYCL_SOURCES HEADER_PATH HEADER_FILES OUTPUT)
   set(COMPILE_FLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_${BUILD_TYPE_UPPER}}")
   string(REPLACE " " ";" CXX_FLAGS_LIST "${COMPILE_FLAGS}")
   set(CXX_FLAGS_LIST "${CXX_FLAGS_LIST};${MUDOCK_DEFINES}")
+
+  foreach(INCLUDE_DIR IN LISTS BOOST_INCLUDE_DIRS Boost_INCLUDE_DIRS
+                                 LLVM_INCLUDE_DIRS)
+    if(INCLUDE_DIR)
+      string(REGEX REPLACE "^-I" "" INCLUDE_DIR "${INCLUDE_DIR}")
+      list(APPEND SYCL_SYSTEM_INCLUDE_FLAGS "-isystem" "${INCLUDE_DIR}")
+    endif()
+  endforeach()
 
   if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     set(SYCL_EXTRA_FLAGS "-O0" "-g")
@@ -31,8 +40,7 @@ function(add_sycl_files SYCL_SOURCES HEADER_PATH HEADER_FILES OUTPUT)
       COMMAND
         ${LLVM_TOOLS_BINARY_DIR}/clang++ -fsycl -fsycl-targets=${SYCL_TARGETS}
         ${SYCL_BACKEND_FLAGS_COMPILE} ${CXX_FLAGS_LIST} --std=c++20 -o ${GENERATED_FILE} -c ${SYCL_FILE}
-        ${BOOST_INCLUDE_DIRS} -I${HEADER_PATH} -I${Boost_INCLUDE_DIRS}
-        -I${LLVM_INCLUDE_DIRS}
+        -I${HEADER_PATH} ${SYCL_SYSTEM_INCLUDE_FLAGS}
       DEPENDS "${SYCL_FILE}" "${HEADER_FILES}"
       COMMENT "Compiling SYCL source ${SYCL_FILE} with dpcpp")
 
