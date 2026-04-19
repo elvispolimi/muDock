@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
+#include <limits>
 #include <mudock/compute/batch_multiple.hpp>
 #include <mudock/log.hpp>
 #include <stdexcept>
@@ -23,7 +24,7 @@ namespace mudock {
                   "MUDOCK_STAGE_BUCKET_OVERRIDE must be > 0.");
     constexpr int stage_bucket_override = MUDOCK_STAGE_BUCKET_OVERRIDE;
     const size_t capped_sz           = std::min(static_cast<size_t>(stage_bucket_override), max_bucket_size);
-    const int capped                 = static_cast<int>(capped_sz);
+    const int capped                 = static_cast<int>(std::min(capped_sz, static_cast<size_t>(std::numeric_limits<int>::max())));
     const size_t estimated_mem_bytes = static_cast<size_t>(capped) * mem_per_ligand_bytes;
     const double estimated_mem_mib   = static_cast<double>(estimated_mem_bytes) / (1024.0 * 1024.0);
     mudock::stage_bucket_trace(stage_name,
