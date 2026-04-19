@@ -46,7 +46,7 @@ int main(int argc, char* argv[]) {
             try {
               auto ligand = std::make_unique<mudock::static_molecule>(
                   mudock::parser<format, mudock::static_molecule>(ligands_description[ligand_index]));
-              input_queue->enqueue(std::move(ligand));
+              input_queue->enqueue(ligand);
             } catch (...) {
               skipped_ligands.fetch_add(1, std::memory_order_relaxed);
             }
@@ -56,7 +56,7 @@ int main(int argc, char* argv[]) {
             try {
               auto ligand = std::make_unique<mudock::static_molecule>(
                   mudock::parser<format, mudock::static_molecule>(ligands_description[ligand_index]));
-              input_queue->enqueue(std::move(ligand));
+              input_queue->enqueue(ligand);
             } catch (...) {
               skipped_ligands.fetch_add(1, std::memory_order_relaxed);
             }
@@ -74,7 +74,7 @@ int main(int argc, char* argv[]) {
   mudock::info("Scores per ligand (population): ", args.knobs.population_number);
 
   mudock::scoring_pipeline<mudock::adt_score> pipe{protein};
-  auto output_queue = std::make_shared<mudock::safe_stack<mudock::static_molecule>>();
+  auto output_queue = std::make_shared<mudock::safe_queue<mudock::static_molecule>>();
   output_queue->initialize(input_queue->size());
 
   const auto start = std::chrono::high_resolution_clock::now();
