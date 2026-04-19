@@ -39,8 +39,7 @@ namespace mudock {
     out_values[7] = &map[1 + map_index_x + map_index_xy];
   }
 
-  inline vec3 cross_product(const vec3& u, 
-                            const vec3& v){
+  inline vec3 cross_product(const vec3& u, const vec3& v){
     vec3 result;
     result.x = u.y * v.z - v.y * u.z;
     result.y = v.x * u.z - u.x * v.z;
@@ -48,8 +47,7 @@ namespace mudock {
     return result;
   }
 
-  inline fp_type dot_product(vec3& u, 
-                    vec3& v){
+  inline fp_type dot_product(const vec3& u, const vec3& v){
     fp_type result;
     result = u.x * v.x + u.y * v.y + u.z * v.z;
     return result;
@@ -61,26 +59,31 @@ namespace mudock {
                           const fp_type *__restrict__ x_scratch_b,
                           const fp_type *__restrict__ y_scratch_b,
                           const fp_type *__restrict__ z_scratch_b,
-                          const fp_type *__restrict__ vols_b,
-                          const fp_type *__restrict__ solpars_b,
-                          const fp_type *__restrict__ charges_b,
-                          const int *__restrict__ num_atoms_b,
-                          const int *__restrict__ num_rotamers_b,
-                          const int *__restrict__ num_nonbonds_b,
-                          const int *__restrict__ nonbond_a1_b,
-                          const int *__restrict__ nonbond_a2_b,
-                          const fp_type *__restrict__ nonbond_cA_b,
-                          const fp_type *__restrict__ nonbond_cB_b,
-                          const int *__restrict__ nonbond_xB_b,
-                          const fp_type *__restrict__ grid_maps,
-                          const fp_type *__restrict__ minimum,
-                          const fp_type *__restrict__ maximum,
-                          const fp_type *__restrict__ center,
-                          const int *__restrict__ map_offsets_b,
-                          const int map_index_x,
-                          const int map_index_xy,
-                          const int map_index_xyz,
-                          fp_type *__restrict__ scores_b) {
+                          const int* __restrict__ ligand_fragments_b,
+                          const int* __restrict__ ligand_fragments_start_b,
+                          const int* __restrict__ frag_indices_start_b,
+                          const int* __restrict__ frag_start_indices_b,
+                          const int* __restrict__ frag_stop_indices_b,
+                            const fp_type *__restrict__ vols_b,
+                            const fp_type *__restrict__ solpars_b,
+                            const fp_type *__restrict__ charges_b,
+                            const int *__restrict__ num_atoms_b,
+                            const int *__restrict__ num_rotamers_b,
+                            const int *__restrict__ num_nonbonds_b,
+                            const int *__restrict__ nonbond_a1_b,
+                            const int *__restrict__ nonbond_a2_b,
+                            const fp_type *__restrict__ nonbond_cA_b,
+                            const fp_type *__restrict__ nonbond_cB_b,
+                            const int *__restrict__ nonbond_xB_b,
+                            const fp_type *__restrict__ grid_maps,
+                            const fp_type *__restrict__ minimum,
+                            const fp_type *__restrict__ maximum,
+                            const fp_type *__restrict__ center,
+                            const int *__restrict__ map_offsets_b,
+                            const int map_index_x,
+                            const int map_index_xy,
+                            const int map_index_xyz,
+                            fp_type *__restrict__ scores_b) {
     for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
       const int atom_stride  = ligand_index * batch_atoms;
       const int num_atoms    = num_atoms_b[ligand_index];
@@ -99,6 +102,10 @@ namespace mudock {
       const fp_type *nonbond_cA_l           = nonbond_cA_b + num_nonbonds_b[ligand_index];
       const fp_type *nonbond_cB_l           = nonbond_cB_b + num_nonbonds_b[ligand_index];
       const int *nonbond_xB_l               = nonbond_xB_b + num_nonbonds_b[ligand_index];
+
+      const int* fragments = ligand_fragments_b + ligand_fragments_start_b[ligand_index];
+      const int* frag_start_indices = frag_start_indices_b + frag_indices_start_b[ligand_index];
+      const int* frag_stop_indices = frag_stop_indices_b + frag_indices_start_b[ligand_index];
 
       fp_type *__restrict__ scores_l  = scores_b + ligand_index * scores_per_ligand;
 
@@ -219,10 +226,6 @@ namespace mudock {
             dX_dbeta[index]  = cross_product(y_axis, x_i);
             dX_dgamma[index] = cross_product(x_axis, x_i);
 
-
-            // Compute dE/d_tors
-
-
           }
         }
 
@@ -314,7 +317,6 @@ namespace mudock {
                 e_vdW_Hb = std::min(EINTCLAMP, (cA * rA - cB * rB));
                 
                 // VdW derivative
-                // TODO fix rA and derivative
                 const fp_type rA1 = rA * inv_r; // r^{-(xA+1)}
                 const fp_type rB1 = rB * inv_r; // r^{-(xB+1)}
                 dE_dr_vdw = -xA * cA * rA1 + xB * cB * rB1;
@@ -339,6 +341,41 @@ namespace mudock {
 
           }
         }
+
+        // Torsion derivatives
+        for (int t = 0; t < num_rotamers; ++t) {
+          const int* frag_mask = fragments + t * num_atoms;
+
+          const int a1 = frag_start_indices[t];
+          const int a2 = frag_stop_indices[t];
+
+          vec3 axis;
+          axis.x = scratch_x_l[a2] - scratch_x_l[a1];
+          axis.y = scratch_y_l[a2] - scratch_y_l[a1];
+          axis.z = scratch_z_l[a2] - scratch_z_l[a1];
+
+          const fp_type norm = std::sqrt(axis.x * axis.x + axis.y * axis.y + axis.z * axis.z);
+
+          const fp_type inv_norm = 1.0 / norm;
+          axis.x *= inv_norm;
+          axis.y *= inv_norm;
+          axis.z *= inv_norm;
+
+#pragma omp simd
+          for (int i = 0; i < num_atoms; ++i) {
+            if (frag_mask[i] != 0) {
+
+              vec3 r;
+              r.x = scratch_x_l[i] - scratch_x_l[a1];
+              r.y = scratch_y_l[i] - scratch_y_l[a1];
+              r.z = scratch_z_l[i] - scratch_z_l[a1];
+
+              dX_drot[t][i] = cross_product(axis, r);
+            }
+          }
+        }
+
+
         const fp_type tors_free_energy = num_rotamers * autodock_parameters::coeff_tors;
 
         const fp_type total_trilinear = emap_total_trilinear + elect_total_trilinear + dmap_total_trilinear;
@@ -357,9 +394,9 @@ namespace mudock {
           gradient[5] += dot_product(dE_dX[index], dX_dgamma[index]);
         }
 
-        for (int rotamer = 6; rotamer < 6 + num_rotamers; ++rotamer) {
-          for (int index = 0; index < num_atoms; ++index) {
-            gradient[rotamer] += dot_product(dE_dX[index], dX_drot[rotamer][i]);
+        for (int t = 0; t < num_rotamers; ++t) {
+          for (int i = 0; i < num_atoms; ++i) {
+            gradient[6 + t] += dot_product(dE_dX[i], dX_drot[t][i]);
           }
         }
 
