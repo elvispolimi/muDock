@@ -4,4 +4,4 @@ build*/
 .gdb_history
 *.o
 *.a
-.codex/
+.codex
