@@ -150,6 +150,7 @@ namespace mudock {
       int bond_index     = 0;
 
       while (std::getline(desc, line)) {
+        line = detail::trim_copy(std::move(line));
         if (line.empty()) {
           continue;
         }
@@ -168,6 +169,7 @@ namespace mudock {
           continue;
         }
         if (line.rfind("@<TRIPOS>", 0) == 0) {
+          current_state = state::NONE;
           continue;
         }
 
