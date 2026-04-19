@@ -67,8 +67,7 @@ namespace mudock {
         }));
   }
 
-  __device__ __forceinline__ fp_type trilinear_interpolation_cuda(const int coord[],
-                                                                  const fp_type* __restrict__ map,
+  __device__ __forceinline__ fp_type trilinear_interpolation_cuda(const fp_type* __restrict__ map,
                                                                   const fp_type* __restrict__ coeffs,
                                                                   const int& map_index_x,
                                                                   const int& map_index_xy) {
@@ -194,18 +193,17 @@ namespace mudock {
                                        pu[1] * pv[0] * pw[1],
                                        pu[1] * pv[1] * pw[0],
                                        pu[1] * pv[1] * pw[1]};
-            const int int_coord[3]  = {u0, v0, w0};
             const int base_index    = FLATTENED_3D(u0, v0, w0, map_index_x, map_index_xy);
             const fp_type* atom_map = grid_maps + l_atom_tex_indexes[atom_index];
 
             elect_total_trilinear +=
-                trilinear_interpolation_cuda(int_coord, electro_map + base_index, coeffs, map_index_x, map_index_xy) *
+                trilinear_interpolation_cuda(electro_map + base_index, coeffs, map_index_x, map_index_xy) *
                 charge;
             dmap_total_trilinear +=
-                trilinear_interpolation_cuda(int_coord, desolv_map + base_index, coeffs, map_index_x, map_index_xy) *
+                trilinear_interpolation_cuda(desolv_map + base_index, coeffs, map_index_x, map_index_xy) *
                 fabsf(charge);
             emap_total_trilinear +=
-                trilinear_interpolation_cuda(int_coord, atom_map + base_index, coeffs, map_index_x, map_index_xy);
+                trilinear_interpolation_cuda(atom_map + base_index, coeffs, map_index_x, map_index_xy);
           }
         }
       }
