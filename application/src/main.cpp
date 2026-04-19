@@ -54,7 +54,7 @@ int main(int argc, char* argv[]) {
             try {
               auto ligand = std::make_unique<mudock::static_molecule>(
                   mudock::parser<format, mudock::static_molecule>(ligands_description[ligand_index]));
-              input_queue->enqueue(std::move(ligand));
+              input_queue->enqueue(ligand);
             } catch (...) {
               skipped_ligands.fetch_add(1, std::memory_order_relaxed);
             }
@@ -64,7 +64,7 @@ int main(int argc, char* argv[]) {
             try {
               auto ligand = std::make_unique<mudock::static_molecule>(
                   mudock::parser<format, mudock::static_molecule>(ligands_description[ligand_index]));
-              input_queue->enqueue(std::move(ligand));
+              input_queue->enqueue(ligand);
             } catch (...) {
               skipped_ligands.fetch_add(1, std::memory_order_relaxed);
             }
