@@ -599,8 +599,10 @@ mudock_print_config("Enable XSimd" "${MUDOCK_ENABLE_XSIMD}"
                     "MUDOCK_ENABLE_XSIMD")
 mudock_print_config("Enable CUDA" "${MUDOCK_ENABLE_CUDA}"
                     "MUDOCK_ENABLE_CUDA")
-mudock_print_config("Kernel lock" "${MUDOCK_ENABLE_KERNEL_LOCK}"
-                    "MUDOCK_ENABLE_KERNEL_LOCK")
+if(MUDOCK_ENABLE_KERNEL_LOCK)
+  mudock_print_config("Kernel lock" "${MUDOCK_ENABLE_KERNEL_LOCK}"
+                      "MUDOCK_ENABLE_KERNEL_LOCK")
+endif()
 
 if(MUDOCK_ENABLE_CUDA)
   mudock_print_config("Target CUDA architecture" "${CMAKE_CUDA_ARCHITECTURES}"
