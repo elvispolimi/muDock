@@ -33,8 +33,8 @@ int main(int argc, char* argv[]) {
         auto ligands_description = split(std::move(input_text));
         if (auto remainder = split.flush(); !remainder.empty()) {
           ligands_description.emplace_back(std::move(remainder));
-          input_queue->initialize(ligands_description.size());
         }
+        input_queue->initialize(ligands_description.size());
 
         mudock::info("Parsing ", ligands_description.size(), " ligand(s) ...");
         std::atomic<std::size_t> skipped_ligands{0};
