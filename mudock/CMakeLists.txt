@@ -132,6 +132,9 @@ if(MUDOCK_ENABLE_MPI)
   list(
     APPEND
     header_files
+    "${header_path}/${header_prefix}/mpi_implementation/byte_range.hpp"
+    "${header_path}/${header_prefix}/mpi_implementation/stream_partition.hpp"
+    "${header_path}/${header_prefix}/mpi_implementation/distributed_ranges.hpp"
     "${header_path}/${header_prefix}/mpi_implementation/utilities.hpp"
     )
 endif()    
