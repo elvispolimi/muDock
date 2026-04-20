@@ -6,7 +6,7 @@
 #include <mudock/chem/autodock_ligand.hpp>
 #include <mudock/chem/autodock_protein.hpp>
 #include <mudock/chem/autodock_quant_protein.hpp>
-#include <mudock/compute/adt_score_kernel.hpp>
+#include <mudock/compute/adt_quant_score_kernel.hpp>
 #ifndef __CUDACC__
   #include <mudock/compute/buffer_utils.hpp>
   #include <mudock/compute/scoring.hpp>
@@ -19,12 +19,12 @@ namespace mudock {
 
   template<typename queue_type>
   // requires std::derived_from<queue_type, queue>
-  int get_adt_score_batch(const int, std::shared_ptr<queue_type>);
+  int get_adt_quant_score_batch(const int, std::shared_ptr<queue_type>);
 
 #ifndef __CUDACC__
   // TODO check that the object type and the kernel impl are the same
   template<typename queue_type>
-  struct adt_score: public scoring<queue_type> {
+  struct adt_quant_score: public scoring<queue_type> {
     adt_score(std::shared_ptr<scratchpad<queue_type>> _scratch,
               std::shared_ptr<scratchpad<queue_type>> _device_scratch,
               dynamic_molecule &protein)
@@ -217,7 +217,7 @@ namespace mudock {
 
       fp_type *scores_b = score_b.dev_pointer();
 
-      kernel = std::make_unique<adt_score_kernel<queue_type>>(scores_per_ligand,
+      kernel = std::make_unique<adt_quant_score_kernel<queue_type>>(scores_per_ligand,
                                                               batch_ligands,
                                                               batch_atoms,
                                                               num_atoms_b,

@@ -13,9 +13,9 @@ namespace mudock {
   // May become an issue to keep separate the TU and the CUDA/etc dependencies
   template<typename queue_type>
     requires std::derived_from<queue_type, queue>
-  struct adt_score_kernel {
-    static constexpr char adt_region_name[] = "adt_score_kernel";
-    adt_score_kernel(const int scores_per_ligand_,
+  struct adt_quant_score_kernel {
+    static constexpr char adt_region_name[] = "adt_quant_score_kernel";
+    adt_quant_score_kernel(const int scores_per_ligand_,
                      const int batch_ligands_,
                      const int batch_atoms_,
                      const int *__restrict__ num_atoms_b_,
@@ -76,12 +76,12 @@ namespace mudock {
 
     void operator()();
 
-    adt_score_kernel(const adt_score_kernel &)            = default;
-    adt_score_kernel(adt_score_kernel &&)                 = default;
-    adt_score_kernel &operator=(const adt_score_kernel &) = delete;
-    adt_score_kernel &operator=(adt_score_kernel &&)      = delete;
+    adt_quant_score_kernel(const adt_quant_score_kernel &)            = default;
+    adt_quant_score_kernel(adt_quant_score_kernel &&)                 = default;
+    adt_quant_score_kernel &operator=(const adt_quant_score_kernel &) = delete;
+    adt_quant_score_kernel &operator=(adt_quant_score_kernel &&)      = delete;
 
-    ~adt_score_kernel() {
+    ~adt_quant_score_kernel() {
         std::cout << "\n[PROFILAZIONE CUSTOM] Tempo TOTALE dentro lo Score Kernel: " 
                   << total_kernel_time << " secondi su " 
                   << total_calls << " chiamate." << std::endl;

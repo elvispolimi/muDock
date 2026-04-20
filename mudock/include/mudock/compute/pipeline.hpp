@@ -5,7 +5,10 @@
 #include <mudock/compute/adt_score.hpp>
 #include <mudock/compute/bucket_size.hpp>
 #include <mudock/compute/precomputed_adt_score.hpp>
+#include <mudock/compute/adt_quant_score.hpp>
+#include <mudock/cpp_implementation/adt_quant_score_cpp.hpp>
 #include <mudock/cpp_implementation/precomputed_adt_score_cpp.hpp>
+#include <mudock/cpp_implementation/adt_score_cpp.hpp>
 #include <mudock/compute/genetic.hpp>
 #include <mudock/compute/scratchpad.hpp>
 #include <mudock/compute/stage.hpp>
@@ -124,8 +127,44 @@ namespace mudock {
       return get_precomputed_adt_score_batch<queue_type>(atoms, q);
     }
   };
-  // fine miei stage
+  // fine miei stage prec
+  // nuovi stage per la pipeline con il quant identico a precedente
+  struct dt_quant_score_pipeline: pipeline {
+    template<typename queue_type>
+    adt_quant_score<queue_type> get_pipeline(const knobs& conf,
+                                                   const int id,
+                                                   const device_type dev_type,
+                                                   std::shared_ptr<scratchpad<queue_type>> device_scratch) {
+      return mudock::adt_quant_score<queue_type>(
+          std::make_shared<mudock::scratchpad<queue_type>>(conf, id, dev_type),
+          device_scratch,
+          *protein); 
+    }
 
+    template<typename queue_type>
+    static int get_batch_size(const int atoms, std::shared_ptr<queue_type> q) {
+      return get_adt_quant_score_batch<queue_type>(atoms, q);
+    }
+  };
+  struct genetic_adt_quant_pipeline: pipeline {
+    template<typename queue_type>
+    genetic<queue_type, adt_quant_score> get_pipeline(const knobs& conf,
+                                                            const int id,
+                                                            const device_type dev_type,
+                                                            std::shared_ptr<scratchpad<queue_type>> device_scratch) {
+      auto q = std::make_shared<mudock::scratchpad<queue_type>>(conf, id, dev_type);
+      
+      return genetic<queue_type, adt_quant_score>(q,
+                                                        *protein,
+                                                        mudock::adt_quant_score<queue_type>(q, device_scratch, *protein));
+    }
+
+    template<typename queue_type>
+    static int get_batch_size(const int atoms, std::shared_ptr<queue_type> q) {
+      return get_adt_quant_score_batch<queue_type>(atoms, q);
+    }
+  };
+  // fine miei stage quant
   struct genetic_adt_pipeline: pipeline {
     template<typename queue_type>
     genetic<queue_type, scoring_t> get_pipeline(const knobs& conf,
