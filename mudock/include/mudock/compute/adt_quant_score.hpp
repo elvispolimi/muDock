@@ -25,7 +25,7 @@ namespace mudock {
   // TODO check that the object type and the kernel impl are the same
   template<typename queue_type>
   struct adt_quant_score: public scoring<queue_type> {
-    adt_score(std::shared_ptr<scratchpad<queue_type>> _scratch,
+    adt_quant_score(std::shared_ptr<scratchpad<queue_type>> _scratch,
               std::shared_ptr<scratchpad<queue_type>> _device_scratch,
               dynamic_molecule &protein)
         : scoring<queue_type>(_scratch),
@@ -33,13 +33,13 @@ namespace mudock {
           solpars(_scratch->get_queue()),
           charges(_scratch->get_queue()),
           map_offsets(_scratch->get_queue()),
-          atom_bins(_scratch->get_queue()),
           num_nonbond(_scratch->get_queue()),
           nonbond_a1(_scratch->get_queue()),
           nonbond_a2(_scratch->get_queue()),
           nonbond_cA(_scratch->get_queue()),
           nonbond_cB(_scratch->get_queue()),
           nonbond_xB(_scratch->get_queue()),
+          atom_bins(_scratch->get_queue()),
           device_scratch(_device_scratch) {
       if (!(*device_scratch).template exists<buffer_data_type::PROT_GRID_MAPS>()) {
         autodock_protein adt_prot(protein);
@@ -78,7 +78,7 @@ namespace mudock {
         prot_index_xyz.copy_host2device();
         // On CPU is not required and on GPUS we have probably to laod texture memory etc...
         // prot_grid_maps.copy_host2device();
-        if(!(device_scratch).template exists<buffer_data_type::QUANT_GRID_MAPS>()){
+        if(!(*device_scratch).template exists<buffer_data_type::QUANT_GRID_MAPS>()){
             autodock_quant_protein quant_prot(&adt_prot);
             auto &quant_maps = (*device_scratch).template get<buffer_data_type::QUANT_GRID_MAPS>();
             std::size_t num_bins = quant_prot.get_thresholds().size() + 1;
@@ -212,7 +212,7 @@ namespace mudock {
           (*device_scratch).template get<buffer_data_type::PROT_SIZE_XY>().host_pointer()[0];
       const int map_index_xyz =
           (*device_scratch).template get<buffer_data_type::PROT_SIZE_XYZ>().host_pointer()[0];
-      const fp_type *quant_maps_b = (*device_scratch).template get<buffer_data_type::QUANT_GRID_MAPS>().dev_pointer();
+      const fp_type *quant_maps = (*device_scratch).template get<buffer_data_type::QUANT_GRID_MAPS>().dev_pointer();
       const int *atom_bins_b      = atom_bins.dev_pointer();
 
       fp_type *scores_b = score_b.dev_pointer();
@@ -237,7 +237,7 @@ namespace mudock {
                                                               nonbond_xB_b,
                                                               grid_maps,
                                                               quant_maps,
-                                                              atom_bins,
+                                                              atom_bins_b,
                                                               minimum,
                                                               maximum,
                                                               center,
@@ -272,7 +272,7 @@ namespace mudock {
     buffer_vector<int, queue_type> nonbond_xB;
     buffer_vector<int, queue_type> atom_bins;
     std::shared_ptr<scratchpad<queue_type>> device_scratch;
-    std::unique_ptr<adt_score_kernel<queue_type>> kernel;
+    std::unique_ptr<adt_quant_score_kernel<queue_type>> kernel;
 
     void teardown_impl(batch<static_molecule> &batch) override {
       assert(batch.num_ligands == batch_ligands && "Scoring algorithm received different batch for teardown");

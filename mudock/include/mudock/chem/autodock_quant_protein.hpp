@@ -15,20 +15,6 @@ namespace mudock {
   private:
     // La nostra mappa fusa. Le 4 dimensioni saranno: [num_bins][sz][sy][sx]
     md_vector<fp_type, 4> quantized_fused_maps;
-
-    // L'array dei confini 
-    static const std::vector<fp_type>& get_thresholds(){
-        static const std::vector<fp_type> thresh = {
-            -1.00000, 
-            -0.73010, -0.62000, -0.55120, -0.28820, -0.15000, -0.14350, 
-             0.00000, 
-             0.08250,  0.14350,  0.15000,  0.16000,  0.28000,  0.37000,  
-             0.40000,  0.45000,  0.54380,
-             1.00000  
-        };
-        return thresh;
-    }
-    
     // Metodo di supporto per calcolare la carica da moltiplicare
     fp_type calculate_bin_center(int bin_index) const;
 
@@ -38,18 +24,27 @@ namespace mudock {
   public:
          autodock_quant_protein(const autodock_protein* base_protein) 
     {
-    
         auto sx = base_protein->get_size_x();
         auto sy = base_protein->get_size_xy() / sx;
         auto sz = base_protein->get_size_xyz() / base_protein->get_size_xy();
 
-        int num_bins = get_thresholds.size() + 1;
+        int num_bins = get_thresholds().size() + 1;
 
         quantized_fused_maps = md_vector<fp_type, 4>(num_bins, sz, sy, sx);
         prepare_fused_maps(base_protein);
     }
     
-
+    static const std::vector<fp_type>& get_thresholds(){
+            static const std::vector<fp_type> thresh = {
+            -1.00000, 
+            -0.73010, -0.62000, -0.55120, -0.28820, -0.15000, -0.14350, 
+             0.00000, 
+             0.08250,  0.14350,  0.15000,  0.16000,  0.28000,  0.37000,  
+             0.40000,  0.45000,  0.54380,
+             1.00000  
+            };
+        return thresh;
+        }
     
     [[nodiscard]] inline const fp_type* get_raw_data() const { 
         return quantized_fused_maps.data(); 

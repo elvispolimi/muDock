@@ -47,7 +47,7 @@ namespace mudock {
                           const int *__restrict__ nonbond_xB_b,
                           const fp_type *__restrict__ grid_maps,
                           const fp_type *__restrict__ quant_maps,
-                          const int *__restrict__ atom_bins,
+                          const int *__restrict__ atom_bins_b,
                           const fp_type *__restrict__ minimum,
                           const fp_type *__restrict__ maximum,
                           const fp_type *__restrict__ center,
@@ -67,7 +67,7 @@ namespace mudock {
       const fp_type *__restrict__ vol_l     = vols_b + atom_stride;
       const fp_type *__restrict__ solpar_l  = solpars_b + atom_stride;
       const fp_type *__restrict__ charge_l  = charges_b + atom_stride;
-      const int *__restrict__ atom_bins_l = atom_bins + atom_stride;
+      const int *__restrict__ atom_bins_l = atom_bins_b + atom_stride;
       const int *__restrict__ map_offsets_l = map_offsets_b + atom_stride;
       const int *__restrict__ nonbond_a1_l  = nonbond_a1_b + num_nonbonds_b[ligand_index];
       const int *__restrict__ nonbond_a2_l  = nonbond_a2_b + num_nonbonds_b[ligand_index];
@@ -98,7 +98,7 @@ namespace mudock {
             const auto diff_z      = coord[2] - center[2];
             const fp_type dist     = diff_x * diff_x + diff_y * diff_y + diff_z * diff_z;
             const fp_type epenalty = dist * ENERGYPENALTY;
-            elect_total_trilinear += epenalty;
+            elect_dmap_total_trilinear += epenalty;
             emap_total_trilinear += epenalty;
           } else {
             // const auto &atom_charge = charge_l[index];
@@ -205,7 +205,7 @@ namespace mudock {
         }
         const fp_type tors_free_energy = num_rotamers * autodock_parameters::coeff_tors;
 
-        const fp_type total_trilinear = emap_total_trilinear + elect_total_trilinear + dmap_total_trilinear;
+        const fp_type total_trilinear = emap_total_trilinear + elect_dmap_total_trilinear;
         const fp_type total_eintcal   = emap_total_eintcal + elect_total_eintcal + dmap_total_eintcal;
         scores_l[scores_index]        = total_trilinear + total_eintcal + tors_free_energy;
       }
@@ -213,7 +213,7 @@ namespace mudock {
   };
 
   template<>
-  void adt_score_kernel<queue_cpp>::operator()() {
+  void adt_quant_score_kernel<queue_cpp>::operator()() {
     auto t_start = std::chrono::high_resolution_clock::now();
     q->invoke_kernel<this->adt_region_name>(calc_energy,
                                             batch_atoms,
@@ -235,7 +235,7 @@ namespace mudock {
                                             nonbond_xB_b,
                                             grid_maps,
                                             quant_maps,
-                                            atom_bins,
+                                            atom_bins_b,
                                             minimum,
                                             maximum,
                                             center,
