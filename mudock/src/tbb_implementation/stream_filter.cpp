@@ -1,66 +1,97 @@
 #include <mudock/tbb_implementation/stream_filter.hpp>
-#include <mudock/format/adt_mol2.hpp>
 
 namespace mudock {
-    
-    stream_filter::stream_filter(std::istream& in, std::size_t max_bytes_per_token, std::size_t end)
-    : stream_(in), max_bytes_per_token_(max_bytes_per_token)
-    {
-        if (end != std::numeric_limits<std::size_t>::max()) {
-            end_ = end;
-            return;
-        }
 
-        // default case (no MPI involved)
-        std::streampos cur = stream_.tellg();
-        stream_.seekg(0, std::ios::end);
-        end_ = static_cast<std::size_t>(stream_.tellg());
-        stream_.seekg(cur);
+  template<supported_format format>
+  stream_filter<format>::stream_filter(std::istream& in,
+                                       std::size_t max_bytes_per_token,
+                                       std::size_t end,
+                                       std::atomic<bool>* stop)
+      : stream_(in),
+        max_bytes_per_token_(max_bytes_per_token),
+        stop_requested(stop) {
+    if (end != std::numeric_limits<std::size_t>::max()) {
+      end_ = end;
+      return;
     }
 
-    std::string stream_filter::operator()(oneapi::tbb::flow_control& fc) const {
+    // default case (no MPI involved)
+    const std::streampos cur = stream_.tellg();
+    stream_.seekg(0, std::ios::end);
+    end_ = static_cast<std::size_t>(stream_.tellg());
+    stream_.seekg(cur);
+  }
 
-        std::size_t bytes_per_token = this->max_bytes_per_token_;
-        // Check empty/invalid file
-        const std::streampos pos = stream_.tellg();
-        if (pos == std::streampos(-1)) { 
-            fc.stop();
-            return {};
+  template<supported_format format>
+  std::string stream_filter<format>::operator()(oneapi::tbb::flow_control& fc) const {
+    auto should_stop = [&]() {
+      return stop_requested != nullptr && stop_requested->load(std::memory_order_relaxed);
+    };
+
+    auto flush_remainder = [&]() {
+      if (flushed_) {
+        return;
+      }
+      flushed_ = true;
+      if (!buffered_text_.empty()) {
+        ready_tokens_.emplace_back(std::move(buffered_text_));
+        buffered_text_.clear();
+      }
+    };
+
+    while (ready_tokens_.empty()) {
+      if (should_stop()) {
+        ready_tokens_.clear();
+        fc.stop();
+        return {};
+      }
+
+      const std::streampos pos = stream_.tellg();
+      if (pos == std::streampos(-1)) {
+        flush_remainder();
+        break;
+      }
+
+      const std::size_t cur = static_cast<std::size_t>(pos);
+      if (cur >= end_) {
+        flush_remainder();
+        break;
+      }
+
+      const std::size_t bytes_per_token = std::min(max_bytes_per_token_, end_ - cur);
+      std::string buf(bytes_per_token, '\0');
+      stream_.read(buf.data(), static_cast<std::streamsize>(buf.size()));
+      if (stream_.gcount() <= 0) {
+        flush_remainder();
+        break;
+      }
+
+      buf.resize(static_cast<std::size_t>(stream_.gcount()));
+      buffered_text_ += buf;
+      auto input_view = std::string_view{buffered_text_};
+      while (!input_view.empty()) {
+        const auto next = format_splitter_.next_molecule_start_index(input_view);
+        if (next == std::string_view::npos) {
+          buffered_text_ = std::string{input_view};
+          break;
         }
 
-        // Check if we've reached the end of the assigned range
-        const std::size_t cur = static_cast<std::size_t>(pos);
-        if (cur >= end_) {               
-            fc.stop();
-            return {};
-        }
-
-        // Ensure we don't read past the end of the assigned range
-        const std::size_t remaining = end_ - cur;
-        if (bytes_per_token > remaining) bytes_per_token = remaining;  
-
-        std::string buf;
-        buf.resize(bytes_per_token);
-
-        stream_.read(buf.data(), buf.size());
-        if (stream_.gcount() <= 0) {
-            fc.stop();
-            return {};
-        }
-
-        buf.resize(static_cast<size_t>(stream_.gcount()));
-
-        if (!stream_.eof()) {
-            size_t cut = buf.rfind(adt_mol2_tokens::MOLECULE_TOKEN);
-            if (cut != std::string::npos && cut != 0) {
-                std::streamoff unread = static_cast<std::streamoff>(buf.size() - cut);
-                stream_.clear();
-                stream_.seekg(-unread, std::ios::cur);
-                buf.resize(cut);
-            }
-        }
-
-        return buf;
+        ready_tokens_.emplace_back(input_view.substr(0, next));
+        input_view = input_view.substr(next);
+      }
     }
-    
-} // namespace mudock    
+
+    if (ready_tokens_.empty()) {
+      fc.stop();
+      return {};
+    }
+
+    auto token = std::move(ready_tokens_.front());
+    ready_tokens_.pop_front();
+    return token;
+  }
+
+  template class stream_filter<supported_format::ADTMOL2>;
+  template class stream_filter<supported_format::MOL2>;
+
+} // namespace mudock

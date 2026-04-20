@@ -77,6 +77,7 @@ list(
   "${header_path}/${header_prefix}/molecule/property_table.hpp"
   "${header_path}/${header_prefix}/tbb_implementation/stream_filter.hpp"
   "${header_path}/${header_prefix}/tbb_implementation/parser_filter.hpp"
+  "${header_path}/${header_prefix}/tbb_implementation/runtime_services.hpp"
   "${header_path}/${header_prefix}/tbb_implementation/tbb_pipeline.hpp"
   "${header_path}/${header_prefix}/batch.hpp"
   "${header_path}/${header_prefix}/chem.hpp"
@@ -125,6 +126,7 @@ list(
   "${source_path}/cpp_implementation/genetic_cpp.cpp"
   "${source_path}/tbb_implementation/stream_filter.cpp"
   "${source_path}/tbb_implementation/parser_filter.cpp"
+  "${source_path}/tbb_implementation/runtime_services.cpp"
   "${source_path}/tbb_implementation/tbb_pipeline.cpp"
 )
 
