@@ -14,11 +14,11 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
   std::size_t seed{};
   double time_limit_sec{};
   double observer_sec{};
-  arguments_description.add_options()("help", "print this help message");
-  arguments_description.add_options()("protein",
+  arguments_description.add_options()("help,h", "print this help message");
+  arguments_description.add_options()("protein,p",
                                       po::value(&args.protein_path)->default_value(args.protein_path),
                                       "Path to the protein file (in PDB)");
-  arguments_description.add_options()("ligand",
+  arguments_description.add_options()("ligand,l",
                                       po::value(&args.ligand_path)->default_value(args.ligand_path),
                                       "Path to the ligands file (in MOL2)");
   arguments_description.add_options()(
@@ -60,6 +60,10 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
       "bytes_per_token",
       po::value(&args.knobs.max_bytes_per_token)->default_value(args.knobs.max_bytes_per_token),
       "Max number of bytes per token in the TBB pipeline");
+  knobs_description.add_options()(
+      "queue_size",
+      po::value(&args.knobs.max_tbb_queue_size)->default_value(args.knobs.max_tbb_queue_size),
+      "Max number of ligands buffered in the TBB input/output queues");
   // parse them
   po::options_description all("Allowed Options");
   all.add(arguments_description).add(knobs_description);
@@ -68,10 +72,10 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
 
   // handle the help message
   if (vm.count("help") > 0) {
-    std::cout << "This application reads ligands from --ligand and prints one score per output line."
+    std::cout << "This application reads ligands from --ligand/-l and prints one score per output line."
               << std::endl;
     std::cout << std::endl;
-    std::cout << "USAGE: " << argv[0] << " --protein " << args.protein_path << " --ligand "
+    std::cout << "USAGE: " << argv[0] << " --protein|-p " << args.protein_path << " --ligand|-l "
               << args.ligand_path << " --use " << use_cpu_conf << " [MORE_CONFIGS...] [KNOBS] " << std::endl;
     std::cout << std::endl;
     std::cout << arguments_description << std::endl;
