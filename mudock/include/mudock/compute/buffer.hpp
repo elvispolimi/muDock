@@ -33,8 +33,7 @@ namespace mudock {
     PROT_SIZE_XY,
     PROT_SIZE_XYZ,
     PROT_GRID_MAPS,
-    QUANT_GRID_MAPS,
-    QUANT_ATOM_BINS
+    QUANT_GRID_MAPS
   };
 
   using buffer_type_list = std::tuple<fp_type, int, chromosome>;
@@ -129,10 +128,6 @@ namespace mudock {
   template<>
   struct buffer_type_traits<buffer_data_type::QUANT_GRID_MAPS> {
     using type = buffer_type_traits_impl<buffer_data_type::QUANT_GRID_MAPS, fp_type>::type;
-  };
-  template<>
-  struct buffer_type_traits<buffer_data_type::QUANT_ATOM_BINS> {
-    using type = buffer_type_traits_impl<buffer_data_type::QUANT_ATOM_BINS, int>::type;
   };
 
   template<template<class...> class container_type, typename T, class queue_t, class... args>

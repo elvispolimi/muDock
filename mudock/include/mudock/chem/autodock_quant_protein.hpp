@@ -6,7 +6,7 @@
 #include <mudock/chem/autodock_protein.hpp> 
 
 #include <vector>
-#include <algorithm> // Necessario per std::upper_bound
+#include <algorithm> 
 
 namespace mudock {
 
@@ -17,7 +17,17 @@ namespace mudock {
     md_vector<fp_type, 4> quantized_fused_maps;
 
     // L'array dei confini 
-    std::vector<fp_type> thresholds;
+    static const std::vector<fp_type>& get_thresholds(){
+        static const std::vector<fp_type> thresh = {
+            -1.00000, 
+            -0.73010, -0.62000, -0.55120, -0.28820, -0.15000, -0.14350, 
+             0.00000, 
+             0.08250,  0.14350,  0.15000,  0.16000,  0.28000,  0.37000,  
+             0.40000,  0.45000,  0.54380,
+             1.00000  
+        };
+        return thresh;
+    }
     
     // Metodo di supporto per calcolare la carica da moltiplicare
     fp_type calculate_bin_center(int bin_index) const;
@@ -33,17 +43,7 @@ namespace mudock {
         auto sy = base_protein->get_size_xy() / sx;
         auto sz = base_protein->get_size_xyz() / base_protein->get_size_xy();
 
-        
-        thresholds = {
-            -1.00000, 
-            -0.73010, -0.62000, -0.55120, -0.28820, -0.15000, -0.14350, 
-             0.00000, 
-             0.08250,  0.14350,  0.15000,  0.16000,  0.28000,  0.37000,  
-             0.40000,  0.45000,  0.54380,
-             1.00000  
-        };
-
-        int num_bins = thresholds.size() + 1;
+        int num_bins = get_thresholds.size() + 1;
 
         quantized_fused_maps = md_vector<fp_type, 4>(num_bins, sz, sy, sx);
         prepare_fused_maps(base_protein);
@@ -54,12 +54,6 @@ namespace mudock {
     [[nodiscard]] inline const fp_type* get_raw_data() const { 
         return quantized_fused_maps.data(); 
     }
-
-   
-    [[nodiscard]] inline const std::vector<fp_type>& get_thresholds() const {
-        return thresholds;
-    }
-   
   };
 
   // Da richiamare nel file adt_score.hpp quando si setta il batch dei ligandi
