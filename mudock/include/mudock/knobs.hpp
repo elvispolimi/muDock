@@ -14,6 +14,7 @@ namespace mudock {
     std::optional<std::size_t> seed                    = std::optional<std::size_t>{};
     std::size_t max_tbb_tokens                         = 4;
     std::size_t max_bytes_per_token                    = 1048576; // 1 MB
+    std::size_t max_tbb_queue_size                     = 100000;
   };
 
 } // namespace mudock
