@@ -15,6 +15,10 @@
 #include <vector>
 
 namespace mudock {
+  struct mol2_tokens {
+    static constexpr auto MOLECULE_TOKEN = "@<TRIPOS>MOLECULE";
+  };
+
   namespace detail {
     inline std::string trim_copy(std::string value) {
       const auto begin = value.find_first_not_of(" \t\r\n");
@@ -97,6 +101,8 @@ namespace mudock {
 
   class mol2 {
   public:
+    static constexpr auto MOLECULE_TOKEN = mol2_tokens::MOLECULE_TOKEN;
+
     std::string_view::size_type next_molecule_start_index(std::string_view text) const;
 
     template<class molecule_type>
