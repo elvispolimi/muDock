@@ -16,6 +16,7 @@ namespace mudock::detail {
 
   public:
     periodic_observer() = default;
+    ~periodic_observer();
 
     periodic_observer(const periodic_observer&) = delete;
     periodic_observer& operator=(const periodic_observer&) = delete;
@@ -35,6 +36,7 @@ namespace mudock::detail {
 
   public:
     deadline_timer() = default;
+    ~deadline_timer();
 
     deadline_timer(const deadline_timer&) = delete;
     deadline_timer& operator=(const deadline_timer&) = delete;
