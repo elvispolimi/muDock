@@ -2,6 +2,7 @@ import tarfile
 import re
 import numpy as np
 import matplotlib.pyplot as plt
+from sklearn.cluster import KMeans
 
 NOME_FILE_ARCHIVIO = "CASF-2016.tar.gz" 
 
@@ -86,20 +87,38 @@ if len(cariche_totali) > 0:
     
     plt.show()
 
-    NUM_BINS = 30 
+NUM_BINS = 12 
     
-    print(f"\n--- GENERAZIONE THRESHOLD NON-LINEARI ({NUM_BINS} BIN) ---")
+#     print(f"\n--- GENERAZIONE THRESHOLD NON-LINEARI ({NUM_BINS} BIN) ---")
     
-    cariche_pulite = cariche_array[(cariche_array >= p1) & (cariche_array <= p99)]
-    percentuali_taglio = np.linspace(0, 100, NUM_BINS + 1)[1:-1]
+#     cariche_pulite = cariche_array[(cariche_array >= p1) & (cariche_array <= p99)]
+#     percentuali_taglio = np.linspace(0, 100, NUM_BINS + 1)[1:-1]
     
-   # 3. Troviamo il valore esatto della carica a quelle percentuali
-    thresholds_grezzi = np.percentile(cariche_pulite, percentuali_taglio)
+#    # 3. Troviamo il valore esatto della carica a quelle percentuali
+#     thresholds_grezzi = np.percentile(cariche_pulite, percentuali_taglio)
     
-    # Eliminiamo i duplicati, Se 5 bin cadono su 0.0, ne teniamo solo uno.
-    thresholds_unici = np.unique(thresholds_grezzi)
-    thresholds_str = ", ".join([f"{t:.5f}" for t in thresholds_unici])
-    print("\nCopia e incolla questa riga nel costruttore della tua classe C++:")
-    print("std::vector<fp_type> thresholds = {")
-    print(f"    {thresholds_str}")
-    print("};")
+#     # Eliminiamo i duplicati, Se 5 bin cadono su 0.0, ne teniamo solo uno.
+#     thresholds_unici = np.unique(thresholds_grezzi)
+#     thresholds_str = ", ".join([f"{t:.5f}" for t in thresholds_unici])
+#     print("\nCopia e incolla questa riga nel costruttore della tua classe C++:")
+#     print("std::vector<fp_type> thresholds = {")
+#     print(f"    {thresholds_str}")
+#     print("};")
+print(f"\n--- GENERAZIONE THRESHOLD K-MEANS ({NUM_BINS} BIN ESATTI) ---")
+
+cariche_pulite = cariche_array[(cariche_array >= p1) & (cariche_array <= p99)]
+cariche_reshaped = cariche_pulite.reshape(-1, 1)
+kmeans = KMeans(n_clusters=NUM_BINS, random_state=42, n_init="auto")
+kmeans.fit(cariche_reshaped)
+
+centri_ordinati = np.sort(kmeans.cluster_centers_.flatten())
+
+thresholds_esatti = (centri_ordinati[:-1] + centri_ordinati[1:]) / 2.0
+
+thresholds_str = ", ".join([f"{t:.5f}" for t in thresholds_esatti])
+
+print("\nCopia e incolla questo array nel tuo autodock_quant_protein.hpp:")
+print(f"// Generato per avere ESATTAMENTE {NUM_BINS} mappe quantizzate")
+print("static const std::vector<fp_type> thresh = {")
+print(f"    {thresholds_str}")
+print("};")
