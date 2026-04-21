@@ -58,7 +58,9 @@ namespace mudock {
         prot_index_x.alloc(1);
         prot_index_xy.alloc(1);
         prot_index_xyz.alloc(1);
-        prot_grid_maps.alloc(adt_prot.get_size_xyz() * num_autodock_grids());
+        // prot_grid_maps.alloc(adt_prot.get_size_xyz() * num_autodock_grids());
+        //le mappe elttro e desolv non servono più puliamo la memoria
+        prot_grid_maps.alloc(adt_prot.get_map_flat_size() * (num_autodock_grids() - 2));
 
         std::memcpy(prot_min(), adt_prot.get_min_p(), 3 * sizeof(fp_type));
         std::memcpy(prot_max(), adt_prot.get_max_p(), 3 * sizeof(fp_type));
@@ -66,9 +68,11 @@ namespace mudock {
         prot_index_x()[0]   = adt_prot.get_size_x();
         prot_index_xy()[0]  = adt_prot.get_size_xy();
         prot_index_xyz()[0] = adt_prot.get_size_xyz();
+        //sistemo i puntatori
+        const fp_type* vdw_maps_start = adt_prot.get_maps_pointer() + (adt_prot.get_map_flat_size() * 2);
         std::memcpy(prot_grid_maps(),
-                    adt_prot.get_maps_pointer(),
-                    adt_prot.get_map_flat_size() * num_autodock_grids() * sizeof(fp_type));
+                    vdw_maps_start,
+                    adt_prot.get_map_flat_size() * (num_autodock_grids() - 2) * sizeof(fp_type));
 
         prot_min.copy_host2device();
         prot_max.copy_host2device();
@@ -160,6 +164,11 @@ namespace mudock {
         std::memcpy((void *) (map_offsets() + stride_atoms),
                     adt_ligand.atom_map_index(),
                     num_atoms * sizeof(int));
+        //shift
+        int* current_offsets = map_offsets() + stride_atoms;
+        for (int i = 0; i < num_atoms; ++i) {
+            current_offsets[i] -= 2; 
+        }
       }
 
       vols.copy_host2device();

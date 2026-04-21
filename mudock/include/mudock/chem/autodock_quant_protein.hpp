@@ -35,14 +35,53 @@ namespace mudock {
     }
     
     static const std::vector<fp_type>& get_thresholds(){
+            // 16 valori -> 17 mappe con np normale accuratezza <0.8
+            /*
             static const std::vector<fp_type> thresh = {
-            -1.00000, 
+            // -1.00000, 
             -0.73010, -0.62000, -0.55120, -0.28820, -0.15000, -0.14350, 
              0.00000, 
              0.08250,  0.14350,  0.15000,  0.16000,  0.28000,  0.37000,  
-             0.40000,  0.45000,  0.54380,
-             1.00000  
+             0.40000,  0.45000,  0.54380
+            //  1.00000  
             };
+            */
+            // 16 valori -> 17 mappe con k-Means accuratezza <0.5 tempo_score = 3.301 PICCO_RAM = 417.7MB
+            /*
+            static const std::vector<fp_type> thresh = {
+                -0.81145, -0.69867, -0.60693, -0.44784, -0.24571, -0.07543, 0.03971, 0.11567, 0.21422, 0.32101, 0.38444, 0.42745, 0.47576, 0.53418, 0.62383, 0.77917
+            };
+            */
+            // 15 valori -> 16 mappe con K-Means accuratezza <0.5 tempo_score = 3.2133 PICCO_RAM = 400MB
+            /*
+            static const std::vector<fp_type> thresh = {
+                -0.81145, -0.69867, -0.60693, -0.44784, -0.24571, -0.07543, 0.03971, 0.11567, 0.21422, 0.32101, 0.38444, 0.42855, 0.49415, 0.60294, 0.77467
+            };
+            */
+            // 14 valori -> 15 mappe con K-Means accuratezza <0.5 tempo_score = 3.2003 PICCO_RAM = 394.7MB
+            /*
+            static const std::vector<fp_type> thresh = {
+                -0.81145, -0.69867, -0.60693, -0.44784, -0.24571, -0.07543, 0.03971, 0.11567, 0.21468, 0.33126, 0.41632, 0.49156, 0.60294, 0.77467
+            };
+            */
+            //13 valori -> 14 mappe con K-means accuratezza <0.5 tempo_score = 3.1989 PICCO_RAM = 383MB
+            /*
+            static const std::vector<fp_type> thresh = {
+                -0.81145, -0.69867, -0.60693, -0.44784, -0.24571, -0.07543, 0.03971, 0.11567, 0.21468, 0.33295, 0.43259, 0.55169, 0.75161
+            };
+            */
+            // 12 valori -> 13 mappe con K-means accuratezza <0.5 tempo_score = 3.2002 PICCO_RAM = 371.2MB
+            /*
+            static const std::vector<fp_type> thresh = {
+                -0.78353, -0.62541, -0.45223, -0.24571, -0.07543, 0.03971, 0.11567, 0.21468, 0.33295, 0.43259, 0.55169, 0.75161
+            };
+            */
+            // 11 valori -> 12 mappe con K-Means accuratezza <0.8 tempo_score = 3.1798 PICCO_RAM = 360MB STOP
+            
+            static const std::vector<fp_type> thresh = {
+                -0.78353, -0.62541, -0.45223, -0.24569, -0.07442, 0.07171, 0.20985, 0.33288, 0.43259, 0.55169, 0.75161
+            };
+            
         return thresh;
         }
     

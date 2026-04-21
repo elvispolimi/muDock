@@ -41,9 +41,9 @@ std::vector<mudock::fp_type> generate_test_quantized_maps(const mudock::autodock
 
     for (int b = 0; b < num_bins; ++b) {
         mudock::fp_type charge_val;
-        if (b == 0) charge_val = thresh[0] - 0.5;
-        else if (static_cast<size_t>(b) >= thresh.size()) charge_val = thresh.back() + 0.5;
-        else charge_val = (thresh[b] + thresh[b-1]) / 2.0;
+        if (b == 0) charge_val = thresh[0] - 0.3f;
+        else if (static_cast<size_t>(b) >= thresh.size()) charge_val = thresh.back() + 0.3f;
+        else charge_val = (thresh[b] + thresh[b-1]) / 2.0f;
 
         for (int i = 0; i < map_flat_size; ++i) {
             quant_maps[b * map_flat_size + i] = electro_map[i] * charge_val + desolv_map[i] * std::fabs(charge_val);
