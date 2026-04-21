@@ -67,6 +67,7 @@ namespace mudock {
                                        atoms,
                                        max_bucket_size,
                                        mem_per_ligand,
+                                       q->honors_stage_bucket_policy(),
                                        [&]() {
                                          return scoring_t<queue_type>::get_batch_size(atoms,
                                                                                        q,
@@ -111,6 +112,7 @@ namespace mudock {
                                        atoms,
                                        max_bucket_size,
                                        mem_per_ligand,
+                                       q->honors_stage_bucket_policy(),
                                        [&]() {
                                          return genetic<queue_type, scoring_t>::get_batch_size(atoms,
                                                                                                 q,

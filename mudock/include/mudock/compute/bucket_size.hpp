@@ -15,6 +15,7 @@ namespace mudock {
                                        const int atoms,
                                        const size_t max_bucket_size,
                                        const size_t mem_per_ligand_bytes,
+                                       const bool honors_stage_bucket_policy,
                                        get_multiple_t&& get_default_multiple) {
 #ifdef MUDOCK_STAGE_BUCKET_OVERRIDE
     (void) get_default_multiple;
@@ -77,9 +78,15 @@ namespace mudock {
                  " MiB)");
   #else
   #if defined(MUDOCK_STAGE_BUCKET_POLICY_MAX_UTILIZATION)
-    bucket_size = std::max<int>(1, static_cast<int>(max_bucket_size));
-    effective_multiplier =
-        static_cast<double>(bucket_size) / static_cast<double>(base_multiple);
+    if (honors_stage_bucket_policy) {
+      bucket_size = std::max<int>(1, static_cast<int>(max_bucket_size));
+      effective_multiplier =
+          static_cast<double>(bucket_size) / static_cast<double>(base_multiple);
+    } else {
+      bucket_size = std::max<int>(1, std::min(base_multiple, static_cast<int>(max_bucket_size)));
+      effective_multiplier =
+          static_cast<double>(bucket_size) / static_cast<double>(base_multiple);
+    }
   #elif defined(MUDOCK_STAGE_BUCKET_POLICY_SM_ALIGNED)
     const int per_sm_multiple = std::max(1, base_multiple_info.active_blocks_per_sm);
     bucket_size = static_cast<int>((max_bucket_size / static_cast<size_t>(per_sm_multiple)) *
@@ -98,6 +105,12 @@ namespace mudock {
 
     const size_t estimated_mem_bytes = static_cast<size_t>(bucket_size) * mem_per_ligand_bytes;
     const double estimated_mem_mib   = static_cast<double>(estimated_mem_bytes) / (1024.0 * 1024.0);
+    const char* alignment_label = "device-aligned";
+  #if defined(MUDOCK_STAGE_BUCKET_POLICY_MAX_UTILIZATION)
+    alignment_label = honors_stage_bucket_policy ? "max-utilization" : "device-aligned fallback";
+  #elif defined(MUDOCK_STAGE_BUCKET_POLICY_SM_ALIGNED)
+    alignment_label = "sm-aligned";
+  #endif
     mudock::stage_bucket_trace(stage_name,
                  " stage bucket for ",
                  atoms,
@@ -108,13 +121,9 @@ namespace mudock {
                  ", num_sms=",
                  base_multiple_info.num_sms,
                  ")",
-  #if defined(MUDOCK_STAGE_BUCKET_POLICY_MAX_UTILIZATION)
-                 ", max-utilization multiplier ",
-  #elif defined(MUDOCK_STAGE_BUCKET_POLICY_SM_ALIGNED)
-                 ", sm-aligned multiplier ",
-  #else
-                 ", device-aligned multiplier ",
-  #endif
+                 ", ",
+                 alignment_label,
+                 " multiplier ",
                  effective_multiplier,
                  ", max bucket size ",
                  max_bucket_size,
