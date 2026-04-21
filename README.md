@@ -118,6 +118,14 @@ For example:
 - `CUDA:GPU:0`
 - `SYCL:GPU:0-1:2:1000000000`
 
+For the TBB stream frontend, the most useful extra runtime flags are:
+
+- `--tokens` — maximum number of in-flight TBB tokens
+- `--bytes_per_token` — chunk size used by the stream reader
+- `--queue_size` — bounded queue size between parsing and screening
+- `--observer` — print periodic throughput and backlog information
+- `--time_limit_sec` — stop admitting new work after a time limit and drain what is already in flight
+
 Converter:
 
 ```bash
@@ -132,7 +140,7 @@ Supported formats (by file extension):
 
 Note on ligand parsing: `adtmol2` and `mol2` now use muDock's native parser and can be split and parsed in parallel. `adtmol2` still carries extra AutoDock-specific fields, while plain `mol2` remains a generic interchange format.
 
-`mol2` writing is also available natively. The TBB stream frontend and the MPI frontend still assume `adtmol2` input.
+`mol2` writing is also available natively. The TBB stream frontend and the MPI frontend accept both `adtmol2` and `mol2` streams.
 
 ## Tests
 
