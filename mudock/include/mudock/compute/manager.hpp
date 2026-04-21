@@ -68,7 +68,8 @@ namespace mudock {
                                 threadpool& pool,
                                 std::shared_ptr<safe_queue<static_molecule>>& input_molecules,
                                 std::shared_ptr<safe_queue<static_molecule>>& output_molecules,
-                                pipeline_t& pipe) {
+                                pipeline_t& pipe,
+                                std::atomic<std::size_t>* in_flight_ligands = nullptr) {
     auto device_scratch = std::make_shared<scratchpad<queue_type>>(knobs, 0, device_type::CPU);
     auto q_b            = device_scratch->get_queue();
     std::function<int(const int)> get_size = [q_b, &knobs](const int x) {
@@ -82,7 +83,8 @@ namespace mudock {
           worker(input_molecules,
                  output_molecules,
                  rob,
-                 pipe.template get_pipeline<queue_type>(knobs, id, device_type::CPU, device_scratch)));
+                 pipe.template get_pipeline<queue_type>(knobs, id, device_type::CPU, device_scratch),
+                 in_flight_ligands));
     }
   };
 
@@ -93,7 +95,8 @@ namespace mudock {
                                 threadpool& pool,
                                 std::shared_ptr<safe_queue<static_molecule>>& input_molecules,
                                 std::shared_ptr<safe_queue<static_molecule>>& output_molecules,
-                                pipeline_t& pipe) {
+                                pipeline_t& pipe,
+                                std::atomic<std::size_t>* in_flight_ligands = nullptr) {
     const std::size_t workers_per_device =
         parse_positive_size_field(parts, 3, "workers_per_device", static_cast<std::size_t>(2));
     const std::size_t mem_per_device =
@@ -118,7 +121,8 @@ namespace mudock {
             worker(input_molecules,
                    output_molecules,
                    rob,
-                   pipe.template get_pipeline<queue_type>(knobs, id, device_type::GPU, device_scratch)));
+                   pipe.template get_pipeline<queue_type>(knobs, id, device_type::GPU, device_scratch),
+                   in_flight_ligands));
       }
     }
   };
@@ -130,7 +134,8 @@ namespace mudock {
                const knobs knobs,
                std::shared_ptr<safe_queue<static_molecule>>& input_molecules,
                std::shared_ptr<safe_queue<static_molecule>>& output_molecules,
-               pipeline_t& pipe) {
+               pipeline_t& pipe,
+               std::atomic<std::size_t>* in_flight_ligands = nullptr) {
     for (auto& configuration: configurations) {
       const auto parts = parse_worker_configuration(configuration);
       auto dev_t  = get_device_type(parts[1]);
@@ -141,7 +146,8 @@ namespace mudock {
             constexpr auto kernel_type = cpu_kernel_type[kernel];
             if (kernel_type == impl_t) {
               using k_t = typename kernel_type_traits<kernel_type>::type;
-              launch_worker_cpu<k_t, pipeline_t>(knobs, parts, pool, input_molecules, output_molecules, pipe);
+              launch_worker_cpu<k_t, pipeline_t>(
+                  knobs, parts, pool, input_molecules, output_molecules, pipe, in_flight_ligands);
             }
           });
           break;
@@ -151,7 +157,8 @@ namespace mudock {
             constexpr auto kernel_type = gpu_kernel_type[kernel];
             if (kernel_type == impl_t) {
               using k_t = typename kernel_type_traits<kernel_type>::type;
-              launch_worker_gpu<k_t, pipeline_t>(knobs, parts, pool, input_molecules, output_molecules, pipe);
+              launch_worker_gpu<k_t, pipeline_t>(
+                  knobs, parts, pool, input_molecules, output_molecules, pipe, in_flight_ligands);
             }
           });
           break;

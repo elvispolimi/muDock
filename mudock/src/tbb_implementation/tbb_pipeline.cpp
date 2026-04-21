@@ -39,6 +39,7 @@ namespace mudock {
         output_queue->initialize(knobs.max_tbb_queue_size);
         std::atomic<std::size_t> skipped_ligands{0};
         std::atomic<std::size_t> dropped_by_timeout{0};
+        std::atomic<std::size_t> in_flight_ligands{0};
         std::atomic<bool> timeout_triggered{false};
         std::atomic<bool> stop_requested{false};
         const auto start = std::chrono::high_resolution_clock::now();
@@ -71,6 +72,7 @@ namespace mudock {
                 const auto now                  = std::chrono::high_resolution_clock::now();
                 const std::size_t now_processed = output_queue->get_global_counter();
                 const std::size_t in_backlog    = input_queue->size();
+                const std::size_t in_flight     = in_flight_ligands.load(std::memory_order_relaxed);
 
                 const std::chrono::duration<double> dt = now - prev_time;
                 const std::size_t delta_processed      = now_processed - prev_processed;
@@ -84,6 +86,8 @@ namespace mudock {
                      now_processed,
                      ", input_backlog=",
                      in_backlog,
+                     ", in_flight=",
+                     in_flight,
                      ", inst_throughput=",
                      inst_throughput,
                      " ligands/s, avg_throughput=",
@@ -118,21 +122,20 @@ namespace mudock {
 
             stop_requested.store(true, std::memory_order_relaxed);
             input_queue->send_terminate_signal();
-            observer.stop();
-            timer.cancel();
-
             pool.wait();
             output_queue->send_terminate_signal();
 
             if (writer.joinable()) {
                 writer.join();
             }
+            observer.stop();
             observer.join();
+            timer.cancel();
             timer.join();
         };
 
         try {
-            manager(configurations, pool, knobs, input_queue, output_queue, pipeline);
+            manager(configurations, pool, knobs, input_queue, output_queue, pipeline, &in_flight_ligands);
             info("Manager done: workers created");
 
             oneapi::tbb::parallel_pipeline(
