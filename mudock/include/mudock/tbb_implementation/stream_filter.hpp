@@ -1,7 +1,6 @@
 #pragma once
 
 #include <atomic>
-#include <deque>
 #include <istream>
 #include <limits>
 #include <mudock/format/supported_format.hpp>
@@ -17,7 +16,6 @@ namespace mudock {
     const std::size_t max_bytes_per_token_;
     mutable std::string buffered_text_;
     mutable type_of_format<format> format_splitter_;
-    mutable std::deque<std::string> ready_tokens_;
     mutable bool flushed_ = false;
     std::atomic<bool>* stop_requested;
 

@@ -108,7 +108,7 @@ namespace mudock {
     // this method attempt to insert an element in the queue. In case of success the queue owns the element and the user is not
     // allowed to dereference the pointer. If the operation fails, i.e. the termination signal is set, the owner
     // of the data is still the caller
-    void enqueue(value_ptr_type &input_data) {
+    bool enqueue(value_ptr_type &input_data) {
       // try to enqueue the element (if there is enough space)
       std::unique_lock<std::mutex> lock(queue_mutex);
       while (!signal_terminate && (buffer.size() >= max_buffer_size)) { // spourious events might happens!
@@ -117,13 +117,14 @@ namespace mudock {
 
       // if the terminate signal is set, do not enqueue the element
       if (signal_terminate) {
-        return;
+        return false;
       }
 
       // otherwise, store the data in the back of the container
       buffer.emplace_front(std::move(input_data));
       outwork_available.notify_one();
       global_counter += 1;
+      return true;
     }
   };
 } // namespace mudock
