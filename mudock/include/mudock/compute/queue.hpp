@@ -32,6 +32,8 @@ namespace mudock {
 
     virtual bool obj_required() = 0;
 
+    virtual bool honors_stage_bucket_policy() const = 0;
+
     virtual void synchronize() = 0;
 
     int get_id() { return id; };
