@@ -5,7 +5,20 @@
 
 namespace mudock::detail {
 
+  periodic_observer::~periodic_observer() {
+    stop();
+    join();
+  }
+
   void periodic_observer::start(std::optional<double> period_sec, std::function<void()> callback) {
+    stop();
+    join();
+
+    {
+      std::lock_guard<std::mutex> lock(mutex_);
+      stop_requested_ = false;
+    }
+
     if (!period_sec || *period_sec <= 0.0) {
       return;
     }
@@ -38,7 +51,20 @@ namespace mudock::detail {
     }
   }
 
+  deadline_timer::~deadline_timer() {
+    cancel();
+    join();
+  }
+
   void deadline_timer::start(std::optional<double> time_limit_sec, std::function<void()> callback) {
+    cancel();
+    join();
+
+    {
+      std::lock_guard<std::mutex> lock(mutex_);
+      cancelled_ = false;
+    }
+
     if (!time_limit_sec || *time_limit_sec <= 0.0) {
       return;
     }
