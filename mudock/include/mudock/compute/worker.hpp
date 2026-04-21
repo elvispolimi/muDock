@@ -24,8 +24,13 @@ namespace mudock {
 
     // this is the functor tha actually implement the virtual screening
     stage_t pipeline;
+    std::atomic<std::size_t>* in_flight_ligands = nullptr;
 
     void process(batch<static_molecule>& b) {
+      if (in_flight_ligands != nullptr) {
+        in_flight_ligands->fetch_add(b.num_ligands, std::memory_order_relaxed);
+      }
+
       try {
         pipeline.prepare(b);
         pipeline();
@@ -35,6 +40,10 @@ namespace mudock {
       for (auto& batch_ligand: std::span(b.molecules.data(), b.num_ligands)) {
         output_stack->enqueue(batch_ligand);
       }
+
+      if (in_flight_ligands != nullptr) {
+        in_flight_ligands->fetch_sub(b.num_ligands, std::memory_order_relaxed);
+      }
     }
 
   public:
@@ -42,11 +51,13 @@ namespace mudock {
            std::shared_ptr<safe_queue<static_molecule>>& output_molecules,
            std::shared_ptr<reorder_buffer<static_molecule>> rb,
            // const std::size_t cpu_id,
-           stage_t&& _pipeline)
+           stage_t&& _pipeline,
+           std::atomic<std::size_t>* active_ligands = nullptr)
         : input_stack(input_molecules),
           output_stack(output_molecules),
           rob(rb),
-          pipeline(std::move(_pipeline)) {}
+          pipeline(std::move(_pipeline)),
+          in_flight_ligands(active_ligands) {}
 
     void main() {
       // process the input ligands

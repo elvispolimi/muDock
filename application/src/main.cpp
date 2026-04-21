@@ -84,6 +84,7 @@ int main(int argc, char* argv[]) {
   output_queue->initialize(input_queue->size());
   const auto start  = std::chrono::high_resolution_clock::now();
   std::atomic<std::size_t> dropped_by_timeout{0};
+  std::atomic<std::size_t> in_flight_ligands{0};
   std::atomic<bool> timeout_triggered{false};
   {
     std::size_t prev_processed = output_queue->size();
@@ -95,6 +96,7 @@ int main(int argc, char* argv[]) {
         const auto now                  = std::chrono::high_resolution_clock::now();
         const std::size_t now_processed = output_queue->size();
         const std::size_t in_backlog    = input_queue->size();
+        const std::size_t in_flight     = in_flight_ligands.load(std::memory_order_relaxed);
 
         const std::chrono::duration<double> dt = now - prev_time;
         const std::size_t delta_processed      = now_processed - prev_processed;
@@ -108,6 +110,8 @@ int main(int argc, char* argv[]) {
                      now_processed,
                      ", input_backlog=",
                      in_backlog,
+                     ", in_flight=",
+                     in_flight,
                      ", inst_throughput=",
                      inst_throughput,
                      " ligands/s, avg_throughput=",
@@ -133,7 +137,7 @@ int main(int argc, char* argv[]) {
 
     {
       auto threadpool = mudock::threadpool();
-      mudock::manager(args.device_confs, threadpool, args.knobs, input_queue, output_queue, pipe);
+      mudock::manager(args.device_confs, threadpool, args.knobs, input_queue, output_queue, pipe, &in_flight_ligands);
       mudock::info("All workers have been created!");
     } // threadpool destructor waits for workers; computation is complete here
 
