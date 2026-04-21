@@ -23,8 +23,8 @@ namespace mudock {
 
       try {
         auto ligand = std::make_unique<static_molecule>(mudock::parser<format, static_molecule>(mol));
-        input_queue->enqueue(ligand);
-        if (ligand) {
+        const bool enqueued = input_queue->enqueue(ligand);
+        if (!enqueued) {
           return;
         }
       } catch (const std::exception&) {
