@@ -72,7 +72,7 @@ target_link_libraries(
   Boost::context
   pthread
   m
-  stdc++)  
+  stdc++)
 
 if(MUDOCK_ENABLE_SYCL)
   target_link_libraries("${CMAKE_PROJECT_NAME}" Boost::fiber)
