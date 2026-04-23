@@ -165,19 +165,11 @@ namespace mudock {
     }
 
   private:
-    scoring_t<queue_t> score_stage;
-    geometric<queue_t> geom_trans;
     std::unique_ptr<genetic_kernel<queue_t>> kernel;
-
-    int batch_ligands;
-    int num_generations;
-    buffer_vector<chromosome, queue_t> next_population;
-    buffer_vector<chromosome, queue_t> best_chromosomes;
-    buffer_vector<fp_type, queue_t> best_scores;
-
+    
     void teardown_impl(batch<static_molecule>& batch) {
       assert(batch.num_ligands == batch_ligands && "Genetic algorithm received different batch for teardown");
-
+  
       // TODO check if the copy can be changed with a swap
       // auto& population_b = (*this->scratch).template get<buffer_data_type::CHROMOSOMES>();
       // population_b.copy_device2device(best_chromosomes);
@@ -185,15 +177,26 @@ namespace mudock {
       // score_stage();
       // geom_trans.teardown(batch);
       // score_stage.teardown(batch);
-
+  
       best_scores.copy_device2host();
       (*this->scratch).get_queue()->synchronize();
-
+  
       for (int index{0}; index < batch_ligands; ++index) {
         auto& ligand = *batch.molecules[index];
         ligand.properties.assign(property_type::SCORE, std::to_string(best_scores()[index]));
       }
     }
+    
+  protected:
+    scoring_t<queue_t> score_stage;
+    geometric<queue_t> geom_trans;
+
+    int batch_ligands;
+    int num_generations;
+    buffer_vector<chromosome, queue_t> next_population;
+    buffer_vector<chromosome, queue_t> best_chromosomes;
+    buffer_vector<fp_type, queue_t> best_scores;
+
   }; // namespace mudock
 #endif
 } // namespace mudock
