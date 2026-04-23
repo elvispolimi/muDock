@@ -573,7 +573,6 @@ endif()
 
 if(MUDOCK_ENABLE_ALPAKA)
   target_compile_definitions(libmudock PUBLIC MUDOCK_USE_ALPAKA)
-<<<<<<< HEAD
   if(MUDOCK_ALPAKA_BACKEND STREQUAL "serial")
     target_compile_definitions(libmudock PUBLIC MUDOCK_ALPAKA_BACKEND_SERIAL)
   elseif(MUDOCK_ALPAKA_BACKEND STREQUAL "threads")
@@ -589,8 +588,6 @@ if(MUDOCK_ENABLE_ALPAKA)
   elseif(MUDOCK_ALPAKA_BACKEND STREQUAL "sycl")
     target_compile_definitions(libmudock PUBLIC MUDOCK_ALPAKA_BACKEND_SYCL)
   endif()
-=======
->>>>>>> aa534a65 (Added first alpaka integration (and dependency))
   target_link_libraries(libmudock PUBLIC alpaka::alpaka)
 endif()
 

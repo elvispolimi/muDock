@@ -62,7 +62,7 @@ function(add_alpaka_application_executable target)
   target_include_directories("${target}" PRIVATE "${header_path}")
   mudock_set_application_target_properties("${target}")
   if(NOT MUDOCK_ENABLE_OMP)
-    target_compile_options("${target}" PRIVATE "$<$<COMPILE_LANGUAGE:CXX>:-Wno-unknown-pragmas>")
+    target_compile_options("${target}" PRIVATE -Wno-unknown-pragmas)
   endif()
 endfunction()
 
