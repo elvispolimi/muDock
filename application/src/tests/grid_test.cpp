@@ -19,6 +19,15 @@
 #include <tests/autogrid.hpp>
 #include <utility>
 
+#ifndef MUDOCK_CTEST_SKIP_RETURN_CODE
+#  error "MUDOCK_CTEST_SKIP_RETURN_CODE must be defined by CMake."
+#endif
+
+namespace {
+// CTest treats this exit code as "skipped" when the grid test is not applicable.
+constexpr int ctest_skip_return_code = MUDOCK_CTEST_SKIP_RETURN_CODE;
+}
+
 template<class T>
 inline T round3dp(const T x) {
   return ((std::floor((x) *T{1000.0} + T{0.5})) / T{1000.0});
@@ -84,7 +93,7 @@ int main(int argc, char* argv[]) {
     mudock::info(std::format("Succesfully verified grid maps in {}", fld_path.string()));
   } else {
     mudock::info("Grid test requires mudock::fp_type to be double");
-    return EXIT_FAILURE;
+    return ctest_skip_return_code;
   }
   return EXIT_SUCCESS;
 }

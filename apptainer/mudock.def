@@ -1,0 +1,44 @@
+Bootstrap: docker
+From: ubuntu:24.04
+
+%labels
+    Author muDock contributors
+    Description CPU-focused development and deployment environment for muDock
+
+%environment
+    export LANG=C.UTF-8
+    export LC_ALL=C.UTF-8
+
+%post
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update
+    apt-get install -y --no-install-recommends \
+        build-essential \
+        cmake \
+        git \
+        libboost-all-dev \
+        libopenbabel-dev \
+        libtbb-dev \
+        ninja-build \
+        openbabel \
+        pkg-config \
+        python3 \
+        ripgrep
+    apt-get clean
+    rm -rf /var/lib/apt/lists/*
+
+%runscript
+    exec /bin/bash "$@"
+
+%help
+    Build the image with:
+      apptainer build mudock-dev.sif apptainer/mudock.def
+
+    Then enter the container with the repository bound in:
+      apptainer shell --bind "$PWD":/workspace mudock-dev.sif
+
+    Inside the container:
+      cd /workspace
+      cmake --preset dev-cpu-debug
+      cmake --build --preset dev-cpu-debug --parallel
+      ctest --preset dev-cpu-debug

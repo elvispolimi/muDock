@@ -432,6 +432,8 @@ endif()
 # ### Testing
 # ##############################################################################
 option(MUDOCK_ENABLE_TEST "Enabel muDock tests" OFF)
+# Exit code reported by test binaries when CTest should mark them as skipped.
+set(MUDOCK_CTEST_SKIP_RETURN_CODE 77)
 if(MUDOCK_ENABLE_TEST)
   if(CMAKE_BUILD_TYPE STREQUAL "Release")
     message(
@@ -469,7 +471,10 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # ##############################################################################
 
 # Third-party libraries that must be manually installed
-find_package(Boost CONFIG REQUIRED COMPONENTS program_options graph fiber)
+find_package(Boost QUIET CONFIG COMPONENTS program_options graph fiber)
+if(NOT Boost_FOUND)
+  find_package(Boost REQUIRED COMPONENTS program_options graph fiber)
+endif()
 find_package(OpenBabel3 REQUIRED)
 set(CMAKE_ENABLE_EXPORTS ON)
 

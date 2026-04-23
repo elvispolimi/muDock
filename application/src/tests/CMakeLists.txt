@@ -2,6 +2,8 @@ add_executable_mudock(test_grid
                       "${CMAKE_CURRENT_SOURCE_DIR}/grid_test.cpp")
 target_include_directories(test_grid
                             PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/..")
+target_compile_definitions(
+  test_grid PRIVATE MUDOCK_CTEST_SKIP_RETURN_CODE=${MUDOCK_CTEST_SKIP_RETURN_CODE})
 set_target_properties(
   test_grid
   PROPERTIES CXX_STANDARD 20

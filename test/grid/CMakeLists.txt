@@ -15,6 +15,8 @@ function(add_tests dir)
                COMMAND test_grid --pdbqt ${subdir}/${subdir_name}_pocket.pdbqt
                        --autogrid ${subdir}/${subdir_name}_pocket.maps.fld
       )# You can customize this
+      set_tests_properties(test_grid_${subdir_name}
+                           PROPERTIES SKIP_RETURN_CODE ${MUDOCK_CTEST_SKIP_RETURN_CODE})
     endif()
   endforeach()
 endfunction()
