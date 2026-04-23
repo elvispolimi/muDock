@@ -64,8 +64,19 @@ target_link_libraries(
   m
   stdc++)
 
+# add the dependencies
+target_link_libraries(
+  ${CMAKE_PROJECT_NAME}_tbb
+  libmudock
+  Boost::program_options
+  Boost::context
+  pthread
+  m
+  stdc++)  
+
 if(MUDOCK_ENABLE_SYCL)
   target_link_libraries("${CMAKE_PROJECT_NAME}" Boost::fiber)
+  target_link_libraries("${CMAKE_PROJECT_NAME}_tbb" Boost::fiber)
 endif()
 
 if(MUDOCK_ENABLE_GH)
