@@ -1,0 +1,72 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 25,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "base-cpu-debug",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "MUDOCK_ENABLE_TEST": "ON",
+        "MUDOCK_ENABLE_MPI": "OFF",
+        "MUDOCK_ENABLE_OMP": "OFF",
+        "MUDOCK_ENABLE_OMP_OFFLOAD": "OFF",
+        "MUDOCK_ENABLE_GH": "OFF",
+        "MUDOCK_ENABLE_XSIMD": "OFF",
+        "MUDOCK_ENABLE_CUDA": "OFF",
+        "MUDOCK_ENABLE_HIP": "OFF",
+        "MUDOCK_ENABLE_SYCL": "OFF",
+        "MUDOCK_CPU_ARCHITECTURES": "x86-64",
+        "MUDOCK_CPU_TUNE": "generic"
+      }
+    },
+    {
+      "name": "ci-cpu-debug",
+      "inherits": "base-cpu-debug",
+      "displayName": "CI CPU Debug",
+      "description": "Portable CPU-only Debug build with tests enabled for CI."
+    },
+    {
+      "name": "dev-cpu-debug",
+      "inherits": "base-cpu-debug",
+      "displayName": "Developer CPU Debug",
+      "description": "CPU-only Debug build with tests enabled for local development."
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "ci-cpu-debug",
+      "configurePreset": "ci-cpu-debug"
+    },
+    {
+      "name": "dev-cpu-debug",
+      "configurePreset": "dev-cpu-debug"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "ci-cpu-debug",
+      "configurePreset": "ci-cpu-debug",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": false
+      }
+    },
+    {
+      "name": "dev-cpu-debug",
+      "configurePreset": "dev-cpu-debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    }
+  ]
+}

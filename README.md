@@ -27,6 +27,9 @@ Required:
 - oneTBB
 - OpenBabel3
 
+Required when using the bundled CMake presets:
+- Ninja
+
 Optional (enabled via build flags):
 - MPI
 - OpenMP (CPU parallelism)
@@ -46,6 +49,16 @@ Basic build:
 cmake -S /path/to/muDock -B /path/to/muDock/build -DCMAKE_INSTALL_PREFIX=/install/path
 cmake --build /path/to/muDock/build
 ```
+
+Convenience presets for CPU-only development and CI are also provided:
+
+```bash
+cmake --preset dev-cpu-debug
+cmake --build --preset dev-cpu-debug
+ctest --preset dev-cpu-debug
+```
+
+These presets set `"generator": "Ninja"` in `CMakePresets.json`, so install Ninja before using them. If you prefer another generator, use the manual `cmake -S ... -B ...` flow above instead.
 
 Most useful configuration options:
 
@@ -130,6 +143,70 @@ cmake -S /path/to/muDock -B /path/to/muDock/build -DMUDOCK_ENABLE_TEST=ON -DCMAK
 cmake --build /path/to/muDock/build
 ctest --test-dir /path/to/muDock/build
 ```
+
+The repository also ships CMake presets tailored for CPU-only testing:
+
+- `dev-cpu-debug` for local development
+- `ci-cpu-debug` for automation and reproducible CI runs
+
+## CI
+
+GitHub Actions CPU CI is configured in `.github/workflows/cpu-ci.yml`.
+
+- Triggered on every `push` and `pull_request` (plus manual `workflow_dispatch`)
+- Installs the required CPU-side dependencies on `ubuntu-24.04`
+- Configures with the `ci-cpu-debug` preset
+- Builds the project and runs `ctest --preset ci-cpu-debug`
+
+The workflow intentionally uses a `Debug` build because muDock rejects `MUDOCK_ENABLE_TEST=ON` in `Release`.
+
+## Devcontainer
+
+A VS Code Dev Containers setup is provided in `.devcontainer/`.
+
+To use it:
+
+1. Open the repository in VS Code.
+2. Run `Dev Containers: Reopen in Container`.
+3. After the container is created, the project is configured automatically with `cmake --preset dev-cpu-debug`.
+
+Common commands inside the devcontainer:
+
+```bash
+cmake --build --preset dev-cpu-debug
+ctest --preset dev-cpu-debug
+```
+
+The devcontainer installs the same core CPU dependencies used by CI, plus common development tools such as `clangd`, `clang-format`, `gdb`, and `ripgrep`.
+
+## Apptainer / Singularity
+
+An Apptainer recipe is provided at `apptainer/mudock.def` for reproducible CPU-focused environments.
+
+Build the image:
+
+```bash
+apptainer build mudock-dev.sif apptainer/mudock.def
+```
+
+If your system requires it, use `--fakeroot` or your site-specific Apptainer build flow instead.
+
+Run an interactive shell with the repository mounted:
+
+```bash
+apptainer shell --bind "$PWD":/workspace mudock-dev.sif
+cd /workspace
+cmake --preset dev-cpu-debug
+cmake --build --preset dev-cpu-debug
+ctest --preset dev-cpu-debug
+```
+
+## Troubleshooting
+
+- If CMake cannot find Boost through `BoostConfig.cmake`, muDock now falls back to CMake's standard `FindBoost` module automatically.
+- If `ctest` reports no tests, confirm you configured with `MUDOCK_ENABLE_TEST=ON` or used the provided CPU debug presets.
+- If OpenBabel is found at configure time but fails at runtime, verify that the runtime package is installed in addition to the development headers.
+- If Apptainer image builds are blocked by permissions, retry with `apptainer build --fakeroot ...` or follow your cluster's container policy.
 
 ## References
 
