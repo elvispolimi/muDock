@@ -14,8 +14,7 @@ list(APPEND source_files "${header_path}/command_line_args.cpp" "${source_path}/
 # ### Declare the compile step
 # ##############################################################################
 
-function(mudock_configure_application_target target include_dir)
-  target_include_directories("${target}" PRIVATE "${include_dir}")
+function(mudock_set_application_target_properties target)
   set_target_properties(
     "${target}"
     PROPERTIES CXX_STANDARD 20
@@ -41,6 +40,29 @@ endfunction()
 
 function(mudock_link_application_target target)
   target_link_libraries("${target}" PRIVATE libmudock Boost::program_options)
+
+  if(CMAKE_CUDA_COMPILER)
+    set_target_properties(
+      "${target}"
+      PROPERTIES CUDA_STANDARD 20
+                 CUDA_STANDARD_REQUIRED ON
+                 CUDA_EXTENSIONS OFF)
+  endif()
+endfunction()
+
+function(add_alpaka_application_executable target)
+  if(TARGET alpaka::alpaka
+     AND (MUDOCK_ALPAKA_BACKEND STREQUAL "cuda"
+          OR MUDOCK_ALPAKA_BACKEND STREQUAL "hip"))
+    alpaka_add_executable("${target}" ${ARGN})
+  else()
+    add_executable_mudock("${target}" ${ARGN})
+  endif()
+  target_include_directories("${target}" PRIVATE "${header_path}")
+  mudock_set_application_target_properties("${target}")
+  if(NOT MUDOCK_ENABLE_OMP)
+    target_compile_options("${target}" PRIVATE -Wno-unknown-pragmas)
+  endif()
 endfunction()
 
 # declare the application executable
@@ -53,18 +75,15 @@ if(MUDOCK_ENABLE_MPI)
 endif()
 
 if(MUDOCK_ENABLE_ALPAKA)
-  add_executable_mudock(test_alpaka_smoke
-                        "${CMAKE_CURRENT_SOURCE_DIR}/src/alpaka_smoke_test.cpp")
-  target_include_directories(test_alpaka_smoke PRIVATE "${header_path}")
-  set_target_properties(
+  add_alpaka_application_executable(
     test_alpaka_smoke
-    PROPERTIES CXX_STANDARD 20
-               CXX_STANDARD_REQUIRED ON
-               CXX_EXTENSIONS OFF)
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/alpaka_smoke_test.cpp")
   target_link_libraries(test_alpaka_smoke libmudock)
-  if(NOT MUDOCK_ENABLE_OMP)
-    target_compile_options(test_alpaka_smoke PRIVATE -Wno-unknown-pragmas)
-  endif()
+
+  add_alpaka_application_executable(
+    test_alpaka_dot_product
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/alpaka_dot_product_test.cpp")
+  target_link_libraries(test_alpaka_dot_product PRIVATE libmudock alpaka::alpaka)
 endif()
 
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/src/bench" bench)
