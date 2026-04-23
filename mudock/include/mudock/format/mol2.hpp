@@ -134,7 +134,7 @@ namespace mudock {
               << bond.dest + 1 << " " << std::setw(2) << detail::print_mol2_bond_type(bond.type) << std::endl;
       }
       out_s << std::endl;
-    };
+    }
 
     template<class molecule_type>
       requires is_molecule<molecule_type>
