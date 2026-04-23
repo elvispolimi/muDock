@@ -236,11 +236,22 @@ if(MUDOCK_ENABLE_SYCL)
 endif()
 
 if(MUDOCK_ENABLE_ALPAKA)
+  set(alpaka_dot_product_source
+      "${source_path}/alpaka_implementation/alpaka_dot_product.cpp")
+  set(alpaka_reduction_source
+      "${source_path}/alpaka_implementation/alpaka_reduction.cpp")
   list(
     APPEND
     header_files
     "${header_path}/${header_prefix}/alpaka_implementation/alpaka_implementation.hpp"
+    "${header_path}/${header_prefix}/alpaka_implementation/alpaka_dot_product.hpp"
     "${header_path}/${header_prefix}/alpaka_implementation/queue_alpaka.hpp"
+  )
+  list(
+    APPEND
+    source_files
+    "${alpaka_dot_product_source}"
+    "${alpaka_reduction_source}"
   )
 endif()
 
@@ -279,6 +290,15 @@ endif()
 find_package(TBB REQUIRED)
 add_library(libmudock STATIC ${source_files} ${header_files})
 add_library(mudock::libmudock ALIAS libmudock)
+if(MUDOCK_ENABLE_ALPAKA)
+  if(MUDOCK_ALPAKA_BACKEND STREQUAL "cuda" AND CMAKE_CUDA_COMPILER)
+    set_source_files_properties("${alpaka_dot_product_source}" PROPERTIES LANGUAGE CUDA)
+    set_source_files_properties("${alpaka_reduction_source}" PROPERTIES LANGUAGE CUDA)
+  elseif(MUDOCK_ALPAKA_BACKEND STREQUAL "hip" AND CMAKE_HIP_COMPILER)
+    set_source_files_properties("${alpaka_dot_product_source}" PROPERTIES LANGUAGE HIP)
+    set_source_files_properties("${alpaka_reduction_source}" PROPERTIES LANGUAGE HIP)
+  endif()
+endif()
 set_target_properties(libmudock PROPERTIES PUBLIC_HEADER "${headers}")
 target_include_directories(libmudock PUBLIC "${header_path}")
 target_include_directories(libmudock SYSTEM PUBLIC ${OpenBabel3_INCLUDE_DIRS})
@@ -289,7 +309,22 @@ set_target_properties(
              CXX_STANDARD_REQUIRED ON
              CXX_EXTENSIONS OFF
              POSITION_INDEPENDENT_CODE ON)
-target_link_libraries(libmudock PUBLIC Boost::graph ${OpenBabel3_LIBRARIES} TBB::tbb)
+if(CMAKE_CUDA_COMPILER)
+  set_target_properties(
+    libmudock
+    PROPERTIES CUDA_STANDARD 20
+               CUDA_STANDARD_REQUIRED ON
+               CUDA_EXTENSIONS OFF)
+endif()
+if(CMAKE_HIP_COMPILER)
+  set_target_properties(
+    libmudock
+    PROPERTIES HIP_STANDARD 20
+               HIP_STANDARD_REQUIRED ON)
+endif()
+target_link_libraries(libmudock PUBLIC Boost::graph
+                                       ${OpenBabel3_LIBRARIES} TBB::tbb)
+target_include_directories(libmudock SYSTEM PRIVATE ${Boost_INCLUDE_DIR})
 if(NOT MUDOCK_ENABLE_OMP)
   target_compile_options(libmudock PRIVATE -Wno-unknown-pragmas)
 endif()
