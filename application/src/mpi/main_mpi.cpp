@@ -31,9 +31,9 @@ int main(int argc, char** argv) {
   }
 
   const auto in_format = mudock::parse_supported_format(args.ligand_path);
-  if (in_format != mudock::supported_format::ADTMOL2 && in_format != mudock::supported_format::MOL2) {
+  if (in_format != mudock::supported_format::ADTMOL2) {
     if (rank == 0) {
-      mudock::error("MPI implementation currently supports only ADTMOL2 and MOL2 input formats.");
+      mudock::error("MPI implementation currently supports only ADTMOL2 input format.");
     }
     MPI_Abort(MPI_COMM_WORLD, 3);
   }
@@ -47,7 +47,7 @@ int main(int argc, char** argv) {
   constexpr_switch<0, mudock::get_num_supported_format(), 1>(
       [&](const auto format_index) {
         constexpr auto format = static_cast<mudock::supported_format>(format_index());
-        if constexpr (format == mudock::supported_format::ADTMOL2 || format == mudock::supported_format::MOL2) {
+        if constexpr (format == mudock::supported_format::ADTMOL2) {
           range = mudock::distribute_aligned_ranges<format>(args.ligand_path, rank, nranks);
         }
       },
