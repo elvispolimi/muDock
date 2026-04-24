@@ -8,15 +8,7 @@ list(APPEND header_files "${header_path}/command_line_args.hpp")
 
 # sources
 set(source_path "${CMAKE_CURRENT_SOURCE_DIR}/src")
-list(APPEND source_files "${header_path}/command_line_args.cpp"
-     "${source_path}/tbb/tbb_stream_entry.cpp"
-     "${source_path}/main.cpp")
-
-# TBB source
-set(tbb_source_files
-    "${header_path}/command_line_args.cpp"
-    "${source_path}/tbb/tbb_stream_entry.cpp"
-    "${source_path}/tbb/main_tbb_stream.cpp")  
+list(APPEND source_files "${header_path}/command_line_args.cpp" "${source_path}/main.cpp")
 
 # ##############################################################################
 # ### Declare the compile step
@@ -56,18 +48,13 @@ add_executable_mudock("${CMAKE_PROJECT_NAME}" "${header_files}"
                       "${source_files}")
 mudock_configure_application_target("${CMAKE_PROJECT_NAME}" "${header_path}")
 mudock_link_application_target("${CMAKE_PROJECT_NAME}")
-
-# TBB executable
-add_executable_mudock("${CMAKE_PROJECT_NAME}_tbb" "${header_files}" "${tbb_source_files}")
-mudock_configure_application_target("${CMAKE_PROJECT_NAME}_tbb" "${header_path}")
-mudock_link_application_target("${CMAKE_PROJECT_NAME}_tbb")
+if(MUDOCK_ENABLE_MPI)
+  target_link_libraries("${CMAKE_PROJECT_NAME}" PRIVATE MPI::MPI_CXX)
+endif()
 
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/src/bench" bench)
 if(MUDOCK_ENABLE_TEST)
   add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/src/tests" tests)
-endif()
-if(MUDOCK_ENABLE_MPI)
-  add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/src/mpi" mpi)
 endif()
 
 # if(MUDOCK_ENABLE_LIKWID)
