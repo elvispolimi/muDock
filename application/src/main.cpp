@@ -44,7 +44,7 @@ int main(int argc, char* argv[]) {
         // parse the input ligands and put them in a stack that we can compute
         mudock::info("Parsing ", ligands_description.size(), " ligand(s) ...");
         std::atomic<std::size_t> skipped_ligands{0};
-        if constexpr (format == mudock::supported_format::ADTMOL2 || format == mudock::supported_format::MOL2) {
+        if constexpr (format == mudock::supported_format::ADTMOL2) {
 #ifdef _OPENMP
 #pragma omp parallel for shared(input_queue, ligands_description, skipped_ligands)
 #endif

@@ -4,7 +4,6 @@
 #include <cassert>
 #include <fstream>
 #include <memory>
-#include <mudock/format/mol2.hpp>
 #include <mudock/format/ob_wrapper.hpp>
 #include <mudock/format/reader.hpp>
 #include <mudock/log.hpp>
@@ -75,14 +74,6 @@ namespace mudock {
     convert(mol, ob_mol, rotor_check);
     return mol;
   }
-  // MOL2
-  template<class molecule_type>
-    requires is_molecule<molecule_type>
-  molecule_type parser_impl_mol2(const std::string_view description) {
-    molecule_type mol;
-    mol2::parse(mol, description);
-    return mol;
-  }
   // PDBQT
   template<>
   static_molecule parser<supported_format::PDBQT>(const std::string_view description,
@@ -103,20 +94,17 @@ namespace mudock {
   template<>
   static_molecule parser<supported_format::MOL2>(const std::string_view description,
                                                  std::function<bool(OpenBabel::OBBond&)>) {
-    return parser_impl_mol2<static_molecule>(description);
+    return parser_impl<static_molecule, supported_format::MOL2>(description, ob_rotate_check);
   };
   template<>
   dynamic_molecule parser<supported_format::MOL2>(const std::string_view description,
                                                   std::function<bool(OpenBabel::OBBond&)>) {
-    return parser_impl_mol2<dynamic_molecule>(description);
+    return parser_impl<dynamic_molecule, supported_format::MOL2>(description, ob_rotate_check);
   };
   template<>
   ob_mol_wrapper parser<supported_format::MOL2>(const std::string_view description,
                                                 std::function<bool(OpenBabel::OBBond&)>) {
-    dynamic_molecule mol = parser_impl_mol2<dynamic_molecule>(description);
-    ob_mol_wrapper ob_mol = std::make_unique<OpenBabel::OBMol>();
-    convert(ob_mol, mol);
-    return ob_mol;
+    return ob_parser<supported_format::MOL2>(description);
   }
   // PDBQT
   template<>
