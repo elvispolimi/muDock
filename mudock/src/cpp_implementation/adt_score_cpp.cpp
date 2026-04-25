@@ -235,7 +235,7 @@ namespace mudock {
 
   inline void calc_gradient(const int batch_atoms,
                           const int batch_ligands,
-                          const int scores_per_ligand,
+                          const int individuals_per_ligand,
                           const fp_type *__restrict__ x_scratch_b,
                           const fp_type *__restrict__ y_scratch_b,
                           const fp_type *__restrict__ z_scratch_b,
@@ -263,17 +263,16 @@ namespace mudock {
                             const int map_index_x,
                             const int map_index_xy,
                             const int map_index_xyz,
-                            // TODO L probably this will be gradients_b
-                            fp_type *__restrict__ scores_b) {
+                            fp_type *__restrict__ gradients_b) {
     for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
       const int atom_stride  = ligand_index * batch_atoms;
       const int num_atoms    = num_atoms_b[ligand_index];
       const int num_nonbonds = num_nonbonds_b[ligand_index + 1] - num_nonbonds_b[ligand_index];
       const int num_rotamers = num_rotamers_b[ligand_index];
 
-      const fp_type *__restrict__ scratch_x = x_scratch_b + atom_stride * scores_per_ligand;
-      const fp_type *__restrict__ scratch_y = y_scratch_b + atom_stride * scores_per_ligand;
-      const fp_type *__restrict__ scratch_z = z_scratch_b + atom_stride * scores_per_ligand;
+      const fp_type *__restrict__ scratch_x = x_scratch_b + atom_stride * individuals_per_ligand;
+      const fp_type *__restrict__ scratch_y = y_scratch_b + atom_stride * individuals_per_ligand;
+      const fp_type *__restrict__ scratch_z = z_scratch_b + atom_stride * individuals_per_ligand;
       const fp_type *__restrict__ vol_l     = vols_b + atom_stride;
       const fp_type *__restrict__ solpar_l  = solpars_b + atom_stride;
       const fp_type *__restrict__ charge_l  = charges_b + atom_stride;
@@ -288,10 +287,11 @@ namespace mudock {
       const int* frag_start_indices = frag_start_indices_b + frag_indices_start_b[ligand_index];
       const int* frag_stop_indices = frag_stop_indices_b + frag_indices_start_b[ligand_index];
 
-      for (int scores_index = 0; scores_index < scores_per_ligand; ++scores_index) {
-        const fp_type *__restrict__ scratch_x_l = scratch_x + scores_index * batch_atoms;
-        const fp_type *__restrict__ scratch_y_l = scratch_y + scores_index * batch_atoms;
-        const fp_type *__restrict__ scratch_z_l = scratch_z + scores_index * batch_atoms;
+      fp_type *__restrict__ gradients_l = gradients_b + ligand_index * individuals_per_ligand;
+      for (int individual_index = 0; individual_index < individuals_per_ligand; ++individual_index) {
+        const fp_type *__restrict__ scratch_x_l = scratch_x + individual_index * batch_atoms;
+        const fp_type *__restrict__ scratch_y_l = scratch_y + individual_index * batch_atoms;
+        const fp_type *__restrict__ scratch_z_l = scratch_z + individual_index * batch_atoms;
         
         vec3 dE_dX[num_atoms]                 = {0};
         vec3 dX_dalpha[num_atoms]             = {0};
@@ -541,7 +541,7 @@ namespace mudock {
         }
 
         // TODO manage the gradient buffer, this assignment is not correct
-        gradient_l[scores_index] = gradient;
+        gradients_l[individual_index] = gradient;
         
       }
     }
@@ -584,7 +584,7 @@ namespace mudock {
     q->invoke_kernel<this->adt_region_name>(calc_gradient,
                                             batch_atoms,
                                             batch_ligands,
-                                            scores_per_ligand,
+                                            individuals_per_ligand,
                                             x_scratch_b,
                                             y_scratch_b,
                                             z_scratch_b,

@@ -249,10 +249,18 @@ namespace mudock {
       (*score_kernel)();
     }
 
-    const gradient& compute_gradient() {
+    // const gradient& compute_gradient() {
       
-      return this->grad;
-    };
+    //   return this->grad;
+    // };
+    void compute_gradient() {
+      // TODO L what to do with this assert?
+      // assert(
+      //     (((*this->scratch).template get<buffer_data_type::SCORES>().num_elements() % batch_ligands) == 0) &&
+      //     "Number of scores is not a multiple of ligands in the batch");
+      assert(gradient_kernel && "Gradient kernel method not yet prepared");
+      (*gradient_kernel)();
+    }
 
     static int get_ligand_mem(const int max_atoms, const knobs conf) {
       int mem{0};
