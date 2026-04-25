@@ -263,6 +263,7 @@ namespace mudock {
                             const int map_index_x,
                             const int map_index_xy,
                             const int map_index_xyz,
+                            // TODO L probably this will be gradients_b
                             fp_type *__restrict__ scores_b) {
     for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
       const int atom_stride  = ligand_index * batch_atoms;
@@ -286,8 +287,6 @@ namespace mudock {
       const int* fragments = ligand_fragments_b + ligand_fragments_start_b[ligand_index];
       const int* frag_start_indices = frag_start_indices_b + frag_indices_start_b[ligand_index];
       const int* frag_stop_indices = frag_stop_indices_b + frag_indices_start_b[ligand_index];
-
-      fp_type *__restrict__ scores_l  = scores_b + ligand_index * scores_per_ligand;
 
       for (int scores_index = 0; scores_index < scores_per_ligand; ++scores_index) {
         const fp_type *__restrict__ scratch_x_l = scratch_x + scores_index * batch_atoms;
@@ -607,6 +606,5 @@ namespace mudock {
                                             map_offsets_b,
                                             map_index_x,
                                             map_index_xy,
-                                            map_index_xyz,
-                                            scores_b);
+                                            map_index_xyz);
 } // namespace mudock

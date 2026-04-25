@@ -25,6 +25,7 @@ namespace mudock {
   */
   // TODO return to vector
   using chromosome = std::array<fp_type, 6 + max_static_bonds()>;
+  using gradient = chromosome;
 
   struct individual {
     chromosome genes;

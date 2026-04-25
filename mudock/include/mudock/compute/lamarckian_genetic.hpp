@@ -149,6 +149,7 @@ namespace mudock {
     local_search_t<queue_t> local_search_stage;
     std::unique_ptr<lamarckian_genetic_kernel<queue_t>> lamarckian_kernel;
     
+    // TODO L probably this must be changed, not sure
     void teardown_impl(batch<static_molecule>& batch) {
       assert(batch.num_ligands == batch_ligands && "Lamarckian-Genetic algorithm received different batch for teardown");
 
@@ -168,20 +169,6 @@ namespace mudock {
         ligand.properties.assign(property_type::SCORE, std::to_string(best_scores()[index]));
       }
     }
-    // void perform_local_search() {
-    //   auto& chromosomes_b = (*this->scratch).template get<buffer_data_type::CHROMOSOMES>();
-    //   const int population_number = (*this->scratch).configuration.population_number;
-    //   chromosomes_b.copy_device2host();
-    //   for (int ligand_idx = 0; ligand_idx < batch_ligands; ++ligand_idx) {
-    //       for (int ind_idx = 0; ind_idx < population_number; ++ind_idx) {
-    //           int global_idx = ligand_idx * population_number + ind_idx;
-    //           chromosome optimized = local_search_stage->local_optimize(
-    //               chromosomes_b()[global_idx], *ligands[ligand_idx], protein_ref, local_search_iterations);
-    //           chromosomes_b()[global_idx] = optimized;
-    //       }
-    //   }
-    //   chromosomes_b.copy_host2device();
-    // }
   }; // namespace mudock
 #endif
 } // namespace mudock

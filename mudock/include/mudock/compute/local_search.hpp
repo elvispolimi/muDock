@@ -7,14 +7,19 @@
 #include <mudock/cpp_implementation/chromosome.hpp>
 
 namespace mudock {
-    // TODO should it extend stage?
-  struct local_search: public stage<queue_type> {
-    local_search(std::shared_ptr<scratchpad<queue_type>> _scratch): stage<queue_type>(_scratch) {};
+  // A general local search might or might not use the scoring function gradient, so the method to compute is not here natively,
+  // but it is inside a scoring_t object instead (the gradient is specific for each scoring function, see scoring)
+  template<typename queue_t, template<typename> typename scoring_t>
+    requires std::derived_from<queue_t, queue> && std::derived_from<scoring_t<queue_t>, scoring<queue_t>>
+  struct local_search: public stage<queue_t> {
+    // TODO should i include the scoring (from which we get the gradient) in the constructor?
+    local_search(std::shared_ptr<scratchpad<queue_t>> _scratch): stage<queue_t>(_scratch) {};
     virtual void prepare(batch<static_molecule>&) = 0;
     virtual void operator()()                     = 0;
 
     virtual ~local_search() = default;
-    //private:
-    // scoring_t<queue_t>& score_stage;???
+    
+  private:
+    scoring_t<queue_t>& score_stage;
   };
 } // namespace mudock

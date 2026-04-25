@@ -212,7 +212,7 @@ namespace mudock {
 
       fp_type *scores_b = score_b.dev_pointer();
 
-      kernel = std::make_unique<adt_score_kernel<queue_type>>(scores_per_ligand,
+      score_kernel = std::make_unique<adt_score_kernel<queue_type>>(scores_per_ligand,
                                                               batch_ligands,
                                                               batch_atoms,
                                                               num_atoms_b,
@@ -245,9 +245,14 @@ namespace mudock {
       assert(
           (((*this->scratch).template get<buffer_data_type::SCORES>().num_elements() % batch_ligands) == 0) &&
           "Number of scores is not a multiple of ligands in the batch");
-      assert(kernel && "Kernel method not yet prepared");
-      (*kernel)();
+      assert(score_kernel && "Score kernel method not yet prepared");
+      (*score_kernel)();
     }
+
+    const gradient& compute_gradient() {
+      
+      return this->grad;
+    };
 
     static int get_ligand_mem(const int max_atoms, const knobs conf) {
       int mem{0};
@@ -290,7 +295,8 @@ namespace mudock {
     buffer_vector<int, queue_type> nonbond_xB;
 
     std::shared_ptr<scratchpad<queue_type>> device_scratch;
-    std::unique_ptr<adt_score_kernel<queue_type>> kernel;
+    std::unique_ptr<adt_score_kernel<queue_type>> score_kernel;
+    std::unique_ptr<adt_gradient_kernel<queue_type>> gradient_kernel;
 
     void teardown_impl(batch<static_molecule> &batch) override {
       assert(batch.num_ligands == batch_ligands && "Scoring algorithm received different batch for teardown");

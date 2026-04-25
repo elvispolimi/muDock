@@ -20,6 +20,7 @@ namespace mudock {
     Z_COORDS,
     ELEMENTS,
     CHROMOSOMES,
+    GRADIENTS,
     SCORES,
     X_SCRATCH,
     Y_SCRATCH,
@@ -71,6 +72,10 @@ namespace mudock {
   template<>
   struct buffer_type_traits<buffer_data_type::CHROMOSOMES> {
     using type = buffer_type_traits_impl<buffer_data_type::CHROMOSOMES, chromosome>::type;
+  };
+  template<>
+  struct buffer_type_traits<buffer_data_type::GRADIENTS> {
+    using type = buffer_type_traits_impl<buffer_data_type::GRADIENTS, gradient>::type;
   };
   template<>
   struct buffer_type_traits<buffer_data_type::SCORES> {
