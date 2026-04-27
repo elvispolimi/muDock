@@ -680,7 +680,7 @@ endif()
 
 message(
   STATUS
-    "Enable MPI...........................: ${MUDOCK_ENABLE_MPI} (MUDOCK_ENABLE_MPI)"
+    "Enable MPI............................: ${MUDOCK_ENABLE_MPI} (MUDOCK_ENABLE_MPI)"
 )
 
 message(STATUS "//===---------------------------===//")

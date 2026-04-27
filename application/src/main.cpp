@@ -8,6 +8,7 @@
 
 #include <mudock/molecule.hpp>
 #include <mudock/mudock.hpp>
+#include <mudock/mpi_implementation/byte_range.hpp>
 #include <mudock/tbb_implementation/tbb_pipeline.hpp>
 
 #ifdef MUDOCK_USE_MPI
