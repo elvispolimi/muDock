@@ -25,7 +25,6 @@ int main() {
 
   std::vector<float> lhs(vector_size, lhs_value);
   std::vector<float> rhs(vector_size, rhs_value);
-<<<<<<< HEAD
   {
     auto queue = std::make_shared<mudock::queue_alpaka>(0, mudock::device_type::CPU);
     mudock::object<float, mudock::queue_alpaka> lhs_dev{queue};
@@ -48,8 +47,6 @@ int main() {
       return EXIT_FAILURE;
     }
   }
-=======
->>>>>>> 991f47c8 (Added more alpaka-based tests)
 
   double const expected_dot =
       static_cast<double>(vector_size) * static_cast<double>(lhs_value) * static_cast<double>(rhs_value);
