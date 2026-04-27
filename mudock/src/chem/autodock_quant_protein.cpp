@@ -21,7 +21,7 @@ void autodock_quant_protein::prepare_fused_maps(const autodock_protein* base_pro
    
     const fp_type* grid_maps = base_protein->get_maps_pointer();
 
-    const int num_bins = get_thresholds().size() + 1;
+    const int num_bins =thresholds.size() + 1;
 
     
     fp_type* raw_fused_ptr = const_cast<fp_type*>(quantized_fused_maps.data());
@@ -68,7 +68,7 @@ void autodock_quant_protein::prepare_fused_maps(const autodock_protein* base_pro
 
 // Implementazione della funzione di supporto
 fp_type autodock_quant_protein::calculate_bin_center(int bin_index) const {
-    const auto& thresh = get_thresholds();
+    const auto& thresh = thresholds;
     if (bin_index == 0) return thresh[0] - 0.1f; 
     if (static_cast<std::size_t>(bin_index) >= thresh.size()) return thresh.back() + 0.1f; 
     return (thresh[bin_index] + thresh[bin_index - 1]) / 2.0f;

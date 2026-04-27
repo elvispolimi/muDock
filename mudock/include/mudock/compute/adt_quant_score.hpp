@@ -85,7 +85,7 @@ namespace mudock {
         if(!(*device_scratch).template exists<buffer_data_type::QUANT_GRID_MAPS>()){
             autodock_quant_protein quant_prot(&adt_prot);
             auto &quant_maps = (*device_scratch).template get<buffer_data_type::QUANT_GRID_MAPS>();
-            std::size_t num_bins = quant_prot.get_thresholds().size() + 1;
+            std::size_t num_bins = quant_prot.thresholds.size() + 1;
             std::size_t total_floats = num_bins * adt_prot.get_map_flat_size();
 
             quant_maps.alloc(total_floats);
@@ -126,7 +126,9 @@ namespace mudock {
 
       const int map_flat_size =
           (*device_scratch).template get<buffer_data_type::PROT_SIZE_XYZ>().host_pointer()[0];
-      const auto& thresholds = autodock_quant_protein::get_thresholds();
+
+      const auto& thresholds = autodock_quant_protein::thresholds;
+      
       for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
         auto &ligand = *batch.molecules[ligand_index];
 

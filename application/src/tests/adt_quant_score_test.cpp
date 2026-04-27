@@ -29,7 +29,7 @@ inline T round3dp(const T x) {
 // Mezza schifezza: Ricreo la logica di quantizzazione qui dentro 
 // così non dobbiamo toccare l'header autodock_quant_protein in architettura
 std::vector<mudock::fp_type> generate_test_quantized_maps(const mudock::autodock_grid& adt_grid) {
-    const auto& thresh = mudock::autodock_quant_protein::get_thresholds();
+    const auto& thresh = mudock::autodock_quant_protein::thresholds;
     int num_bins = thresh.size() + 1;
     int map_flat_size = adt_grid.get_size_xyz();
     
@@ -92,7 +92,7 @@ int main(int argc, char *argv[]) {
   
   std::vector<mudock::fp_type> my_quant_maps = generate_test_quantized_maps(adt_grid);
   
-  const auto& thresholds = mudock::autodock_quant_protein::get_thresholds();
+  const auto& thresholds = mudock::autodock_quant_protein::thresholds();
   std::vector<int> atom_bins_b = mudock::build_atom_to_bin_map(ligand, thresholds);
 
   mudock::info("Computing energy ...");
