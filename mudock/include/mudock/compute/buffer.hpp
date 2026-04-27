@@ -128,7 +128,7 @@ namespace mudock {
   template<template<class...> class container_type, typename T, class queue_t, class... args>
   struct buffer_impl {
   private:
-    std::unique_ptr<object<T>> obj;
+    std::unique_ptr<object<T, queue_t>> obj;
     container_type<T, args...> host;
     std::shared_ptr<queue_t> q;
     bool valid;
@@ -137,7 +137,7 @@ namespace mudock {
     buffer_impl(std::shared_ptr<queue_t> _queue, const int dim = 0): valid(false) {
       q = _queue;
       if (q->obj_required()) {
-        obj = std::make_unique<object<T>>(_queue);
+        obj = std::make_unique<object<T, queue_t>>(_queue);
       }
       if (!dim)
         this->alloc(dim);

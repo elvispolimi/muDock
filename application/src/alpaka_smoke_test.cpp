@@ -1,10 +1,11 @@
-#include <alpaka/acc/Traits.hpp>
-#include <alpaka/example/ExampleDefaultAcc.hpp>
+#include <mudock/alpaka_implementation/object_alpaka.hpp>
+#include <mudock/alpaka_implementation/queue_alpaka.hpp>
 #include <mudock/implementation_types.hpp>
 
-#include <cstddef>
 #include <cstdlib>
 #include <iostream>
+#include <memory>
+#include <vector>
 
 int main() {
 #ifndef MUDOCK_USE_ALPAKA
@@ -15,11 +16,25 @@ int main() {
     return EXIT_FAILURE;
   }
 
-  using Dim = alpaka::DimInt<1u>;
-  using Idx = std::size_t;
-  using Acc = alpaka::ExampleDefaultAcc<Dim, Idx>;
+  auto queue = std::make_shared<mudock::queue_alpaka>(0, mudock::device_type::CPU);
+  (*queue)();
 
-  std::cout << "Alpaka default accelerator: " << alpaka::getAccName<Acc>() << std::endl;
+  std::vector<int> host{1, 2, 3, 4, 5, 6, 7, 8};
+  std::vector<int> roundtrip(host.size(), 0);
+
+  mudock::object<int, mudock::queue_alpaka> device_object{queue};
+  device_object.alloc(host.size());
+  device_object.copy_host2device(host.data());
+  queue->synchronize();
+  device_object.copy_device2host(roundtrip.data());
+  queue->synchronize();
+
+  if (roundtrip != host) {
+    std::cerr << "Alpaka object host/device roundtrip failed" << std::endl;
+    return EXIT_FAILURE;
+  }
+
+  std::cout << "Alpaka queue/object smoke test passed" << std::endl;
   return EXIT_SUCCESS;
 #endif
 }
