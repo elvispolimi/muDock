@@ -280,7 +280,6 @@ set_target_properties(
              CXX_EXTENSIONS OFF
              POSITION_INDEPENDENT_CODE ON)
 target_link_libraries(libmudock PUBLIC Boost::graph ${OpenBabel3_LIBRARIES} TBB::tbb)
-target_include_directories(libmudock SYSTEM PRIVATE ${Boost_INCLUDE_DIR})
 if(NOT MUDOCK_ENABLE_OMP)
   target_compile_options(libmudock PRIVATE -Wno-unknown-pragmas)
 endif()
