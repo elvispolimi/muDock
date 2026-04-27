@@ -35,7 +35,8 @@ namespace mudock {
           nonbond_cA(_scratch->get_queue()),
           nonbond_cB(_scratch->get_queue()),
           nonbond_xB(_scratch->get_queue()),
-          device_scratch(_device_scratch) {
+          device_scratch(_device_scratch),
+          score_stage(_scratch) {
       if (!(*device_scratch).template exists<buffer_data_type::PROT_GRID_MAPS>()) {
         autodock_protein adt_prot(protein);
 
@@ -208,6 +209,15 @@ namespace mudock {
 
       fp_type *scores_b = score_b.dev_pointer();
 
+      // Allocate gradient buffer for AdaDelta (one gradient per individual per ligand)
+      auto &gradients_b = (*this->scratch).template get<buffer_data_type::GRADIENTS>();
+      const size_t gradient_count = static_cast<size_t>(batch_ligands) * static_cast<size_t>(scores_per_ligand);
+      if (!gradients_b.is_valid() || gradients_b.num_elements() != gradient_count) {
+        gradients_b.alloc(gradient_count);
+        gradients_b.set_valid();
+      }
+      gradient *gradients_p = gradients_b.dev_pointer();
+
       kernel = std::make_unique<adadelta_kernel<queue_type>>(scores_per_ligand,
                                                               batch_ligands,
                                                               batch_atoms,
@@ -234,7 +244,12 @@ namespace mudock {
                                                               map_index_xy,
                                                               map_index_xyz,
                                                               scores_b,
+                                                              gradients_p,
                                                               q);
+      
+      // Set the population pointer for the AdaDelta update
+      auto &chromosomes_b = (*this->scratch).template get<buffer_data_type::CHROMOSOMES>();
+      kernel->set_population(chromosomes_b.dev_pointer());
     }
 
     void operator()() {
@@ -242,7 +257,10 @@ namespace mudock {
           (((*this->scratch).template get<buffer_data_type::SCORES>().num_elements() % batch_ligands) == 0) &&
           "Number of scores is not a multiple of ligands in the batch");
       assert(kernel && "Kernel method not yet prepared");
-      (*kernel)();
+      for (int i = 0; i < MAX_AD_ITERATIONS; ++i){
+        kernel->compute_gradients();
+        kernel->apply_adadelta();
+      }
     }
 
     static int get_ligand_mem(const int max_atoms, const knobs conf) {
@@ -251,6 +269,7 @@ namespace mudock {
       const int non_bonds_atoms   = max_atoms * max_atoms;
 
       mem += sizeof(fp_type) * scores_per_ligand;             // scores
+      mem += sizeof(gradient) * scores_per_ligand;            // gradients (one per individual)
       mem += sizeof(int);                                     // num atoms
       mem += sizeof(int);                                     // num rotamers;
       mem += sizeof(fp_type) * max_atoms * scores_per_ligand; // x scratchs

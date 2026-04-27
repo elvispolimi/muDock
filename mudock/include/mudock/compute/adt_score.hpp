@@ -249,10 +249,6 @@ namespace mudock {
       (*score_kernel)();
     }
 
-    // const gradient& compute_gradient() {
-      
-    //   return this->grad;
-    // };
     void compute_gradient() {
       // TODO L what to do with this assert?
       // assert(

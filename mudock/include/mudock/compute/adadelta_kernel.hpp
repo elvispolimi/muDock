@@ -11,6 +11,7 @@ namespace mudock {
     requires std::derived_from<queue_type, queue>
   struct adadelta_kernel {
     static constexpr char adt_region_name[] = "adadelta_kernel";
+    static constexpr char gradient_region_name[] = "adadelta_gradient_kernel";
     adadelta_kernel(const int scores_per_ligand_,
                      const int batch_ligands_,
                      const int batch_atoms_,
@@ -37,6 +38,7 @@ namespace mudock {
                      const int map_index_xy_,
                      const int map_index_xyz_,
                      fp_type *__restrict__ scores_b_,
+                     gradient *__restrict__ gradients_b_,
                      std::shared_ptr<queue_type> q_)
         : scores_per_ligand(scores_per_ligand_),
           batch_ligands(batch_ligands_),
@@ -64,9 +66,13 @@ namespace mudock {
           map_index_xy(map_index_xy_),
           map_index_xyz(map_index_xyz_),
           scores_b(scores_b_),
+          gradients_b(gradients_b_),
+          population_b(nullptr),
           q(q_) {}
 
     void operator()();
+    void compute_gradients();
+    void apply_adadelta();
 
     adadelta_kernel(const adadelta_kernel &)            = default;
     adadelta_kernel(adadelta_kernel &&)                 = default;
@@ -102,6 +108,8 @@ namespace mudock {
     const int map_index_xy;
     const int map_index_xyz;
     fp_type *__restrict__ scores_b;
+    gradient *__restrict__ gradients_b;
+    chromosome* population_b;  // Population to update (set after kernel creation)
     std::shared_ptr<queue_type> q;
   };
 
