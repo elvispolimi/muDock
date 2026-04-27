@@ -1,10 +1,13 @@
 #include <mudock/alpaka_implementation/alpaka_dot_product.hpp>
+#include <mudock/alpaka_implementation/object_alpaka.hpp>
+#include <mudock/alpaka_implementation/queue_alpaka.hpp>
 
 #include <chrono>
 #include <cmath>
 #include <cstdlib>
 #include <iomanip>
 #include <iostream>
+#include <memory>
 #include <vector>
 
 int main() {
@@ -16,6 +19,28 @@ int main() {
 
   std::vector<float> lhs(vector_size, lhs_value);
   std::vector<float> rhs(vector_size, rhs_value);
+  {
+    auto queue = std::make_shared<mudock::queue_alpaka>(0, mudock::device_type::CPU);
+    mudock::object<float, mudock::queue_alpaka> lhs_dev{queue};
+    mudock::object<float, mudock::queue_alpaka> rhs_dev{queue};
+    mudock::object<float, mudock::queue_alpaka> copy_dev{queue};
+    std::vector<float> copied(lhs.size(), 0.0F);
+
+    lhs_dev.alloc(lhs.size());
+    rhs_dev.alloc(rhs.size());
+    copy_dev.alloc(lhs.size());
+    lhs_dev.copy_host2device(lhs.data());
+    rhs_dev.copy_host2device(rhs.data());
+    copy_dev.copy_device2device(lhs_dev);
+    queue->synchronize();
+    copy_dev.copy_device2host(copied.data());
+    queue->synchronize();
+
+    if(copied != lhs) {
+      std::cerr << "Alpaka object device-to-device copy failed" << std::endl;
+      return EXIT_FAILURE;
+    }
+  }
 
   double const expected_dot =
       static_cast<double>(vector_size) * static_cast<double>(lhs_value) * static_cast<double>(rhs_value);

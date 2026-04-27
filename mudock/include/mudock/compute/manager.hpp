@@ -140,6 +140,7 @@ namespace mudock {
       const auto parts = parse_worker_configuration(configuration);
       auto dev_t  = get_device_type(parts[1]);
       auto impl_t = get_impl_type(parts[0]);
+      bool worker_created = false;
       switch (dev_t) {
         case device_type::CPU: {
           constexpr_for<0, num_cpu_kernel_type(), 1>([&](const auto kernel) {
@@ -164,6 +165,10 @@ namespace mudock {
           break;
         }
         default: throw std::runtime_error("Not supported device type"); break;
+      }
+      if (!worker_created) {
+        throw std::runtime_error("Requested implementation/device configuration is not available: " +
+                                 configuration);
       }
     }
   }

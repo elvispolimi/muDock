@@ -236,20 +236,37 @@ if(MUDOCK_ENABLE_SYCL)
 endif()
 
 if(MUDOCK_ENABLE_ALPAKA)
+  set(alpaka_adt_score_source
+      "${source_path}/alpaka_implementation/adt_score_alpaka.cpp")
+  set(alpaka_genetic_source
+      "${source_path}/alpaka_implementation/genetic_alpaka.cpp")
+  set(alpaka_geom_transform_source
+      "${source_path}/alpaka_implementation/geom_transform_alpaka.cpp")
   set(alpaka_dot_product_source
       "${source_path}/alpaka_implementation/alpaka_dot_product.cpp")
   set(alpaka_reduction_source
       "${source_path}/alpaka_implementation/alpaka_reduction.cpp")
+  set(alpaka_queue_source
+      "${source_path}/alpaka_implementation/queue_alpaka.cpp")
   list(
     APPEND
     header_files
+    "${header_path}/${header_prefix}/alpaka_implementation/adt_score_alpaka.hpp"
     "${header_path}/${header_prefix}/alpaka_implementation/alpaka_implementation.hpp"
+    "${header_path}/${header_prefix}/alpaka_implementation/alpaka_types.hpp"
     "${header_path}/${header_prefix}/alpaka_implementation/alpaka_dot_product.hpp"
+    "${header_path}/${header_prefix}/alpaka_implementation/genetic_alpaka.hpp"
+    "${header_path}/${header_prefix}/alpaka_implementation/geom_transform_alpaka.hpp"
+    "${header_path}/${header_prefix}/alpaka_implementation/object_alpaka.hpp"
     "${header_path}/${header_prefix}/alpaka_implementation/queue_alpaka.hpp"
   )
   list(
     APPEND
     source_files
+    "${alpaka_adt_score_source}"
+    "${alpaka_genetic_source}"
+    "${alpaka_geom_transform_source}"
+    "${alpaka_queue_source}"
     "${alpaka_dot_product_source}"
     "${alpaka_reduction_source}"
   )
@@ -292,9 +309,17 @@ add_library(libmudock STATIC ${source_files} ${header_files})
 add_library(mudock::libmudock ALIAS libmudock)
 if(MUDOCK_ENABLE_ALPAKA)
   if(MUDOCK_ALPAKA_BACKEND STREQUAL "cuda" AND CMAKE_CUDA_COMPILER)
+    set_source_files_properties("${alpaka_adt_score_source}" PROPERTIES LANGUAGE CUDA)
+    set_source_files_properties("${alpaka_genetic_source}" PROPERTIES LANGUAGE CUDA)
+    set_source_files_properties("${alpaka_geom_transform_source}" PROPERTIES LANGUAGE CUDA)
+    set_source_files_properties("${alpaka_queue_source}" PROPERTIES LANGUAGE CUDA)
     set_source_files_properties("${alpaka_dot_product_source}" PROPERTIES LANGUAGE CUDA)
     set_source_files_properties("${alpaka_reduction_source}" PROPERTIES LANGUAGE CUDA)
   elseif(MUDOCK_ALPAKA_BACKEND STREQUAL "hip" AND CMAKE_HIP_COMPILER)
+    set_source_files_properties("${alpaka_adt_score_source}" PROPERTIES LANGUAGE HIP)
+    set_source_files_properties("${alpaka_genetic_source}" PROPERTIES LANGUAGE HIP)
+    set_source_files_properties("${alpaka_geom_transform_source}" PROPERTIES LANGUAGE HIP)
+    set_source_files_properties("${alpaka_queue_source}" PROPERTIES LANGUAGE HIP)
     set_source_files_properties("${alpaka_dot_product_source}" PROPERTIES LANGUAGE HIP)
     set_source_files_properties("${alpaka_reduction_source}" PROPERTIES LANGUAGE HIP)
   endif()
@@ -543,6 +568,21 @@ endif()
 
 if(MUDOCK_ENABLE_ALPAKA)
   target_compile_definitions(libmudock PUBLIC MUDOCK_USE_ALPAKA)
+  if(MUDOCK_ALPAKA_BACKEND STREQUAL "serial")
+    target_compile_definitions(libmudock PUBLIC MUDOCK_ALPAKA_BACKEND_SERIAL)
+  elseif(MUDOCK_ALPAKA_BACKEND STREQUAL "threads")
+    target_compile_definitions(libmudock PUBLIC MUDOCK_ALPAKA_BACKEND_THREADS)
+  elseif(MUDOCK_ALPAKA_BACKEND STREQUAL "tbb")
+    target_compile_definitions(libmudock PUBLIC MUDOCK_ALPAKA_BACKEND_TBB)
+  elseif(MUDOCK_ALPAKA_BACKEND STREQUAL "omp2")
+    target_compile_definitions(libmudock PUBLIC MUDOCK_ALPAKA_BACKEND_OMP2)
+  elseif(MUDOCK_ALPAKA_BACKEND STREQUAL "cuda")
+    target_compile_definitions(libmudock PUBLIC MUDOCK_ALPAKA_BACKEND_CUDA)
+  elseif(MUDOCK_ALPAKA_BACKEND STREQUAL "hip")
+    target_compile_definitions(libmudock PUBLIC MUDOCK_ALPAKA_BACKEND_HIP)
+  elseif(MUDOCK_ALPAKA_BACKEND STREQUAL "sycl")
+    target_compile_definitions(libmudock PUBLIC MUDOCK_ALPAKA_BACKEND_SYCL)
+  endif()
   target_link_libraries(libmudock PUBLIC alpaka::alpaka)
 endif()
 
