@@ -10,7 +10,7 @@
 #include <mudock/chem/autodock_protein.hpp>
 #include <numeric>
 #include <stdexcept>
-#if !defined(__CUDACC__) && !defined(__HIPCC__)
+#if !defined(__CUDACC__) || defined(MUDOCK_ENABLE_HOST_COMPUTE_PIPELINE)
   #include <mudock/compute/buffer_utils.hpp>
   #include <mudock/compute/docking.hpp>
   #include <mudock/compute/geometric_transform.hpp>
@@ -84,7 +84,7 @@ namespace mudock {
     std::shared_ptr<queue_type> q;
   };
 
-#if !defined(__CUDACC__) && !defined(__HIPCC__)
+#if !defined(__CUDACC__) || defined(MUDOCK_ENABLE_HOST_COMPUTE_PIPELINE)
   template<typename queue_t, template<typename> typename scoring_t>
     requires std::derived_from<queue_t, queue> && std::derived_from<scoring_t<queue_t>, scoring<queue_t>>
   struct genetic: public docking<queue_t> {

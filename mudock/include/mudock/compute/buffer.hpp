@@ -40,9 +40,14 @@ namespace mudock {
   template<typename T, typename... Ts>
   constexpr bool is_in_tuple_v = (std::same_as<T, Ts> || ...);
 
+  template<typename T, typename tuple_t>
+  struct is_in_tuple: std::false_type {};
+
+  template<typename T, typename... Ts>
+  struct is_in_tuple<T, std::tuple<Ts...>>: std::bool_constant<(std::same_as<T, Ts> || ...)> {};
+
   template<typename T>
-  concept buffer_type_allowed =
-      []<typename... Ts>(std::tuple<Ts...>*) { return is_in_tuple_v<T, Ts...>; }((buffer_type_list*) nullptr);
+  concept buffer_type_allowed = is_in_tuple<T, buffer_type_list>::value;
 
   template<buffer_data_type buff_t, class T>
     requires buffer_type_allowed<T>
