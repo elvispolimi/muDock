@@ -72,13 +72,12 @@ namespace mudock {
     lamarckian_genetic(std::shared_ptr<scratchpad<queue_t>> _scratch,
                       dynamic_molecule& _protein,
                       scoring_t<queue_t> _scoring,
-                      std::unique_ptr<local_search> _local_search,
+                      local_search_t<queue_t> _local_search,
                       int _local_search_iters)
         : genetic<queue_t, scoring_t>(_scratch, _protein, _scoring),
-          local_search_stage(std::move(_local_search)),
-          local_search_iterations(_local_search_iters) {}
+          local_search_stage(std::move(_local_search)){};
 
-    void prepare(batch<static_molecule>& batch) {
+    void prepare(batch<static_molecule>& batch) override {
       const knobs& configuration  = (*this->scratch).configuration;
       batch_ligands               = batch.num_ligands;
       num_generations             = configuration.num_generations;
@@ -128,7 +127,6 @@ namespace mudock {
     };
 
     void operator()() override {
-      // TODO try to recycle genetic code and adding just local search 
       auto& chromosomes_b = (*this->scratch).template get<buffer_data_type::CHROMOSOMES>();
 
       assert(lamarckian_kernel && "lamarckian_kernel method not yet prepared");
@@ -145,7 +143,7 @@ namespace mudock {
     }
 
   private:
-    int local_search_iterations;
+  // TODO L since lga extens genetic, it inherits <genetic_kernel<queue_t>> kernel. Is it a problem?
     local_search_t<queue_t> local_search_stage;
     std::unique_ptr<lamarckian_genetic_kernel<queue_t>> lamarckian_kernel;
     
