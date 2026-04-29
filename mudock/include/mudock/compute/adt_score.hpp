@@ -67,9 +67,9 @@ namespace mudock {
         std::memcpy(prot_min(), adt_prot.get_min_p(), 3 * sizeof(fp_type));
         std::memcpy(prot_max(), adt_prot.get_max_p(), 3 * sizeof(fp_type));
         std::memcpy(prot_center(), adt_prot.get_center_p(), 3 * sizeof(fp_type));
-        prot_index_x()[0]   = adt_prot.get_size_x();
-        prot_index_xy()[0]  = adt_prot.get_size_xy();
-        prot_index_xyz()[0] = adt_prot.get_size_xyz();
+        prot_index_x()[0]   = static_cast<int>(adt_prot.get_size_x());
+        prot_index_xy()[0]  = static_cast<int>(adt_prot.get_size_xy());
+        prot_index_xyz()[0] = static_cast<int>(adt_prot.get_size_xyz());
         std::memcpy(prot_grid_maps(),
                     adt_prot.get_maps_pointer(),
                     adt_prot.get_map_flat_size() * num_autodock_grids() * sizeof(fp_type));
@@ -151,7 +151,7 @@ namespace mudock {
         std::memcpy((void *) (nonbond_xB() + num_nonbond()[ligand_index]),
                     adt_ligand.non_bond_xB(),
                     non_bond_size * sizeof(int));
-        num_nonbond()[ligand_index + 1] = num_nonbond()[ligand_index] + non_bond_size;
+        num_nonbond()[ligand_index + 1] = static_cast<int>(num_nonbond()[ligand_index] + non_bond_size);
 
         // Autodock typing
         std::memcpy((void *) (vols() + stride_atoms), adt_ligand.vol(), num_atoms * sizeof(fp_type));
@@ -277,7 +277,8 @@ namespace mudock {
     }
 
     static int get_ligand_mem(const int max_atoms, const knobs conf) {
-      return static_cast<int>(get_shared_ligand_mem(max_atoms, conf) + get_private_ligand_mem(max_atoms, conf));
+      return static_cast<int>(get_shared_ligand_mem(max_atoms, conf) +
+                              get_private_ligand_mem(max_atoms, conf));
     }
 
     static batch_multiple get_batch_size(const int atoms,
@@ -323,8 +324,8 @@ namespace mudock {
     void teardown_impl(batch<static_molecule> &batch) override {
       assert(batch.num_ligands == batch_ligands && "Scoring algorithm received different batch for teardown");
 
-      auto &scores_b               = (*this->scratch).template get<buffer_data_type::SCORES>();
-      const auto scores_per_ligand = scores_b.num_elements() / batch_ligands;
+      auto &scores_b              = (*this->scratch).template get<buffer_data_type::SCORES>();
+      const int scores_per_ligand = static_cast<int>(scores_b.num_elements() / batch_ligands);
       scores_b.copy_device2host();
       (*this->scratch).get_queue()->synchronize();
       for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {

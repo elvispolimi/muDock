@@ -22,7 +22,7 @@ namespace mudock {
     assert(!matches.empty() && "SYCL no requsted device found");
     assert(device_id < static_cast<int>(matches.size()) && "SYCL requsted device ID not found");
 
-    return matches[device_id];
+    return matches[static_cast<size_t>(device_id)];
   }
 
   template<class kernel_name>

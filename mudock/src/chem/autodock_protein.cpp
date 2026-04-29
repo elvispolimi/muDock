@@ -22,9 +22,9 @@ namespace mudock {
   // Global parameters for deriving the pre-computation grid
   //===------------------------------------------------------------------------------------------------------
 
-  static constexpr auto energy_cutoff   = fp_type{8};
-  static constexpr auto resolution      = fp_type{0.5};
-  static constexpr auto half_resolution = resolution / fp_type{2};
+  static constexpr auto energy_cutoff   = static_cast<fp_type>(8);
+  static constexpr auto resolution      = static_cast<fp_type>(0.5);
+  static constexpr auto half_resolution = resolution / static_cast<fp_type>(2);
 
   //===------------------------------------------------------------------------------------------------------
   // Utility functions to compute the protein HB gemetries
@@ -38,9 +38,9 @@ namespace mudock {
     std::vector<int> disorder;
 
     inline hbond_geometries(const std::size_t n)
-        : vector1(n, point3D{fp_type{0}}),
-          vector2(n, point3D{fp_type{0}}),
-          exp(n, fp_type{0}),
+        : vector1(n, point3D{static_cast<fp_type>(0)}),
+          vector2(n, point3D{static_cast<fp_type>(0)}),
+          exp(n, static_cast<fp_type>(0)),
           disorder(n, 0) {}
   };
 
@@ -74,7 +74,7 @@ namespace mudock {
             const auto neigh_point = point3D{x[neigh_index], y[neigh_index], z[neigh_index]};
             const auto diff        = atom_point.difference(neigh_point);
             const auto d2          = diff.square().sum_components();
-            if (d2 < fp_type{1.9}) {
+            if (d2 < static_cast<fp_type>(1.9)) {
               const auto neigh_element = elements[neigh_index];
               if (neigh_element == element::O || neigh_element == element::S) {
                 adt_protein.exp[atom_index]      = 4;
@@ -97,8 +97,8 @@ namespace mudock {
             const auto diff          = atom_point.difference(neigh_point);
             const auto d2            = diff.square().sum_components();
             const auto neigh_element = elements[neigh_index];
-            if ((d2 < fp_type{3.61} && neigh_element != element::H) ||
-                (d2 < fp_type{1.69} && neigh_element == element::H)) {
+            if ((d2 < static_cast<fp_type>(3.61) && neigh_element != element::H) ||
+                (d2 < static_cast<fp_type>(1.69) && neigh_element == element::H)) {
               switch (bond_counter) {
                 case std::size_t{0}:
                   bond_counter = 1;
@@ -128,8 +128,8 @@ namespace mudock {
               const auto c_d2            = c_diff.square().sum_components();
               const auto c_norm          = c_diff.normalize();
               const auto c_neigh_element = elements[other_index];
-              if ((c_d2 < fp_type{2.89} && c_neigh_element != element::H) ||
-                  (c_d2 < fp_type{1.69} && c_neigh_element == element::H)) {
+              if ((c_d2 < static_cast<fp_type>(2.89) && c_neigh_element != element::H) ||
+                  (c_d2 < static_cast<fp_type>(1.69) && c_neigh_element == element::H)) {
                 // C=O cross C-X gives the lone pair plane normal
                 // adt_protein.vector2[atom_index] =
                 //     std::as_const(adt_protein.vector1[atom_index]).product(c_norm).normalize();
@@ -170,8 +170,8 @@ namespace mudock {
             const auto diff          = atom_point.difference(neigh_point);
             const auto d2            = diff.square().sum_components();
             const auto neigh_element = elements[neigh_index];
-            if ((d2 < fp_type{3.61} && neigh_element != element::H) ||
-                (d2 < fp_type{1.69} && neigh_element == element::H)) {
+            if ((d2 < static_cast<fp_type>(3.61) && neigh_element != element::H) ||
+                (d2 < static_cast<fp_type>(1.69) && neigh_element == element::H)) {
               switch (bond_counter) {
                 case std::size_t{0}:
                   bond_counter = 1;
@@ -204,11 +204,14 @@ namespace mudock {
           adt_protein.vector1[atom_index] =
               atom_point
                   .difference(
-                      neigh1_point.add(neigh2_point).product(point<fp_type, 3>{fp_type{1} / fp_type{2}}))
+                      neigh1_point.add(neigh2_point)
+                          .product(point<fp_type, 3>{static_cast<fp_type>(1) / static_cast<fp_type>(2)}))
                   .normalize();
         } else if (bond_counter == std::size_t{3}) { // three bonds
           const auto p1 = std::as_const(neigh1_point).add(std::as_const(neigh2_point));
-          const auto p2 = p1.add(std::as_const(neigh3_point)).product(fp_type{fp_type{1} / fp_type{3}});
+          const auto p2 =
+              p1.add(std::as_const(neigh3_point))
+                  .product(static_cast<fp_type>(static_cast<fp_type>(1) / static_cast<fp_type>(3)));
           adt_protein.vector1[atom_index] = atom_point.difference(p2).normalize();
         }
       }
@@ -284,15 +287,16 @@ namespace mudock {
           auto nearest_H_index      = std::size_t{0};
           auto nearest_H_distance   = point3D{x[0], y[0], z[0]}.distance(voxel_point);
           auto nearest_H_valid      = num_hbonds[0] == 1 || num_hbonds[0] == 2;
-          auto electrostatic_energy = fp_type{0};
-          auto desolvation_energy   = fp_type{0};
+          auto electrostatic_energy = static_cast<fp_type>(0);
+          auto desolvation_energy   = static_cast<fp_type>(0);
           for (std::size_t i = 0; i < num_atoms; ++i) {
             // compute properties of the given atom
             const auto atom_point = point<fp_type, 3>{x[i], y[i], z[i]};
             const auto d          = atom_point.distance(voxel_point);
-            // const auto inv_d      = fp_type{1} / d;
-            const auto inv_dmax = fp_type{1} / std::max(fp_type{0.5}, d);
-            const auto indx_r   = std::min<int>(std::floor(d * lookup_resolution), num_radius_tick_elect);
+            // const auto inv_d      = static_cast<fp_type>(1) / d;
+            const auto inv_dmax = static_cast<fp_type>(1) / std::max(static_cast<fp_type>(0.5), d);
+            const auto indx_r =
+                std::min<int>(static_cast<int>(std::floor(d * lookup_resolution)), num_radius_tick_elect);
 
             // add the electrostatic constribution
             electrostatic_energy +=
@@ -310,7 +314,8 @@ namespace mudock {
             if (d <= energy_cutoff) {
               const auto radius_index = std::min(num_radius_tick_desolv - std::size_t{1},
                                                  static_cast<std::size_t>(d * lookup_resolution));
-              desolvation_energy += fp_type{0.01097} * volume[i] * desolvation_energies[radius_index];
+              desolvation_energy +=
+                  static_cast<fp_type>(0.01097) * volume[i] * desolvation_energies[radius_index];
             }
           }
 
@@ -325,12 +330,13 @@ namespace mudock {
               const auto diff       = (atom_point - voxel_point).normalize();
               const auto d          = atom_point.distance(voxel_point);
               if (d <= cutoff_distance) {
-                auto racc = fp_type{1}, rdon = fp_type{1}, Hramp = fp_type{1}, cos_theta = fp_type{0};
+                auto racc = static_cast<fp_type>(1), rdon = static_cast<fp_type>(1),
+                     Hramp = static_cast<fp_type>(1), cos_theta = static_cast<fp_type>(0);
                 switch (num_hbonds[i]) {
                   case std::size_t{2}:
                     cos_theta = -diff.product(vector1[i]).sum_components();
-                    if (cos_theta <= fp_type{0}) {
-                      racc = fp_type{0};
+                    if (cos_theta <= static_cast<fp_type>(0)) {
+                      racc = static_cast<fp_type>(0);
                     } else {
                       switch (exp[i]) {
                         case 0: racc = cos_theta; break;
@@ -343,20 +349,23 @@ namespace mudock {
                         default: throw std::runtime_error("Unexpected exponent " + std::to_string(exp[i]));
                       }
                       if (i == nearest_H_index) {
-                        Hramp = fp_type{1};
+                        Hramp = static_cast<fp_type>(1);
                       } else {
                         cos_theta = vector1[nearest_H_index].product(vector1[i]).sum_components();
-                        cos_theta = std::min(fp_type{1}, std::max(cos_theta, fp_type{-1}));
-                        Hramp     = fp_type{0.5} -
-                                fp_type{0.5} * std::cos(std::acos(cos_theta) * fp_type{120} / fp_type{90});
+                        cos_theta =
+                            std::min(static_cast<fp_type>(1), std::max(cos_theta, static_cast<fp_type>(-1)));
+                        Hramp = static_cast<fp_type>(0.5) -
+                                static_cast<fp_type>(0.5) *
+                                    std::cos(std::acos(cos_theta) * static_cast<fp_type>(120) /
+                                             static_cast<fp_type>(90));
                       }
                     }
                     break;
 
                   case std::size_t{4}:
                     cos_theta = -diff.product(vector1[i]).sum_components();
-                    if (cos_theta <= fp_type{0}) {
-                      rdon = fp_type{0};
+                    if (cos_theta <= static_cast<fp_type>(0)) {
+                      rdon = static_cast<fp_type>(0);
                     } else {
                       rdon = cos_theta * cos_theta;
                     }
@@ -365,27 +374,30 @@ namespace mudock {
                   case std::size_t{5}: {
                     cos_theta = -diff.product(vector1[i]).sum_components();
                     const auto t0 =
-                        math::pi_halved -
-                        std::acos(
-                            std::clamp(diff.product(vector2[i]).sum_components(), fp_type{-1}, fp_type{1}));
+                        math::pi_halved - std::acos(std::clamp(diff.product(vector2[i]).sum_components(),
+                                                               static_cast<fp_type>(-1),
+                                                               static_cast<fp_type>(1)));
                     const auto cross = diff.cross(vector2[i]).normalize();
                     fp_type ti       = cross.product(vector1[i]).sum_components();
 
                     /* rdon expressions from Goodford */
                     rdon = 0.;
-                    if (cos_theta >= fp_type{0}) {
-                      ti = std::clamp(ti, fp_type{-1}, fp_type{1});
+                    if (cos_theta >= static_cast<fp_type>(0)) {
+                      ti = std::clamp(ti, static_cast<fp_type>(-1), static_cast<fp_type>(1));
                       ti = std::acos(ti) - math::pi_halved;
                       if (ti < 0) {
                         ti = -ti;
                       }
                       /* the 2.0*ti can be replaced by (ti + ti) in: rdon = (0.9 + 0.1*sin(2.0*ti))*cos(t0);*/
-                      rdon = (fp_type{0.9} + fp_type{0.1} * std::sin(ti + ti)) * std::cos(t0);
-                    } else if (cos_theta >= fp_type{-0.34202}) {
+                      rdon = (static_cast<fp_type>(0.9) + static_cast<fp_type>(0.1) * std::sin(ti + ti)) *
+                             std::cos(t0);
+                    } else if (cos_theta >= static_cast<fp_type>(-0.34202)) {
                       /* 0.34202 = cos (100 deg) */
                       // TODO @Davide ok here the fp_type?
-                      rdon = fp_type{562.25} *
-                             std::pow(fp_type{0.116978} - cos_theta * cos_theta, fp_type{3}) * std::cos(t0);
+                      rdon = static_cast<fp_type>(562.25) *
+                             std::pow(static_cast<fp_type>(0.116978) - cos_theta * cos_theta,
+                                      static_cast<fp_type>(3)) *
+                             std::cos(t0);
                     }
                     break;
                   }
@@ -394,10 +406,10 @@ namespace mudock {
 
                 const auto& protein_desc = get_description(autodock_types[i]);
 
-                const auto indx_n =
-                    std::min<int>(std::floor(d * lookup_resolution), num_radius_tick_desolv - 1);
-                const int indx_r =
-                    std::min<int>(std::floor(d * lookup_resolution), num_radius_tick_elect - 1);
+                const auto indx_n = std::min<int>(static_cast<int>(std::floor(d * lookup_resolution)),
+                                                  num_radius_tick_desolv - 1);
+                const int indx_r  = std::min<int>(static_cast<int>(std::floor(d * lookup_resolution)),
+                                                  num_radius_tick_elect - 1);
 
                 for (int grid_index = 0; grid_index < num_autodock_ff_grids(); ++grid_index) {
                   auto& voxel_scratch                = voxel_scratchs[grid_index];
@@ -409,24 +421,28 @@ namespace mudock {
                       vdw_energies.get(indx_n, static_cast<int>(autodock_types[i]), grid_index);
 
                   if (vdw_shape.hbonder) {
-                    fp_type rsph = vdw_hb_value / fp_type{100};
-                    rsph         = std::clamp(rsph, fp_type{0}, fp_type{1});
+                    fp_type rsph = vdw_hb_value / static_cast<fp_type>(100);
+                    rsph         = std::clamp(rsph, static_cast<fp_type>(0), static_cast<fp_type>(1));
                     if ((ligand_desc.hbond == 3 || ligand_desc.hbond == 5)         /*AS or A2*/
                         && (protein_desc.hbond == 1 || protein_desc.hbond == 2)) { /*DS or D1*/
-                      voxel_scratch.energy += vdw_hb_value * Hramp * (racc + (fp_type{1} - racc) * rsph);
+                      voxel_scratch.energy +=
+                          vdw_hb_value * Hramp * (racc + (static_cast<fp_type>(1) - racc) * rsph);
                     } else if ((ligand_desc.hbond == 4)                                   /*A1*/
                                && (protein_desc.hbond == 1 || protein_desc.hbond == 2)) { /*DS,D1*/
-                      voxel_scratch.hbondmin  = std::min(voxel_scratch.hbondmin,
-                                                        vdw_hb_value * (racc + (fp_type{1} - racc) * rsph));
-                      voxel_scratch.hbondmax  = std::max(voxel_scratch.hbondmax,
-                                                        vdw_hb_value * (racc + (fp_type{1} - racc) * rsph));
+                      voxel_scratch.hbondmin =
+                          std::min(voxel_scratch.hbondmin,
+                                   vdw_hb_value * (racc + (static_cast<fp_type>(1) - racc) * rsph));
+                      voxel_scratch.hbondmax =
+                          std::max(voxel_scratch.hbondmax,
+                                   vdw_hb_value * (racc + (static_cast<fp_type>(1) - racc) * rsph));
                       voxel_scratch.hbondflag = true;
                     } else if ((ligand_desc.hbond == 1 || ligand_desc.hbond == 2) &&
                                (protein_desc.hbond > 2)) { /*DS,D1 vs AS,A1,A2*/
-                      const fp_type temp_hbond_enrg = vdw_hb_value * (rdon + (fp_type{1} - rdon) * rsph);
-                      voxel_scratch.hbondmin        = std::min(voxel_scratch.hbondmin, temp_hbond_enrg);
-                      voxel_scratch.hbondmax        = std::max(voxel_scratch.hbondmax, temp_hbond_enrg);
-                      voxel_scratch.hbondflag       = true;
+                      const fp_type temp_hbond_enrg =
+                          vdw_hb_value * (rdon + (static_cast<fp_type>(1) - rdon) * rsph);
+                      voxel_scratch.hbondmin  = std::min(voxel_scratch.hbondmin, temp_hbond_enrg);
+                      voxel_scratch.hbondmax  = std::max(voxel_scratch.hbondmax, temp_hbond_enrg);
+                      voxel_scratch.hbondflag = true;
                     } else { /*end of is_hbonder*/
                       voxel_scratch.energy += vdw_hb_value;
                     }
