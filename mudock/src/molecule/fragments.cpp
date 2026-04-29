@@ -84,8 +84,8 @@ namespace mudock {
   // Utility function that fill the information of the fragments
   //===------------------------------------------------------------------------------------------------------
   void fill_fragment_mask(std::span<fragments<static_containers>::value_type> mask,
-                          int& start_index,
-                          int& stop_index,
+                          int &start_index,
+                          int &stop_index,
                           const edge_description &rotatable_bond,
                           molecule_graph_type &g) {
     const auto source_vertex = rotatable_bond.source;
@@ -126,7 +126,7 @@ namespace mudock {
   fragments<static_containers>::fragments(molecule_graph_type &graph,
                                           const std::span<const bond> &bonds,
                                           const int num_atoms)
-      : index(num_atoms, bonds.size()) {
+      : index(num_atoms, static_cast<int>(bonds.size())) {
     // get the reotatable bonds from the molecule's graph
     const auto [rotatable_edges, num_rotatable_edges] = get_rotatable_edges<dynamic_containers>(bonds, graph);
 
@@ -141,16 +141,12 @@ namespace mudock {
 
     // fill the fragment data structures
     for (int i{0}; i < num_rotatable_edges; ++i) {
-      fill_fragment_mask(get_mask(i),
-                         start_atom_indices[i],
-                         stop_atom_indices[i],
-                         rotatable_edges[i],
-                         graph);
+      fill_fragment_mask(get_mask(i), start_atom_indices[i], stop_atom_indices[i], rotatable_edges[i], graph);
     }
 
     resize(rigid_pieces, num_atoms);
     fill(rigid_pieces, value_type{0});
-    fill_rigid_pieces(make_span(rigid_pieces, rigid_pieces.size()),
+    fill_rigid_pieces(make_span(rigid_pieces, static_cast<int>(rigid_pieces.size())),
                       make_span(rotatable_edges, num_rotatable_edges),
                       num_atoms,
                       graph);
@@ -160,7 +156,7 @@ namespace mudock {
   fragments<dynamic_containers>::fragments(molecule_graph_type &graph,
                                            const std::span<const bond> &bonds,
                                            const int num_atoms)
-      : index(num_atoms, bonds.size()) {
+      : index(num_atoms, static_cast<int>(bonds.size())) {
     // get the reotatable bonds from the molecule's graph
     const auto [rotatable_edges, num_rotatable_edges] = get_rotatable_edges<dynamic_containers>(bonds, graph);
 
@@ -175,16 +171,12 @@ namespace mudock {
 
     // fill the fragment data structures
     for (int i{0}; i < num_rotatable_edges; ++i) {
-      fill_fragment_mask(get_mask(i),
-                         start_atom_indices[i],
-                         stop_atom_indices[i],
-                         rotatable_edges[i],
-                         graph);
+      fill_fragment_mask(get_mask(i), start_atom_indices[i], stop_atom_indices[i], rotatable_edges[i], graph);
     }
 
     resize(rigid_pieces, num_atoms);
     fill(rigid_pieces, value_type{0});
-    fill_rigid_pieces(make_span(rigid_pieces, rigid_pieces.size()),
+    fill_rigid_pieces(make_span(rigid_pieces, static_cast<int>(rigid_pieces.size())),
                       make_span(rotatable_edges, num_rotatable_edges),
                       num_atoms,
                       graph);
@@ -206,9 +198,9 @@ namespace mudock {
     frag_stop_indexes.resize(num_rotamers);
     for (size_t rot = 0; rot < num_rotamers; ++rot) {
       std::memcpy((frag_masks.data() + num_atoms * rot),
-                  ligand_fragments->get_mask(rot).data(),
+                  ligand_fragments->get_mask(static_cast<int>(rot)).data(),
                   num_atoms * sizeof(int));
-      const auto [start_index, stop_index] = ligand_fragments->get_rotatable_atoms(rot);
+      const auto [start_index, stop_index] = ligand_fragments->get_rotatable_atoms(static_cast<int>(rot));
       frag_start_indexes.data()[rot]       = start_index;
       frag_stop_indexes.data()[rot]        = stop_index;
     }

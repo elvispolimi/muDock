@@ -5,9 +5,9 @@
 #include <concepts>
 #include <memory>
 #include <mudock/chem/geom_ligand.hpp>
-#include <mudock/log.hpp>
 #include <mudock/compute/batch_multiple.hpp>
 #include <mudock/compute/queue.hpp>
+#include <mudock/log.hpp>
 #if !defined(__CUDACC__) && !defined(__HIPCC__)
   #include <mudock/compute/buffer_utils.hpp>
   #include <mudock/compute/scratchpad.hpp>
@@ -155,14 +155,15 @@ namespace mudock {
                     geom_lig.fragments_masks(),
                     num_atoms * num_rotamers * sizeof(int));
         ligand_fragments_start()[ligand_index + 1] =
-            ligand_fragments_start()[ligand_index] + (num_atoms * num_rotamers);
+            static_cast<int>(ligand_fragments_start()[ligand_index] + (num_atoms * num_rotamers));
         std::memcpy((void*) (frag_start_atom_indices() + frag_indices_start()[ligand_index]),
                     geom_lig.fragmets_starts(),
                     num_rotamers * sizeof(int));
         std::memcpy((void*) (frag_stop_atom_indices() + frag_indices_start()[ligand_index]),
                     geom_lig.fragments_stops(),
                     num_rotamers * sizeof(int));
-        frag_indices_start()[ligand_index + 1] = frag_indices_start()[ligand_index] + num_rotamers;
+        frag_indices_start()[ligand_index + 1] =
+            static_cast<int>(frag_indices_start()[ligand_index] + num_rotamers);
       }
       ligand_fragments.copy_host2device();
       ligand_fragments_start.copy_host2device();
@@ -258,7 +259,8 @@ namespace mudock {
     }
 
     static int get_ligand_mem(const int max_atoms, const knobs conf) {
-      return static_cast<int>(get_shared_ligand_mem(max_atoms, conf) + get_private_ligand_mem(max_atoms, conf));
+      return static_cast<int>(get_shared_ligand_mem(max_atoms, conf) +
+                              get_private_ligand_mem(max_atoms, conf));
     }
 
     static batch_multiple get_batch_size(const int atoms,
@@ -266,7 +268,8 @@ namespace mudock {
                                          const knobs& conf,
                                          const size_t max_bucket_size) {
       (void) conf;
-      const auto plain_multiple_info = normalize_batch_multiple(get_geom_transform_batch_multiple<queue_t>(atoms, q));
+      const auto plain_multiple_info =
+          normalize_batch_multiple(get_geom_transform_batch_multiple<queue_t>(atoms, q));
       mudock::stage_bucket_trace("GEOM stage plain multiple for ",
                                  atoms,
                                  " atoms -> total=",

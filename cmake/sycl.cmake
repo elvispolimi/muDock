@@ -34,14 +34,16 @@ function(add_sycl_files SYCL_SOURCES HEADER_PATH HEADER_FILES OUTPUT)
   foreach(SYCL_FILE ${SYCL_SOURCES})
     get_filename_component(BASENAME ${SYCL_FILE} NAME_WE)
     set(GENERATED_FILE "${CMAKE_CURRENT_BINARY_DIR}/${BASENAME}.oneapi.o")
-
+  
+    #TOOD fix the -Wno-sign-conversion
     add_custom_command(
       OUTPUT ${GENERATED_FILE}
       COMMAND
         ${LLVM_TOOLS_BINARY_DIR}/clang++ -fsycl -fsycl-targets=${SYCL_TARGETS}
-        ${SYCL_BACKEND_FLAGS_COMPILE} ${CXX_FLAGS_LIST} --std=c++20 -o ${GENERATED_FILE} -c ${SYCL_FILE}
+        ${SYCL_BACKEND_FLAGS_COMPILE} ${CXX_FLAGS_LIST} ${global_c_cxx_flags} -Wno-sign-conversion --std=c++20 -MMD -MF ${GENERATED_FILE}.d -o ${GENERATED_FILE} -c ${SYCL_FILE}
         -I${HEADER_PATH} ${SYCL_SYSTEM_INCLUDE_FLAGS}
-      DEPENDS "${SYCL_FILE}" "${HEADER_FILES}"
+      DEPENDS "${SYCL_FILE}"
+      DEPFILE "${GENERATED_FILE}.d"
       COMMENT "Compiling SYCL source ${SYCL_FILE} with dpcpp")
 
     list(APPEND GENERATED_CPP_SOURCES ${GENERATED_FILE})

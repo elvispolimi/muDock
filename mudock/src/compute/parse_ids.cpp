@@ -1,6 +1,7 @@
 #include <cctype>
 #include <mudock/compute/parse_ids.hpp>
 #include <stdexcept>
+#include <string>
 
 namespace mudock {
   std::vector<int> parse_ids(std::string_view description) {
@@ -17,8 +18,8 @@ namespace mudock {
       // check if we are talking about a range
       const auto dash_index = group_description.find('-');
       if (dash_index != std::string_view::npos) {
-        const int first_number  = std::stoull(std::string(group_description.substr(0, dash_index)));
-        const int second_number = std::stoull(std::string(group_description.substr(dash_index + int{1})));
+        const int first_number  = std::stoi(std::string(group_description.substr(0, dash_index)));
+        const int second_number = std::stoi(std::string(group_description.substr(dash_index + int{1})));
         for (int i = first_number; i <= second_number; ++i) { ids.emplace_back(i); }
       } else { // or if we have a plain number
         ids.emplace_back(std::stoull(std::string(group_description)));

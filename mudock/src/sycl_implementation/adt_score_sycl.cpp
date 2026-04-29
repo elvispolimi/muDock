@@ -6,8 +6,8 @@
 #include <mudock/sycl_implementation/adt_score_sycl.hpp>
 #include <mudock/sycl_implementation/invoke_kernel_sycl.hpp>
 #include <mudock/sycl_implementation/queue_sycl.hpp>
-#include <mudock/sycl_implementation/sycl_utils.hpp>
 #include <mudock/sycl_implementation/sycl_texture.hpp>
+#include <mudock/sycl_implementation/sycl_utils.hpp>
 #include <mudock/utils.hpp>
 #include <stdexcept>
 
@@ -82,10 +82,10 @@ namespace mudock {
                     const fp_type* __restrict__ grid_maps,
                     const int* __restrict__ map_tex_indexes,
                     fp_type* __restrict__ scores) const {
-      const int workgroup_id         = it.get_group(0);
-      const int ligand_id            = workgroup_id;
-      const int workitem_id_in_group = it.get_local_id(0);
-      const auto& sub_group          = it.get_sub_group();
+      const int workgroup_id         = static_cast<int>(it.get_group(0));
+      const int ligand_id            = static_cast<int>(workgroup_id);
+      const int workitem_id_in_group = static_cast<int>(it.get_local_id(0));
+      const auto sub_group           = it.get_sub_group();
       assert(it.get_local_range(0) == MUDOCK_SYCL_WG_SIZE &&
              "SYCL WG size and the number of thread per block does not coincide");
 
@@ -148,15 +148,15 @@ namespace mudock {
               const auto& charge      = l_charge[atom_index];
               const fp_type* atom_map = grid_maps + l_atom_tex_indexes[atom_index];
 
-              const int u0      = coord_tex[0];
+              const int u0      = static_cast<int>(coord_tex[0]);
               const fp_type p0u = coord_tex[0] - static_cast<fp_type>(u0);
               const fp_type p1u = fp_type{1} - p0u;
 
-              const int v0      = coord_tex[1];
+              const int v0      = static_cast<int>(coord_tex[1]);
               const fp_type p0v = coord_tex[1] - static_cast<fp_type>(v0);
               const fp_type p1v = fp_type{1} - p0v;
 
-              const int w0      = coord_tex[2];
+              const int w0      = static_cast<int>(coord_tex[2]);
               const fp_type p0w = coord_tex[2] - static_cast<fp_type>(w0);
               const fp_type p1w = fp_type{1} - p0w;
 
@@ -191,10 +191,10 @@ namespace mudock {
 
         fp_type elect_total_eintcal{0}, emap_total_eintcal{0}, dmap_total_eintcal{0};
         if (num_rotamers > 0)
-          for (int nonbond_list = it.get_local_id(0); nonbond_list < num_nonbonds;
+          for (int nonbond_list = workitem_id_in_group; nonbond_list < num_nonbonds;
                nonbond_list += MUDOCK_SYCL_WG_SIZE) {
-            const int& a1 = nonbond_a1[nonbond_list];
-            const int& a2 = nonbond_a2[nonbond_list];
+            const int& a1 = l_nonbond_a1[nonbond_list];
+            const int& a2 = l_nonbond_a2[nonbond_list];
 
             const auto diff_x                = ligand_x[a1] - ligand_x[a2];
             const auto diff_y                = ligand_y[a1] - ligand_y[a2];
@@ -245,11 +245,12 @@ namespace mudock {
           }
         fp_type total_energy = emap_total_eintcal + elect_total_eintcal + dmap_total_eintcal +
                                emap_total_trilinear + elect_total_trilinear + dmap_total_trilinear;
-        total_energy = sycl::reduce_over_group(sub_group, total_energy, std::plus<fp_type>());
+        total_energy         = sycl::reduce_over_group(sub_group, total_energy, std::plus<fp_type>());
 
         if (workitem_id_in_group == 0) {
-          const fp_type tors_free_energy = num_rotamers * autodock_parameters::coeff_tors;
-          scores_l[scores_index]         = total_energy + tors_free_energy;
+          const fp_type tors_free_energy =
+              static_cast<fp_type>(num_rotamers) * autodock_parameters::coeff_tors;
+          scores_l[scores_index] = total_energy + tors_free_energy;
         }
       }
     };
@@ -303,8 +304,7 @@ namespace mudock {
     constexpr_for<0, reorder_buffer<static_molecule>::get_num_atom_clusters(), 1>([&](const auto atom_index) {
       const auto n_atoms = reorder_buffer<static_molecule>::atoms_clusters[atom_index];
       if (atoms == n_atoms)
-        bucket_multiple = get_kernel_batch_multiple_sycl<calc_energy<n_atoms>>(q_b,
-                                                                                "adt_score::calc_energy");
+        bucket_multiple = get_kernel_batch_multiple_sycl<calc_energy<n_atoms>>(q_b, "adt_score::calc_energy");
     });
     if (bucket_multiple.total_multiple() <= 0)
       throw std::runtime_error(

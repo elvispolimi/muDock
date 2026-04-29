@@ -165,8 +165,8 @@ namespace mudock {
 
   // utility functions to work with them
   inline const autodock_ff_description& get_description(const autodock_ff a) {
-    assert(AUTODOCK_FF_DICTIONARY[static_cast<int>(a)].value == a);
-    return AUTODOCK_FF_DICTIONARY[static_cast<int>(a)];
+    assert(AUTODOCK_FF_DICTIONARY[static_cast<size_t>(a)].value == a);
+    return AUTODOCK_FF_DICTIONARY[static_cast<size_t>(a)];
   }
 
   autodock_ff parse_autodock_type(const std::string_view symbol);

@@ -5,8 +5,17 @@
 //===------------------------------------------------------------------------------------------------------
 
 namespace mudock {
-  const std::array<autodock_ff_description, {@ num_elements @}> AUTODOCK_FF_DICTIONARY = {{{%for element in data %}
-    {autodock_ff::{@ element.value @}, "{@ element.name @}", {@ element.Rii |default(0.0) @}, {@ element.epsii |default(0.0) @}, {@ element.vol |default(0.0) @}, {@ element.solpar |default(0.0) @},  {@ element.Rij_hb |default(0.0) @},  {@ element.epsij_hb |default(0.0) @},  {@ element.hbond |default(0) @},},{% endfor %}
-  }};
-
+const std::array<autodock_ff_description, {@ num_elements @}> AUTODOCK_FF_DICTIONARY = {{ {% for element in data %}
+  {
+    autodock_ff::{@ element.value @},
+    "{@ element.name @}",
+    static_cast<fp_type>({@ element.Rii | default(0.0) @}),
+    static_cast<fp_type>({@ element.epsii | default(0.0) @}),
+    static_cast<fp_type>({@ element.vol | default(0.0) @}),
+    static_cast<fp_type>({@ element.solpar | default(0.0) @}),
+    static_cast<fp_type>({@ element.Rij_hb | default(0.0) @}),
+    static_cast<fp_type>({@ element.epsij_hb | default(0.0) @}),
+    {@ element.hbond | default(0) @}
+  }{% if not loop.last %},{% endif %}
+{% endfor %} }};
 } // namespace mudock

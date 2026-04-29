@@ -494,9 +494,10 @@ if(NOT MUDOCK_ENABLE_HIP AND (("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
     global_c_cxx_flags
     -Wall
     -Wextra
-    -Wpedantic
     -Wshadow
-    -Wdouble-promotion)
+    -Wdouble-promotion
+    -Wconversion
+    )
 endif()
 
 # if we are using ninja, force to have colored output
@@ -509,8 +510,15 @@ if("${CMAKE_GENERATOR}" STREQUAL "Ninja")
 endif()
 
 # add all the previously defined flags to each target language
+add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-Wpedantic>)
 foreach(flag IN LISTS global_c_cxx_flags)
   add_compile_options($<$<COMPILE_LANGUAGE:CXX>:${flag}>)
+  if(MUDOCK_ENABLE_CUDA)
+    add_compile_options($<$<COMPILE_LANGUAGE:CUDA>:${flag}>)
+  endif()
+  if(MUDOCK_ENABLE_HIP)
+    add_compile_options($<$<COMPILE_LANGUAGE:HIP>:${flag}>)
+  endif()
 endforeach()
 
 # ##############################################################################

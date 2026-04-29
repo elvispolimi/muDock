@@ -145,8 +145,8 @@ namespace mudock {
 
   // utility functions to work with them
   inline const element_description& get_description(const element e) {
-    assert(ELEMENT_DICTIONARY[static_cast<int>(e)].value == e);
-    return ELEMENT_DICTIONARY[static_cast<int>(e)];
+    assert(ELEMENT_DICTIONARY[static_cast<size_t>(e)].value == e);
+    return ELEMENT_DICTIONARY[static_cast<size_t>(e)];
   }
   element parse_element_symbol(const std::string_view symbol);
 

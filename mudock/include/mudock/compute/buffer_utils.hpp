@@ -22,8 +22,8 @@ namespace mudock {
     auto &scratch_z = (*scratch).template get<bdt_z>();
 
     if (!scratch_x.is_valid()) {
-      const auto total = static_cast<std::size_t>(tot_atoms_in_batch) *
-                         static_cast<std::size_t>(scores_per_ligand);
+      const auto total =
+          static_cast<std::size_t>(tot_atoms_in_batch) * static_cast<std::size_t>(scores_per_ligand);
       scratch_x.alloc(total);
       scratch_y.alloc(total);
       scratch_z.alloc(total);
@@ -81,7 +81,7 @@ namespace mudock {
       for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
         auto &ligand = *batch.molecules[ligand_index];
 
-        num_rotamers_b()[ligand_index] = ligand.num_rotamers();
+        num_rotamers_b()[ligand_index] = static_cast<int>(ligand.num_rotamers());
       }
       num_rotamers_b.copy_host2device();
       return true;

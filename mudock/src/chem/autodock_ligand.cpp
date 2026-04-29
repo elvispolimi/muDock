@@ -232,9 +232,9 @@ namespace mudock {
       fp_type cA{0};
       fp_type cB{0};
       if (xA != xB) {
-        const fp_type tmp = epsij / (xA - xB);
-        cA                = tmp * std::pow(Rij, static_cast<fp_type>(xA)) * xB;
-        cB                = tmp * std::pow(Rij, static_cast<fp_type>(xB)) * xA;
+        const fp_type tmp = epsij / static_cast<fp_type>(xA - xB);
+        cA                = tmp * std::pow(Rij, static_cast<fp_type>(xA)) * static_cast<fp_type>(xB);
+        cB                = tmp * std::pow(Rij, static_cast<fp_type>(xB)) * static_cast<fp_type>(xA);
       }
       cA_v[index] = cA;
       cB_v[index] = cB;

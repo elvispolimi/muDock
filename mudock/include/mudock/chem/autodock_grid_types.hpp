@@ -80,8 +80,8 @@ namespace mudock {
   extern const std::array<map_description, num_autodock_grids()> MAP_DICTIONARY;
 
   inline const map_description& get_description(const autodock_grid_type e) {
-    assert(MAP_DICTIONARY[static_cast<int>(e)].value == e);
-    return MAP_DICTIONARY[static_cast<int>(e)];
+    assert(MAP_DICTIONARY[static_cast<size_t>(e)].value == e);
+    return MAP_DICTIONARY[static_cast<size_t>(e)];
   }
   autodock_grid_type parse_map_symbol(const std::string_view symbol);
 } // namespace mudock
