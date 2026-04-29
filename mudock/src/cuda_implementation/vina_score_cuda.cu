@@ -17,7 +17,7 @@
 /// Score inter -15.313681, Score intra -1.478089, Score -10.219815 <- with no parallelisation
 /// Score inter -15.313679, Score intra -1.478089, Score -10.219813 <- real
 
-#define BUCKET_MULTIPLIER 3
+#define BUCKET_MULTIPLIER 18
 #define MAX_LIGAND_ATOMS 256
 
     /**
@@ -44,28 +44,30 @@ namespace mudock {
 
     __device__ inline fp_type gauss1(const fp_type dst) {
       fp_type x = dst * 2.0f;
-      return (dst != 0.0f) ? __expf(-(x*x)) : 0.0f;
+      return (fp_type)(dst != 0.0f) * __expf(-(x*x));
     }
 
     __device__ inline fp_type gauss2(const fp_type dst) {
-      fp_type x = (dst - 3) * 0.5f;
-      return (dst != 0.0f) ? __expf(-(x*x)) : 0.0f;
+      fp_type x = (dst - 3.0f) * 0.5f;
+      return (fp_type)(dst != 0.0f) * __expf(-(x*x));
     }
 
     __device__ inline fp_type repulsion(const fp_type dst) {
-      return (dst < 0.0f) ? dst*dst : 0.0f;
+      return (fp_type)(dst < 0.0f) * (dst * dst);
     }
 
-    __device__ inline fp_type hydrophobic(const fp_type dst, const int rec_lig_is_hydrophobic) {
-      fp_type hydro_1 = (dst <= 0.5f) ? 1.0f : 0.0f;
-      fp_type hydro_2 = (dst > 0.5f & dst < 1.5f) ? (1.5f - dst) : 0.0f;
-      return (rec_lig_is_hydrophobic) ? hydro_1 + hydro_2 : 0.0f;
+    __device__ inline fp_type hydrophobic(const fp_type dst, const int is_hydro) {
+      fp_type hydro_1 = (fp_type)(dst <= 0.5f); 
+      fp_type val = 1.5f - dst;
+      fp_type hydro_2 = fmaxf(0.0f, fminf(1.0f, val)) * (fp_type)(dst > 0.5f);
+      return is_hydro * (hydro_1 + hydro_2);
     }
 
-    __device__ inline fp_type hbonding(const fp_type dst, const int rec_lig_is_hb) {
-      fp_type h_bond_1 = (dst <= -0.7f) ? 1.0f : 0.0f;
-      fp_type h_bond_2 = (dst < 0.0f & dst > -0.7f) ? (-dst * 1.42857f ) : 0.0f;  // 1.4285714285714286 = 1/0.7f
-      return (rec_lig_is_hb) ? (h_bond_1 + h_bond_2) : 0.0f;
+    __device__ inline fp_type hbonding(const fp_type dst, const int is_hb) {
+      fp_type h_bond_1 = (fp_type)(dst <= -0.7f);
+      fp_type val = -dst * 1.42857f;
+      fp_type h_bond_2 = fmaxf(0.0f, fminf(1.0f, val)) * (fp_type)(dst > -0.7f & dst < 0.0f);
+      return is_hb * (h_bond_1 + h_bond_2);
     }
 
     __device__ inline fp_type compute_pair_energy(

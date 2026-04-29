@@ -17,21 +17,21 @@
 
 namespace mudock {
   
-  #define MAX_INTERACTING_PAIRS_IN_BATCH (1000000)
+  #define MAX_INTERACTING_PAIRS_IN_BATCH (10 * 1000 * 1000)
+  #define REMOVE_HYDROGENS false
 
   template<typename molecule_type>
-    size_t remove_hydrogens(molecule_type& molecule) {
-      size_t out = 0;
-        for(int atom = 0; atom < molecule.num_atoms();) {                   
-                element type = molecule.elements(atom);                     
-                if(type == element::H) {
-                  molecule.remove_atom(atom);
-                  out++;
-                }
-                else atom++;                                                
+    void remove_hydrogens(molecule_type& molecule) {
+      if(!REMOVE_HYDROGENS) return;
+      for(int atom = 0; atom < molecule.num_atoms();) {                   
+        element type = molecule.elements(atom);                     
+        if(type == element::H) {
+          molecule.remove_atom(atom);
+        }
+        else atom++;                                                
       }    
-      return out;
-  }
+      return;
+    }
 
   std::pair<std::vector<int>, std::vector<int>> get_interactive_pairs(const static_molecule& ligand);
 

@@ -372,7 +372,7 @@ if(MUDOCK_ENABLE_CUDA)
   # set(CMAKE_CUDA_ARCHITECTURES OFF)
   set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --expt-relaxed-constexpr")
   set(CMAKE_CUDA_FLAGS_RELEASE
-      "${CMAKE_CUDA_FLAGS_RELEASE} -use_fast_math -Xptxas -v")
+      "${CMAKE_CUDA_FLAGS_RELEASE} -use_fast_math -lineinfo -Xptxas -v")
   set(CMAKE_CUDA_FLAGS_RELWITHDEBINFO
       "${CMAKE_CUDA_FLAGS_RELWITHDEBINFO} -G -Xptxas -v")
   set(CMAKE_CUDA_FLAGS_DEBUG "${CMAKE_CUDA_FLAGS_DEBUG} -G -Xptxas -v")
