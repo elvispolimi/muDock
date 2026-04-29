@@ -96,7 +96,7 @@ namespace mudock {
   void iterate_impl(const int batch_ligands,
                     const int population_number,
                     const int tournament_length,
-                    const int mutation_prob,
+                    const fp_type mutation_prob,
                     chromosome* population,
                     chromosome* next_population,
                     int* __restrict__ num_rotamers_b,
