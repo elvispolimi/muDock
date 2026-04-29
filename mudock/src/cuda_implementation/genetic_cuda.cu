@@ -8,7 +8,7 @@
 namespace mudock {
   thread_local device_memory<cuda_random_object> cuda_random_memory;
 
-  static constexpr fp_type coordinate_step{0.2};
+  static constexpr fp_type coordinate_step = static_cast<fp_type>(0.2);
   static constexpr fp_type angle_step{4};
 
   template<typename T>
@@ -16,7 +16,7 @@ namespace mudock {
     fp_type value;
     if constexpr (is_debug()) {
       // TODO value here for debug
-      value = fp_type{0.4};
+      value = static_cast<fp_type>(0.4);
     } else {
       value = curand_uniform(&state);
     }
@@ -141,7 +141,7 @@ namespace mudock {
       const fp_type* p2 = l_chromosomes[best_individual_2].data();
       for (int i = 0; i < (6 + num_rotamers); ++i) { dst[i] = (i < split_index) ? p1[i] : p2[i]; }
 
-// mutate the offspring
+      // mutate the offspring
       MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
       for (int i{0}; i < 3; ++i) {
         if (get_mutation_coin_distribution(l_state) < mutation_prob)
@@ -183,7 +183,7 @@ namespace mudock {
         min_score = scores[chromosome_index];
       }
     }
-// Intra warp reduction
+    // Intra warp reduction
     MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
     for (int offset = BLOCK_SIZE / 2; offset > 0; offset /= 2) {
       const fp_type other_min_score = __shfl_down_sync(0xFFFFFFFF, min_score, offset);

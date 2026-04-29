@@ -6,13 +6,13 @@
 
 namespace mudock {
   namespace mehler_solmajer {
-    static constexpr fp_type lambda{0.003627};
-    static constexpr fp_type epsilon0{78.4};
-    static constexpr fp_type A{-8.5525};
-    static constexpr fp_type B = epsilon0 - A;
-    static constexpr fp_type rk{7.7839};
-    static constexpr fp_type lambda_B = -lambda * B;
-    static constexpr fp_type min_epsilon{std::numeric_limits<fp_type>::epsilon()};
+    static constexpr fp_type lambda      = static_cast<fp_type>(0.003627);
+    static constexpr fp_type epsilon0    = static_cast<fp_type>(78.4);
+    static constexpr fp_type A           = static_cast<fp_type>(-8.5525);
+    static constexpr fp_type B           = epsilon0 - A;
+    static constexpr fp_type rk          = static_cast<fp_type>(7.7839);
+    static constexpr fp_type lambda_B    = -lambda * B;
+    static constexpr fp_type min_epsilon = static_cast<fp_type>(std::numeric_limits<fp_type>::epsilon());
   } // namespace mehler_solmajer
 
   inline fp_type calc_ddd_Mehler_Solmajer(const fp_type& distance) {

@@ -6,10 +6,10 @@
 #include <concepts>
 #include <limits>
 #include <memory>
-#include <stdexcept>
 #include <mudock/batch.hpp>
 #include <mudock/chem/autodock_protein.hpp>
 #include <numeric>
+#include <stdexcept>
 #if !defined(__CUDACC__) && !defined(__HIPCC__)
   #include <mudock/compute/buffer_utils.hpp>
   #include <mudock/compute/docking.hpp>
@@ -17,8 +17,8 @@
   #include <mudock/compute/scoring.hpp>
   #include <mudock/compute/scratchpad.hpp>
 #endif
-#include <mudock/compute/queue.hpp>
 #include <mudock/compute/batch_multiple.hpp>
+#include <mudock/compute/queue.hpp>
 #include <mudock/cpp_implementation/chromosome.hpp>
 #include <mudock/log.hpp>
 #include <mudock/molecule.hpp>
@@ -102,8 +102,8 @@ namespace mudock {
     void prepare(batch<static_molecule>& batch) {
       const knobs& configuration  = (*this->scratch).configuration;
       batch_ligands               = batch.num_ligands;
-      num_generations             = configuration.num_generations;
-      const int population_number = configuration.population_number;
+      num_generations             = static_cast<int>(configuration.num_generations);
+      const int population_number = static_cast<int>(configuration.population_number);
       auto q                      = (*this->scratch).get_queue();
 
       auto& num_rotamers_b = (*this->scratch).template get<buffer_data_type::NUM_ROTAMERS>();
