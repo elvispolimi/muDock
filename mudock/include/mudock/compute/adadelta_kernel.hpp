@@ -3,6 +3,7 @@
 #include <concepts>
 #include <memory>
 #include <mudock/compute/queue.hpp>
+#include <mudock/compute/scoring.hpp>
 #include <mudock/type_alias.hpp>
 
 namespace mudock {
@@ -14,11 +15,13 @@ namespace mudock {
     static constexpr char gradient_region_name[] = "adadelta_gradient_kernel";
     adadelta_kernel(const int individuals_per_ligand,
                     const int batch_ligands_,
+                    scoring<queue_type>& score_stage_,
                     gradient *__restrict__ gradients_b_,
                     chromosome *__restrict__ population_b_,
                     std::shared_ptr<queue_type> q_)
         : scores_per_ligand(individuals_per_ligand),
           batch_ligands(batch_ligands_),
+          score_stage(score_stage_)
           gradients_b(gradients_b_),
           population_b(population_b_),
           q(q_) {}
@@ -37,6 +40,7 @@ namespace mudock {
   private:
     const int batch_ligands;
     const int individuals_per_ligand;
+    scoring<queue_type>& score_stage;
     gradient *__restrict__ gradients_b;
     chromosome* population_b;
     std::shared_ptr<queue_type> q;

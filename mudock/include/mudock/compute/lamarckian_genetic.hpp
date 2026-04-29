@@ -122,8 +122,8 @@ namespace mudock {
                                                                                      q);
 
       geom_trans.prepare(batch);
-      local_search_stage.prepare(batch);
       score_stage.prepare(batch);
+      local_search_stage.prepare(batch);
     };
 
     void operator()() override {
@@ -134,8 +134,8 @@ namespace mudock {
 
       for (int generation = 0; generation < num_generations; ++generation) {
         geom_trans();
-        local_search_stage();
         score_stage();
+        local_search_stage();
         (*lamarckian_kernel)();
         chromosomes_b.copy_device2device(next_population);
       }

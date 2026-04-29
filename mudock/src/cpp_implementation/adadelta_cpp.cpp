@@ -5,6 +5,7 @@
 #include <cmath>
 
 // Gradient size matches chromosome size (6 + max_rotamers)
+// TODO L is this ok?
 constexpr int gradient_size = 6 + max_static_bonds();
 
 namespace mudock {

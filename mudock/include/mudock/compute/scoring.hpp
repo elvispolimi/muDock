@@ -21,7 +21,5 @@ namespace mudock {
     
     virtual ~scoring() = default;
   
-  // protected:
-  //   gradient grad;
   };
 } // namespace mudock

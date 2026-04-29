@@ -25,9 +25,7 @@ namespace mudock {
   // TODO check that the object type and the kernel impl are the same
   template<typename queue_type>
   struct adadelta: public local_search<queue_type> {
-    adadelta(std::shared_ptr<scratchpad<queue_type>> _scratch)
-        : local_search<queue_type>(_scratch)/*,
-        score_stage(_scratch)*/ {}
+    adadelta(std::shared_ptr<scratchpad<queue_type>> _scratch) : local_search<queue_type>(_scratch) {}
 
     void prepare(batch<static_molecule> &batch) {
       // Allocate gradient buffer for AdaDelta (one gradient per individual per ligand)
@@ -46,6 +44,7 @@ namespace mudock {
 
       ls_ad_kernel = std::make_unique<adadelta_kernel<queue_type>>(individuals_per_ligand,
                                                                   batch_ligands,
+                                                                  score_stage
                                                                   gradients_b,
                                                                   population_b,
                                                                   q);
