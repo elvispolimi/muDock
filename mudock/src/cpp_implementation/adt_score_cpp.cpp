@@ -39,17 +39,9 @@ namespace mudock {
     out_values[7] = &map[1 + map_index_x + map_index_xy];
   }
 
-  inline vec3 cross_product(const vec3& u, const vec3& v){
-    vec3 result;
-    result.x = u.y * v.z - v.y * u.z;
-    result.y = v.x * u.z - u.x * v.z;
-    result.z = u.x * v.y - v.x * u.y;
-    return result;
-  }
-
-  inline fp_type dot_product(const vec3& u, const vec3& v){
+  inline fp_type dot_product(const point3D& u, const point3D& v){
     fp_type result;
-    result = u.x * v.x + u.y * v.y + u.z * v.z;
+    result = u.x() * v.x() + u.y() * v.y() + u.z() * v.z();
     return result;
   }
 
@@ -293,14 +285,14 @@ namespace mudock {
         const fp_type *__restrict__ scratch_y_l = scratch_y + individual_index * batch_atoms;
         const fp_type *__restrict__ scratch_z_l = scratch_z + individual_index * batch_atoms;
         
-        vec3 dE_dX[num_atoms]                 = {0};
-        vec3 dX_dalpha[num_atoms]             = {0};
-        vec3 dX_dbeta[num_atoms]              = {0};
-        vec3 dX_dgamma[num_atoms]             = {0};
-        vec3 dX_drot[num_rotamers][num_atoms] = {0};
-
+        std::vector<point3D> dE_dX(num_atoms);
+        std::vector<point3D> dX_dalpha(num_atoms);
+        std::vector<point3D> dX_dbeta(num_atoms);
+        std::vector<point3D> dX_dgamma(num_atoms);
+        std::vector<std::vector<point3D>> dX_drot(num_rotamers, std::vector<point3D>(num_atoms));
+        
         // gradient = dE/dx, dE/dy, dE/dz, dE/dalpha, dE/dbeta, dE/dgamma, dE/d_tors_1, ..., dE/d_tors_n
-        fp_type gradient[6+num_rotamers] = {0};
+        std::vector<fp_type> grad(6 + num_rotamers, 0);
 
         const fp_type *electro_map = grid_maps + map_index_xyz * static_cast<int>(autodock_grid_type::ELEC);
         const fp_type *desolv_map  = grid_maps + map_index_xyz * static_cast<int>(autodock_grid_type::DESOLV);
@@ -318,9 +310,9 @@ namespace mudock {
             const fp_type dist     = diff_x * diff_x + diff_y * diff_y + diff_z * diff_z;
             const fp_type epenalty = dist * ENERGYPENALTY;
             // TODO gestire calcolo gradiente in questo if
-            // dE_dX.x +=
-            // dE_dX.y +=
-            // dE_dX.z +=
+            // dE_dX.x() +=
+            // dE_dX.y() +=
+            // dE_dX.z() +=
           } else {
             const auto &atom_charge = charge_l[index];
             const fp_type *atom_map = grid_maps + map_offsets_l[index];
@@ -361,32 +353,33 @@ namespace mudock {
             const fp_type* grid_values[8];
             get_grid_values(electro_map + base_index, map_index_x, map_index_xy, grid_values);
             // TODO non penso ci sia bisogno di moltiplicare per inv_spacing perché viene già fatto quando normalizza coord[]? controllare. LA QUESTIONE VALE PER TUTTE E TRE LE ENERGIE
-            dE_dX[index].x += atom_charge * (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
-            dE_dX[index].y += atom_charge * (p1w * (p1u * (grid_values[2] - grid_values[0]) + p0u * (grid_values[6] - grid_values[4])) + p0w * (p1u * (grid_values[3] - grid_values[1]) + p0u * (grid_values[7] - grid_values[5])));
-            dE_dX[index].z += atom_charge * (p1v * (p1u * (grid_values[1] - grid_values[0]) + p0u * (grid_values[5] - grid_values[4])) + p0v * (p1u * (grid_values[3] - grid_values[2]) + p0u * (grid_values[7] - grid_values[6])));
+            dE_dX[index].x() += atom_charge * (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
+            dE_dX[index].y() += atom_charge * (p1w * (p1u * (grid_values[2] - grid_values[0]) + p0u * (grid_values[6] - grid_values[4])) + p0w * (p1u * (grid_values[3] - grid_values[1]) + p0u * (grid_values[7] - grid_values[5])));
+            dE_dX[index].z() += atom_charge * (p1v * (p1u * (grid_values[1] - grid_values[0]) + p0u * (grid_values[5] - grid_values[4])) + p0v * (p1u * (grid_values[3] - grid_values[2]) + p0u * (grid_values[7] - grid_values[6])));
 
             get_grid_values(atom_map + base_index, map_index_x, map_index_xy, grid_values);
-            dE_dX[index].x += (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
-            dE_dX[index].y += (p1w * (p1u * (grid_values[2] - grid_values[0]) + p0u * (grid_values[6] - grid_values[4])) + p0w * (p1u * (grid_values[3] - grid_values[1]) + p0u * (grid_values[7] - grid_values[5])));
-            dE_dX[index].z += (p1v * (p1u * (grid_values[1] - grid_values[0]) + p0u * (grid_values[5] - grid_values[4])) + p0v * (p1u * (grid_values[3] - grid_values[2]) + p0u * (grid_values[7] - grid_values[6])));            
+            dE_dX[index].x() += (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
+            dE_dX[index].y() += (p1w * (p1u * (grid_values[2] - grid_values[0]) + p0u * (grid_values[6] - grid_values[4])) + p0w * (p1u * (grid_values[3] - grid_values[1]) + p0u * (grid_values[7] - grid_values[5])));
+            dE_dX[index].z() += (p1v * (p1u * (grid_values[1] - grid_values[0]) + p0u * (grid_values[5] - grid_values[4])) + p0v * (p1u * (grid_values[3] - grid_values[2]) + p0u * (grid_values[7] - grid_values[6])));            
             
             get_grid_values(desolv_map + base_index, map_index_x, map_index_xy, grid_values);
-            dE_dX[index].x += std::fabs(atom_charge) * (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
-            dE_dX[index].y += std::fabs(atom_charge) * (p1w * (p1u * (grid_values[2] - grid_values[0]) + p0u * (grid_values[6] - grid_values[4])) + p0w * (p1u * (grid_values[3] - grid_values[1]) + p0u * (grid_values[7] - grid_values[5])));
-            dE_dX[index].z += std::fabs(atom_charge) * (p1v * (p1u * (grid_values[1] - grid_values[0]) + p0u * (grid_values[5] - grid_values[4])) + p0v * (p1u * (grid_values[3] - grid_values[2]) + p0u * (grid_values[7] - grid_values[6])));
+            dE_dX[index].x() += std::fabs(atom_charge) * (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
+            dE_dX[index].y() += std::fabs(atom_charge) * (p1w * (p1u * (grid_values[2] - grid_values[0]) + p0u * (grid_values[6] - grid_values[4])) + p0w * (p1u * (grid_values[3] - grid_values[1]) + p0u * (grid_values[7] - grid_values[5])));
+            dE_dX[index].z() += std::fabs(atom_charge) * (p1v * (p1u * (grid_values[1] - grid_values[0]) + p0u * (grid_values[5] - grid_values[4])) + p0v * (p1u * (grid_values[3] - grid_values[2]) + p0u * (grid_values[7] - grid_values[6])));
 
             // Compute dX/d_rot
             // alpha -> rotation on z-axis
             // TODO check if it is correct to use diff_x/y/z
             // TODO check if it is fine to consider infinitesimal rotations so we can just use the versors as u or we shuold consider the composition of rotations in order
-            const vec3 x_i = {diff_x, diff_y, diff_z};
-            const vec3 z_axis = {0, 0, 1};
-            const vec3 y_axis = {0, 1, 0};
-            const vec3 x_axis = {1, 0, 0};
+            const point3D x_i = point3D{diff_x, diff_y, diff_z};
 
-            dX_dalpha[index] = cross_product(z_axis, x_i);
-            dX_dbeta[index]  = cross_product(y_axis, x_i);
-            dX_dgamma[index] = cross_product(x_axis, x_i);
+            const point3D z_axis = point3D{fp_type{0}, fp_type{0}, fp_type{1}};
+            const point3D y_axis = point3D{fp_type{0}, fp_type{1}, fp_type{0}};
+            const point3D x_axis = point3D{fp_type{1}, fp_type{0}, fp_type{0}};
+
+            dX_dalpha[index] = z_axis.cross(x_i);
+            dX_dbeta[index]  = y_axis.cross(x_i);
+            dX_dgamma[index] = x_axis.cross(x_i);
 
           }
         }
@@ -449,6 +442,7 @@ namespace mudock {
             const fp_type dE_dr_desolv = (-distance / sigma_square) * e_desolv;
 
 
+            fp_type dE_dr_vdw = 0;
             if (distance_two_clamp < nbc2) {
               //  Find internal energy parameters, i.e.  epsilon and r-equilibrium values...
               //  Lennard-Jones and Hydrogen Bond Potentials
@@ -479,13 +473,13 @@ namespace mudock {
             const fp_type gy = dE_dr * dir_y;
             const fp_type gz = dE_dr * dir_z;
 
-            dE_dX[a1].x += gx;
-            dE_dX[a1].y += gy;
-            dE_dX[a1].z += gz;
+            dE_dX[a1].x() += gx;
+            dE_dX[a1].y() += gy;
+            dE_dX[a1].z() += gz;
 
-            dE_dX[a2].x -= gx;
-            dE_dX[a2].y -= gy;
-            dE_dX[a2].z -= gz;
+            dE_dX[a2].x() -= gx;
+            dE_dX[a2].y() -= gy;
+            dE_dX[a2].z() -= gz;
 
           }
         }
@@ -497,51 +491,52 @@ namespace mudock {
           const int a1 = frag_start_indices[t];
           const int a2 = frag_stop_indices[t];
 
-          vec3 axis;
-          axis.x = scratch_x_l[a2] - scratch_x_l[a1];
-          axis.y = scratch_y_l[a2] - scratch_y_l[a1];
-          axis.z = scratch_z_l[a2] - scratch_z_l[a1];
+          point3D axis;
+          axis.x() = scratch_x_l[a2] - scratch_x_l[a1];
+          axis.y() = scratch_y_l[a2] - scratch_y_l[a1];
+          axis.z() = scratch_z_l[a2] - scratch_z_l[a1];
 
-          const fp_type norm = std::sqrt(axis.x * axis.x + axis.y * axis.y + axis.z * axis.z);
+          const fp_type norm = std::sqrt(axis.x() * axis.x() + axis.y() * axis.y() + axis.z() * axis.z());
 
           const fp_type inv_norm = 1.0 / norm;
-          axis.x *= inv_norm;
-          axis.y *= inv_norm;
-          axis.z *= inv_norm;
+          axis.x() *= inv_norm;
+          axis.y() *= inv_norm;
+          axis.z() *= inv_norm;
 
 #pragma omp simd
           for (int i = 0; i < num_atoms; ++i) {
             if (frag_mask[i] != 0) {
 
-              vec3 r;
-              r.x = scratch_x_l[i] - scratch_x_l[a1];
-              r.y = scratch_y_l[i] - scratch_y_l[a1];
-              r.z = scratch_z_l[i] - scratch_z_l[a1];
+              point3D r;
+              r.x() = scratch_x_l[i] - scratch_x_l[a1];
+              r.y() = scratch_y_l[i] - scratch_y_l[a1];
+              r.z() = scratch_z_l[i] - scratch_z_l[a1];
 
-              dX_drot[t][i] = cross_product(axis, r);
+              dX_drot[t][i] = axis.cross(r);
             }
           }
         }
 
         // Accumulate gradient over atoms: dE/dtheta = SUM_i(dE/dX_i * dX_i/dtheta)
         for (int index = 0; index < num_atoms; ++index){
-          gradient[0] += dE_dX[index].x;
-          gradient[1] += dE_dX[index].y;
-          gradient[2] += dE_dX[index].z;
+          grad[0] += dE_dX[index].x();
+          grad[1] += dE_dX[index].y();
+          grad[2] += dE_dX[index].z();
 
-          gradient[3] += dot_product(dE_dX[index], dX_dalpha[index]);
-          gradient[4] += dot_product(dE_dX[index], dX_dbeta[index]);
-          gradient[5] += dot_product(dE_dX[index], dX_dgamma[index]);
+          grad[3] += dot_product(dE_dX[index], dX_dalpha[index]);
+          grad[4] += dot_product(dE_dX[index], dX_dbeta[index]);
+          grad[5] += dot_product(dE_dX[index], dX_dgamma[index]);
         }
 
         for (int t = 0; t < num_rotamers; ++t) {
-          for (int i = 0; i < num_atoms; ++i) {
-            gradient[6 + t] += dot_product(dE_dX[i], dX_drot[t][i]);
+          for (int index = 0; index < num_atoms; ++index) {
+            grad[6 + t] += dot_product(dE_dX[index], dX_drot[t][index]);
           }
         }
 
-        // TODO manage the gradient buffer, this assignment is not correct
-        gradients_l[individual_index] = gradient;
+        for (int i = 0; i < 6 + num_rotamers; ++i) {
+          gradients_l[individual_index * (6 + num_rotamers) + i] = grad[i];
+        }
         
       }
     }
@@ -584,10 +579,15 @@ namespace mudock {
     q->invoke_kernel<this->adt_region_name>(calc_gradient,
                                             batch_atoms,
                                             batch_ligands,
-                                            individuals_per_ligand,
+                                            scores_per_ligand,
                                             x_scratch_b,
                                             y_scratch_b,
                                             z_scratch_b,
+                                            ligand_fragments_b,
+                                            ligand_fragments_start_b,
+                                            frag_indices_start_b,
+                                            frag_start_indices_b,
+                                            frag_stop_indices_b,
                                             vols_b,
                                             solpars_b,
                                             charges_b,
@@ -606,5 +606,8 @@ namespace mudock {
                                             map_offsets_b,
                                             map_index_x,
                                             map_index_xy,
-                                            map_index_xyz);
+                                            map_index_xyz,
+                                            gradients_b
+    );
+  }
 } // namespace mudock
