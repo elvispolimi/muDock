@@ -1,10 +1,13 @@
 #pragma once
 
 #include <atomic>
+#include <filesystem>
 #include <istream>
 #include <limits>
 #include <mudock/format/supported_format.hpp>
+#include <mudock/molecule.hpp>
 #include <mudock/mudock.hpp>
+#include <memory>
 #include <optional>
 #include <string>
 #include <vector>
@@ -18,6 +21,8 @@ namespace mudock {
                         pipeline_t& pipeline,
                         std::size_t end = std::numeric_limits<std::size_t>::max(),
                         std::optional<double> time_limit_sec = std::nullopt,
-                        std::optional<double> observer_sec = std::nullopt);
+                        std::optional<double> observer_sec = std::nullopt,
+                        std::shared_ptr<const static_molecule> reference_ligand = nullptr,
+                        std::optional<std::filesystem::path> output_poses_path = std::nullopt);
 
 } // namespace mudock

@@ -23,6 +23,8 @@ list(
   "${header_path}/${header_prefix}/chem/grid_const.hpp"
   "${header_path}/${header_prefix}/chem/mehler_solmajer.hpp"
   "${header_path}/${header_prefix}/chem/molecule_layer.hpp"
+  "${header_path}/${header_prefix}/chem/pose_utils.hpp"
+  "${header_path}/${header_prefix}/chem/rmsd.hpp"
   "${header_path}/${header_prefix}/compute/safe_stack.hpp"
   "${header_path}/${header_prefix}/compute/parse_ids.hpp"
   "${header_path}/${header_prefix}/compute/reorder_buffer.hpp"

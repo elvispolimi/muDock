@@ -14,6 +14,8 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
   std::size_t seed{};
   double time_limit_sec{};
   double observer_sec{};
+  std::filesystem::path reference_ligand_path{};
+  std::filesystem::path output_poses_path{};
   arguments_description.add_options()("help,h", "print this help message");
   arguments_description.add_options()("protein,p",
                                       po::value(&args.protein_path)->default_value(args.protein_path),
@@ -21,6 +23,12 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
   arguments_description.add_options()("ligand,l",
                                       po::value(&args.ligand_path)->default_value(args.ligand_path),
                                       "Path to the ligands file (in MOL2)");
+  arguments_description.add_options()("reference_ligand",
+                                      po::value(&reference_ligand_path),
+                                      "Optional reference ligand used to report aligned RMSD");
+  arguments_description.add_options()("output_poses",
+                                      po::value(&output_poses_path),
+                                      "Optional output file used to write final ligand poses");
   arguments_description.add_options()(
       "use",
       po::value<std::vector<std::string>>(&args.device_confs)->multitoken()->composing(),
@@ -51,6 +59,10 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
       "mutation",
       po::value(&args.knobs.mutation_prob)->default_value(args.knobs.mutation_prob),
       "Probability of a mutation to happen during GA");
+  knobs_description.add_options()(
+      "num_poses",
+      po::value(&args.knobs.num_output_poses)->default_value(args.knobs.num_output_poses),
+      "Number of best poses returned per ligand in the genetic pipeline");
   knobs_description.add_options()("seed", po::value(&seed), "Seed for random values generators");
   knobs_description.add_options()(
       "tokens",
@@ -72,7 +84,7 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
 
   // handle the help message
   if (vm.count("help") > 0) {
-    std::cout << "This application reads ligands from --ligand/-l and prints one score per output line."
+    std::cout << "This application reads ligands from --ligand/-l and prints one line per output pose."
               << std::endl;
     std::cout << std::endl;
     std::cout << "USAGE: " << argv[0] << " --protein|-p " << args.protein_path << " --ligand|-l "
@@ -108,6 +120,12 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
   }
   if (vm.count("observer")) {
     args.observer = std::optional<double>{observer_sec};
+  }
+  if (vm.count("reference_ligand")) {
+    args.reference_ligand_path = std::optional<std::filesystem::path>{reference_ligand_path};
+  }
+  if (vm.count("output_poses")) {
+    args.output_poses_path = std::optional<std::filesystem::path>{output_poses_path};
   }
   return args;
 }

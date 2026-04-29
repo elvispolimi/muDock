@@ -6,6 +6,7 @@
 #include <memory>
 #include <optional>
 
+#include <mudock/format/reader.hpp>
 #include <mudock/molecule.hpp>
 #include <mudock/mudock.hpp>
 #include <mudock/mpi_implementation/byte_range.hpp>
@@ -65,6 +66,14 @@ int main(int argc, char** argv) {
   auto protein =
       std::make_shared<mudock::dynamic_molecule>(mudock::parser<mudock::dynamic_molecule>(args.protein_path));
 
+  std::shared_ptr<const mudock::static_molecule> reference_ligand = nullptr;
+  if (args.reference_ligand_path) {
+    mudock::info("Reading and parsing reference ligand ", *args.reference_ligand_path, " ...");
+    reference_ligand =
+        std::make_shared<const mudock::static_molecule>(mudock::parser<mudock::static_molecule>(
+            *args.reference_ligand_path));
+  }
+
   mudock::info("Reading ligand ", args.ligand_path, " ...");
   std::ifstream in(args.ligand_path, std::ios::binary);
   if (!in) {
@@ -95,9 +104,20 @@ int main(int argc, char** argv) {
 
   in.seekg(static_cast<std::streamoff>(effective_range.begin), std::ios::beg);
 
+  if (args.knobs.num_output_poses == 0 && (reference_ligand || args.output_poses_path)) {
+    args.knobs.num_output_poses = 1;
+  }
+
   mudock::genetic_adt_pipeline pipe{protein};
-          mudock::run_tbb_pipeline<mudock::supported_format::ADTMOL2>(
-              in, args.device_confs, args.knobs, pipe, effective_range.end, args.time_limit_sec, args.observer);
+  mudock::run_tbb_pipeline<mudock::supported_format::ADTMOL2>(in,
+                                                              args.device_confs,
+                                                              args.knobs,
+                                                              pipe,
+                                                              effective_range.end,
+                                                              args.time_limit_sec,
+                                                              args.observer,
+                                                              reference_ligand,
+                                                              args.output_poses_path);
   MUDOCK_MARKER_CLOSE;
   mudock::info("All Done!");
 

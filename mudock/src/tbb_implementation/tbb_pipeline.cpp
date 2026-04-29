@@ -3,10 +3,15 @@
 #include <memory>
 #include <chrono>
 #include <condition_variable>
+#include <filesystem>
+#include <fstream>
 #include <mutex>
+#include <stdexcept>
 #include <thread>
 #include <vector>
+#include <mudock/chem/rmsd.hpp>
 #include <mudock/compute/manager.hpp>
+#include <mudock/format/writer.hpp>
 #include <mudock/molecule.hpp>
 #include <mudock/mudock.hpp>
 #include <mudock/tbb_implementation/parser_filter.hpp>
@@ -17,11 +22,37 @@
 
 namespace mudock {
 
-    inline void append_ligand(std::string& buf, const static_molecule& ligand) {
+    inline void append_ligand(std::string& buf,
+                              const static_molecule& ligand,
+                              const static_molecule* const reference_ligand) {
         buf += ligand.properties.get(property_type::NAME);
         buf += ' ';
         buf += ligand.properties.get(property_type::SCORE);
+        if (reference_ligand != nullptr) {
+            buf += ' ';
+            if (ligand.num_atoms() == reference_ligand->num_atoms() && ligand.num_atoms() > 0) {
+                buf += std::to_string(aligned_rmsd(ligand, *reference_ligand));
+            } else {
+                buf += "N/A";
+            }
+        }
         buf += '\n';
+    }
+
+    inline void write_pose(std::ofstream& ofs,
+                           const supported_format out_format,
+                           const static_molecule& ligand) {
+        constexpr_switch<0, get_num_supported_format(), 1>(
+            [&](const auto format_index) {
+                constexpr auto format = static_cast<supported_format>(format_index());
+                if constexpr (format == supported_format::PDBQT || format == supported_format::MOL2 ||
+                              format == supported_format::ADTMOL2 || format == supported_format::PDB) {
+                    if (out_format == format) {
+                        writer<format>(ligand, ofs);
+                    }
+                }
+            },
+            out_format);
     }
 
     template<supported_format format, typename pipeline_t>
@@ -31,7 +62,9 @@ namespace mudock {
          pipeline_t& pipeline,
          std::size_t end,
          std::optional<double> time_limit_sec,
-         std::optional<double> observer_sec)
+         std::optional<double> observer_sec,
+         std::shared_ptr<const static_molecule> reference_ligand,
+         std::optional<std::filesystem::path> output_poses_path)
     {
         auto input_queue  = std::make_shared<mudock::safe_queue<mudock::static_molecule>>();
         auto output_queue = std::make_shared<mudock::safe_queue<mudock::static_molecule>>();
@@ -43,6 +76,15 @@ namespace mudock {
         std::atomic<bool> timeout_triggered{false};
         std::atomic<bool> stop_requested{false};
         const auto start = std::chrono::high_resolution_clock::now();
+        std::shared_ptr<std::ofstream> pose_stream;
+        std::optional<supported_format> pose_output_format = std::nullopt;
+        if (output_poses_path) {
+            pose_output_format = parse_supported_format(*output_poses_path);
+            pose_stream = std::make_shared<std::ofstream>(*output_poses_path, std::ios::out);
+            if (!(*pose_stream)) {
+                throw std::runtime_error("Unable to open output poses file");
+            }
+        }
 
         // asynchronous thread to print the output ligands as soon as they are ready
         std::thread writer([&] {
@@ -51,7 +93,10 @@ namespace mudock {
 
             std::size_t lines = 0;
             for (auto x = output_queue->dequeue(); x; x = output_queue->dequeue()) {
-                append_ligand(buf, *x);
+                append_ligand(buf, *x, reference_ligand.get());
+                if (pose_stream && pose_output_format) {
+                    write_pose(*pose_stream, *pose_output_format, *x);
+                }
 
                 if (++lines % 4096 == 0) {
                     std::cout << buf;
@@ -170,7 +215,9 @@ namespace mudock {
         mudock::genetic_adt_pipeline&,
         std::size_t,
         std::optional<double>,
-        std::optional<double>);
+        std::optional<double>,
+        std::shared_ptr<const static_molecule>,
+        std::optional<std::filesystem::path>);
 
     template void mudock::run_tbb_pipeline<mudock::supported_format::MOL2, mudock::genetic_adt_pipeline>(
         std::istream&,
@@ -179,6 +226,8 @@ namespace mudock {
         mudock::genetic_adt_pipeline&,
         std::size_t,
         std::optional<double>,
-        std::optional<double>);
+        std::optional<double>,
+        std::shared_ptr<const static_molecule>,
+        std::optional<std::filesystem::path>);
 
 } // namespace mudock

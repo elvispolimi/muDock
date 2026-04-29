@@ -27,8 +27,9 @@ namespace mudock {
     std::atomic<std::size_t>* in_flight_ligands = nullptr;
 
     void process(batch<static_molecule>& b) {
+      const auto batch_input_ligands = b.num_ligands;
       if (in_flight_ligands != nullptr) {
-        in_flight_ligands->fetch_add(b.num_ligands, std::memory_order_relaxed);
+        in_flight_ligands->fetch_add(batch_input_ligands, std::memory_order_relaxed);
       }
 
       try {
@@ -42,7 +43,7 @@ namespace mudock {
       }
 
       if (in_flight_ligands != nullptr) {
-        in_flight_ligands->fetch_sub(b.num_ligands, std::memory_order_relaxed);
+        in_flight_ligands->fetch_sub(batch_input_ligands, std::memory_order_relaxed);
       }
     }
 

@@ -1,15 +1,17 @@
 #pragma once
 
-#include "mudock/knobs.hpp"
-
 #include <algorithm>
 #include <concepts>
 #include <limits>
 #include <memory>
-#include <stdexcept>
 #include <mudock/batch.hpp>
 #include <mudock/chem/autodock_protein.hpp>
+#include <mudock/chem/pose_utils.hpp>
+#include <mudock/knobs.hpp>
 #include <numeric>
+#include <stdexcept>
+#include <string>
+#include <vector>
 #if !defined(__CUDACC__) && !defined(__HIPCC__)
   #include <mudock/compute/buffer_utils.hpp>
   #include <mudock/compute/docking.hpp>
@@ -17,8 +19,8 @@
   #include <mudock/compute/scoring.hpp>
   #include <mudock/compute/scratchpad.hpp>
 #endif
-#include <mudock/compute/queue.hpp>
 #include <mudock/compute/batch_multiple.hpp>
+#include <mudock/compute/queue.hpp>
 #include <mudock/cpp_implementation/chromosome.hpp>
 #include <mudock/log.hpp>
 #include <mudock/molecule.hpp>
@@ -147,9 +149,10 @@ namespace mudock {
       score_stage.prepare(batch);
     };
     void operator()() {
-      auto& chromosomes_b = (*this->scratch).template get<buffer_data_type::CHROMOSOMES>();
+      auto& chromosomes_b              = (*this->scratch).template get<buffer_data_type::CHROMOSOMES>();
       chromosome* current_population_p = chromosomes_b.dev_pointer();
       chromosome* next_population_p    = next_population.dev_pointer();
+      bool current_population_is_next  = false;
 
       assert(kernel && "Kernel method not yet prepared");
       kernel->set_population_buffers(current_population_p, next_population_p);
@@ -164,10 +167,12 @@ namespace mudock {
         // Avoid full device-to-device copy by ping-ponging population buffers.
         if (generation + 1 < num_generations) {
           std::swap(current_population_p, next_population_p);
+          current_population_is_next = !current_population_is_next;
           kernel->set_population_buffers(current_population_p, next_population_p);
           geom_trans.set_chromosomes_buffer(current_population_p);
         }
       }
+      final_population_is_next = current_population_is_next;
       kernel->set_population_buffers(current_population_p, next_population_p);
       kernel->finalize();
     };
@@ -175,11 +180,11 @@ namespace mudock {
     static std::size_t get_shared_ligand_mem(const int max_atoms, const knobs conf) {
       const int chromosomes_per_ligand = std::max(1, static_cast<int>(conf.population_number));
       std::size_t mem{0};
-      mem += sizeof(int);                                         // num_atoms
-      mem += sizeof(int);                                         // num_rotamers
-      mem += sizeof(chromosome) * chromosomes_per_ligand;         // chromosomes
-      mem += sizeof(fp_type) * chromosomes_per_ligand;            // scores
-      mem += 3 * sizeof(fp_type) * max_atoms;                     // coords
+      mem += sizeof(int);                                              // num_atoms
+      mem += sizeof(int);                                              // num_rotamers
+      mem += sizeof(chromosome) * chromosomes_per_ligand;              // chromosomes
+      mem += sizeof(fp_type) * chromosomes_per_ligand;                 // scores
+      mem += 3 * sizeof(fp_type) * max_atoms;                          // coords
       mem += 3 * sizeof(fp_type) * max_atoms * chromosomes_per_ligand; // coord scratch
       return mem;
     }
@@ -187,15 +192,16 @@ namespace mudock {
     static std::size_t get_private_ligand_mem(const int max_atoms, const knobs conf) {
       std::size_t mem{0};
       mem += sizeof(chromosome) * std::max(1, static_cast<int>(conf.population_number)); // next population
-      mem += sizeof(chromosome);                                                          // best chromosomes
-      mem += sizeof(fp_type);                                                             // best scores
+      mem += sizeof(chromosome);                                                         // best chromosomes
+      mem += sizeof(fp_type);                                                            // best scores
       mem += scoring_t<queue_t>::get_private_ligand_mem(max_atoms, conf);
       mem += geometric<queue_t>::get_private_ligand_mem(max_atoms, conf);
       return mem;
     }
 
     static int get_ligand_mem(const int max_atoms, const knobs conf) {
-      return static_cast<int>(get_shared_ligand_mem(max_atoms, conf) + get_private_ligand_mem(max_atoms, conf));
+      return static_cast<int>(get_shared_ligand_mem(max_atoms, conf) +
+                              get_private_ligand_mem(max_atoms, conf));
     }
 
     static batch_multiple get_batch_size(const int atoms,
@@ -212,13 +218,13 @@ namespace mudock {
 
       batch_multiple selected_info{};
       const char* combine_policy = "MIN";
-#ifdef MUDOCK_GENETIC_BUCKET_COMBINE_SCORE_ONLY
-      selected_info              = score_bucket_info;
-      combine_policy             = "SCORE_ONLY";
-#elif defined(MUDOCK_GENETIC_BUCKET_COMBINE_GEOM_ONLY)
+  #ifdef MUDOCK_GENETIC_BUCKET_COMBINE_SCORE_ONLY
+      selected_info  = score_bucket_info;
+      combine_policy = "SCORE_ONLY";
+  #elif defined(MUDOCK_GENETIC_BUCKET_COMBINE_GEOM_ONLY)
       selected_info  = geom_bucket_info;
       combine_policy = "GEOM_ONLY";
-#elif defined(MUDOCK_GENETIC_BUCKET_COMBINE_LCM)
+  #elif defined(MUDOCK_GENETIC_BUCKET_COMBINE_LCM)
       {
         const long long lcm_total =
             std::lcm(static_cast<long long>(score_total), static_cast<long long>(geom_total));
@@ -229,13 +235,13 @@ namespace mudock {
         selected_info = batch_multiple{static_cast<int>(lcm_total), 1};
       }
       combine_policy = "LCM";
-#else
+  #else
       if (score_total <= geom_total) {
         selected_info = score_bucket_info;
       } else {
         selected_info = geom_bucket_info;
       }
-#endif
+  #endif
       selected_info = normalize_batch_multiple(selected_info);
       mudock::stage_bucket_trace("GENETIC stage combine for ",
                                  atoms,
@@ -277,20 +283,28 @@ namespace mudock {
     void teardown_impl(batch<static_molecule>& batch) {
       assert(batch.num_ligands == batch_ligands && "Genetic algorithm received different batch for teardown");
 
-      // TODO check if the copy can be changed with a swap
-      // auto& population_b = (*this->scratch).template get<buffer_data_type::CHROMOSOMES>();
-      // population_b.copy_device2device(best_chromosomes);
-      // geom_trans();
-      // score_stage();
-      // geom_trans.teardown(batch);
-      // score_stage.teardown(batch);
+      const knobs& configuration = (*this->scratch).configuration;
+      const int n_poses           = static_cast<int>(configuration.num_output_poses);
 
-      best_scores.copy_device2host();
-      (*this->scratch).get_queue()->synchronize();
+      if (n_poses > 0) {
+        // Poses are already sorted on device (best_chromosomes has the first N=1 pose)
+        auto& population_b = (*this->scratch).template get<buffer_data_type::CHROMOSOMES>();
+        population_b.copy_device2device(best_chromosomes, batch_ligands);
 
-      for (int index{0}; index < batch_ligands; ++index) {
-        auto& ligand = *batch.molecules[index];
-        ligand.properties.assign(property_type::SCORE, std::to_string(best_scores()[index]));
+        geom_trans.set_chromosomes_buffer(population_b.dev_pointer());
+        geom_trans();
+        score_stage();
+
+        geom_trans.teardown(batch);
+        score_stage.teardown(batch);
+      } else {
+        best_scores.copy_device2host();
+        (*this->scratch).get_queue()->synchronize();
+
+        for (int index{0}; index < batch_ligands; ++index) {
+          auto& ligand = *batch.molecules[index];
+          ligand.properties.assign(property_type::SCORE, std::to_string(best_scores()[index]));
+        }
       }
     }
   }; // namespace mudock

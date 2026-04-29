@@ -11,6 +11,7 @@ namespace mudock {
     std::size_t num_generations                        = 1000;
     std::size_t tournament_length                      = 10;
     fp_type mutation_prob                              = fp_type{0.01};
+    std::size_t num_output_poses                       = 0;
     std::optional<std::size_t> seed                    = std::optional<std::size_t>{};
     std::size_t max_tbb_tokens                         = 4;
     std::size_t max_bytes_per_token                    = 1048576; // 1 MB

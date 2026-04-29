@@ -13,7 +13,7 @@ namespace mudock {
                    const int population_number_,
                    const int num_generations_,
                    const int tournament_length_,
-                   const int mutation_prob_,
+                   const fp_type mutation_prob_,
                    const size_t seed_,
                    chromosome* population_,
                    chromosome* next_population_,
