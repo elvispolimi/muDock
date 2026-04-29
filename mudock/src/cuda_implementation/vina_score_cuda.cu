@@ -74,6 +74,10 @@ namespace mudock {
         int is_hba1, int is_hbd1, int is_hba2, int is_hbd2,
         int is_hydro1, int is_hydro2
         ) {
+
+      fp_type d2 = dx*dx + dy*dy + dz*dz;
+      if (d2 > 64.0f) return 0.0f;
+
       fp_type dst = distance(dx, dy, dz);
 
       dst -= (vdw1 + vdw2);
@@ -86,7 +90,7 @@ namespace mudock {
         HYDROPHOBIC_COEFF_CUDA * hydrophobic(dst, is_hydro) +
         H_BOND_COEFF_CUDA * hbonding(dst, is_h);
 
-      return (dst <= 8.0f) ? res : 0.0f;
+      return res;
     }
 
     __device__ inline fp_type score_inter(
@@ -278,7 +282,7 @@ namespace mudock {
         ligand_coords[i].z = l_scratch_z[scores_index * atom_stride + i];
       }
 
-      __syncwarp();
+      __syncthreads();
 
       // Calculate energy 
       fp_type result = scoring_cuda(num_atoms_protein, 
@@ -301,7 +305,7 @@ namespace mudock {
           num_interacting_pairs
           );   
 
-      __syncwarp();
+       __syncthreads();
 #ifdef MUDOCK_TEST
 #else
 #endif
