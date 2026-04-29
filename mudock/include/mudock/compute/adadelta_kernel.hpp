@@ -18,12 +18,16 @@ namespace mudock {
                     scoring<queue_type>& score_stage_,
                     gradient *__restrict__ gradients_b_,
                     chromosome *__restrict__ population_b_,
+                    chromosome *__restrict__ adadelta_e_g2_b_,
+                    chromosome *__restrict__ adadelta_e_dw2_b_,
                     std::shared_ptr<queue_type> q_)
-        : scores_per_ligand(individuals_per_ligand),
+        : individuals_per_ligand(individuals_per_ligand),
           batch_ligands(batch_ligands_),
-          score_stage(score_stage_)
+          score_stage(score_stage_),
           gradients_b(gradients_b_),
           population_b(population_b_),
+          adadelta_e_g2_b(adadelta_e_g2_b_),
+          adadelta_e_dw2_b(adadelta_e_dw2_b_),
           q(q_) {}
 
     void operator()();
@@ -43,6 +47,8 @@ namespace mudock {
     scoring<queue_type>& score_stage;
     gradient *__restrict__ gradients_b;
     chromosome* population_b;
+    chromosome *__restrict__ adadelta_e_g2_b;
+    chromosome *__restrict__ adadelta_e_dw2_b;
     std::shared_ptr<queue_type> q;
   };
 

@@ -42,11 +42,25 @@ namespace mudock {
       auto &chromosomes_b = (*this->scratch).template get<buffer_data_type::CHROMOSOMES>();
       chromosome *population_b = chromosomes_b.dev_pointer();
 
+      // Allocate AdaDelta state buffers (E[g^2] and E[delta^2])
+      auto &adadelta_e_g2_b = (*this->scratch).template get<buffer_data_type::ADADELTA_E_G2>();
+      auto &adadelta_e_dw2_b = (*this->scratch).template get<buffer_data_type::ADADELTA_E_DW2>();
+      if (!adadelta_e_g2_b.is_valid() || adadelta_e_g2_b.num_elements() != gradient_count) {
+        adadelta_e_g2_b.alloc(gradient_count);
+        adadelta_e_dw2_b.alloc(gradient_count);
+        adadelta_e_g2_b.set_valid();
+        adadelta_e_dw2_b.set_valid();
+      }
+      chromosome *adadelta_e_g2 = adadelta_e_g2_b.dev_pointer();
+      chromosome *adadelta_e_dw2 = adadelta_e_dw2_b.dev_pointer();
+
       ls_ad_kernel = std::make_unique<adadelta_kernel<queue_type>>(individuals_per_ligand,
                                                                   batch_ligands,
-                                                                  score_stage
+                                                                  score_stage,
                                                                   gradients_b,
                                                                   population_b,
+                                                                  adadelta_e_g2,
+                                                                  adadelta_e_dw2,
                                                                   q);
       
     }
