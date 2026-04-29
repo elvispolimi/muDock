@@ -39,47 +39,46 @@ namespace mudock {
     __device__ static constexpr fp_type NROT_COEFF_CUDA{0.05846f};
 
     __device__ inline fp_type distance(fp_type x, fp_type y, fp_type z) {
-        return sqrt( x*x + y*y + z*z );
+        return sqrtf( x*x + y*y + z*z );
     }
 
     __device__ inline fp_type gauss1(const fp_type dst) {
       fp_type x = dst * 2.0f;
-      return (dst != 0.0f) ? expf(-(x*x)) : 0.0f;
+      return (dst != 0.0f) ? __expf(-(x*x)) : 0.0f;
     }
 
     __device__ inline fp_type gauss2(const fp_type dst) {
       fp_type x = (dst - 3) * 0.5f;
-      return (dst != 0.0f) ? expf(-(x*x)) : 0.0f;
+      return (dst != 0.0f) ? __expf(-(x*x)) : 0.0f;
     }
 
     __device__ inline fp_type repulsion(const fp_type dst) {
       return (dst < 0.0f) ? dst*dst : 0.0f;
     }
-    __device__ inline fp_type hydrophobic(const fp_type dst, const bool rec_lig_is_hydrophobic) {
-      if(!rec_lig_is_hydrophobic) return 0.0f;
-        fp_type hydro_1 = (dst <= 0.5f) ? 1.0f : 0.0f;
-        fp_type hydro_2 = (dst > 0.5f & dst < 1.5f) ? (1.5f - dst) : 0.0f;
-        return hydro_1 + hydro_2;
+
+    __device__ inline fp_type hydrophobic(const fp_type dst, const int rec_lig_is_hydrophobic) {
+      fp_type hydro_1 = (dst <= 0.5f) ? 1.0f : 0.0f;
+      fp_type hydro_2 = (dst > 0.5f & dst < 1.5f) ? (1.5f - dst) : 0.0f;
+      return (rec_lig_is_hydrophobic) ? hydro_1 + hydro_2 : 0.0f;
     }
 
-    __device__ inline fp_type hbonding(const fp_type dst, const bool rec_lig_is_hb) {
-      if(!rec_lig_is_hb) return 0.0f;
+    __device__ inline fp_type hbonding(const fp_type dst, const int rec_lig_is_hb) {
       fp_type h_bond_1 = (dst <= -0.7f) ? 1.0f : 0.0f;
       fp_type h_bond_2 = (dst < 0.0f & dst > -0.7f) ? (-dst * 1.42857f ) : 0.0f;  // 1.4285714285714286 = 1/0.7f
-      return h_bond_1 + h_bond_2;
+      return (rec_lig_is_hb) ? (h_bond_1 + h_bond_2) : 0.0f;
     }
 
     __device__ inline fp_type compute_pair_energy(
         fp_type dx, fp_type dy, fp_type dz,
         fp_type vdw1, fp_type vdw2,
-        bool is_hba1, bool is_hbd1, bool is_hba2, bool is_hbd2,
-        bool is_hydro1, bool is_hydro2
+        int is_hba1, int is_hbd1, int is_hba2, int is_hbd2,
+        int is_hydro1, int is_hydro2
         ) {
       fp_type dst = distance(dx, dy, dz);
 
       dst -= (vdw1 + vdw2);
-      bool is_h = (is_hba1 & is_hbd2) | (is_hba2 & is_hbd1);
-      bool is_hydro = is_hydro1 & is_hydro2;
+      const int is_h = (is_hba1 & is_hbd2) | (is_hba2 & is_hbd1);
+      const int is_hydro = is_hydro1 & is_hydro2;
 
       fp_type res = GAUSS1_COEFF_CUDA * gauss1(dst) +
         GAUSS2_COEFF_CUDA * gauss2(dst) +
@@ -110,7 +109,7 @@ namespace mudock {
         const fp_type* __restrict__ l_vdw_radius
         ) {
       fp_type total = 0;
-      for (size_t pIdx = 0; pIdx < num_atoms_protein; pIdx++) {
+      for (size_t pIdx = threadIdx.x; pIdx < num_atoms_protein; pIdx += blockDim.x) {
 
         fp_type px = protein_x[pIdx];
         fp_type py = protein_y[pIdx];
@@ -120,7 +119,7 @@ namespace mudock {
         int phbd = p_is_hbond_donor[pIdx];
         int phf = p_is_hydrophobic[pIdx];
 
-        for (size_t lIdx = threadIdx.x; lIdx < num_atoms_ligand; lIdx += blockDim.x) {
+        for (size_t lIdx = 0; lIdx < num_atoms_ligand; lIdx++) {
           total += compute_pair_energy(
               px - ligand_coords[lIdx].x,
               py - ligand_coords[lIdx].y,
