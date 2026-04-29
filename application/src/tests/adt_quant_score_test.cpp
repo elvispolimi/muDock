@@ -15,11 +15,8 @@
 #include <mudock/utils.hpp>
 #include <stdexcept>
 #include <string>
-
-// --- NUOVO: I TUOI HEADER CUSTOM DEL RAMO 2 ---
 #include <mudock/chem/autodock_quant_protein.hpp>
-#include <mudock/compute/adt_quant_score_kernel.hpp> // <-- Metti il nome esatto del tuo kernel
-// ----------------------------------------------
+#include <mudock/compute/adt_quant_score_kernel.hpp>
 
 template<class T>
 inline T round3dp(const T x) {
@@ -102,8 +99,6 @@ int main(int argc, char *argv[]) {
   std::vector<mudock::fp_type> scores_b{0};
   
   auto q = std::make_shared<mudock::queue_cpp>(0, mudock::device_type::CPU);
-  
-  // --- NUOVO: 2. Chiamiamo il tuo Kernel Quantizzato ---
   mudock::adt_quant_score_kernel<mudock::queue_cpp> quant_kernel{ 
                                                          1,
                                                          1,
