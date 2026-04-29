@@ -36,7 +36,7 @@ namespace mudock {
                    const int population_number_,
                    const int num_generations_,
                    const int tournament_length_,
-                   const int mutation_prob_,
+                   const float mutation_prob_,
                    const size_t seed_,
                    chromosome* population_,
                    chromosome* next_population_,
@@ -73,7 +73,7 @@ namespace mudock {
     int population_number;
     int num_generations;
     int tournament_length;
-    int mutation_prob;
+    float mutation_prob;
     chromosome* __restrict__ population;
     chromosome* __restrict__ next_population;
     int* __restrict__ num_rotamers_b;
