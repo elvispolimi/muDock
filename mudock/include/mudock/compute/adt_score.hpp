@@ -24,11 +24,11 @@ namespace mudock {
 #ifndef __CUDACC__
   // TODO check that the object type and the kernel impl are the same
   template<typename queue_type>
-  struct adt_score: public scoring<queue_type> {
+  struct adt_score: public differentiable_scoring<queue_type> {
     adt_score(std::shared_ptr<scratchpad<queue_type>> _scratch,
               std::shared_ptr<scratchpad<queue_type>> _device_scratch,
               dynamic_molecule &protein)
-        : scoring<queue_type>(_scratch),
+        : differentiable_scoring<queue_type>(_scratch),
           vols(_scratch->get_queue()),
           solpars(_scratch->get_queue()),
           charges(_scratch->get_queue()),
@@ -39,6 +39,11 @@ namespace mudock {
           nonbond_cA(_scratch->get_queue()),
           nonbond_cB(_scratch->get_queue()),
           nonbond_xB(_scratch->get_queue()),
+          ligand_fragments(_scratch->get_queue()),
+          ligand_fragments_start(_scratch->get_queue()),
+          frag_start_atom_indices(_scratch->get_queue()),
+          frag_stop_atom_indices(_scratch->get_queue()),
+          frag_indices_start(_scratch->get_queue()),
           device_scratch(_device_scratch) {
       if (!(*device_scratch).template exists<buffer_data_type::PROT_GRID_MAPS>()) {
         autodock_protein adt_prot(protein);
@@ -106,6 +111,15 @@ namespace mudock {
         score_b.set_valid();
       }
 
+      // Allocate gradient buffer (6 + max_rotamers per ligand)
+      auto &gradient_b = (*this->scratch).template get<buffer_data_type::GRADIENTS>();
+      const int max_rotamers = batch.batch_max_rotamers;
+      const size_t gradient_elements = static_cast<size_t>(batch_ligands) * static_cast<size_t>(scores_per_ligand) * (6 + max_rotamers);
+      if (!gradient_b.is_valid() || gradient_b.num_elements() != gradient_elements) {
+        gradient_b.alloc(gradient_elements);
+        gradient_b.set_valid();
+      }
+
       vols.alloc(tot_atoms_in_batch);
       solpars.alloc(tot_atoms_in_batch);
       charges.alloc(tot_atoms_in_batch);
@@ -117,6 +131,16 @@ namespace mudock {
       nonbond_cA.alloc(batch_non_bonds);
       nonbond_cB.alloc(batch_non_bonds);
       nonbond_xB.alloc(batch_non_bonds);
+
+      // Allocate ligand fragment buffers for gradient computation
+      const int tot_rotamers_atoms_in_batch = batch_ligands * batch_atoms * (batch_atoms - 3);
+      ligand_fragments.alloc(tot_rotamers_atoms_in_batch);
+      ligand_fragments_start.alloc(batch_ligands + 1);
+      ligand_fragments_start()[0] = 0;
+      frag_indices_start.alloc(batch_ligands + 1);
+      frag_indices_start()[0] = 0;
+      frag_start_atom_indices.alloc(batch_ligands + 1);
+      frag_stop_atom_indices.alloc(batch_ligands + 1);
 
       const int map_flat_size =
           (*device_scratch).template get<buffer_data_type::PROT_SIZE_XYZ>().host_pointer()[0];
@@ -170,6 +194,40 @@ namespace mudock {
       nonbond_cB.copy_host2device();
       nonbond_xB.copy_host2device();
 
+      // Load ligand fragment data from batch (using data already loaded in first loop)
+      // Get num_rotamers from scratch
+      const int *num_rotamers_b = (*this->scratch).template get<buffer_data_type::NUM_ROTAMERS>().dev_pointer();
+      // TODO L IMPORTANT check this FOR LOOP initialization
+      for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
+        auto &ligand = *batch.molecules[ligand_index];
+        autodock_ligand adt_ligand{ligand};
+
+        const int num_atoms = ligand.num_atoms();
+        const int num_rotamers = num_rotamers_b[ligand_index];
+
+        // Initialize fragment data to zeros (placeholder - gradient kernel needs proper data)
+        // The actual fragment data should be loaded from the molecule structure
+        const int frag_size = num_atoms * num_rotamers;
+        if (frag_size > 0) {
+          std::memset((void *) (ligand_fragments() + ligand_fragments_start()[ligand_index]),
+                      0,
+                      frag_size * sizeof(int));
+        }
+
+        ligand_fragments_start()[ligand_index + 1] = ligand_fragments_start()[ligand_index] + frag_size;
+
+        // For now, set fragment indices to default values (can be updated based on rotamer structure)
+        frag_indices_start()[ligand_index + 1] = frag_indices_start()[ligand_index];
+        frag_start_atom_indices()[ligand_index + 1] = frag_start_atom_indices()[ligand_index];
+        frag_stop_atom_indices()[ligand_index + 1] = frag_stop_atom_indices()[ligand_index];
+      }
+
+      ligand_fragments.copy_host2device();
+      ligand_fragments_start.copy_host2device();
+      frag_indices_start.copy_host2device();
+      frag_start_atom_indices.copy_host2device();
+      frag_stop_atom_indices.copy_host2device();
+
       // TODO ask Davide about this performance
       // Bind to the kernel function
       const auto expected_scratch_elements =
@@ -180,8 +238,6 @@ namespace mudock {
              "Number of scores per ligand does not match the allocated coordinates space");
 
       const int *num_atoms_b = (*this->scratch).template get<buffer_data_type::NUM_ATOMS>().dev_pointer();
-      const int *num_rotamers_b =
-          (*this->scratch).template get<buffer_data_type::NUM_ROTAMERS>().dev_pointer();
       const int *num_nonbonds_b  = num_nonbond.dev_pointer();
       const fp_type *x_scratch_b = (*this->scratch).template get<buffer_data_type::X_SCRATCH>().dev_pointer();
       const fp_type *y_scratch_b = (*this->scratch).template get<buffer_data_type::Y_SCRATCH>().dev_pointer();
@@ -196,6 +252,13 @@ namespace mudock {
       const fp_type *nonbond_cA_b = nonbond_cA.dev_pointer();
       const fp_type *nonbond_cB_b = nonbond_cB.dev_pointer();
       const int *nonbond_xB_b     = nonbond_xB.dev_pointer();
+
+      // Get ligand fragment pointers for gradient computation
+      const int* ligand_fragments_b    = ligand_fragments.dev_pointer();
+      const int* ligand_fragments_start_b = ligand_fragments_start.dev_pointer();
+      const int* frag_indices_start_b  = frag_indices_start.dev_pointer();
+      const int* frag_start_atom_indices_b  = frag_start_atom_indices.dev_pointer();
+      const int* frag_stop_atom_indices_b   = frag_stop_atom_indices.dev_pointer();
 
       // Use host pointer as on CPP you can use it, on GPU they will load their own memory
       const fp_type *grid_maps =
@@ -238,6 +301,43 @@ namespace mudock {
                                                               map_index_xy,
                                                               map_index_xyz,
                                                               scores_b,
+                                                              q);
+
+      // Get gradient buffer pointer for gradient kernel
+      // gradient is std::array<fp_type, 516>, so we need to cast to fp_type* for the kernel
+      fp_type *gradients_b = reinterpret_cast<fp_type*>(gradient_b.dev_pointer());
+
+      gradient_kernel = std::make_unique<adt_gradient_kernel<queue_type>>(scores_per_ligand,
+                                                              batch_ligands,
+                                                              batch_atoms,
+                                                              num_atoms_b,
+                                                              num_rotamers_b,
+                                                              num_nonbonds_b,
+                                                              x_scratch_b,
+                                                              y_scratch_b,
+                                                              z_scratch_b,
+                                                              ligand_fragments_b,
+                                                              ligand_fragments_start_b,
+                                                              frag_indices_start_b,
+                                                              frag_start_atom_indices_b,
+                                                              frag_stop_atom_indices_b,
+                                                              vols_b,
+                                                              solpars_b,
+                                                              charges_b,
+                                                              map_offsets_b,
+                                                              nonbond_a1_b,
+                                                              nonbond_a2_b,
+                                                              nonbond_cA_b,
+                                                              nonbond_cB_b,
+                                                              nonbond_xB_b,
+                                                              grid_maps,
+                                                              minimum,
+                                                              maximum,
+                                                              center,
+                                                              map_index_x,
+                                                              map_index_xy,
+                                                              map_index_xyz,
+                                                              gradients_b,
                                                               q);
     }
 
@@ -297,6 +397,12 @@ namespace mudock {
     buffer_vector<fp_type, queue_type> nonbond_cA;
     buffer_vector<fp_type, queue_type> nonbond_cB;
     buffer_vector<int, queue_type> nonbond_xB;
+
+    buffer_vector<int, queue_type> ligand_fragments;
+    buffer_vector<int, queue_type> ligand_fragments_start;
+    buffer_vector<int, queue_type> frag_indices_start;
+    buffer_vector<int, queue_type> frag_start_atom_indices;
+    buffer_vector<int, queue_type> frag_stop_atom_indices;
 
     std::shared_ptr<scratchpad<queue_type>> device_scratch;
     std::unique_ptr<adt_score_kernel<queue_type>> score_kernel;

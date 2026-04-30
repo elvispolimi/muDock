@@ -3,6 +3,7 @@
 #include <concepts>
 #include <memory>
 #include <mudock/compute/queue.hpp>
+#include <mudock/cpp_implementation/chromosome.hpp>
 #include <mudock/type_alias.hpp>
 
 namespace mudock {
@@ -119,6 +120,11 @@ namespace mudock {
                         const fp_type *__restrict__ x_scratch_b_,
                         const fp_type *__restrict__ y_scratch_b_,
                         const fp_type *__restrict__ z_scratch_b_,
+                        const int* __restrict__ ligand_fragments_b_,
+                        const int* __restrict__ ligand_fragments_start_b_,
+                        const int* __restrict__ frag_indices_start_b_,
+                        const int* __restrict__ frag_start_indices_b_,
+                        const int* __restrict__ frag_stop_indices_b_,
                         const fp_type *__restrict__ vols_b_,
                         const fp_type *__restrict__ solpars_b_,
                         const fp_type *__restrict__ charges_b_,
@@ -135,7 +141,7 @@ namespace mudock {
                         const int map_index_x_,
                         const int map_index_xy_,
                         const int map_index_xyz_,
-                        fp_type *__restrict__ scores_b_,
+                        fp_type *__restrict__ gradients_b_,
                         std::shared_ptr<queue_type> q_)
         : scores_per_ligand(scores_per_ligand_),
           batch_ligands(batch_ligands_),
@@ -146,6 +152,11 @@ namespace mudock {
           x_scratch_b(x_scratch_b_),
           y_scratch_b(y_scratch_b_),
           z_scratch_b(z_scratch_b_),
+          ligand_fragments_b(ligand_fragments_b_),
+          ligand_fragments_start_b(ligand_fragments_start_b_),
+          frag_indices_start_b(frag_indices_start_b_),
+          frag_start_indices_b(frag_start_indices_b_),
+          frag_stop_indices_b(frag_stop_indices_b_),
           vols_b(vols_b_),
           solpars_b(solpars_b_),
           charges_b(charges_b_),
@@ -162,7 +173,7 @@ namespace mudock {
           map_index_x(map_index_x_),
           map_index_xy(map_index_xy_),
           map_index_xyz(map_index_xyz_),
-          scores_b(scores_b_),
+          gradients_b(gradients_b_),
           q(q_) {}
 
     void operator()();
@@ -184,6 +195,11 @@ namespace mudock {
     const fp_type *__restrict__ x_scratch_b;
     const fp_type *__restrict__ y_scratch_b;
     const fp_type *__restrict__ z_scratch_b;
+    const int* __restrict__ ligand_fragments_b;
+    const int* __restrict__ ligand_fragments_start_b;
+    const int* __restrict__ frag_indices_start_b;
+    const int* __restrict__ frag_start_indices_b;
+    const int* __restrict__ frag_stop_indices_b;
     const fp_type *__restrict__ vols_b;
     const fp_type *__restrict__ solpars_b;
     const fp_type *__restrict__ charges_b;
@@ -200,7 +216,7 @@ namespace mudock {
     const int map_index_x;
     const int map_index_xy;
     const int map_index_xyz;
-    fp_type *__restrict__ scores_b;
+    fp_type *__restrict__ gradients_b;
     std::shared_ptr<queue_type> q;
   };
 
