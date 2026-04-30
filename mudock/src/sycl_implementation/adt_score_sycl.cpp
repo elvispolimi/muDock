@@ -1,5 +1,6 @@
 #include <mudock/chem/mehler_solmajer.hpp>
 #include <mudock/compute/adt_score_kernel.hpp>
+#include <mudock/compute/bucket_size.hpp>
 #include <mudock/compute/devices_memory.hpp>
 #include <mudock/compute/reorder_buffer.hpp>
 #include <mudock/devices.hpp>
