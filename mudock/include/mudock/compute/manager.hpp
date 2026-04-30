@@ -149,6 +149,7 @@ namespace mudock {
               using k_t = typename kernel_type_traits<kernel_type>::type;
               launch_worker_cpu<k_t, pipeline_t>(
                   knobs, parts, pool, input_molecules, output_molecules, pipe, in_flight_ligands);
+              worker_created = true;
             }
           });
           break;
@@ -160,6 +161,7 @@ namespace mudock {
               using k_t = typename kernel_type_traits<kernel_type>::type;
               launch_worker_gpu<k_t, pipeline_t>(
                   knobs, parts, pool, input_molecules, output_molecules, pipe, in_flight_ligands);
+              worker_created = true;
             }
           });
           break;

@@ -95,6 +95,7 @@ list(
 
 # sources
 set(source_path "${CMAKE_CURRENT_SOURCE_DIR}/src")
+set(tbb_pipeline_source "${source_path}/tbb_implementation/tbb_pipeline.cpp")
 list(
   APPEND
   source_files
@@ -128,7 +129,7 @@ list(
   "${source_path}/tbb_implementation/stream_filter.cpp"
   "${source_path}/tbb_implementation/parser_filter.cpp"
   "${source_path}/tbb_implementation/runtime_services.cpp"
-  "${source_path}/tbb_implementation/tbb_pipeline.cpp"
+  "${tbb_pipeline_source}"
 )
 
 if(MUDOCK_ENABLE_MPI)
@@ -315,6 +316,9 @@ if(MUDOCK_ENABLE_ALPAKA)
     set_source_files_properties("${alpaka_queue_source}" PROPERTIES LANGUAGE CUDA)
     set_source_files_properties("${alpaka_dot_product_source}" PROPERTIES LANGUAGE CUDA)
     set_source_files_properties("${alpaka_reduction_source}" PROPERTIES LANGUAGE CUDA)
+    set_source_files_properties("${tbb_pipeline_source}" PROPERTIES LANGUAGE CUDA)
+    set_property(SOURCE "${tbb_pipeline_source}" APPEND
+                 PROPERTY COMPILE_DEFINITIONS MUDOCK_ENABLE_HOST_COMPUTE_PIPELINE)
   elseif(MUDOCK_ALPAKA_BACKEND STREQUAL "hip" AND CMAKE_HIP_COMPILER)
     set_source_files_properties("${alpaka_adt_score_source}" PROPERTIES LANGUAGE HIP)
     set_source_files_properties("${alpaka_genetic_source}" PROPERTIES LANGUAGE HIP)
@@ -322,6 +326,9 @@ if(MUDOCK_ENABLE_ALPAKA)
     set_source_files_properties("${alpaka_queue_source}" PROPERTIES LANGUAGE HIP)
     set_source_files_properties("${alpaka_dot_product_source}" PROPERTIES LANGUAGE HIP)
     set_source_files_properties("${alpaka_reduction_source}" PROPERTIES LANGUAGE HIP)
+    set_source_files_properties("${tbb_pipeline_source}" PROPERTIES LANGUAGE HIP)
+    set_property(SOURCE "${tbb_pipeline_source}" APPEND
+                 PROPERTY COMPILE_DEFINITIONS MUDOCK_ENABLE_HOST_COMPUTE_PIPELINE)
   endif()
 endif()
 set_target_properties(libmudock PROPERTIES PUBLIC_HEADER "${headers}")

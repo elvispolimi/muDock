@@ -63,6 +63,7 @@ namespace mudock {
     void copy_device2host(const void*, void*, const size_t) override;
     void copy_device2device(const void*, void*, const size_t) override;
     bool obj_required() override { return true; }
+    bool honors_stage_bucket_policy() const override { return dev_type == device_type::GPU; }
 
     void operator()() override;
 

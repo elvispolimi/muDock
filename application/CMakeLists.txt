@@ -67,9 +67,8 @@ function(add_alpaka_application_executable target)
 endfunction()
 
 # declare the application executable
-add_executable_mudock("${CMAKE_PROJECT_NAME}" "${header_files}"
-                      "${source_files}")
-mudock_configure_application_target("${CMAKE_PROJECT_NAME}" "${header_path}")
+add_alpaka_application_executable("${CMAKE_PROJECT_NAME}" "${header_files}"
+                                  "${source_files}")
 mudock_link_application_target("${CMAKE_PROJECT_NAME}")
 if(MUDOCK_ENABLE_MPI)
   target_link_libraries("${CMAKE_PROJECT_NAME}" PRIVATE MPI::MPI_CXX)
@@ -104,8 +103,7 @@ endif()
 # ##############################################################################
 # ### Declare the install step
 # ##############################################################################
-add_executable_mudock(converter "${CMAKE_CURRENT_SOURCE_DIR}/src/converter.cpp")
-mudock_configure_application_target(converter "${header_path}")
+add_alpaka_application_executable(converter "${CMAKE_CURRENT_SOURCE_DIR}/src/converter.cpp")
 mudock_link_application_target(converter)
 
 # ##############################################################################
