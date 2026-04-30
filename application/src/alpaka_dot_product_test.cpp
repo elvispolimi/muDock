@@ -1,19 +1,13 @@
 #include <mudock/alpaka_implementation/alpaka_dot_product.hpp>
-<<<<<<< HEAD
 #include <mudock/alpaka_implementation/object_alpaka.hpp>
 #include <mudock/alpaka_implementation/queue_alpaka.hpp>
-=======
->>>>>>> 991f47c8 (Added more alpaka-based tests)
 
 #include <chrono>
 #include <cmath>
 #include <cstdlib>
 #include <iomanip>
 #include <iostream>
-<<<<<<< HEAD
 #include <memory>
-=======
->>>>>>> 991f47c8 (Added more alpaka-based tests)
 #include <vector>
 
 int main() {
