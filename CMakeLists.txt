@@ -744,7 +744,6 @@ if(MUDOCK_ENABLE_HIP)
                       "CMAKE_HIP_ARCHITECTURES")
 endif()
 
-<<<<<<< HEAD
 mudock_print_config("Enable SYCL" "${MUDOCK_ENABLE_SYCL}" "MUDOCK_ENABLE_SYCL")
 
 mudock_print_config("Enable Alpaka" "${MUDOCK_ENABLE_ALPAKA}" "MUDOCK_ENABLE_ALPAKA")
@@ -752,22 +751,6 @@ mudock_print_config("Enable Alpaka" "${MUDOCK_ENABLE_ALPAKA}" "MUDOCK_ENABLE_ALP
 if(MUDOCK_ENABLE_ALPAKA)
   mudock_print_config("Alpaka backend" "${MUDOCK_ALPAKA_BACKEND}"
                       "MUDOCK_ALPAKA_BACKEND")
-=======
-<<<<<<< HEAD
-<<<<<<< HEAD
-message(
-  STATUS
-    "Enable Alpaka.......................: ${MUDOCK_ENABLE_ALPAKA} (MUDOCK_ENABLE_ALPAKA)"
-)
-if(MUDOCK_ENABLE_ALPAKA)
-  message(
-    STATUS
-      "Alpaka backend......................: ${MUDOCK_ALPAKA_BACKEND} (MUDOCK_ALPAKA_BACKEND)"
-  )
-endif()
-
-mudock_print_config("Enable SYCL" "${MUDOCK_ENABLE_SYCL}" "MUDOCK_ENABLE_SYCL")
->>>>>>> 1d9f2672 (Added more alpaka-based tests)
 
 if(MUDOCK_ENABLE_SYCL)
   mudock_print_config("Target SYCL architecture" "${SYCL_TARGETS}"
