@@ -6,3 +6,4 @@ build*/
 *.a
 .codex
 docs/
+alpaka/

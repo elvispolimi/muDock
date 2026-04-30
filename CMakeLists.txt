@@ -751,6 +751,7 @@ mudock_print_config("Enable Alpaka" "${MUDOCK_ENABLE_ALPAKA}" "MUDOCK_ENABLE_ALP
 if(MUDOCK_ENABLE_ALPAKA)
   mudock_print_config("Alpaka backend" "${MUDOCK_ALPAKA_BACKEND}"
                       "MUDOCK_ALPAKA_BACKEND")
+endif()                      
 
 if(MUDOCK_ENABLE_SYCL)
   mudock_print_config("Target SYCL architecture" "${SYCL_TARGETS}"
