@@ -21,8 +21,8 @@ namespace mudock {
     const auto v_offset_z = Set(d, offset_z);
 
     // Process in SIMD lanes
-    for (int i = 0; i < static_cast<int>(num_loops * Lanes(d)); i += Lanes(d)) {
-      const auto remaining = num_atoms - i;
+    for (size_t i = 0; i < num_loops * Lanes(d); i += Lanes(d)) {
+      const auto remaining = std::min<size_t>(Lanes(d), static_cast<size_t>(num_atoms) - i);
       // Load elements from x, y, and z arrays
       auto vx = LoadN(d, x + i, remaining);
       auto vy = LoadN(d, y + i, remaining);
@@ -59,8 +59,8 @@ namespace mudock {
     auto sum_z = Zero(d);
 
     // Process in SIMD lanes
-    for (int i = 0; i < static_cast<int>(num_loops * Lanes(d)); i += Lanes(d)) {
-      const auto remaining = num_atoms - i;
+    for (size_t i = 0; i < num_loops * Lanes(d); i += Lanes(d)) {
+      const auto remaining = std::min<size_t>(Lanes(d), static_cast<size_t>(num_atoms) - i);
       // Load elements from x, y, and z arrays
       auto vx = LoadN(d, x + i, remaining);
       auto vy = LoadN(d, y + i, remaining);
@@ -77,9 +77,9 @@ namespace mudock {
     const auto total_y = ReduceSum(d, sum_y);
     const auto total_z = ReduceSum(d, sum_z);
     // Compute center of mass
-    const fp_type c_x = total_x / num_atoms;
-    const fp_type c_y = total_y / num_atoms;
-    const fp_type c_z = total_z / num_atoms;
+    const fp_type c_x = total_x / static_cast<fp_type>(num_atoms);
+    const fp_type c_y = total_y / static_cast<fp_type>(num_atoms);
+    const fp_type c_z = total_z / static_cast<fp_type>(num_atoms);
 
     // compute the angles sine and cosine
     const auto rad_x = deg_to_rad(angle_x), rad_y = deg_to_rad(angle_y), rad_z = deg_to_rad(angle_z);
@@ -114,8 +114,8 @@ namespace mudock {
     const auto v_m22 = Set(d, m22);
     // Process in SIMD lanes
     // TODO check the equal comparison
-    for (int i = 0; i < static_cast<int>(num_loops * Lanes(d)); i += Lanes(d)) {
-      const auto remaining = num_atoms - i;
+    for (size_t i = 0; i < num_loops * Lanes(d); i += Lanes(d)) {
+      const auto remaining = std::min<size_t>(Lanes(d), static_cast<size_t>(num_atoms) - i);
       // Load elements from x, y, and z arrays
       auto translate_x = LoadN(d, x + i, remaining);
       auto translate_y = LoadN(d, y + i, remaining);
@@ -212,8 +212,8 @@ namespace mudock {
     const auto v_m22 = Set(d, m22);
     const auto v_m23 = Set(d, m23);
     // Process in SIMD lanes
-    for (int i = 0; i < static_cast<int>(num_loops * Lanes(d)); i += Lanes(d)) {
-      const auto remaining = num_atoms - i;
+    for (size_t i = 0; i < num_loops * Lanes(d); i += Lanes(d)) {
+      const auto remaining = std::min<size_t>(Lanes(d), static_cast<size_t>(num_atoms) - i);
 
       // Load integer mask values
       const auto int_mask_values = LoadN(d_mask, frag_mask + i, remaining);
