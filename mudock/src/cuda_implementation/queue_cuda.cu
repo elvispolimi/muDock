@@ -35,7 +35,7 @@ namespace mudock {
                                MUDOCK_CHECK(cudaSetDevice(dev));
                                auto lock = std::make_unique<device_kernel_lock>();
                                MUDOCK_CHECK(cudaEventCreateWithFlags(&lock->event, cudaEventDisableTiming));
-                               lock->event_created = true;
+                               lock->event_created      = true;
                                lock->has_previous_event = false;
                                return lock;
                              }));
@@ -55,8 +55,8 @@ namespace mudock {
     ~impl() noexcept(false) { MUDOCK_CHECK(cudaStreamDestroy(stream)); };
   };
 
-  queue_cuda::queue_cuda(const int _id, const device_type dev_type)
-      : queue(_id, dev_type), impl_(std::make_unique<impl>(_id)) {
+  queue_cuda::queue_cuda(const int _id, const device_type _dev_type)
+      : queue(_id, _dev_type), impl_(std::make_unique<impl>(_id)) {
     assert(dev_type == device_type::GPU && "CUDA supports only GPUs devices");
   };
   queue_cuda::~queue_cuda() = default; // unique_ptr will destroy Impl
@@ -71,8 +71,8 @@ namespace mudock {
     assert(gridDim.size_z() > 0 && blockDim.size_z() > 0);
 
     const dim3 grid  = dim3{static_cast<unsigned int>(gridDim.size_x()),
-                           static_cast<unsigned int>(gridDim.size_y()),
-                           static_cast<unsigned int>(gridDim.size_z())};
+                            static_cast<unsigned int>(gridDim.size_y()),
+                            static_cast<unsigned int>(gridDim.size_z())};
     const dim3 block = dim3{static_cast<unsigned int>(blockDim.size_x()),
                             static_cast<unsigned int>(blockDim.size_y()),
                             static_cast<unsigned int>(blockDim.size_z())};
