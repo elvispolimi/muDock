@@ -6,7 +6,7 @@
 
 namespace mudock {
   template<>
-  int get_adt_score_batch<queue_alpaka>(const int, std::shared_ptr<queue_alpaka>, const size_t);
+  batch_multiple get_adt_score_batch_multiple<queue_alpaka>(const int, std::shared_ptr<queue_alpaka>);
 
   template<>
   void adt_score_kernel<queue_alpaka>::operator()();

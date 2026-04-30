@@ -69,12 +69,8 @@ namespace mudock {
                                     fp_type* scores_b) const {
         const int ligand_id = static_cast<int>(alpaka::getIdx<alpaka::Grid, alpaka::Blocks>(acc)[0u]);
         const int thread_id = static_cast<int>(alpaka::getIdx<alpaka::Block, alpaka::Threads>(acc)[0u]);
-
-        // First implementation: keep the Alpaka backend correct and easy to test.
-        // Parallelizing the atom/non-bond loops can follow once the backend is wired end-to-end.
-        if (thread_id != 0) {
-          return;
-        }
+        const int thread_per_block =
+            static_cast<int>(alpaka::getWorkDiv<alpaka::Block, alpaka::Threads>(acc)[0u]);
 
         const int num_atoms = num_atoms_b[ligand_id];
         const int num_nonbonds = num_nonbonds_b[ligand_id + 1] - num_nonbonds_b[ligand_id];
@@ -96,7 +92,8 @@ namespace mudock {
 
         fp_type* scores_l = scores_b + ligand_id * scores_per_ligand;
 
-        for (int scores_index = 0; scores_index < scores_per_ligand; ++scores_index) {
+        for (int scores_index = thread_id; scores_index < scores_per_ligand;
+             scores_index += thread_per_block) {
           const fp_type* ligand_x = l_scratch_x + scores_index * atom_stride;
           const fp_type* ligand_y = l_scratch_y + scores_index * atom_stride;
           const fp_type* ligand_z = l_scratch_z + scores_index * atom_stride;
@@ -278,21 +275,9 @@ namespace mudock {
   }
 
   template<>
-  int get_adt_score_batch<queue_alpaka>(const int atoms,
-                                        std::shared_ptr<queue_alpaka>,
-                                        const size_t max_bucket_size) {
-#ifdef MUDOCK_ADT_BUCKET_OVERRIDE
-    const int capped = std::min<int>(MUDOCK_ADT_BUCKET_OVERRIDE, max_bucket_size);
-    mudock::info("ALPAKA Bucket size for ",
-                 atoms,
-                 " atoms override -> ",
-                 MUDOCK_ADT_BUCKET_OVERRIDE,
-                 ", capped -> ",
-                 capped);
-    return capped;
-#else
-    mudock::info("ALPAKA Bucket size for ", atoms, " atoms -> ", max_bucket_size);
-    return static_cast<int>(max_bucket_size);
-#endif
+  batch_multiple get_adt_score_batch_multiple<queue_alpaka>(const int atoms,
+                                                            std::shared_ptr<queue_alpaka>) {
+    mudock::info("ALPAKA ADT batch multiple for ", atoms, " atoms -> 1");
+    return {};
   }
 } // namespace mudock
