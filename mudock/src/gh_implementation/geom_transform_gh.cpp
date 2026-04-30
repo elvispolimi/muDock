@@ -4,23 +4,24 @@
 #include <mudock/gh_implementation/mutate_gh.hpp>
 
 namespace mudock {
-  inline void geom_transform(const int batch_ligands,
-                             const int batch_atoms,
-                             const int chromsomes_per_ligand,
-                             const chromosome* __restrict__ chromosomes_b,
-                             const int* __restrict__ num_atoms_b,
-                             const int* __restrict__ num_rotamers_b,
-                             const fp_type* __restrict__ x_coords_b,
-                             const fp_type* __restrict__ y_coords_b,
-                             const fp_type* __restrict__ z_coords_b,
-                             fp_type* __restrict__ x_scratch_b,
-                             fp_type* __restrict__ y_scratch_b,
-                             fp_type* __restrict__ z_scratch_b,
-                             const int* __restrict__ ligand_fragments_b,
-                             const int* __restrict__ ligand_fragments_start_b,
-                             const int* __restrict__ frag_indices_start_b,
-                             const int* __restrict__ frag_start_indices_b,
-                             const int* __restrict__ frag_stop_indices_b) {
+  namespace {
+    void geom_transform(const int batch_ligands,
+                        const int batch_atoms,
+                        const int chromsomes_per_ligand,
+                        const chromosome* __restrict__ chromosomes_b,
+                        const int* __restrict__ num_atoms_b,
+                        const int* __restrict__ num_rotamers_b,
+                        const fp_type* __restrict__ x_coords_b,
+                        const fp_type* __restrict__ y_coords_b,
+                        const fp_type* __restrict__ z_coords_b,
+                        fp_type* __restrict__ x_scratch_b,
+                        fp_type* __restrict__ y_scratch_b,
+                        fp_type* __restrict__ z_scratch_b,
+                        const int* __restrict__ ligand_fragments_b,
+                        const int* __restrict__ ligand_fragments_start_b,
+                        const int* __restrict__ frag_indices_start_b,
+                        const int* __restrict__ frag_start_indices_b,
+                        const int* __restrict__ frag_stop_indices_b) {
     for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
       const int stride_atoms                     = ligand_index * batch_atoms;
       const int num_atoms                        = num_atoms_b[ligand_index];
@@ -61,7 +62,8 @@ namespace mudock {
                                      frag_stop_indices);
       }
     }
-  }
+    }
+  } // namespace
 
   template<>
   void geom_kernel<queue_gh>::operator()() {

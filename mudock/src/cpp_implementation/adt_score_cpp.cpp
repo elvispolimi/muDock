@@ -7,10 +7,11 @@
 #define FLATTENED_3D(x, y, z, index_x, index_xy) (index_xy * (z) + (y) * index_x + (x))
 
 namespace mudock {
-  inline fp_type trilinear_interpolation(const fp_type *__restrict__ map,
-                                         const fp_type *__restrict__ coeffs,
-                                         const int &map_index_x,
-                                         const int &map_index_xy) {
+  namespace {
+    fp_type trilinear_interpolation(const fp_type *__restrict__ map,
+                                    const fp_type *__restrict__ coeffs,
+                                    const int &map_index_x,
+                                    const int &map_index_xy) {
     fp_type value{0};
 
     value = coeffs[0] * map[0] + value;
@@ -23,34 +24,34 @@ namespace mudock {
     value = coeffs[7] * map[1 + map_index_x + map_index_xy] + value;
 
     return value;
-  }
+    }
 
-  inline void calc_energy(const int batch_atoms,
-                          const int batch_ligands,
-                          const int scores_per_ligand,
-                          const fp_type *__restrict__ x_scratch_b,
-                          const fp_type *__restrict__ y_scratch_b,
-                          const fp_type *__restrict__ z_scratch_b,
-                          const fp_type *__restrict__ vols_b,
-                          const fp_type *__restrict__ solpars_b,
-                          const fp_type *__restrict__ charges_b,
-                          const int *__restrict__ num_atoms_b,
-                          const int *__restrict__ num_rotamers_b,
-                          const int *__restrict__ num_nonbonds_b,
-                          const int *__restrict__ nonbond_a1_b,
-                          const int *__restrict__ nonbond_a2_b,
-                          const fp_type *__restrict__ nonbond_cA_b,
-                          const fp_type *__restrict__ nonbond_cB_b,
-                          const int *__restrict__ nonbond_xB_b,
-                          const fp_type *__restrict__ grid_maps,
-                          const fp_type *__restrict__ minimum,
-                          const fp_type *__restrict__ maximum,
-                          const fp_type *__restrict__ center,
-                          const int *__restrict__ map_offsets_b,
-                          const int map_index_x,
-                          const int map_index_xy,
-                          const int map_index_xyz,
-                          fp_type *__restrict__ scores_b) {
+    void calc_energy(const int batch_atoms,
+                     const int batch_ligands,
+                     const int scores_per_ligand,
+                     const fp_type *__restrict__ x_scratch_b,
+                     const fp_type *__restrict__ y_scratch_b,
+                     const fp_type *__restrict__ z_scratch_b,
+                     const fp_type *__restrict__ vols_b,
+                     const fp_type *__restrict__ solpars_b,
+                     const fp_type *__restrict__ charges_b,
+                     const int *__restrict__ num_atoms_b,
+                     const int *__restrict__ num_rotamers_b,
+                     const int *__restrict__ num_nonbonds_b,
+                     const int *__restrict__ nonbond_a1_b,
+                     const int *__restrict__ nonbond_a2_b,
+                     const fp_type *__restrict__ nonbond_cA_b,
+                     const fp_type *__restrict__ nonbond_cB_b,
+                     const int *__restrict__ nonbond_xB_b,
+                     const fp_type *__restrict__ grid_maps,
+                     const fp_type *__restrict__ minimum,
+                     const fp_type *__restrict__ maximum,
+                     const fp_type *__restrict__ center,
+                     const int *__restrict__ map_offsets_b,
+                     const int map_index_x,
+                     const int map_index_xy,
+                     const int map_index_xyz,
+                     fp_type *__restrict__ scores_b) {
     for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
       const int atom_stride  = ligand_index * batch_atoms;
       const int num_atoms    = num_atoms_b[ligand_index];
@@ -203,7 +204,8 @@ namespace mudock {
         scores_l[scores_index]        = total_trilinear + total_eintcal + tors_free_energy;
       }
     }
-  };
+    }
+  } // namespace
 
   template<>
   void adt_score_kernel<queue_cpp>::operator()() {
