@@ -149,9 +149,8 @@ namespace mudock {
                                     const int* num_atoms_b) const {
         const int ligand_id = static_cast<int>(alpaka::getIdx<alpaka::Grid, alpaka::Blocks>(acc)[0u]);
         const int thread_id = static_cast<int>(alpaka::getIdx<alpaka::Block, alpaka::Threads>(acc)[0u]);
-        if (thread_id != 0) {
-          return;
-        }
+        const int thread_per_block =
+            static_cast<int>(alpaka::getWorkDiv<alpaka::Block, alpaka::Threads>(acc)[0u]);
 
         const int num_atoms    = num_atoms_b[ligand_id];
         const int num_rotamers = num_rotamers_b[ligand_id];
@@ -167,7 +166,8 @@ namespace mudock {
         const auto* l_frag_start_atom_index = fragments_start_index + frag_indices_start[ligand_id];
         const auto* l_frag_stop_atom_index  = fragments_stop_index + frag_indices_start[ligand_id];
 
-        for (int chromosome_index = 0; chromosome_index < chromosome_number; ++chromosome_index) {
+        for (int chromosome_index = thread_id; chromosome_index < chromosome_number;
+             chromosome_index += thread_per_block) {
           const chromosome& l_chromosomes = chromosomes_b[chromosome_index];
           fp_type* x_scratch_chromosome   = l_scratch_x + chromosome_index * atom_stride;
           fp_type* y_scratch_chromosome   = l_scratch_y + chromosome_index * atom_stride;
