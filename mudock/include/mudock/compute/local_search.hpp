@@ -19,7 +19,7 @@ namespace mudock {
 
     virtual ~local_search() = default;
     
-  private:
+  protected:
     scoring_t<queue_t>& score_stage;
   };
 } // namespace mudock

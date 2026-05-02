@@ -59,7 +59,7 @@ namespace mudock {
 
       ls_ad_kernel = std::make_unique<adadelta_kernel<queue_type>>(individuals_per_ligand,
                                                                   batch_ligands,
-                                                                  score_stage,
+                                                                  this->score_stage,
                                                                   gradients_b,
                                                                   population_b,
                                                                   adadelta_e_g2,
