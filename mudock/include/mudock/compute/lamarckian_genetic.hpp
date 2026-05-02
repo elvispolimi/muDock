@@ -12,6 +12,7 @@
   #include <mudock/compute/docking.hpp>
   #include <mudock/compute/geometric_transform.hpp>
   #include <mudock/compute/scoring.hpp>
+  #include <mudock/compute/local_search.hpp>
   #include <mudock/compute/scratchpad.hpp>
 #endif
 #include <mudock/compute/queue.hpp>
@@ -63,24 +64,23 @@ namespace mudock {
   };
 
 #ifndef __CUDACC__
-  template<typename queue_t, template<typename> typename scoring_t, template<typename> typename local_search_t>
+  template<typename queue_t, template<typename> typename scoring_t, template<typename, template<typename> typename> typename local_search_t>
     requires std::derived_from<queue_t, queue> 
-             && std::derived_from<scoring_t<queue_t>, scoring<queue_t>>
-             && std::derived_from<local_search_t<queue_t>, local_search<queue_t>>
+            && std::derived_from<scoring_t<queue_t>, scoring<queue_t>>
+            && std::derived_from<local_search_t<queue_t, scoring_t>, local_search<queue_t, scoring_t>>
   struct lamarckian_genetic : public genetic<queue_t, scoring_t> {
     // Inherit constructor and most logic from genetic
     lamarckian_genetic(std::shared_ptr<scratchpad<queue_t>> _scratch,
                       dynamic_molecule& _protein,
                       scoring_t<queue_t> _scoring,
-                      local_search_t<queue_t> _local_search,
-                      int _local_search_iters)
+                      local_search_t<queue_t, scoring_t> _local_search)
         : genetic<queue_t, scoring_t>(_scratch, _protein, _scoring),
           local_search_stage(std::move(_local_search)){};
 
     void prepare(batch<static_molecule>& batch) override {
       const knobs& configuration  = (*this->scratch).configuration;
-      batch_ligands               = batch.num_ligands;
-      num_generations             = configuration.num_generations;
+      this->batch_ligands         = batch.num_ligands;
+      this->num_generations       = configuration.num_generations;
       const int population_number = configuration.population_number;
       auto q                      = (*this->scratch).get_queue();
 
@@ -88,12 +88,12 @@ namespace mudock {
       auto& chromosomes_b  = (*this->scratch).template get<buffer_data_type::CHROMOSOMES>();
       auto& scores_b       = (*this->scratch).template get<buffer_data_type::SCORES>();
 
-      num_rotamers_b.alloc(batch_ligands);
-      chromosomes_b.alloc(population_number * batch_ligands);
-      next_population.alloc(population_number * batch_ligands);
-      scores_b.alloc(population_number * batch_ligands);
-      best_scores.alloc(batch_ligands);
-      best_chromosomes.alloc(batch_ligands);
+      num_rotamers_b.alloc(this->batch_ligands);
+      chromosomes_b.alloc(population_number * this->batch_ligands);
+      this->next_population.alloc(population_number * this->batch_ligands);
+      scores_b.alloc(population_number * this->batch_ligands);
+      this->best_scores.alloc(this->batch_ligands);
+      this->best_chromosomes.alloc(this->batch_ligands);
 
       load_num_rotamers<queue_t>(batch, this->scratch);
 
@@ -104,67 +104,74 @@ namespace mudock {
 
       int* __restrict__ num_rotamers_p            = num_rotamers_b.dev_pointer();
       fp_type* __restrict__ scores_p              = scores_b.dev_pointer();
-      fp_type* __restrict__ best_scores_p         = best_scores.dev_pointer();
-      chromosome* __restrict__ best_chromosomes_p = best_chromosomes.dev_pointer();
+      fp_type* __restrict__ best_scores_p         = this->best_scores.dev_pointer();
+      chromosome* __restrict__ best_chromosomes_p = this->best_chromosomes.dev_pointer();
 
-      this->lamarckian_kernel = std::make_unique<lamarckian_genetic_kernel<queue_t>>(batch_ligands,
-                                                                                     population_number,
-                                                                                     configuration.num_generations,
-                                                                                     configuration.tournament_length,
-                                                                                     configuration.mutation_prob,
-                                                                                     seed,
-                                                                                     chromosomes_b.dev_pointer(),
-                                                                                     next_population.dev_pointer(),
-                                                                                     num_rotamers_p,
-                                                                                     scores_p,
-                                                                                     best_scores_p,
-                                                                                     best_chromosomes_p,
-                                                                                     q);
+      this->lamarckian_kernel = std::make_unique<lamarckian_genetic_kernel<queue_t>>(this->batch_ligands,
+                                                                                    population_number,
+                                                                                    configuration.num_generations,
+                                                                                    configuration.tournament_length,
+                                                                                    configuration.mutation_prob,
+                                                                                    seed,
+                                                                                    chromosomes_b.dev_pointer(),
+                                                                                    this->next_population.dev_pointer(),
+                                                                                    num_rotamers_p,
+                                                                                    scores_p,
+                                                                                    best_scores_p,
+                                                                                    best_chromosomes_p,
+                                                                                    q);
 
-      geom_trans.prepare(batch);
-      score_stage.prepare(batch);
+      this->geom_trans.prepare(batch);
+      this->score_stage.prepare(batch);
       local_search_stage.prepare(batch);
     };
 
     void operator()() override {
       auto& chromosomes_b = (*this->scratch).template get<buffer_data_type::CHROMOSOMES>();
 
-      assert(lamarckian_kernel && "lamarckian_kernel method not yet prepared");
-      lamarckian_kernel->initialize();
+      assert(this->lamarckian_kernel && "lamarckian_kernel method not yet prepared");
+      this->lamarckian_kernel->initialize();
 
-      for (int generation = 0; generation < num_generations; ++generation) {
-        geom_trans();
-        score_stage();
+      for (int generation = 0; generation < this->num_generations; ++generation) {
+        this->geom_trans();
+        this->score_stage();
         local_search_stage();
-        (*lamarckian_kernel)();
-        chromosomes_b.copy_device2device(next_population);
+        (*this->lamarckian_kernel)();
+        chromosomes_b.copy_device2device(this->next_population);
       }
-      lamarckian_kernel->finalize();
+      this->lamarckian_kernel->finalize();
+    }
+
+    // TODO: Adapt this get mem 
+    static int get_ligand_mem(const int max_atoms, const knobs conf) {
+      int mem{0};
+
+      mem += sizeof(int);                                 // num_rotamers
+      mem += sizeof(chromosome) * conf.population_number; // chromosomes
+      mem += sizeof(chromosome) * conf.population_number; //next population
+      mem += sizeof(fp_type) * conf.population_number;    //scores
+      mem += sizeof(chromosome);                          // best chromosomes
+      mem += sizeof(fp_type);                             // best scores
+
+      mem += scoring_t<queue_t>::get_ligand_mem(max_atoms, conf);
+      mem += geometric<queue_t>::get_ligand_mem(max_atoms, conf);
+      mem += local_search_t<queue_t, scoring_t>::get_ligand_mem(max_atoms, conf);
+      return mem;
     }
 
   private:
-  // TODO L since lga extens genetic, it inherits <genetic_kernel<queue_t>> kernel. Is it a problem?
-    local_search_t<queue_t> local_search_stage;
+    local_search_t<queue_t, scoring_t> local_search_stage;
     std::unique_ptr<lamarckian_genetic_kernel<queue_t>> lamarckian_kernel;
     
-    // TODO L probably this must be changed, not sure
     void teardown_impl(batch<static_molecule>& batch) {
-      assert(batch.num_ligands == batch_ligands && "Lamarckian-Genetic algorithm received different batch for teardown");
+      assert(batch.num_ligands == this->batch_ligands && "Lamarckian-Genetic algorithm received different batch for teardown");
 
-      // TODO check if the copy can be changed with a swap
-      // auto& population_b = (*this->scratch).template get<buffer_data_type::CHROMOSOMES>();
-      // population_b.copy_device2device(best_chromosomes);
-      // geom_trans();
-      // score_stage();
-      // geom_trans.teardown(batch);
-      // score_stage.teardown(batch);
-
-      best_scores.copy_device2host();
+      this->best_scores.copy_device2host();
       (*this->scratch).get_queue()->synchronize();
 
-      for (int index{0}; index < batch_ligands; ++index) {
+      for (int index{0}; index < this->batch_ligands; ++index) {
         auto& ligand = *batch.molecules[index];
-        ligand.properties.assign(property_type::SCORE, std::to_string(best_scores()[index]));
+        ligand.properties.assign(property_type::SCORE, std::to_string(this->best_scores()[index]));
       }
     }
   }; // namespace mudock

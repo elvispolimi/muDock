@@ -7,6 +7,7 @@
 #include <mudock/chem/autodock_ligand.hpp>
 #include <mudock/chem/autodock_protein.hpp>
 #include <mudock/compute/adadelta_kernel.hpp>
+#include <mudock/compute/local_search.hpp>
 #ifndef __CUDACC__
   #include <mudock/compute/buffer_utils.hpp>
   #include <mudock/compute/scoring.hpp>
@@ -21,11 +22,11 @@ namespace mudock {
   #define ADADELTA_RHO 0.95f
   #define ADADELTA_EPSILON 1e-6f
 
-#ifndef __CUDACC__
+  #ifndef __CUDACC__
   // TODO check that the object type and the kernel impl are the same
-  template<typename queue_type>
-  struct adadelta: public local_search<queue_type> {
-    adadelta(std::shared_ptr<scratchpad<queue_type>> _scratch) : local_search<queue_type>(_scratch) {}
+  template<typename queue_type, template<typename> typename scoring_t>
+  struct adadelta: public local_search<queue_type, scoring_t> {
+    adadelta(std::shared_ptr<scratchpad<queue_type>> _scratch) : local_search<queue_type, scoring_t>(_scratch) {}
 
     void prepare(batch<static_molecule> &batch) {
       // Allocate gradient buffer for AdaDelta (one gradient per individual per ligand)
@@ -54,6 +55,8 @@ namespace mudock {
       chromosome *adadelta_e_g2 = adadelta_e_g2_b.dev_pointer();
       chromosome *adadelta_e_dw2 = adadelta_e_dw2_b.dev_pointer();
 
+      auto q = (*this->scratch).get_queue();
+
       ls_ad_kernel = std::make_unique<adadelta_kernel<queue_type>>(individuals_per_ligand,
                                                                   batch_ligands,
                                                                   score_stage,
@@ -76,9 +79,10 @@ namespace mudock {
       }
     }
 
-    // static int get_ligand_mem(const int max_atoms, const knobs conf) {
-    //   // TODO L what should I do here?
-    // }
+    static int get_ligand_mem(const int max_atoms, const knobs conf) {
+      // TODO L: Implement proper memory calculation
+      return 0;
+    }
 
   private:
     int batch_ligands;
@@ -86,8 +90,8 @@ namespace mudock {
     std::unique_ptr<adadelta_kernel<queue_type>> ls_ad_kernel;
 
     void teardown_impl(batch<static_molecule> &batch) override {
-      // TODO L what to do here???
+      // TODO L: Implement teardown
     };
   };
-#endif
+  #endif
 } // namespace mudock

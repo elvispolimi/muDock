@@ -358,6 +358,7 @@ namespace mudock {
       (*gradient_kernel)();
     }
 
+    // TODO L should this include gradient things?
     static int get_ligand_mem(const int max_atoms, const knobs conf) {
       int mem{0};
       const int scores_per_ligand = std::max(1, static_cast<int>(conf.population_number));
@@ -380,6 +381,19 @@ namespace mudock {
       mem += sizeof(fp_type) * non_bonds_atoms; //nonbond_cA
       mem += sizeof(fp_type) * non_bonds_atoms; //nonbond_cB
       mem += sizeof(int) * non_bonds_atoms;     //nonbond_xB
+
+      const int batch_rotamers              = max_atoms - 3;
+      const int tot_rotamers_atoms_in_batch = max_atoms * batch_rotamers;
+
+      mem += sizeof(int) * tot_rotamers_atoms_in_batch; //ligand fragments
+      mem += sizeof(int);                               //ligand_fragments_start
+      mem += sizeof(int) * batch_rotamers;              //frag_start_atom_indices
+      mem += sizeof(int) * batch_rotamers;              //frag_stop_atom_indices
+      mem += sizeof(int);                               //frag_indices_start
+      mem += sizeof(fp_type) * max_atoms; //x_coords_b
+      mem += sizeof(fp_type) * max_atoms; //y_coords_b
+      mem += sizeof(fp_type) * max_atoms; //z_coords_b
+      
       return mem;
     }
 
