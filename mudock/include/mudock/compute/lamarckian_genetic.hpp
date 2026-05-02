@@ -72,7 +72,7 @@ namespace mudock {
     // Inherit constructor and most logic from genetic
     lamarckian_genetic(std::shared_ptr<scratchpad<queue_t>> _scratch,
                       dynamic_molecule& _protein,
-                      scoring_t<queue_t> _scoring,
+                      std::shared_ptr<scoring_t<queue_t>> _scoring,
                       local_search_t<queue_t, scoring_t> _local_search)
         : genetic<queue_t, scoring_t>(_scratch, _protein, _scoring),
           local_search_stage(std::move(_local_search)){};
@@ -122,7 +122,7 @@ namespace mudock {
                                                                                     q);
 
       this->geom_trans.prepare(batch);
-      this->score_stage.prepare(batch);
+      (this->score_stage).get()->prepare(batch);
       local_search_stage.prepare(batch);
     };
 
@@ -134,7 +134,7 @@ namespace mudock {
 
       for (int generation = 0; generation < this->num_generations; ++generation) {
         this->geom_trans();
-        this->score_stage();
+        (*this->score_stage)();
         local_search_stage();
         (*this->lamarckian_kernel)();
         chromosomes_b.copy_device2device(this->next_population);

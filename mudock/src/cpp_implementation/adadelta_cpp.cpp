@@ -2,11 +2,10 @@
 #include <mudock/cpp_implementation/chromosome.hpp>
 #include <mudock/chem/grid_const.hpp>
 #include <mudock/molecule/constraints.hpp>
+#include <mudock/cpp_implementation/queue_cpp.hpp>
+#include <mudock/compute/adadelta_kernel.hpp>
+#include <mudock/compute/adadelta.hpp>
 #include <cmath>
-
-// Gradient size matches chromosome size (6 + max_rotamers)
-// TODO L is this ok?
-constexpr int gradient_size = 6 + max_static_bonds();
 
 namespace mudock {
   // Inline AdaDelta update - applies the AdaDelta update rule to all individuals
@@ -19,6 +18,9 @@ namespace mudock {
                                     chromosome *__restrict__ adadelta_e_g2_b,
                                     chromosome *__restrict__ adadelta_e_dw2_b) {
     
+    // Gradient size matches chromosome size (6 + max_rotamers)
+    // TODO L is this ok?
+    constexpr int gradient_size = 6 + max_static_bonds();
     const size_t total_individuals = batch_ligands * individuals_per_ligand;
     
     for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
@@ -59,7 +61,7 @@ namespace mudock {
 
   template<>
   void adadelta_kernel<queue_cpp>::compute_gradients(){
-    this->score_stage->compute_gradient();
+    (this->score_stage).get()->compute_gradient();
   }
   
   template<>

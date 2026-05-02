@@ -80,7 +80,7 @@ namespace mudock {
   struct genetic: public docking<queue_t> {
     genetic(std::shared_ptr<scratchpad<queue_t>> _scratch,
             dynamic_molecule& protein,
-            scoring_t<queue_t> _scoring)
+            std::shared_ptr<scoring_t<queue_t>> _scoring)
         : docking<queue_t>(_scratch),
           score_stage(std::move(_scoring)),
           geom_trans(_scratch, protein),
@@ -132,7 +132,8 @@ namespace mudock {
                                                          q);
 
       geom_trans.prepare(batch);
-      score_stage.prepare(batch);
+      score_stage.get()->prepare(batch);
+
     };
     void operator()() {
       auto& chromosomes_b = (*this->scratch).template get<buffer_data_type::CHROMOSOMES>();
@@ -142,7 +143,7 @@ namespace mudock {
 
       for (int generation = 0; generation < num_generations; ++generation) {
         geom_trans();
-        score_stage();
+        (*score_stage)();
         (*kernel)();
         chromosomes_b.copy_device2device(next_population);
       }
@@ -188,7 +189,7 @@ namespace mudock {
     }
     
   protected:
-    scoring_t<queue_t> score_stage;
+    std::shared_ptr<scoring_t<queue_t>> score_stage;
     geometric<queue_t> geom_trans;
 
     int batch_ligands;

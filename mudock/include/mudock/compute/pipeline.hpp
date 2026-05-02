@@ -82,10 +82,11 @@ namespace mudock {
                                                 const device_type dev_type,
                                                 std::shared_ptr<scratchpad<queue_type>> device_scratch) {
       auto q = std::make_shared<mudock::scratchpad<queue_type>>(conf, id, dev_type);
+      auto scoring = std::make_shared<mudock::adt_score<queue_type>>(q, device_scratch, *protein);
       return lamarckian_genetic<queue_type, adt_score, adadelta>(q,
                                             *protein,
-                                            mudock::adt_score<queue_type>(q, device_scratch, *protein),
-                                            mudock::adadelta<queue_type, adt_score>(q));
+                                            scoring,
+                                            mudock::adadelta<queue_type, adt_score>(q, scoring));
     }
 
     template<typename queue_type>

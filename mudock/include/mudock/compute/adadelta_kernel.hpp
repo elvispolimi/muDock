@@ -15,7 +15,7 @@ namespace mudock {
     static constexpr char gradient_region_name[] = "adadelta_gradient_kernel";
     adadelta_kernel(const int individuals_per_ligand,
                     const int batch_ligands_,
-                    scoring<queue_type>& score_stage_,
+                    std::shared_ptr<differentiable_scoring<queue_type>> score_stage_,
                     gradient *__restrict__ gradients_b_,
                     chromosome *__restrict__ population_b_,
                     chromosome *__restrict__ adadelta_e_g2_b_,
@@ -44,7 +44,7 @@ namespace mudock {
   private:
     const int batch_ligands;
     const int individuals_per_ligand;
-    scoring<queue_type>& score_stage;
+    std::shared_ptr<differentiable_scoring<queue_type>> score_stage;
     gradient *__restrict__ gradients_b;
     chromosome* population_b;
     chromosome *__restrict__ adadelta_e_g2_b;
