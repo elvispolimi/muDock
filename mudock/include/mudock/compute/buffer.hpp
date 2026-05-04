@@ -12,7 +12,10 @@
 #include <type_traits>
 #include <vector>
 
-#ifdef MUDOCK_USE_ALPAKA
+#if defined(MUDOCK_USE_ALPAKA) &&                                                                        \
+    (defined(MUDOCK_ALPAKA_BACKEND_SERIAL) || defined(MUDOCK_ALPAKA_BACKEND_THREADS) ||                  \
+     defined(MUDOCK_ALPAKA_BACKEND_TBB) || defined(MUDOCK_ALPAKA_BACKEND_OMP2) || defined(__CUDACC__) || \
+     defined(__HIPCC__) || defined(MUDOCK_ALPAKA_BACKEND_SYCL))
   #include <alpaka/alpaka.hpp>
   #include <cstdint>
   #include <mudock/alpaka_implementation/queue_alpaka.hpp>
@@ -140,7 +143,7 @@ namespace mudock {
   template<template<class...> class container_type, typename T, class queue_t, class... args>
   struct buffer_impl {
   private:
-    std::unique_ptr<object<T, queue_t>> obj;
+    std::unique_ptr<object<T>> obj;
     container_type<T, args...> host;
     std::shared_ptr<queue_t> q;
     bool valid;
@@ -149,7 +152,7 @@ namespace mudock {
     buffer_impl(std::shared_ptr<queue_t> _queue, const std::size_t num_elements = 0): valid(false) {
       q = _queue;
       if (q->obj_required()) {
-        obj = std::make_unique<object<T, queue_t>>(_queue);
+        obj = std::make_unique<object<T>>(_queue);
       }
       if (num_elements)
         this->alloc(num_elements);
@@ -228,7 +231,10 @@ namespace mudock {
     };
   };
 
-#ifdef MUDOCK_USE_ALPAKA
+#if defined(MUDOCK_USE_ALPAKA) &&                                                                        \
+    (defined(MUDOCK_ALPAKA_BACKEND_SERIAL) || defined(MUDOCK_ALPAKA_BACKEND_THREADS) ||                  \
+     defined(MUDOCK_ALPAKA_BACKEND_TBB) || defined(MUDOCK_ALPAKA_BACKEND_OMP2) || defined(__CUDACC__) || \
+     defined(__HIPCC__) || defined(MUDOCK_ALPAKA_BACKEND_SYCL))
   template<template<class...> class container_type, typename T, class... args>
   struct buffer_impl<container_type, T, queue_alpaka, args...> {
   private:

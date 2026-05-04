@@ -5,16 +5,16 @@
 #include <mudock/compute/queue.hpp>
 
 namespace mudock {
-  template<typename T, typename queue_t = queue>
+  template<typename T>
   struct object {
   protected:
     T* ptr                 = nullptr;
     std::size_t size       = 0;
     std::size_t alloc_size = 0;
-    std::shared_ptr<queue_t> q;
+    std::shared_ptr<queue> q;
 
   public:
-    object(std::shared_ptr<queue_t> _q): q(_q) {};
+    object(std::shared_ptr<queue> _q): q(_q){};
     object(const object&)  = delete;
     object(object&& other) = delete;
     // TODO fix me the noexcept, change the mudock check
@@ -25,7 +25,7 @@ namespace mudock {
     object& operator=(const object&) = delete;
     object& operator=(object&&)      = delete;
 
-    void change_queue(std::shared_ptr<queue_t> _q) { q = _q; };
+    void change_queue(std::shared_ptr<queue> _q) { q = _q; };
 
     void alloc(const size_t num_elements) {
       if (num_elements > alloc_size) {
@@ -45,7 +45,7 @@ namespace mudock {
       q->copy_host2device(host, ptr, (copy_size ? copy_size : size) * sizeof(T));
     };
     void copy_device2host(T* const host) const { q->copy_device2host(ptr, host, size * sizeof(T)); };
-    void copy_device2device(object<T, queue_t>& other, const int copy_size = 0) {
+    void copy_device2device(object<T>& other, const int copy_size = 0) {
       const auto n = (copy_size ? copy_size : size);
       // TODO check if necessary
       // alloc(n);
