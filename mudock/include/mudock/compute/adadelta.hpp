@@ -18,7 +18,6 @@
 
 namespace mudock {
 
-  #define MAX_ADADELTA_ITERATIONS 300
   #define ADADELTA_RHO 0.95f
   #define ADADELTA_EPSILON 1e-6f
 
@@ -31,6 +30,8 @@ namespace mudock {
              : local_search<queue_type, scoring_t>(_scratch, _score) {}
 
     void prepare(batch<static_molecule> &batch) {
+      // TODO L i don't like initializing iterations here, not scalable. Better move it to local_search
+      this->iterations  = (*this->scratch).configuration.ls_iterations;
       // Allocate gradient buffer for AdaDelta (one gradient per individual per ligand)
       batch_ligands = batch.num_ligands;
       const int individuals_per_ligand = std::max(1, static_cast<int>((*this->scratch).configuration.population_number));
@@ -75,7 +76,7 @@ namespace mudock {
           (((*this->scratch).template get<buffer_data_type::GRADIENTS>().num_elements() % batch_ligands) == 0) &&
           "Number of gradients is not a multiple of ligands in the batch");
       assert(ls_ad_kernel && "Adadelta local search kernel method not yet prepared");
-      for (int i = 0; i < MAX_ADADELTA_ITERATIONS; ++i){
+      for (int i = 0; i < this->iterations; ++i){
         ls_ad_kernel->compute_gradients();
         ls_ad_kernel->apply_adadelta();
       }

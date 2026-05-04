@@ -23,5 +23,6 @@ namespace mudock {
     
   protected:
     std::shared_ptr<scoring_t<queue_t>> score_stage;
+    size_t iterations;
   };
 } // namespace mudock
