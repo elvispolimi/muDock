@@ -630,6 +630,28 @@ if(MUDOCK_ENABLE_ALPAKA)
       "Valid values are: serial, threads, tbb, omp2, cuda, hip, sycl.")
   endif()
 
+  set(mudock_enabled_alpaka_backends)
+  foreach(alpaka_backend IN ITEMS
+          alpaka_ACC_CPU_B_SEQ_T_SEQ_ENABLE
+          alpaka_ACC_CPU_B_SEQ_T_THREADS_ENABLE
+          alpaka_ACC_CPU_B_TBB_T_SEQ_ENABLE
+          alpaka_ACC_CPU_B_OMP2_T_SEQ_ENABLE
+          alpaka_ACC_CPU_B_SEQ_T_OMP2_ENABLE
+          alpaka_ACC_GPU_CUDA_ENABLE
+          alpaka_ACC_GPU_HIP_ENABLE
+          alpaka_ACC_SYCL_ENABLE)
+    if(${alpaka_backend})
+      list(APPEND mudock_enabled_alpaka_backends "${alpaka_backend}")
+    endif()
+  endforeach()
+  list(LENGTH mudock_enabled_alpaka_backends mudock_num_enabled_alpaka_backends)
+  if(mudock_num_enabled_alpaka_backends GREATER 1)
+    string(JOIN ", " mudock_enabled_alpaka_backends_msg ${mudock_enabled_alpaka_backends})
+    message(FATAL_ERROR
+      "Enable only one Alpaka backend at a time. Enabled Alpaka backends: "
+      "${mudock_enabled_alpaka_backends_msg}.")
+  endif()
+
   find_package(alpaka 2.2.0 CONFIG QUIET)
   if(NOT TARGET alpaka::alpaka)
     if(NOT MUDOCK_FETCH_ALPAKA)
