@@ -258,7 +258,6 @@ if(MUDOCK_ENABLE_ALPAKA)
     "${header_path}/${header_prefix}/alpaka_implementation/alpaka_dot_product.hpp"
     "${header_path}/${header_prefix}/alpaka_implementation/genetic_alpaka.hpp"
     "${header_path}/${header_prefix}/alpaka_implementation/geom_transform_alpaka.hpp"
-    "${header_path}/${header_prefix}/alpaka_implementation/object_alpaka.hpp"
     "${header_path}/${header_prefix}/alpaka_implementation/queue_alpaka.hpp"
   )
   list(

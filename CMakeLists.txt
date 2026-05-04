@@ -179,6 +179,7 @@ endif()
 option(MUDOCK_ENABLE_CUDA "Enable the CUDA kernel implementation" OFF)
 option(MUDOCK_ENABLE_KERNEL_LOCK "Serialize kernel launches per device" OFF)
 option(MUDOCK_ENABLE_ALPAKA "Enable the Alpaka kernel implementation" OFF)
+option(MUDOCK_FETCH_ALPAKA "Download Alpaka with FetchContent when it is not installed" ON)
 set(MUDOCK_ALPAKA_BACKEND
     "serial"
     CACHE STRING "Alpaka backend: serial|threads|tbb|omp2|cuda|hip|sycl")
@@ -232,7 +233,6 @@ endif()
 option(MUDOCK_ENABLE_SYCL "Enable the SYCL kernel implementation" OFF)
 set(MUDOCK_SYCL_EXTRA_FLAGS "" CACHE STRING "Extra SYCL flags appended to both oneAPI compile and link steps")
 set(MUDOCK_SYCL_EXTRA_COMPILE_FLAGS "" CACHE STRING "Extra SYCL flags appended only to oneAPI compile steps")
-option(MUDOCK_ENABLE_ALPAKA "Enable the Alpaka backend skeleton" OFF)
 set(MUDOCK_SYCL_EXTRA_LINK_FLAGS "" CACHE STRING "Extra SYCL link flags appended to the clang++ link step")
 set(MUDOCK_SYC_EXTRA_LINK_FLAGS "" CACHE STRING "Deprecated alias for MUDOCK_SYCL_EXTRA_LINK_FLAGS")
 set(MUDOCK_SYCL_WG_SIZE "" CACHE STRING "SYCL work-group size override for kernels (e.g. 32 or 64)")
@@ -630,7 +630,21 @@ if(MUDOCK_ENABLE_ALPAKA)
       "Valid values are: serial, threads, tbb, omp2, cuda, hip, sycl.")
   endif()
 
-  add_subdirectory(alpaka)
+  find_package(alpaka 2.2.0 CONFIG QUIET)
+  if(NOT TARGET alpaka::alpaka)
+    if(NOT MUDOCK_FETCH_ALPAKA)
+      message(FATAL_ERROR
+        "MUDOCK_ENABLE_ALPAKA=ON requires Alpaka >= 2.2.0. "
+        "Install Alpaka and provide alpaka_DIR, or enable MUDOCK_FETCH_ALPAKA.")
+    endif()
+
+    include(FetchContent)
+    FetchContent_Declare(
+      alpaka
+      GIT_REPOSITORY https://github.com/alpaka-group/alpaka.git
+      GIT_TAG d6961e8e90489d8e5f9d4617d0474ef2dd3c12ef)
+    FetchContent_MakeAvailable(alpaka)
+  endif()
 endif()
 
 add_subdirectory(application)

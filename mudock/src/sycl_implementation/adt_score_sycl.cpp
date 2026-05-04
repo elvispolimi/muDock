@@ -8,7 +8,6 @@
 #include <mudock/sycl_implementation/queue_sycl.hpp>
 #include <mudock/sycl_implementation/sycl_utils.hpp>
 #include <mudock/sycl_implementation/sycl_texture.hpp>
-#include <mudock/sycl_implementation/sycl_utils.hpp>
 #include <mudock/utils.hpp>
 #include <stdexcept>
 

@@ -1,8 +1,6 @@
-#include <mudock/alpaka_implementation/queue_alpaka.hpp>
-
 #include <alpaka/alpaka.hpp>
-
 #include <cassert>
+#include <mudock/alpaka_implementation/queue_alpaka.hpp>
 #include <stdexcept>
 
 namespace mudock {
@@ -10,9 +8,7 @@ namespace mudock {
     dev_acc device;
     queue_acc queue;
 
-    impl(const int id)
-        : device(alpaka::getDevByIdx(alpaka::Platform<acc>{}, id)),
-          queue(device) {}
+    impl(const int id): device(alpaka::getDevByIdx(alpaka::Platform<acc>{}, id)), queue(device) {}
   };
 
   queue_alpaka::queue_alpaka(const int _id, const device_type _dev_type)
@@ -32,40 +28,40 @@ namespace mudock {
   void queue_alpaka::alloc(void** ptr, const size_t bytes) {
     (void) ptr;
     (void) bytes;
-    throw std::runtime_error("queue_alpaka::alloc is handled by object<T, queue_alpaka>");
+    throw std::runtime_error("queue_alpaka::alloc is handled by buffer_impl<..., queue_alpaka>");
   }
 
   void queue_alpaka::free(void** ptr) {
     (void) ptr;
-    throw std::runtime_error("queue_alpaka::free is handled by object<T, queue_alpaka>");
+    throw std::runtime_error("queue_alpaka::free is handled by buffer_impl<..., queue_alpaka>");
   }
 
   void queue_alpaka::set_to_value(void* ptr, const size_t num_bytes, const char value) {
     (void) ptr;
     (void) num_bytes;
     (void) value;
-    throw std::runtime_error("queue_alpaka::set_to_value is handled by object<T, queue_alpaka>");
+    throw std::runtime_error("queue_alpaka::set_to_value is handled by buffer_impl<..., queue_alpaka>");
   }
 
   void queue_alpaka::copy_host2device(const void* host, void* device, const size_t num_bytes) {
     (void) host;
     (void) device;
     (void) num_bytes;
-    throw std::runtime_error("queue_alpaka::copy_host2device is handled by object<T, queue_alpaka>");
+    throw std::runtime_error("queue_alpaka::copy_host2device is handled by buffer_impl<..., queue_alpaka>");
   }
 
   void queue_alpaka::copy_device2host(const void* device, void* host, const size_t num_bytes) {
     (void) device;
     (void) host;
     (void) num_bytes;
-    throw std::runtime_error("queue_alpaka::copy_device2host is handled by object<T, queue_alpaka>");
+    throw std::runtime_error("queue_alpaka::copy_device2host is handled by buffer_impl<..., queue_alpaka>");
   }
 
   void queue_alpaka::copy_device2device(const void* device_src, void* device_dest, const size_t num_bytes) {
     (void) device_src;
     (void) device_dest;
     (void) num_bytes;
-    throw std::runtime_error("queue_alpaka::copy_device2device is handled by object<T, queue_alpaka>");
+    throw std::runtime_error("queue_alpaka::copy_device2device is handled by buffer_impl<..., queue_alpaka>");
   }
 
   void queue_alpaka::operator()() {
