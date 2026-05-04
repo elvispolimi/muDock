@@ -13,7 +13,7 @@
 
 namespace mudock {
   namespace {
-    static constexpr fp_type coordinate_step{0.2};
+    static constexpr fp_type coordinate_step{static_cast<fp_type>(0.2)};
     static constexpr fp_type angle_step{4};
 
     ALPAKA_FN_ACC std::uint32_t next_random(std::uint32_t& state) {
@@ -34,7 +34,8 @@ namespace mudock {
 
     template<typename T>
     ALPAKA_FN_ACC T random_gen_alpaka(std::uint32_t& state, const T min, const T max) {
-      return static_cast<T>((random_unit(state) * static_cast<fp_type>(max - min)) + min);
+      return static_cast<T>((random_unit(state) * static_cast<fp_type>(max - min)) +
+                            static_cast<fp_type>(min));
     }
 
     ALPAKA_FN_ACC int get_selection_distribution(std::uint32_t& state, const int population_number) {
