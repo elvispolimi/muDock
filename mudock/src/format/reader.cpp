@@ -75,14 +75,6 @@ namespace mudock {
     convert(mol, ob_mol, rotor_check);
     return mol;
   }
-  // MOL2
-  template<class molecule_type>
-    requires is_molecule<molecule_type>
-  molecule_type parser_impl_mol2(const std::string_view description) {
-    molecule_type mol;
-    mol2::parse(mol, description);
-    return mol;
-  }
   // PDBQT
   template<>
   static_molecule parser<supported_format::PDBQT>(const std::string_view description,
