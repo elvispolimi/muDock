@@ -36,14 +36,13 @@ namespace mudock {
              "queue_alpaka currently supports only 1D launches");
 
       const auto grid  = alpaka::Vec<dim, idx>{static_cast<idx>(gridDim.size_x())};
-      const auto block = alpaka::Vec<dim, idx>{static_cast<idx>(blockDim.size_x())};
+      const auto block = alpaka::Vec<dim, idx>{static_cast<idx>(block_threads(blockDim.size_x()))};
       const auto elems = alpaka::Vec<dim, idx>{idx{1}};
 
       const auto work_div = alpaka::WorkDivMembers<dim, idx>{grid, block, elems};
-      auto task           = alpaka::createTaskKernel<acc>(
-          work_div,
-          F{},
-          static_cast<std::decay_t<Args>>(std::forward<Args>(args))...);
+      auto task           = alpaka::createTaskKernel<acc>(work_div,
+                                                F{},
+                                                static_cast<std::decay_t<Args>>(std::forward<Args>(args))...);
       alpaka::enqueue(native_queue(), task);
     }
 
@@ -51,6 +50,16 @@ namespace mudock {
     inline void invoke_kernel(const int gridDim, const int blockDim, Args&&... args) {
       assert(gridDim >= 0 && blockDim >= 0);
       invoke_kernel<F>(index3D{gridDim, 1, 1}, index3D{blockDim, 1, 1}, std::forward<Args>(args)...);
+    }
+
+    static constexpr int block_threads(const int requested_threads) {
+#if defined(MUDOCK_ALPAKA_BACKEND_SERIAL) || defined(MUDOCK_ALPAKA_BACKEND_TBB) || \
+    defined(MUDOCK_ALPAKA_BACKEND_OMP2)
+      (void) requested_threads;
+      return 1;
+#else
+      return requested_threads;
+#endif
     }
 
     queue_acc& native_queue();

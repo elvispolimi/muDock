@@ -46,24 +46,27 @@ namespace mudock {
           c_z += z[i];
         }
       }
-      c_x /= num_atoms;
-      c_y /= num_atoms;
-      c_z /= num_atoms;
+      c_x /= static_cast<fp_type>(num_atoms);
+      c_y /= static_cast<fp_type>(num_atoms);
+      c_z /= static_cast<fp_type>(num_atoms);
 
       const auto rad_x = deg_to_rad(angle_x), rad_y = deg_to_rad(angle_y), rad_z = deg_to_rad(angle_z);
-      const auto cx = ::cos(rad_x), sx = ::sin(rad_x);
-      const auto cy = ::cos(rad_y), sy = ::sin(rad_y);
-      const auto cz = ::cos(rad_z), sz = ::sin(rad_z);
+      const fp_type cx = static_cast<fp_type>(::cos(rad_x));
+      const fp_type sx = static_cast<fp_type>(::sin(rad_x));
+      const fp_type cy = static_cast<fp_type>(::cos(rad_y));
+      const fp_type sy = static_cast<fp_type>(::sin(rad_y));
+      const fp_type cz = static_cast<fp_type>(::cos(rad_z));
+      const fp_type sz = static_cast<fp_type>(::sin(rad_z));
 
-      const auto m00 = cy * cz;
-      const auto m01 = sx * sy * cz - cx * sz;
-      const auto m02 = cx * sy * cz + sx * sz;
-      const auto m10 = cy * sz;
-      const auto m11 = sx * sy * sz + cx * cz;
-      const auto m12 = cx * sy * sz - sx * cz;
-      const auto m20 = -sy;
-      const auto m21 = sx * cy;
-      const auto m22 = cx * cy;
+      const fp_type m00 = cy * cz;
+      const fp_type m01 = sx * sy * cz - cx * sz;
+      const fp_type m02 = cx * sy * cz + sx * sz;
+      const fp_type m10 = cy * sz;
+      const fp_type m11 = sx * sy * sz + cx * cz;
+      const fp_type m12 = cx * sy * sz - sx * cz;
+      const fp_type m20 = -sy;
+      const fp_type m21 = sx * cy;
+      const fp_type m22 = cx * cy;
 
       for (int i = 0; i < MAX_ATOMS; ++i) {
         if (i < num_atoms) {
@@ -92,29 +95,30 @@ namespace mudock {
 
       const auto u2 = u * u, v2 = v * v, w2 = w * w;
       const auto l2 = u2 + v2 + w2;
-      const auto l = ::sqrt(l2);
+      const fp_type l = static_cast<fp_type>(::sqrt(l2));
 
       const auto rad = deg_to_rad(angle);
-      const auto s = ::sin(rad), c = ::cos(rad);
-      const auto one_minus_c = fp_type{1} - c;
-      const auto ls          = l * s;
+      const fp_type s = static_cast<fp_type>(::sin(rad));
+      const fp_type c = static_cast<fp_type>(::cos(rad));
+      const fp_type one_minus_c = fp_type{1} - c;
+      const fp_type ls          = l * s;
 
-      const auto m00 = (u2 + (v2 + w2) * c) / l2;
-      const auto m01 = (u * v * one_minus_c - w * l * s) / l2;
-      const auto m02 = (u * w * one_minus_c + v * l * s) / l2;
-      const auto m03 =
+      const fp_type m00 = (u2 + (v2 + w2) * c) / l2;
+      const fp_type m01 = (u * v * one_minus_c - w * l * s) / l2;
+      const fp_type m02 = (u * w * one_minus_c + v * l * s) / l2;
+      const fp_type m03 =
           ((origx * (v2 + w2) - u * (origy * v + origz * w)) * one_minus_c + (origy * w - origz * v) * ls) / l2;
 
-      const auto m10 = (u * v * one_minus_c + w * ls) / l2;
-      const auto m11 = (v2 + (u2 + w2) * c) / l2;
-      const auto m12 = (v * w * one_minus_c - u * ls) / l2;
-      const auto m13 =
+      const fp_type m10 = (u * v * one_minus_c + w * ls) / l2;
+      const fp_type m11 = (v2 + (u2 + w2) * c) / l2;
+      const fp_type m12 = (v * w * one_minus_c - u * ls) / l2;
+      const fp_type m13 =
           ((origy * (u2 + w2) - v * (origx * u + origz * w)) * one_minus_c + (origz * u - origx * w) * ls) / l2;
 
-      const auto m20 = (u * w * one_minus_c - v * ls) / l2;
-      const auto m21 = (v * w * one_minus_c + u * ls) / l2;
-      const auto m22 = (w2 + (u2 + v2) * c) / l2;
-      const auto m23 =
+      const fp_type m20 = (u * w * one_minus_c - v * ls) / l2;
+      const fp_type m21 = (v * w * one_minus_c + u * ls) / l2;
+      const fp_type m22 = (w2 + (u2 + v2) * c) / l2;
+      const fp_type m23 =
           ((origz * (u2 + v2) - w * (origx * u + origy * v)) * one_minus_c + (origx * v - origy * u) * ls) / l2;
 
       for (int i = 0; i < MAX_ATOMS; ++i) {
