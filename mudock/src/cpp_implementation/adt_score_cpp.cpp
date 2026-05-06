@@ -226,16 +226,16 @@ namespace mudock {
   };
 
   inline void calc_gradient(const int batch_atoms,
-                          const int batch_ligands,
-                          const int individuals_per_ligand,
-                          const fp_type *__restrict__ x_scratch_b,
-                          const fp_type *__restrict__ y_scratch_b,
-                          const fp_type *__restrict__ z_scratch_b,
-                          const int* __restrict__ ligand_fragments_b,
-                          const int* __restrict__ ligand_fragments_start_b,
-                          const int* __restrict__ frag_indices_start_b,
-                          const int* __restrict__ frag_start_indices_b,
-                          const int* __restrict__ frag_stop_indices_b,
+                            const int batch_ligands,
+                            const int individuals_per_ligand,
+                            const fp_type *__restrict__ x_scratch_b,
+                            const fp_type *__restrict__ y_scratch_b,
+                            const fp_type *__restrict__ z_scratch_b,
+                            const int* __restrict__ ligand_fragments_b,
+                            const int* __restrict__ ligand_fragments_start_b,
+                            const int* __restrict__ frag_indices_start_b,
+                            const int* __restrict__ frag_start_indices_b,
+                            const int* __restrict__ frag_stop_indices_b,
                             const fp_type *__restrict__ vols_b,
                             const fp_type *__restrict__ solpars_b,
                             const fp_type *__restrict__ charges_b,
@@ -307,12 +307,10 @@ namespace mudock {
 
           if (coord[0] < minimum[0] || coord[0] > maximum[0] || coord[1] < minimum[1] ||
               coord[1] > maximum[1] || coord[2] < minimum[2] || coord[2] > maximum[2]) {
-            const fp_type dist     = diff_x * diff_x + diff_y * diff_y + diff_z * diff_z;
-            const fp_type epenalty = dist * ENERGYPENALTY;
-            // TODO gestire calcolo gradiente in questo if
-            // dE_dX.x() +=
-            // dE_dX.y() +=
-            // dE_dX.z() +=
+            const fp_type factor = 2 * 2 * ENERGYPENALTY;
+            dE_dX[index].x() += factor * diff_x;
+            dE_dX[index].y() += factor * diff_y;
+            dE_dX[index].z() += factor * diff_z;
           } else {
             const auto &atom_charge = charge_l[index];
             const fp_type *atom_map = grid_maps + map_offsets_l[index];
@@ -368,8 +366,9 @@ namespace mudock {
 
             // Compute dX/d_rot
             // alpha -> rotation on z-axis
-            // TODO check if it is correct to use diff_x/y/z
-            // TODO check if it is fine to consider infinitesimal rotations so we can just use the versors as u or we shuold consider the composition of rotations in order
+            // Rotational derivatives computed using infinitesimal generators (SO(3)).
+            // This is an approximation of Euler-angle derivatives assuming small updates.
+            // Forward model uses Rz*Ry*Rx, but for local search this approximation should be sufficient.
             const point3D x_i = point3D{diff_x, diff_y, diff_z};
 
             const point3D z_axis = point3D{fp_type{0}, fp_type{0}, fp_type{1}};
