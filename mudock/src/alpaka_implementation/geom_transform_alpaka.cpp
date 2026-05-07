@@ -1,4 +1,5 @@
 #include <mudock/alpaka_implementation/geom_transform_alpaka.hpp>
+#include <mudock/alpaka_implementation/invoke_kernel_alpaka.hpp>
 
 #include <alpaka/alpaka.hpp>
 

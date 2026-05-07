@@ -3,7 +3,8 @@
 #if defined(MUDOCK_USE_ALPAKA) &&                                                       \
     (defined(MUDOCK_ALPAKA_BACKEND_SERIAL) || defined(MUDOCK_ALPAKA_BACKEND_THREADS) || \
      defined(MUDOCK_ALPAKA_BACKEND_TBB) || defined(MUDOCK_ALPAKA_BACKEND_OMP2) ||       \
-     defined(__CUDACC__) || defined(__HIPCC__) || defined(MUDOCK_ALPAKA_BACKEND_SYCL))
+     defined(MUDOCK_ALPAKA_BACKEND_CUDA) || defined(MUDOCK_ALPAKA_BACKEND_HIP) ||      \
+     defined(MUDOCK_ALPAKA_BACKEND_SYCL))
   #include <mudock/alpaka_implementation.hpp>
 #endif
 #include <mudock/batch.hpp>
