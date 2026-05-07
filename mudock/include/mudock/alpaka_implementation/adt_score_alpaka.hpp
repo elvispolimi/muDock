@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <mudock/alpaka_implementation/buffer_alpaka.hpp>
 #include <mudock/alpaka_implementation/queue_alpaka.hpp>
 #include <mudock/compute/adt_score.hpp>
 

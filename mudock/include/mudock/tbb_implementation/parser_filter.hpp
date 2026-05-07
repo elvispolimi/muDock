@@ -5,7 +5,6 @@
 #include <mudock/compute/safe_queue.hpp>
 #include <mudock/format/supported_format.hpp>
 #include <mudock/molecule.hpp>
-#include <mudock/mudock.hpp>
 #include <string_view>
 
 namespace mudock {

@@ -8,11 +8,9 @@
 #include <mudock/chem/autodock_protein.hpp>
 #include <mudock/compute/adt_score_kernel.hpp>
 #include <mudock/compute/batch_multiple.hpp>
-#if (!defined(__CUDACC__) && !defined(__HIPCC__)) || defined(MUDOCK_ENABLE_HOST_COMPUTE_PIPELINE)
-  #include <mudock/compute/buffer_utils.hpp>
-  #include <mudock/compute/scoring.hpp>
-  #include <mudock/compute/scratchpad.hpp>
-#endif
+#include <mudock/compute/buffer_utils.hpp>
+#include <mudock/compute/scoring.hpp>
+#include <mudock/compute/scratchpad.hpp>
 #include <mudock/log.hpp>
 #include <mudock/molecule.hpp>
 #include <mudock/type_alias.hpp>
@@ -24,7 +22,6 @@ namespace mudock {
     return {};
   }
 
-#if (!defined(__CUDACC__) && !defined(__HIPCC__)) || defined(MUDOCK_ENABLE_HOST_COMPUTE_PIPELINE)
   // TODO check that the object type and the kernel impl are the same
   template<typename queue_type>
   struct adt_score: public scoring<queue_type> {
@@ -335,5 +332,4 @@ namespace mudock {
       }
     };
   };
-#endif
 } // namespace mudock

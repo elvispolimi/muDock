@@ -74,18 +74,6 @@ if(MUDOCK_ENABLE_MPI)
   target_link_libraries("${CMAKE_PROJECT_NAME}" PRIVATE MPI::MPI_CXX)
 endif()
 
-if(MUDOCK_ENABLE_ALPAKA)
-  add_alpaka_application_executable(
-    test_alpaka_smoke
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/alpaka_smoke_test.cpp")
-  target_link_libraries(test_alpaka_smoke libmudock)
-
-  add_alpaka_application_executable(
-    test_alpaka_dot_product
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/alpaka_dot_product_test.cpp")
-  target_link_libraries(test_alpaka_dot_product PRIVATE libmudock alpaka::alpaka)
-endif()
-
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/src/bench" bench)
 if(MUDOCK_ENABLE_TEST)
   add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/src/tests" tests)

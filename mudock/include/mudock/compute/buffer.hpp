@@ -225,7 +225,3 @@ namespace mudock {
   using buffer_vector = buffer_impl<std::vector, T, queue_t>;
 
 } // namespace mudock
-
-#ifdef MUDOCK_USE_ALPAKA
-  #include <mudock/alpaka_implementation/buffer_alpaka.hpp>
-#endif
