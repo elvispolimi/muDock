@@ -246,6 +246,11 @@ set(MUDOCK_STAGE_BUCKET_POLICY "${MUDOCK_DEFAULT_STAGE_BUCKET_POLICY}" CACHE STR
 set_property(CACHE MUDOCK_STAGE_BUCKET_POLICY PROPERTY STRINGS DEVICE_ALIGNED
                                                           SM_ALIGNED
                                                           MAX_UTILIZATION)
+set(MUDOCK_ADT_BUCKET_POLICY "${MUDOCK_DEFAULT_STAGE_BUCKET_POLICY}" CACHE STRING
+    "ADT bucket policy: DEVICE_ALIGNED|SM_ALIGNED|MAX_UTILIZATION")
+set_property(CACHE MUDOCK_ADT_BUCKET_POLICY PROPERTY STRINGS DEVICE_ALIGNED
+                                                        SM_ALIGNED
+                                                        MAX_UTILIZATION)
 set(MUDOCK_GENETIC_BUCKET_COMBINE "${MUDOCK_DEFAULT_GENETIC_BUCKET_COMBINE}" CACHE STRING "GENETIC score/geom combine policy: MIN|SCORE_ONLY|GEOM_ONLY|LCM")
 set_property(CACHE MUDOCK_GENETIC_BUCKET_COMBINE PROPERTY STRINGS MIN SCORE_ONLY GEOM_ONLY LCM)
 option(MUDOCK_ENABLE_STAGE_BUCKET_TRACE
@@ -404,6 +409,22 @@ if(MUDOCK_ENABLE_ALPAKA)
   else()
     message(FATAL_ERROR "MUDOCK_ALPAKA_BACKEND must be one of: serial, threads, tbb, omp2, cuda, hip, sycl")
   endif()
+endif()
+
+if(MUDOCK_ENABLE_CUDA
+   AND MUDOCK_ENABLE_ALPAKA
+   AND MUDOCK_ALPAKA_BACKEND STREQUAL "cuda")
+  message(FATAL_ERROR
+    "Do not enable both MUDOCK_ENABLE_CUDA and MUDOCK_ENABLE_ALPAKA with "
+    "MUDOCK_ALPAKA_BACKEND=cuda. Pick one CUDA build path.")
+endif()
+
+if(MUDOCK_ENABLE_HIP
+   AND MUDOCK_ENABLE_ALPAKA
+   AND MUDOCK_ALPAKA_BACKEND STREQUAL "hip")
+  message(FATAL_ERROR
+    "Do not enable both MUDOCK_ENABLE_HIP and MUDOCK_ENABLE_ALPAKA with "
+    "MUDOCK_ALPAKA_BACKEND=hip. Pick one HIP build path.")
 endif()
 
 mudock_normalize_stage_bucket_policy(MUDOCK_STAGE_BUCKET_POLICY
@@ -747,6 +768,14 @@ if(NOT MUDOCK_GENETIC_BUCKET_COMBINE STREQUAL
                       "${MUDOCK_GENETIC_BUCKET_COMBINE}"
                       "MUDOCK_GENETIC_BUCKET_COMBINE")
 endif()
+if(NOT MUDOCK_ADT_BUCKET_POLICY STREQUAL "${MUDOCK_DEFAULT_STAGE_BUCKET_POLICY}")
+  if(NOT MUDOCK_ADT_BUCKET_POLICY STREQUAL "MAX_UTILIZATION"
+     AND NOT MUDOCK_ADT_BUCKET_POLICY STREQUAL "SM_ALIGNED"
+     AND NOT MUDOCK_ADT_BUCKET_POLICY STREQUAL "DEVICE_ALIGNED")
+    message(FATAL_ERROR
+      "MUDOCK_ADT_BUCKET_POLICY must be one of: DEVICE_ALIGNED, SM_ALIGNED, MAX_UTILIZATION")
+  endif()
+endif()
 mudock_print_config("ADT bucket policy" "${MUDOCK_ADT_BUCKET_POLICY}"
                     "MUDOCK_ADT_BUCKET_POLICY")
 if(MUDOCK_ENABLE_LIKWID)
@@ -831,8 +860,6 @@ if(MUDOCK_ENABLE_SYCL)
                         "MUDOCK_SYC_EXTRA_LINK_FLAGS")
   endif()
 endif()
-
-mudock_print_config("Enable Alpaka" "${MUDOCK_ENABLE_ALPAKA}" "MUDOCK_ENABLE_ALPAKA")
 
 mudock_print_config("Enable OpenMP" "${MUDOCK_ENABLE_OMP}" "MUDOCK_ENABLE_OMP")
 mudock_print_config("Enable OpenMP Offload" "${MUDOCK_ENABLE_OMP_OFFLOAD}"
