@@ -55,7 +55,6 @@ function(add_alpaka_application_executable target)
      AND (MUDOCK_ALPAKA_BACKEND STREQUAL "cuda"
           OR MUDOCK_ALPAKA_BACKEND STREQUAL "hip"))
     alpaka_add_executable("${target}" ${ARGN})
-    target_compile_definitions("${target}" PRIVATE MUDOCK_ENABLE_HOST_COMPUTE_PIPELINE)
   else()
     add_executable_mudock("${target}" ${ARGN})
   endif()
