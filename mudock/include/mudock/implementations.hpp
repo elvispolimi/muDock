@@ -9,11 +9,7 @@
 #include <mudock/sycl_implementation/sycl_implementation.hpp>
 #include <mudock/xsimd_implementation/xsimd_implementation.hpp>
 
-#if defined(MUDOCK_USE_ALPAKA) &&                                                       \
-    (defined(MUDOCK_ALPAKA_BACKEND_SERIAL) || defined(MUDOCK_ALPAKA_BACKEND_THREADS) || \
-     defined(MUDOCK_ALPAKA_BACKEND_TBB) || defined(MUDOCK_ALPAKA_BACKEND_OMP2) ||       \
-     defined(MUDOCK_ALPAKA_BACKEND_CUDA) || defined(MUDOCK_ALPAKA_BACKEND_HIP) ||      \
-     defined(MUDOCK_ALPAKA_BACKEND_SYCL))
+#if defined(MUDOCK_USE_ALPAKA)
   #include <mudock/alpaka_implementation.hpp>
   #define MUDOCK_REGISTER_ALPAKA_IN_MANAGER
 #endif

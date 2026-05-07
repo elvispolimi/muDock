@@ -1,6 +1,7 @@
 #include <alpaka/alpaka.hpp>
 #include <cassert>
 #include <mudock/alpaka_implementation/queue_alpaka.hpp>
+#include <mudock/log.hpp>
 #include <stdexcept>
 
 namespace mudock {

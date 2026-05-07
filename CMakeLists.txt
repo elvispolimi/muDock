@@ -179,7 +179,7 @@ endif()
 option(MUDOCK_ENABLE_CUDA "Enable the CUDA kernel implementation" OFF)
 option(MUDOCK_ENABLE_KERNEL_LOCK "Serialize kernel launches per device" OFF)
 option(MUDOCK_ENABLE_ALPAKA "Enable the Alpaka kernel implementation" OFF)
-option(MUDOCK_FETCH_ALPAKA "Download Alpaka with FetchContent when it is not installed" ON)
+option(MUDOCK_FETCH_ALPAKA "Download Alpaka with FetchContent when it is not installed" OFF)
 set(MUDOCK_ALPAKA_BACKEND
     "serial"
     CACHE STRING "Alpaka backend: serial|threads|tbb|omp2|cuda|hip|sycl")
@@ -470,7 +470,7 @@ if(MUDOCK_ENABLE_OMP OR MUDOCK_ENABLE_OMP_OFFLOAD)
   find_package(OpenMP REQUIRED)
 endif()
 
-if(MUDOCK_ENABLE_ALPAKA AND MUDOCK_ALPAKA_BACKEND STREQUAL "omp2" AND NOT (MUDOCK_ENABLE_OMP OR MUDOCK_ENABLE_OMP_OFFLOAD))
+if(MUDOCK_ENABLE_ALPAKA AND MUDOCK_ALPAKA_BACKEND STREQUAL "omp2")
   find_package(OpenMP REQUIRED)
 endif()
 
@@ -673,11 +673,11 @@ if(MUDOCK_ENABLE_ALPAKA)
       "${mudock_enabled_alpaka_backends_msg}.")
   endif()
 
-  find_package(alpaka 2.2.0 CONFIG QUIET)
+  find_package(alpaka 1.2.0 CONFIG QUIET)
   if(NOT TARGET alpaka::alpaka)
     if(NOT MUDOCK_FETCH_ALPAKA)
       message(FATAL_ERROR
-        "MUDOCK_ENABLE_ALPAKA=ON requires Alpaka >= 2.2.0. "
+        "MUDOCK_ENABLE_ALPAKA=ON requires Alpaka >= 1.2.0. "
         "Install Alpaka and provide alpaka_DIR, or enable MUDOCK_FETCH_ALPAKA.")
     endif()
 

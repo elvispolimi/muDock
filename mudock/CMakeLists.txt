@@ -243,10 +243,6 @@ if(MUDOCK_ENABLE_ALPAKA)
       "${source_path}/alpaka_implementation/genetic_alpaka.cpp")
   set(alpaka_geom_transform_source
       "${source_path}/alpaka_implementation/geom_transform_alpaka.cpp")
-  set(alpaka_dot_product_source
-      "${source_path}/alpaka_implementation/alpaka_dot_product.cpp")
-  set(alpaka_reduction_source
-      "${source_path}/alpaka_implementation/alpaka_reduction.cpp")
   set(alpaka_queue_source
       "${source_path}/alpaka_implementation/queue_alpaka.cpp")
   list(
@@ -255,7 +251,6 @@ if(MUDOCK_ENABLE_ALPAKA)
     "${header_path}/${header_prefix}/alpaka_implementation/adt_score_alpaka.hpp"
     "${header_path}/${header_prefix}/alpaka_implementation/alpaka_implementation.hpp"
     "${header_path}/${header_prefix}/alpaka_implementation/alpaka_types.hpp"
-    "${header_path}/${header_prefix}/alpaka_implementation/alpaka_dot_product.hpp"
     "${header_path}/${header_prefix}/alpaka_implementation/genetic_alpaka.hpp"
     "${header_path}/${header_prefix}/alpaka_implementation/geom_transform_alpaka.hpp"
     "${header_path}/${header_prefix}/alpaka_implementation/invoke_kernel_alpaka.hpp"
@@ -268,8 +263,6 @@ if(MUDOCK_ENABLE_ALPAKA)
     "${alpaka_genetic_source}"
     "${alpaka_geom_transform_source}"
     "${alpaka_queue_source}"
-    "${alpaka_dot_product_source}"
-    "${alpaka_reduction_source}"
   )
 endif()
 
@@ -314,21 +307,13 @@ if(MUDOCK_ENABLE_ALPAKA)
     set_source_files_properties("${alpaka_genetic_source}" PROPERTIES LANGUAGE CUDA)
     set_source_files_properties("${alpaka_geom_transform_source}" PROPERTIES LANGUAGE CUDA)
     set_source_files_properties("${alpaka_queue_source}" PROPERTIES LANGUAGE CUDA)
-    set_source_files_properties("${alpaka_dot_product_source}" PROPERTIES LANGUAGE CUDA)
-    set_source_files_properties("${alpaka_reduction_source}" PROPERTIES LANGUAGE CUDA)
     set_source_files_properties("${tbb_pipeline_source}" PROPERTIES LANGUAGE CUDA)
-    set_property(SOURCE "${tbb_pipeline_source}" APPEND
-                 PROPERTY COMPILE_DEFINITIONS MUDOCK_ENABLE_HOST_COMPUTE_PIPELINE)
   elseif(MUDOCK_ALPAKA_BACKEND STREQUAL "hip" AND CMAKE_HIP_COMPILER)
     set_source_files_properties("${alpaka_adt_score_source}" PROPERTIES LANGUAGE HIP)
     set_source_files_properties("${alpaka_genetic_source}" PROPERTIES LANGUAGE HIP)
     set_source_files_properties("${alpaka_geom_transform_source}" PROPERTIES LANGUAGE HIP)
     set_source_files_properties("${alpaka_queue_source}" PROPERTIES LANGUAGE HIP)
-    set_source_files_properties("${alpaka_dot_product_source}" PROPERTIES LANGUAGE HIP)
-    set_source_files_properties("${alpaka_reduction_source}" PROPERTIES LANGUAGE HIP)
     set_source_files_properties("${tbb_pipeline_source}" PROPERTIES LANGUAGE HIP)
-    set_property(SOURCE "${tbb_pipeline_source}" APPEND
-                 PROPERTY COMPILE_DEFINITIONS MUDOCK_ENABLE_HOST_COMPUTE_PIPELINE)
   endif()
 endif()
 set_target_properties(libmudock PROPERTIES PUBLIC_HEADER "${headers}")

@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <memory>
 #include <mudock/alpaka_implementation/queue_alpaka.hpp>
+#include <mudock/compute/buffer.hpp>
 #include <optional>
 #include <vector>
 
