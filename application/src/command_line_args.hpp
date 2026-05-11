@@ -12,6 +12,7 @@ struct command_line_arguments {
   std::vector<std::string> device_confs = {std::string{use_cpu_conf}};
   std::optional<double> time_limit_sec  = std::nullopt;
   std::optional<double> observer        = std::nullopt;
+  std::string pipeline_mode = "STANDARD";
   mudock::knobs knobs;
 };
 command_line_arguments parse_command_line_arguments(const int argc, char *argv[]);
