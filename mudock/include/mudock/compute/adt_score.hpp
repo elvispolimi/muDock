@@ -90,6 +90,8 @@ namespace mudock {
       batch_atoms                  = batch.batch_max_atoms;
       const int batch_non_bonds    = batch_ligands * batch_atoms * batch_atoms;
       const int tot_atoms_in_batch = batch_ligands * batch_atoms;
+      const int batch_rotamers                = batch_atoms - 3;
+      const std::size_t tot_rotamers_in_batch = batch_ligands * batch_rotamers;
       auto q                       = (*this->scratch).get_queue();
 
       load_num_rotamers(batch, this->scratch);
@@ -137,10 +139,10 @@ namespace mudock {
       ligand_fragments.alloc(tot_rotamers_atoms_in_batch);
       ligand_fragments_start.alloc(batch_ligands + 1);
       ligand_fragments_start()[0] = 0;
+      frag_start_atom_indices.alloc(tot_rotamers_in_batch);
+      frag_stop_atom_indices.alloc(tot_rotamers_in_batch);
       frag_indices_start.alloc(batch_ligands + 1);
       frag_indices_start()[0] = 0;
-      frag_start_atom_indices.alloc(batch_ligands + 1);
-      frag_stop_atom_indices.alloc(batch_ligands + 1);
 
       const int map_flat_size =
           (*device_scratch).template get<buffer_data_type::PROT_SIZE_XYZ>().host_pointer()[0];
