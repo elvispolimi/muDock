@@ -21,7 +21,6 @@ namespace mudock {
     // Gradient size matches chromosome size (6 + max_rotamers)
     // TODO L is this ok?
     constexpr int gradient_size = 6 + max_static_bonds();
-    const size_t total_individuals = batch_ligands * individuals_per_ligand;
     
     for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
       gradient *gradients_l = gradients_b + ligand_index * individuals_per_ligand;

@@ -307,10 +307,10 @@ namespace mudock {
 
           if (coord[0] < minimum[0] || coord[0] > maximum[0] || coord[1] < minimum[1] ||
               coord[1] > maximum[1] || coord[2] < minimum[2] || coord[2] > maximum[2]) {
-            const fp_type factor = 2 * 2 * ENERGYPENALTY;
-            dE_dX[index].x() += factor * diff_x;
-            dE_dX[index].y() += factor * diff_y;
-            dE_dX[index].z() += factor * diff_z;
+            const fp_type penalty_factor = 2 * 2 * ENERGYPENALTY;
+            dE_dX[index].x() += penalty_factor * diff_x;
+            dE_dX[index].y() += penalty_factor * diff_y;
+            dE_dX[index].z() += penalty_factor * diff_z;
           } else {
             const auto &atom_charge = charge_l[index];
             const fp_type *atom_map = grid_maps + map_offsets_l[index];
@@ -330,20 +330,6 @@ namespace mudock {
             const int w0      = coord[2];
             const fp_type p0w = coord[2] - static_cast<fp_type>(w0);
             const fp_type p1w = fp_type{1} - p0w;
-
-            const fp_type pu[2] = {p1u, p0u};
-            const fp_type pv[2] = {p1v, p0v};
-            const fp_type pw[2] = {p1w, p0w};
-
-            // Compute coefficients
-            const fp_type coeffs[8] = {pu[0] * pv[0] * pw[0],
-                                       pu[0] * pv[0] * pw[1],
-                                       pu[0] * pv[1] * pw[0],
-                                       pu[0] * pv[1] * pw[1],
-                                       pu[1] * pv[0] * pw[0],
-                                       pu[1] * pv[0] * pw[1],
-                                       pu[1] * pv[1] * pw[0],
-                                       pu[1] * pv[1] * pw[1]};
 
             // Precompute flattened indices
             const int base_index = FLATTENED_3D(u0, v0, w0, map_index_x, map_index_xy);
@@ -382,7 +368,6 @@ namespace mudock {
           }
         }
 
-        fp_type elect_total_eintcal{0}, emap_total_eintcal{0}, dmap_total_eintcal{0};
         if (num_rotamers > 0) {
 #pragma omp simd
           for (int i = 0; i < num_nonbonds; ++i) {
@@ -434,7 +419,6 @@ namespace mudock {
 
             const fp_type e_desolv = autodock_parameters::coeff_desolv *
                                      std::exp(fp_type{-0.5} / (sigma_square) *distance_two_clamp) * nb_desolv;
-            dmap_total_eintcal += e_desolv;
 
             // Desolvation derivative
             const fp_type dE_dr_desolv = (-distance / sigma_square) * e_desolv;
@@ -496,7 +480,7 @@ namespace mudock {
 
           const fp_type norm = std::sqrt(axis.x() * axis.x() + axis.y() * axis.y() + axis.z() * axis.z());
 
-          const fp_type inv_norm = 1.0 / norm;
+          const fp_type inv_norm = fp_type{1} / norm;
           axis.x() *= inv_norm;
           axis.y() *= inv_norm;
           axis.z() *= inv_norm;

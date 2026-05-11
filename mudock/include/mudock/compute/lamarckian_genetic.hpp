@@ -32,7 +32,7 @@ namespace mudock {
                               const int population_number_,
                               const int num_generations_,
                               const int tournament_length_,
-                              const int mutation_prob_,
+                              const fp_type mutation_prob_,
                               const size_t seed_,
                               chromosome* population_,
                               chromosome* next_population_,
@@ -133,6 +133,7 @@ namespace mudock {
       this->lamarckian_kernel->initialize();
 
       for (int generation = 0; generation < this->num_generations; ++generation) {
+        printf("LGA gen %d\n", generation);
         this->geom_trans();
         (*this->score_stage)();
         local_search_stage();

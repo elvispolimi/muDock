@@ -13,7 +13,7 @@ namespace mudock {
   struct adadelta_kernel {
     static constexpr char adadelta_region_name[] = "adadelta_kernel";
     static constexpr char gradient_region_name[] = "adadelta_gradient_kernel";
-    adadelta_kernel(const int individuals_per_ligand,
+    adadelta_kernel(const int individuals_per_ligand_,
                     const int batch_ligands_,
                     std::shared_ptr<differentiable_scoring<queue_type>> score_stage_,
                     gradient *__restrict__ gradients_b_,
@@ -21,7 +21,7 @@ namespace mudock {
                     chromosome *__restrict__ adadelta_e_g2_b_,
                     chromosome *__restrict__ adadelta_e_dw2_b_,
                     std::shared_ptr<queue_type> q_)
-        : individuals_per_ligand(individuals_per_ligand),
+        : individuals_per_ligand(individuals_per_ligand_),
           batch_ligands(batch_ligands_),
           score_stage(score_stage_),
           gradients_b(gradients_b_),
