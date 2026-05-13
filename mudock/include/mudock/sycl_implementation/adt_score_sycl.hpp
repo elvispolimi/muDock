@@ -5,7 +5,7 @@
 
 namespace mudock {
   template<>
-  int get_adt_score_batch<queue_sycl>(const int, std::shared_ptr<queue_sycl>, const size_t);
+  batch_multiple get_adt_score_batch_multiple<queue_sycl>(const int, std::shared_ptr<queue_sycl>);
 
   template<>
   void adt_score_kernel<queue_sycl>::operator()();

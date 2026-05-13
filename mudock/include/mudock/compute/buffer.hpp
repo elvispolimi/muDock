@@ -211,8 +211,6 @@ namespace mudock {
       valid = false;
       if (obj)
         (*obj).copy_device2host(host.data());
-      else
-        std::runtime_error("Copy device to host on an empy object");
     };
     inline void copy_device2device(const buffer_impl<container_type, T, queue_t, args...>& other,
                                    const int n = 0) {
@@ -224,7 +222,7 @@ namespace mudock {
       } else if (!obj && !other.obj) {
         host = other.host;
       } else {
-        std::runtime_error("Device to device copy with one of the two buffer without object");
+        throw std::runtime_error("Device to device copy with one of the two buffers without object");
       }
     }
 

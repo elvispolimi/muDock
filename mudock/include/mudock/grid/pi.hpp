@@ -5,7 +5,7 @@
 
 namespace mudock {
   struct math {
-    static constexpr auto pi        = fp_type{3.141592653589793238462643383279502884197};
+    static constexpr auto pi        = static_cast<fp_type>(3.141592653589793238462643383279502884197);
     static constexpr auto pi_halved = pi / 2;
   };
 

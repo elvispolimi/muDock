@@ -4,6 +4,7 @@
 #include <iomanip>
 #include <iostream>
 #include <sstream>
+#include <utility>
 
 namespace mudock {
 
@@ -29,9 +30,9 @@ namespace mudock {
       // declare the string stream and line composer for our log function
       std::ostringstream stream;
 
-      // start by printing the elapsed time
-      stream << '[' << std::fixed << std::setprecision(2) << std::setw(12) << std::setfill(' ')
-             << timer::get() << " ] ";
+      // Prefix each line with the elapsed wall-clock time since logger startup.
+      stream << '[' << std::fixed << std::setprecision(2) << std::setw(12)
+             << std::setfill(' ') << timer::get() << " ] ";
       log_add_line(stream, args...);
 
       // print in output the line
@@ -54,6 +55,15 @@ namespace mudock {
   template<class... Ts>
   void error(Ts&&... args) {
     log_details::log("  ERROR ", args...);
+  }
+
+  template<class... Ts>
+  void stage_bucket_trace(Ts&&... args) {
+#ifdef MUDOCK_ENABLE_STAGE_BUCKET_TRACE
+    info(std::forward<Ts>(args)...);
+#else
+    (void) sizeof...(args);
+#endif
   }
 
 } // namespace mudock

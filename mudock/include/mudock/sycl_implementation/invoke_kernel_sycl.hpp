@@ -28,10 +28,12 @@ namespace mudock {
 #ifdef MUDOCK_KERNEL_LOCK
     auto* lock = get_sycl_kernel_lock(this->id);
     std::unique_lock<std::mutex> guard(lock->mutex);
-    if (lock->has_event) {
-      lock->event.wait_and_throw();
-    }
+    const bool has_previous_event = lock->has_event;
+    const sycl::event previous_event = lock->event;
     evt = impl_->get_queue().submit([&](sycl::handler& h) {
+      if (has_previous_event) {
+        h.depends_on(previous_event);
+      }
 #else
     evt = impl_->get_queue().submit([&](sycl::handler& h) {
 #endif
@@ -53,7 +55,7 @@ namespace mudock {
   }
 
   template<class kernel_name>
-  int queue_sycl::get_batch_size() {
+  batch_multiple queue_sycl::get_batch_multiple() {
     const sycl::device dev      = impl_->get_device();
     const auto dev_name         = dev.get_info<sycl::info::device::name>();
     const auto dev_vendor       = dev.get_info<sycl::info::device::vendor>();
@@ -62,7 +64,7 @@ namespace mudock {
     const std::string cache_key = dev_name + "|" + dev_vendor + "|" + dev_driver + "|" + kernel_key;
 
     static std::mutex cache_mutex;
-    static std::unordered_map<std::string, int> cache_by_key;
+    static std::unordered_map<std::string, batch_multiple> cache_by_key;
     {
       const std::lock_guard<std::mutex> lock(cache_mutex);
       const auto it = cache_by_key.find(cache_key);
@@ -72,27 +74,26 @@ namespace mudock {
     }
 
     const sycl::context ctx{dev};
-    const int compute_units         = dev.get_info<sycl::info::device::max_compute_units>();
-    const auto subgroups            = dev.get_info<sycl::info::device::sub_group_sizes>();
-    const std::size_t subgroup_size = subgroups.empty() ? 1u : subgroups[0];
+    const int compute_units = std::max(1, static_cast<int>(dev.get_info<sycl::info::device::max_compute_units>()));
 
-    // Fetch kernel device-specific limits for this device
+    // Fetch kernel device-specific limits for this device. We want an occupancy-style
+    // estimate analogous to CUDA/HIP: resident work-groups per compute unit times the
+    // number of compute units.
     const auto kid         = sycl::get_kernel_id<kernel_name>();
     const auto kb          = sycl::get_kernel_bundle<sycl::bundle_state::executable>(ctx, {dev}, {kid});
     const sycl::kernel krn = kb.get_kernel(kid);
 
-    // Maximum work-group size the device allows for this kernel
-    const std::size_t max_wg_size = krn.get_info<sycl::info::kernel_device_specific::work_group_size>(dev);
+    const std::size_t wg_size = std::max<std::size_t>(1, MUDOCK_SYCL_WG_SIZE);
+    const std::size_t kernel_max_wg_size =
+        std::max<std::size_t>(1, krn.get_info<sycl::info::kernel_device_specific::work_group_size>(dev));
 
-    // Upper bound on concurrently resident work-groups per CU from wg-size alone
-    const std::size_t wg_per_cu_cap =
-        std::max<std::size_t>(1, max_wg_size / std::max<std::size_t>(1, subgroup_size));
+    // Keep the same semantics as CUDA/HIP: resident work-groups per compute unit
+    // times the number of compute units. SYCL does not expose a direct occupancy
+    // API, so use the kernel-specific maximum work-group capacity as the simple
+    // proxy and divide by the launch work-group size.
+    const std::size_t active_blocks_per_sm = std::max<std::size_t>(1, kernel_max_wg_size / wg_size);
 
-    // Portable heuristic: try to keep 2–4 work-groups per CU if possible.
-    // You can tune this number per backend/workload.
-    const std::size_t target_wg_per_cu = std::min<std::size_t>(wg_per_cu_cap, 4);
-
-    const int value = static_cast<int>(target_wg_per_cu * compute_units);
+    const batch_multiple value{static_cast<int>(std::max<std::size_t>(1, active_blocks_per_sm)), compute_units};
     {
       const std::lock_guard<std::mutex> lock(cache_mutex);
       cache_by_key.emplace(cache_key, value);

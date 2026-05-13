@@ -56,7 +56,7 @@ int main(int argc, char *argv[]) {
 
   const auto num_atoms    = ligand.num_atoms();
   const auto num_rotamers = ligand.num_rotamers();
-  adt_ligand.update_offsets(adt_grid.get_map_flat_size());
+  adt_ligand.update_offsets(static_cast<int>(adt_grid.get_map_flat_size()));
 
   mudock::info("Computing energy ...");
   std::vector<int> num_atoms_b{num_atoms};
@@ -95,9 +95,9 @@ int main(int argc, char *argv[]) {
   adt_kernel();
   const mudock::fp_type energy = scores_b[0];
   // High tolerance due to the precomputation done in autodock, refers to intnbtable.cc
-  if (std::abs(energy - adt_score + adt_error_score) > mudock::fp_type{0.1}) {
+  if (std::abs(energy - adt_score + adt_error_score) > static_cast<mudock::fp_type>(0.1)) {
     // High tolerance due to the precomputation done in autodock, refers to intnbtable.cc
-    if (std::abs(energy - adt_score + adt_error_score) > mudock::fp_type{0.1}) {
+    if (std::abs(energy - adt_score + adt_error_score) > static_cast<mudock::fp_type>(0.1)) {
       mudock::error(std::format("Difference betweem scores of {} ({} vs {})",
                                 dpf_path.string(),
                                 adt_score - adt_error_score,

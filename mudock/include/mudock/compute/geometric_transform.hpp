@@ -5,8 +5,10 @@
 #include <concepts>
 #include <memory>
 #include <mudock/chem/geom_ligand.hpp>
+#include <mudock/compute/batch_multiple.hpp>
 #include <mudock/compute/queue.hpp>
-#ifndef __CUDACC__
+#include <mudock/log.hpp>
+#if !defined(__CUDACC__) && !defined(__HIPCC__)
   #include <mudock/compute/buffer_utils.hpp>
   #include <mudock/compute/scratchpad.hpp>
   #include <mudock/compute/transform.hpp>
@@ -18,6 +20,11 @@
 #include <mudock/molecule.hpp>
 
 namespace mudock {
+  template<typename queue_type>
+  batch_multiple get_geom_transform_batch_multiple(const int, std::shared_ptr<queue_type>) {
+    return {};
+  }
+
   template<typename queue_type>
     requires std::derived_from<queue_type, queue>
   struct geom_kernel {
@@ -60,6 +67,7 @@ namespace mudock {
           q(q_) {}
 
     void operator()();
+    inline void set_chromosomes_buffer(const chromosome* chromosomes_b_) { chromosomes_b = chromosomes_b_; }
 
     geom_kernel(const geom_kernel&)            = default;
     geom_kernel(geom_kernel&&)                 = default;
@@ -89,7 +97,7 @@ namespace mudock {
     std::shared_ptr<queue_type> q;
   };
 
-#ifndef __CUDACC__
+#if !defined(__CUDACC__) && !defined(__HIPCC__)
   template<typename queue_t>
     requires std::derived_from<queue_t, queue>
   struct geometric: public transform<queue_t> {
@@ -147,14 +155,15 @@ namespace mudock {
                     geom_lig.fragments_masks(),
                     num_atoms * num_rotamers * sizeof(int));
         ligand_fragments_start()[ligand_index + 1] =
-            ligand_fragments_start()[ligand_index] + (num_atoms * num_rotamers);
+            static_cast<int>(ligand_fragments_start()[ligand_index] + (num_atoms * num_rotamers));
         std::memcpy((void*) (frag_start_atom_indices() + frag_indices_start()[ligand_index]),
                     geom_lig.fragmets_starts(),
                     num_rotamers * sizeof(int));
         std::memcpy((void*) (frag_stop_atom_indices() + frag_indices_start()[ligand_index]),
                     geom_lig.fragments_stops(),
                     num_rotamers * sizeof(int));
-        frag_indices_start()[ligand_index + 1] = frag_indices_start()[ligand_index] + num_rotamers;
+        frag_indices_start()[ligand_index + 1] =
+            static_cast<int>(frag_indices_start()[ligand_index] + num_rotamers);
       }
       ligand_fragments.copy_host2device();
       ligand_fragments_start.copy_host2device();
@@ -225,26 +234,55 @@ namespace mudock {
       (*kernel)();
     };
 
-    static int get_ligand_mem(const int max_atoms, const knobs conf) {
-      int mem{0};
+    inline void set_chromosomes_buffer(const chromosome* chromosomes_b_) {
+      if (kernel) {
+        kernel->set_chromosomes_buffer(chromosomes_b_);
+      }
+    }
 
+    static std::size_t get_shared_ligand_mem(const int max_atoms, const knobs conf) {
+      const int chromosomes_per_ligand = std::max(1, static_cast<int>(conf.population_number));
+      return sizeof(int) + sizeof(int) + 3 * sizeof(fp_type) * max_atoms +
+             3 * sizeof(fp_type) * max_atoms * chromosomes_per_ligand;
+    }
+
+    static std::size_t get_private_ligand_mem(const int max_atoms, const knobs) {
       const int batch_rotamers              = max_atoms - 3;
       const int tot_rotamers_atoms_in_batch = max_atoms * batch_rotamers;
-
-      mem += sizeof(int) * tot_rotamers_atoms_in_batch; //ligand fragments
-      mem += sizeof(int);                               //ligand_fragments_start
-      mem += sizeof(int) * batch_rotamers;              //frag_start_atom_indices
-      mem += sizeof(int) * batch_rotamers;              //frag_stop_atom_indices
-      mem += sizeof(int);                               //frag_indices_start
-
-      mem += sizeof(fp_type) * max_atoms * conf.population_number; //x_scratch_b
-      mem += sizeof(fp_type) * max_atoms * conf.population_number; //y_scratch_b
-      mem += sizeof(fp_type) * max_atoms * conf.population_number; //z_scratch_b
-
-      mem += sizeof(fp_type) * max_atoms; //x_coords_b
-      mem += sizeof(fp_type) * max_atoms; //y_coords_b
-      mem += sizeof(fp_type) * max_atoms; //z_coords_b
+      std::size_t mem{0};
+      mem += sizeof(int) * tot_rotamers_atoms_in_batch; // ligand fragments
+      mem += sizeof(int);                               // ligand_fragments_start
+      mem += sizeof(int) * batch_rotamers;              // frag_start_atom_indices
+      mem += sizeof(int) * batch_rotamers;              // frag_stop_atom_indices
+      mem += sizeof(int);                               // frag_indices_start
       return mem;
+    }
+
+    static int get_ligand_mem(const int max_atoms, const knobs conf) {
+      return static_cast<int>(get_shared_ligand_mem(max_atoms, conf) +
+                              get_private_ligand_mem(max_atoms, conf));
+    }
+
+    static batch_multiple get_batch_size(const int atoms,
+                                         std::shared_ptr<queue_t> q,
+                                         const knobs& conf,
+                                         const size_t max_bucket_size) {
+      (void) conf;
+      const auto plain_multiple_info =
+          normalize_batch_multiple(get_geom_transform_batch_multiple<queue_t>(atoms, q));
+      mudock::stage_bucket_trace("GEOM stage plain multiple for ",
+                                 atoms,
+                                 " atoms -> total=",
+                                 plain_multiple_info.total_multiple(),
+                                 " (active_blocks_per_sm=",
+                                 plain_multiple_info.active_blocks_per_sm,
+                                 ", num_sms=",
+                                 plain_multiple_info.num_sms,
+                                 ")",
+                                 " (max_bucket_size hint=",
+                                 max_bucket_size,
+                                 ")");
+      return plain_multiple_info;
     }
 
   private:

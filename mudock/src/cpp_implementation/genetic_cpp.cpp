@@ -1,3 +1,5 @@
+#include "mudock/type_alias.hpp"
+
 #include <cstring>
 #include <mudock/compute/buffer.hpp>
 #include <mudock/compute/devices_memory.hpp>
@@ -12,8 +14,8 @@
 #include <random>
 
 namespace mudock {
-  static constexpr auto coordinate_step = fp_type{0.2};
-  static constexpr auto angle_step      = fp_type{4};
+  static constexpr auto coordinate_step = static_cast<fp_type>(0.2);
+  static constexpr auto angle_step      = static_cast<fp_type>(4);
 
   thread_local device_memory<std::mt19937> rand_device;
 
@@ -24,11 +26,11 @@ namespace mudock {
                                               const T& max) {
     fp_type value;
     if constexpr (is_debug())
-      value = fp_type{0.4};
+      value = static_cast<fp_type>(0.4);
     else {
       value = dist(generator);
     }
-    return static_cast<T>(value * (max - min) + min);
+    return static_cast<T>(value * static_cast<fp_type>(max - min) + static_cast<fp_type>(min));
   }
 
   inline int get_selection_distribution(std::mt19937& generator,
@@ -96,7 +98,7 @@ namespace mudock {
   void iterate_impl(const int batch_ligands,
                     const int population_number,
                     const int tournament_length,
-                    const int mutation_prob,
+                    const fp_type mutation_prob,
                     chromosome* population,
                     chromosome* next_population,
                     int* __restrict__ num_rotamers_b,

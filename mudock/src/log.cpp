@@ -7,5 +7,5 @@ namespace mudock {
 
     std::chrono::steady_clock::time_point timer::start = std::chrono::steady_clock::now();
 
-  }
+  } // namespace log_details
 } // namespace mudock

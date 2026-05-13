@@ -56,13 +56,13 @@ int main(int argc, char* argv[]) {
   auto ligand =
       std::make_shared<mudock::static_molecule>(mudock::parser<mudock::static_molecule>(ligand_path));
 
-  mudock::adt_score_pipeline pipe{protein};
+  mudock::scoring_pipeline<mudock::adt_score> pipe{protein};
 
   mudock::info("Generating score reference ...");
   auto output_queue = std::make_shared<mudock::safe_queue<mudock::static_molecule>>();
   auto input_queue  = std::make_shared<mudock::safe_queue<mudock::static_molecule>>();
-  auto ligand_in  = std::make_unique<mudock::static_molecule>(*ligand);
-  input_queue->enqueue(ligand_in);  
+  auto ligand_in    = std::make_unique<mudock::static_molecule>(*ligand);
+  input_queue->enqueue(ligand_in);
   input_queue->send_terminate_signal(); // signal that no more ligand will be enqueued in the input queue
   {
     auto threadpool = mudock::threadpool();
@@ -76,7 +76,7 @@ int main(int argc, char* argv[]) {
 
   for (auto& conf: device_confs) {
     mudock::info("Comparing reference with ", conf, " ...");
-    ligand_in  = std::make_unique<mudock::static_molecule>(*ligand);
+    ligand_in = std::make_unique<mudock::static_molecule>(*ligand);
     input_queue->clear_terminate_signal(); // clear the terminate signal to be able to enqueue new ligands
     output_queue->clear_terminate_signal();
     input_queue->enqueue(ligand_in);
@@ -93,7 +93,8 @@ int main(int argc, char* argv[]) {
     const auto diff = std::abs(score - reference_score);
     // const auto error        = std::max(reference_score * mudock::fp_type{0.001}, mudock::fp_type{0.1});
     const auto max_absolute = std::max(std::fabs(score), std::fabs(reference_score)) / 100;
-    const auto error        = std::clamp(max_absolute, mudock::fp_type{0.001}, mudock::fp_type{5});
+    const auto error =
+        std::clamp(max_absolute, static_cast<mudock::fp_type>(0.001), static_cast<mudock::fp_type>(5));
     if (diff > error) {
       mudock::error(std::format(
           "Difference betweem scores of {} on {} ( CPU {} vs {} {} with an error threshold of {})",

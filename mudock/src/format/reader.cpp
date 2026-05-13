@@ -93,19 +93,18 @@ namespace mudock {
   // MOL2
   template<>
   static_molecule parser<supported_format::MOL2>(const std::string_view description,
-                                                 std::function<bool(OpenBabel::OBBond&)> rotor_check) {
-    return parser_impl<static_molecule, supported_format::MOL2>(description, rotor_check);
+                                                 std::function<bool(OpenBabel::OBBond&)>) {
+    return parser_impl<static_molecule, supported_format::MOL2>(description, ob_rotate_check);
   };
   template<>
   dynamic_molecule parser<supported_format::MOL2>(const std::string_view description,
-                                                  std::function<bool(OpenBabel::OBBond&)> rotor_check) {
-    return parser_impl<dynamic_molecule, supported_format::MOL2>(description, rotor_check);
+                                                  std::function<bool(OpenBabel::OBBond&)>) {
+    return parser_impl<dynamic_molecule, supported_format::MOL2>(description, ob_rotate_check);
   };
   template<>
   ob_mol_wrapper parser<supported_format::MOL2>(const std::string_view description,
                                                 std::function<bool(OpenBabel::OBBond&)>) {
-    auto mol = ob_parser<supported_format::MOL2>(description);
-    return mol;
+    return ob_parser<supported_format::MOL2>(description);
   }
   // PDBQT
   template<>

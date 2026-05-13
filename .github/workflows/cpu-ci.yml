@@ -1,0 +1,44 @@
+name: CPU CI
+
+on:
+  pull_request:
+    branches:
+      - dev
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cpu-build-test:
+    name: Build and test (CPU)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            cmake \
+            ninja-build \
+            pkg-config \
+            libboost-all-dev \
+            libopenbabel-dev \
+            libtbb-dev \
+            openbabel
+
+      - name: Configure
+        run: cmake --preset ci-cpu-debug
+
+      - name: Build
+        run: cmake --build --preset ci-cpu-debug --parallel
+
+      - name: Test
+        run: ctest --preset ci-cpu-debug

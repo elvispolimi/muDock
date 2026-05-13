@@ -1,30 +1,44 @@
 #include <mudock/tbb_implementation/parser_filter.hpp>
-#include <mudock/format/adt_mol2.hpp>
 #include <mudock/format/reader.hpp>
+#include <exception>
 #include <string_view>
 
 namespace mudock {
-    
-    parser_filter::mol_vec parser_filter::operator()(std::string_view sv) const {
-        mol_vec result;
 
-        constexpr std::string_view molecule_token = adt_mol2_tokens::MOLECULE_TOKEN;
+  template<supported_format format>
+  void parser_filter<format>::operator()(std::string_view sv) const {
+    type_of_format<format> splitter;
 
-        while (!sv.empty()) {
-            // Assume the format always starts with the molecule token
-            size_t next = sv.find(molecule_token, molecule_token.size());
-
-            std::string_view mol =
-                (next == std::string_view::npos) ? sv : sv.substr(0, next);
-
-            result.push_back(std::make_unique<static_molecule>(
-                mudock::parser<supported_format::ADTMOL2, static_molecule>(mol)));
-
-            if (next == std::string_view::npos) break;
-            sv.remove_prefix(next);
-        }
-
-        return result;
+    if (stop_requested != nullptr && stop_requested->load(std::memory_order_relaxed)) {
+      return;
     }
-    
-} // namespace mudock    
+
+    while (!sv.empty()) {
+      if (stop_requested != nullptr && stop_requested->load(std::memory_order_relaxed)) {
+        return;
+      }
+
+      const auto next = splitter.next_molecule_start_index(sv);
+      const auto mol  = (next == std::string_view::npos) ? sv : sv.substr(0, next);
+
+      try {
+        auto ligand = std::make_unique<static_molecule>(mudock::parser<format, static_molecule>(mol));
+        const bool enqueued = input_queue->enqueue(ligand);
+        if (!enqueued) {
+          return;
+        }
+      } catch (const std::exception&) {
+        if (skipped_ligands != nullptr) {
+          skipped_ligands->fetch_add(1, std::memory_order_relaxed);
+        }
+      }
+
+      if (next == std::string_view::npos) break;
+      sv.remove_prefix(next);
+    }
+  }
+
+  template class parser_filter<supported_format::ADTMOL2>;
+  template class parser_filter<supported_format::MOL2>;
+
+} // namespace mudock

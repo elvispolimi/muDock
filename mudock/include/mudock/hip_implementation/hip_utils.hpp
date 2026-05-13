@@ -1,6 +1,7 @@
 #pragma once
 
 #include <hip/hip_runtime.h>
+#include <mudock/compute/batch_multiple.hpp>
 #include <mudock/log.hpp>
 #include <stdexcept>
 
@@ -24,6 +25,22 @@
   }
 
 namespace mudock {
+  template<auto Kernel>
+  inline batch_multiple get_kernel_batch_multiple_hip(const int device_id,
+                                                      const int block_size,
+                                                      const size_t dynamic_shared_mem = 0,
+                                                      const char* kernel_label = "unknown_kernel") {
+    MUDOCK_CHECK(hipSetDevice(device_id));
+    hipDeviceProp_t props;
+    MUDOCK_CHECK(hipGetDeviceProperties(&props, device_id));
+
+    int num_blocks_per_sm = 0;
+    MUDOCK_CHECK(
+        hipOccupancyMaxActiveBlocksPerMultiprocessor(&num_blocks_per_sm, Kernel, block_size, dynamic_shared_mem));
+    (void) kernel_label;
+    return {num_blocks_per_sm, props.multiProcessorCount};
+  }
+
 #if defined(__HIP_PLATFORM_NVCC__) || defined(__NVCC__)
   #define BITLANE_MASK 0xFFFFFFFF
 #elif defined(__HIP_PLATFORM_AMD__)

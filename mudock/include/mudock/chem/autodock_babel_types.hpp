@@ -172,8 +172,8 @@ namespace mudock {
 
   // utility functions to work with them
   inline const autodock_babel_ff_description& get_description(const autodock_babel_ff a) {
-    assert(AUTODOCK_BABEL_FF_DICTIONARY[static_cast<int>(a)].value == a);
-    return AUTODOCK_BABEL_FF_DICTIONARY[static_cast<int>(a)];
+    assert(AUTODOCK_BABEL_FF_DICTIONARY[static_cast<std::size_t>(a)].value == a);
+    return AUTODOCK_BABEL_FF_DICTIONARY[static_cast<std::size_t>(a)];
   }
 
 } // namespace mudock

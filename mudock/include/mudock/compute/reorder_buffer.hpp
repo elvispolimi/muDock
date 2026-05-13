@@ -19,13 +19,13 @@ namespace mudock {
   template<class T>
   class reorder_buffer {
   public:
-#ifdef MUDOCK_BUCKET_EXTREME
+#ifdef MUDOCK_ATOM_CLUSTER_LEVEL_EXTREME
     // the description of how we generate the clusters
     static constexpr std::array<int, 9> atoms_clusters = {{16, 32, 58, 64, 96, 128, 160, 192, 256}};
-#elif defined(MUDOCK_BUCKET_LARGE)
+#elif defined(MUDOCK_ATOM_CLUSTER_LEVEL_LARGE)
     // the description of how we generate the clusters
     static constexpr std::array<int, 6> atoms_clusters = {{32, 64, 128, 160, 192, 256}};
-#elif defined(MUDOCK_BUCKET_MEDIUM)
+#elif defined(MUDOCK_ATOM_CLUSTER_LEVEL_MEDIUM)
     // the description of how we generate the clusters
     static constexpr std::array<int, 4> atoms_clusters = {{32, 64, 128, 256}};
 #else

@@ -1,0 +1,24 @@
+{
+  "name": "muDock CPU Dev",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "remoteUser": "vscode",
+  "postCreateCommand": "cmake --preset dev-cpu-debug",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-vscode.cmake-tools",
+        "llvm-vs-code-extensions.vscode-clangd",
+        "ms-vscode.cpptools",
+        "twxs.cmake"
+      ],
+      "settings": {
+        "cmake.configureOnOpen": false,
+        "cmake.useCMakePresets": "always",
+        "C_Cpp.intelliSenseEngine": "disabled"
+      }
+    }
+  }
+}

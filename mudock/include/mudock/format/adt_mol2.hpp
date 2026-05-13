@@ -19,6 +19,8 @@ namespace mudock {
 
   class adt_mol2 {
   public:
+    static constexpr auto MOLECULE_TOKEN = adt_mol2_tokens::MOLECULE_TOKEN;
+
     std::string_view::size_type next_molecule_start_index(std::string_view text) const;
 
     template<class molecule_type>

@@ -2,19 +2,25 @@
 
 #include "mudock/knobs.hpp"
 
+#include <algorithm>
 #include <concepts>
+#include <limits>
 #include <memory>
 #include <mudock/batch.hpp>
 #include <mudock/chem/autodock_protein.hpp>
-#ifndef __CUDACC__
+#include <numeric>
+#include <stdexcept>
+#if !defined(__CUDACC__) && !defined(__HIPCC__)
   #include <mudock/compute/buffer_utils.hpp>
   #include <mudock/compute/docking.hpp>
   #include <mudock/compute/geometric_transform.hpp>
   #include <mudock/compute/scoring.hpp>
   #include <mudock/compute/scratchpad.hpp>
 #endif
+#include <mudock/compute/batch_multiple.hpp>
 #include <mudock/compute/queue.hpp>
 #include <mudock/cpp_implementation/chromosome.hpp>
+#include <mudock/log.hpp>
 #include <mudock/molecule.hpp>
 
 namespace mudock {
@@ -30,7 +36,7 @@ namespace mudock {
                    const int population_number_,
                    const int num_generations_,
                    const int tournament_length_,
-                   const int mutation_prob_,
+                   const fp_type mutation_prob_,
                    const size_t seed_,
                    chromosome* population_,
                    chromosome* next_population_,
@@ -57,13 +63,17 @@ namespace mudock {
     void operator()();
     void initialize();
     void finalize();
+    inline void set_population_buffers(chromosome* population_, chromosome* next_population_) {
+      population      = population_;
+      next_population = next_population_;
+    }
 
   private:
     int batch_ligands;
     int population_number;
     int num_generations;
     int tournament_length;
-    int mutation_prob;
+    fp_type mutation_prob;
     chromosome* __restrict__ population;
     chromosome* __restrict__ next_population;
     int* __restrict__ num_rotamers_b;
@@ -74,10 +84,12 @@ namespace mudock {
     std::shared_ptr<queue_type> q;
   };
 
-#ifndef __CUDACC__
+#if !defined(__CUDACC__) && !defined(__HIPCC__)
   template<typename queue_t, template<typename> typename scoring_t>
     requires std::derived_from<queue_t, queue> && std::derived_from<scoring_t<queue_t>, scoring<queue_t>>
   struct genetic: public docking<queue_t> {
+    static constexpr const char stage_name[] = "GENETIC";
+
     genetic(std::shared_ptr<scratchpad<queue_t>> _scratch,
             dynamic_molecule& protein,
             std::shared_ptr<scoring_t<queue_t>> _scoring)
@@ -90,8 +102,8 @@ namespace mudock {
     void prepare(batch<static_molecule>& batch) {
       const knobs& configuration  = (*this->scratch).configuration;
       batch_ligands               = batch.num_ligands;
-      num_generations             = configuration.num_generations;
-      const int population_number = configuration.population_number;
+      num_generations             = static_cast<int>(configuration.num_generations);
+      const int population_number = static_cast<int>(configuration.population_number);
       auto q                      = (*this->scratch).get_queue();
 
       auto& num_rotamers_b = (*this->scratch).template get<buffer_data_type::NUM_ROTAMERS>();
@@ -136,33 +148,121 @@ namespace mudock {
 
     };
     void operator()() {
-      auto& chromosomes_b = (*this->scratch).template get<buffer_data_type::CHROMOSOMES>();
+      auto& chromosomes_b              = (*this->scratch).template get<buffer_data_type::CHROMOSOMES>();
+      chromosome* current_population_p = chromosomes_b.dev_pointer();
+      chromosome* next_population_p    = next_population.dev_pointer();
 
       assert(kernel && "Kernel method not yet prepared");
+      kernel->set_population_buffers(current_population_p, next_population_p);
+      geom_trans.set_chromosomes_buffer(current_population_p);
       kernel->initialize();
 
       for (int generation = 0; generation < num_generations; ++generation) {
         geom_trans();
         (*score_stage)();
         (*kernel)();
-        chromosomes_b.copy_device2device(next_population);
+
+        // Avoid full device-to-device copy by ping-ponging population buffers.
+        if (generation + 1 < num_generations) {
+          std::swap(current_population_p, next_population_p);
+          kernel->set_population_buffers(current_population_p, next_population_p);
+          geom_trans.set_chromosomes_buffer(current_population_p);
+        }
       }
+      kernel->set_population_buffers(current_population_p, next_population_p);
       kernel->finalize();
     };
 
-    static int get_ligand_mem(const int max_atoms, const knobs conf) {
-      int mem{0};
-
-      mem += sizeof(int);                                 // num_rotamers
-      mem += sizeof(chromosome) * conf.population_number; // chromosomes
-      mem += sizeof(chromosome) * conf.population_number; //next population
-      mem += sizeof(fp_type) * conf.population_number;    //scores
-      mem += sizeof(chromosome);                          // best chromosomes
-      mem += sizeof(fp_type);                             // best scores
-
-      mem += scoring_t<queue_t>::get_ligand_mem(max_atoms, conf);
-      mem += geometric<queue_t>::get_ligand_mem(max_atoms, conf);
+    static std::size_t get_shared_ligand_mem(const int max_atoms, const knobs conf) {
+      const int chromosomes_per_ligand = std::max(1, static_cast<int>(conf.population_number));
+      std::size_t mem{0};
+      mem += sizeof(int);                                              // num_atoms
+      mem += sizeof(int);                                              // num_rotamers
+      mem += sizeof(chromosome) * chromosomes_per_ligand;              // chromosomes
+      mem += sizeof(fp_type) * chromosomes_per_ligand;                 // scores
+      mem += 3 * sizeof(fp_type) * max_atoms;                          // coords
+      mem += 3 * sizeof(fp_type) * max_atoms * chromosomes_per_ligand; // coord scratch
       return mem;
+    }
+
+    static std::size_t get_private_ligand_mem(const int max_atoms, const knobs conf) {
+      std::size_t mem{0};
+      mem += sizeof(chromosome) * std::max(1, static_cast<int>(conf.population_number)); // next population
+      mem += sizeof(chromosome);                                                         // best chromosomes
+      mem += sizeof(fp_type);                                                            // best scores
+      mem += scoring_t<queue_t>::get_private_ligand_mem(max_atoms, conf);
+      mem += geometric<queue_t>::get_private_ligand_mem(max_atoms, conf);
+      return mem;
+    }
+
+    static int get_ligand_mem(const int max_atoms, const knobs conf) {
+      return static_cast<int>(get_shared_ligand_mem(max_atoms, conf) +
+                              get_private_ligand_mem(max_atoms, conf));
+    }
+
+    static batch_multiple get_batch_size(const int atoms,
+                                         std::shared_ptr<queue_t> q,
+                                         const knobs& conf,
+                                         const size_t max_bucket_size) {
+      (void) max_bucket_size;
+      const auto score_bucket_info =
+          normalize_batch_multiple(scoring_t<queue_t>::get_batch_size(atoms, q, conf, max_bucket_size));
+      const auto geom_bucket_info =
+          normalize_batch_multiple(geometric<queue_t>::get_batch_size(atoms, q, conf, max_bucket_size));
+      const int score_total = score_bucket_info.total_multiple();
+      const int geom_total  = geom_bucket_info.total_multiple();
+
+      batch_multiple selected_info{};
+      const char* combine_policy = "MIN";
+  #ifdef MUDOCK_GENETIC_BUCKET_COMBINE_SCORE_ONLY
+      selected_info  = score_bucket_info;
+      combine_policy = "SCORE_ONLY";
+  #elif defined(MUDOCK_GENETIC_BUCKET_COMBINE_GEOM_ONLY)
+      selected_info  = geom_bucket_info;
+      combine_policy = "GEOM_ONLY";
+  #elif defined(MUDOCK_GENETIC_BUCKET_COMBINE_LCM)
+      {
+        const long long lcm_total =
+            std::lcm(static_cast<long long>(score_total), static_cast<long long>(geom_total));
+        if (lcm_total <= 0 || lcm_total > static_cast<long long>(std::numeric_limits<int>::max())) {
+          throw std::runtime_error("GENETIC stage LCM combine overflowed int range");
+        }
+        // LCM is a pure combined multiplicity; represent it as total x 1.
+        selected_info = batch_multiple{static_cast<int>(lcm_total), 1};
+      }
+      combine_policy = "LCM";
+  #else
+      if (score_total <= geom_total) {
+        selected_info = score_bucket_info;
+      } else {
+        selected_info = geom_bucket_info;
+      }
+  #endif
+      selected_info = normalize_batch_multiple(selected_info);
+      mudock::stage_bucket_trace("GENETIC stage combine for ",
+                                 atoms,
+                                 " atoms: score_multiple=",
+                                 score_total,
+                                 " (",
+                                 score_bucket_info.active_blocks_per_sm,
+                                 "x",
+                                 score_bucket_info.num_sms,
+                                 "), geom_multiple=",
+                                 geom_total,
+                                 " (",
+                                 geom_bucket_info.active_blocks_per_sm,
+                                 "x",
+                                 geom_bucket_info.num_sms,
+                                 ") policy=",
+                                 combine_policy,
+                                 " -> selected_plain_multiple=",
+                                 selected_info.total_multiple(),
+                                 " (",
+                                 selected_info.active_blocks_per_sm,
+                                 "x",
+                                 selected_info.num_sms,
+                                 ")");
+      return selected_info;
     }
 
   private:

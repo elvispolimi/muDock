@@ -7,24 +7,29 @@
 #include <mudock/chem/autodock_ligand.hpp>
 #include <mudock/chem/autodock_protein.hpp>
 #include <mudock/compute/adt_score_kernel.hpp>
-#ifndef __CUDACC__
+#include <mudock/compute/batch_multiple.hpp>
+#if !defined(__CUDACC__) && !defined(__HIPCC__)
   #include <mudock/compute/buffer_utils.hpp>
   #include <mudock/compute/scoring.hpp>
   #include <mudock/compute/scratchpad.hpp>
 #endif
+#include <mudock/log.hpp>
 #include <mudock/molecule.hpp>
 #include <mudock/type_alias.hpp>
 
 namespace mudock {
 
   template<typename queue_type>
-  // requires std::derived_from<queue_type, queue>
-  int get_adt_score_batch(const int, std::shared_ptr<queue_type>, const size_t);
+  batch_multiple get_adt_score_batch_multiple(const int, std::shared_ptr<queue_type>) {
+    return {};
+  }
 
-#ifndef __CUDACC__
+#if !defined(__CUDACC__) && !defined(__HIPCC__)
   // TODO check that the object type and the kernel impl are the same
   template<typename queue_type>
   struct adt_score: public differentiable_scoring<queue_type> {
+    static constexpr const char stage_name[] = "ADT";
+
     adt_score(std::shared_ptr<scratchpad<queue_type>> _scratch,
               std::shared_ptr<scratchpad<queue_type>> _device_scratch,
               dynamic_molecule &protein)
@@ -67,9 +72,9 @@ namespace mudock {
         std::memcpy(prot_min(), adt_prot.get_min_p(), 3 * sizeof(fp_type));
         std::memcpy(prot_max(), adt_prot.get_max_p(), 3 * sizeof(fp_type));
         std::memcpy(prot_center(), adt_prot.get_center_p(), 3 * sizeof(fp_type));
-        prot_index_x()[0]   = adt_prot.get_size_x();
-        prot_index_xy()[0]  = adt_prot.get_size_xy();
-        prot_index_xyz()[0] = adt_prot.get_size_xyz();
+        prot_index_x()[0]   = static_cast<int>(adt_prot.get_size_x());
+        prot_index_xy()[0]  = static_cast<int>(adt_prot.get_size_xy());
+        prot_index_xyz()[0] = static_cast<int>(adt_prot.get_size_xyz());
         std::memcpy(prot_grid_maps(),
                     adt_prot.get_maps_pointer(),
                     adt_prot.get_map_flat_size() * num_autodock_grids() * sizeof(fp_type));
@@ -180,7 +185,7 @@ namespace mudock {
         std::memcpy((void *) (nonbond_xB() + num_nonbond()[ligand_index]),
                     adt_ligand.non_bond_xB(),
                     non_bond_size * sizeof(int));
-        num_nonbond()[ligand_index + 1] = num_nonbond()[ligand_index] + non_bond_size;
+        num_nonbond()[ligand_index + 1] = static_cast<int>(num_nonbond()[ligand_index] + non_bond_size);
 
         // Autodock typing
         std::memcpy((void *) (vols() + stride_atoms), adt_ligand.vol(), num_atoms * sizeof(fp_type));
@@ -369,28 +374,25 @@ namespace mudock {
     }
 
     // TODO L should this include gradient things?
-    static int get_ligand_mem(const int max_atoms, const knobs conf) {
-      int mem{0};
+    static std::size_t get_shared_ligand_mem(const int max_atoms, const knobs conf) {
       const int scores_per_ligand = std::max(1, static_cast<int>(conf.population_number));
-      const int non_bonds_atoms   = max_atoms * max_atoms;
+      return sizeof(int) + sizeof(int) + sizeof(fp_type) * scores_per_ligand +
+             3 * sizeof(fp_type) * max_atoms * scores_per_ligand;
+    }
 
-      mem += sizeof(fp_type) * scores_per_ligand;             // scores
-      mem += sizeof(int);                                     // num atoms
-      mem += sizeof(int);                                     // num rotamers;
-      mem += sizeof(fp_type) * max_atoms * scores_per_ligand; // x scratchs
-      mem += sizeof(fp_type) * max_atoms * scores_per_ligand; // y scratchs
-      mem += sizeof(fp_type) * max_atoms * scores_per_ligand; // z scratchs
-
-      mem += sizeof(fp_type) * max_atoms;       //vols
-      mem += sizeof(fp_type) * max_atoms;       //solpars
-      mem += sizeof(fp_type) * max_atoms;       //charges
-      mem += sizeof(int) * max_atoms;           //map_offsets
-      mem += sizeof(int);                       //num_nonbond
-      mem += sizeof(int) * non_bonds_atoms;     //nonbond_a1
-      mem += sizeof(int) * non_bonds_atoms;     //nonbond_a2
-      mem += sizeof(fp_type) * non_bonds_atoms; //nonbond_cA
-      mem += sizeof(fp_type) * non_bonds_atoms; //nonbond_cB
-      mem += sizeof(int) * non_bonds_atoms;     //nonbond_xB
+    static std::size_t get_private_ligand_mem(const int max_atoms, const knobs) {
+      const int non_bonds_atoms = max_atoms * max_atoms;
+      std::size_t mem{0};
+      mem += sizeof(fp_type) * max_atoms;       // vols
+      mem += sizeof(fp_type) * max_atoms;       // solpars
+      mem += sizeof(fp_type) * max_atoms;       // charges
+      mem += sizeof(int) * max_atoms;           // map_offsets
+      mem += sizeof(int);                       // num_nonbond
+      mem += sizeof(int) * non_bonds_atoms;     // nonbond_a1
+      mem += sizeof(int) * non_bonds_atoms;     // nonbond_a2
+      mem += sizeof(fp_type) * non_bonds_atoms; // nonbond_cA
+      mem += sizeof(fp_type) * non_bonds_atoms; // nonbond_cB
+      mem += sizeof(int) * non_bonds_atoms;     // nonbond_xB
 
       const int batch_rotamers              = max_atoms - 3;
       const int tot_rotamers_atoms_in_batch = max_atoms * batch_rotamers;
@@ -405,6 +407,33 @@ namespace mudock {
       mem += sizeof(fp_type) * max_atoms; //z_coords_b
       
       return mem;
+    }
+
+    static int get_ligand_mem(const int max_atoms, const knobs conf) {
+      return static_cast<int>(get_shared_ligand_mem(max_atoms, conf) +
+                              get_private_ligand_mem(max_atoms, conf));
+    }
+
+    static batch_multiple get_batch_size(const int atoms,
+                                         std::shared_ptr<queue_type> q,
+                                         const knobs &conf,
+                                         const size_t max_bucket_size) {
+      (void) conf;
+      const auto plain_multiple_info =
+          normalize_batch_multiple(get_adt_score_batch_multiple<queue_type>(atoms, q));
+      mudock::stage_bucket_trace("ADT stage plain multiple for ",
+                                 atoms,
+                                 " atoms -> total=",
+                                 plain_multiple_info.total_multiple(),
+                                 " (active_blocks_per_sm=",
+                                 plain_multiple_info.active_blocks_per_sm,
+                                 ", num_sms=",
+                                 plain_multiple_info.num_sms,
+                                 ")",
+                                 " (max_bucket_size hint=",
+                                 max_bucket_size,
+                                 ")");
+      return plain_multiple_info;
     }
 
   private:
@@ -435,8 +464,8 @@ namespace mudock {
     void teardown_impl(batch<static_molecule> &batch) override {
       assert(batch.num_ligands == batch_ligands && "Scoring algorithm received different batch for teardown");
 
-      auto &scores_b               = (*this->scratch).template get<buffer_data_type::SCORES>();
-      const auto scores_per_ligand = scores_b.num_elements() / batch_ligands;
+      auto &scores_b              = (*this->scratch).template get<buffer_data_type::SCORES>();
+      const int scores_per_ligand = static_cast<int>(scores_b.num_elements() / batch_ligands);
       scores_b.copy_device2host();
       (*this->scratch).get_queue()->synchronize();
       for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {

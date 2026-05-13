@@ -38,9 +38,9 @@ namespace mudock {
       c.y() += y[i];
       c.z() += z[i];
     }
-    c.x() /= num_atoms;
-    c.y() /= num_atoms;
-    c.z() /= num_atoms;
+    c.x() /= static_cast<fp_type>(num_atoms);
+    c.y() /= static_cast<fp_type>(num_atoms);
+    c.z() /= static_cast<fp_type>(num_atoms);
 
     // compute the angles sine and cosine
     const auto rad_x = deg_to_rad(angle_x), rad_y = deg_to_rad(angle_y), rad_z = deg_to_rad(angle_z);

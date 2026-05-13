@@ -29,12 +29,12 @@ namespace mudock {
 
     [[maybe_unused]] const std::size_t num_atoms = molecule.num_atoms();
 
-    std::size_t index = 0;
+    int index = 0;
     std::string line;
     while (std::getline(desc_s, line)) {
       if (line.find(pdbqt::PDBQT_ATOM_TOKEN) != std::string::npos ||
           line.find(pdbqt::PDBQT_HETATOM_TOKEN) != std::string::npos) {
-        assert(index < num_atoms);
+        assert(index < static_cast<int>(num_atoms));
         // FIXMED Really bad, at the moment we rely on OpenBabel PDBQT structure
         // What if PDBQT is standardized..
         if (line.size() < 79)
