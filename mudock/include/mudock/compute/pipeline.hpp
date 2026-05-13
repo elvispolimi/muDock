@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <mudock/compute/adt_score.hpp>
+#include <mudock/compute/local_search.hpp>
 #include <mudock/compute/adadelta.hpp>
 #include <mudock/compute/genetic.hpp>
 #include <mudock/compute/lamarckian_genetic.hpp>
@@ -98,4 +99,28 @@ namespace mudock {
       return get_adt_score_batch<queue_type>(atoms, q, max_mem / mem);
     }
   };
+
+  // TODO L this should be local search generic and be able to accept an implementation. 
+  // For the moment adadelta + adt_score is hardcoded.
+  struct local_search_pipeline: pipeline {
+    template<typename queue_type>
+    adadelta<queue_type, adt_score> get_pipeline(const knobs& conf,
+                                                      const int id,
+                                                      const device_type dev_type,
+                                                      std::shared_ptr<scratchpad<queue_type>> device_scratch) {
+      auto q       = std::make_shared<mudock::scratchpad<queue_type>>(conf, id, dev_type);
+      auto scoring = std::make_shared<mudock::adt_score<queue_type>>(q, device_scratch, *protein);
+      return adadelta<queue_type, adt_score>(q, scoring);
+    }
+
+    template<typename queue_type>
+    static int get_batch_size(const int atoms,
+                              std::shared_ptr<queue_type> q,
+                              const knobs& conf,
+                              const size_t max_mem = 1000000000) {
+      const int mem = adadelta<queue_type, adt_score>::get_ligand_mem(atoms, conf);
+      return get_adt_score_batch<queue_type>(atoms, q, max_mem / mem);
+    }
+  };
+
 } // namespace mudock

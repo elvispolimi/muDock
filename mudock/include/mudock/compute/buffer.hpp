@@ -35,7 +35,9 @@ namespace mudock {
     PROT_SIZE_XYZ,
     PROT_GRID_MAPS,
     ADADELTA_E_G2,
-    ADADELTA_E_DW2
+    ADADELTA_E_DW2,
+    STALL_COUNTER,
+    INACTIVE
   };
 
   using buffer_type_list = std::tuple<fp_type, int, chromosome>;
@@ -138,6 +140,14 @@ namespace mudock {
   template<>
   struct buffer_type_traits<buffer_data_type::ADADELTA_E_DW2> {
     using type = buffer_type_traits_impl<buffer_data_type::ADADELTA_E_DW2, chromosome>::type;
+  };
+  template<>
+  struct buffer_type_traits<buffer_data_type::STALL_COUNTER> {
+    using type = buffer_type_traits_impl<buffer_data_type::STALL_COUNTER, int>::type;
+  };
+  template<>
+  struct buffer_type_traits<buffer_data_type::INACTIVE> {
+    using type = buffer_type_traits_impl<buffer_data_type::INACTIVE, int>::type;
   };
 
   template<template<class...> class container_type, typename T, class queue_t, class... args>

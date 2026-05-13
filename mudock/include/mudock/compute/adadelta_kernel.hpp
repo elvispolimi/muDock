@@ -20,6 +20,8 @@ namespace mudock {
                     chromosome *__restrict__ population_b_,
                     chromosome *__restrict__ adadelta_e_g2_b_,
                     chromosome *__restrict__ adadelta_e_dw2_b_,
+                    int *__restrict__ stall_counter_b_,
+                    int *__restrict__ inactive_b_,
                     std::shared_ptr<queue_type> q_)
         : individuals_per_ligand(individuals_per_ligand_),
           batch_ligands(batch_ligands_),
@@ -28,11 +30,13 @@ namespace mudock {
           population_b(population_b_),
           adadelta_e_g2_b(adadelta_e_g2_b_),
           adadelta_e_dw2_b(adadelta_e_dw2_b_),
+          stall_counter_b(stall_counter_b_),
+          inactive_b(inactive_b_),
           q(q_) {}
 
     void operator()();
     void compute_gradients();
-    void apply_adadelta();
+    void apply_adadelta(int i);
 
     adadelta_kernel(const adadelta_kernel &)            = default;
     adadelta_kernel(adadelta_kernel &&)                 = default;
@@ -49,6 +53,8 @@ namespace mudock {
     chromosome* population_b;
     chromosome *__restrict__ adadelta_e_g2_b;
     chromosome *__restrict__ adadelta_e_dw2_b;
+    int *__restrict__ stall_counter_b;
+    int *__restrict__ inactive_b;
     std::shared_ptr<queue_type> q;
   };
 
