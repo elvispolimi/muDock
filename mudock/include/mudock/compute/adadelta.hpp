@@ -21,7 +21,7 @@ namespace mudock {
 
   #define ADADELTA_RHO 0.85f
   #define ADADELTA_EPSILON 1e-6f
-  #define ADADELTA_CONVERGENCE_THRESHOLD 1e-6f // TODO L resettare a 1e-6f
+  #define ADADELTA_CONVERGENCE_THRESHOLD 1e-6f
   #define ADADELTA_CONVERGENCE_PATIENCE 5
 
   #ifndef __CUDACC__

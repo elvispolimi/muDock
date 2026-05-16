@@ -69,6 +69,7 @@ namespace mudock {
             && std::derived_from<scoring_t<queue_t>, scoring<queue_t>>
             && std::derived_from<local_search_t<queue_t, scoring_t>, local_search<queue_t, scoring_t>>
   struct lamarckian_genetic : public genetic<queue_t, scoring_t> {
+    static constexpr const char stage_name[] = "LAMARCKIAN_GENETIC";
     // Inherit constructor and most logic from genetic
     lamarckian_genetic(std::shared_ptr<scratchpad<queue_t>> _scratch,
                       dynamic_molecule& _protein,

@@ -5,6 +5,7 @@
 #include <mudock/cpp_implementation/queue_cpp.hpp>
 #include <mudock/compute/adadelta_kernel.hpp>
 #include <mudock/compute/adadelta.hpp>
+#include <mudock/cpp_implementation/adadelta_cpp.hpp>
 #include <cmath>
 
 namespace mudock {

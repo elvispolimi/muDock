@@ -90,7 +90,8 @@ namespace mudock {
                                                 const device_type dev_type,
                                                 std::shared_ptr<scratchpad<queue_type>> device_scratch) {
       auto q = std::make_shared<mudock::scratchpad<queue_type>>(conf, id, dev_type);
-      return genetic<queue_type, scoring_t>(q, *protein, scoring_t<queue_type>(q, device_scratch, *protein));
+      auto scoring = std::make_shared<scoring_t<queue_type>>(q, device_scratch, *protein);
+      return genetic<queue_type, scoring_t>(q, *protein, scoring);
     }
 
     template<typename queue_type>
@@ -125,19 +126,27 @@ namespace mudock {
     }
   };
 
-  // TODO i don't know if this is correct
-  struct lga_adt_adadelta_pipeline: pipeline {
+  template<
+      template<typename> typename scoring_t,
+      template<typename, template<typename> typename> typename local_search_t
+  >
+  struct lamarckian_genetic_scoring_pipeline: pipeline {
+    using pipeline::pipeline;
+
     template<typename queue_type>
-    lamarckian_genetic<queue_type, adt_score, adadelta> get_pipeline(const knobs& conf,
+    lamarckian_genetic<
+        queue_type, 
+        scoring_t, 
+        local_search_t
+    >
+    get_pipeline(const knobs& conf,
                                                 const int id,
                                                 const device_type dev_type,
                                                 std::shared_ptr<scratchpad<queue_type>> device_scratch) {
       auto q = std::make_shared<mudock::scratchpad<queue_type>>(conf, id, dev_type);
-      auto scoring = std::make_shared<mudock::adt_score<queue_type>>(q, device_scratch, *protein);
-      return lamarckian_genetic<queue_type, adt_score, adadelta>(q,
-                                            *protein,
-                                            scoring,
-                                            mudock::adadelta<queue_type, adt_score>(q, scoring));
+      auto scoring = std::make_shared<scoring_t<queue_type>>(q, device_scratch, *protein);
+      auto local_search = local_search_t<queue_type, scoring_t>(q, scoring);
+      return lamarckian_genetic<queue_type, scoring_t, local_search_t>(q, *protein, scoring, std::move(local_search));
     }
 
     template<typename queue_type>
@@ -145,10 +154,33 @@ namespace mudock {
                               std::shared_ptr<queue_type> q,
                               const knobs& conf,
                               const size_t max_mem = 1000000000) {
-      const int mem = lamarckian_genetic<queue_type, adt_score, adadelta>::get_ligand_mem(atoms, conf);
-      return get_adt_score_batch<queue_type>(atoms, q, max_mem / mem);
+      const size_t mem_per_ligand =
+          static_cast<size_t>(lamarckian_genetic<queue_type, scoring_t, local_search_t>::get_ligand_mem(atoms, conf));
+      const size_t max_bucket_size = std::max<size_t>(1, max_mem / mem_per_ligand);
+      mudock::stage_bucket_trace("PIPELINE(",
+                                 lamarckian_genetic<queue_type, scoring_t, local_search_t>::stage_name,
+                                 ") pre-resolve for ",
+                                 atoms,
+                                 " atoms: mem_budget=",
+                                 max_mem,
+                                 " B, mem_per_ligand=",
+                                 mem_per_ligand,
+                                 " B, max_bucket_size=",
+                                 max_bucket_size);
+      return resolve_stage_bucket_size(lamarckian_genetic<queue_type, scoring_t, local_search_t>::stage_name,
+                                       atoms,
+                                       max_bucket_size,
+                                       mem_per_ligand,
+                                       q->honors_stage_bucket_policy(),
+                                       [&]() {
+                                         return lamarckian_genetic<queue_type, scoring_t, local_search_t>::get_batch_size(atoms,
+                                                                                                q,
+                                                                                                conf,
+                                                                                                max_bucket_size);
+                                       });
     }
   };
+
 
   // TODO L this should be local search generic and be able to accept an implementation. 
   // For the moment adadelta + adt_score is hardcoded.
@@ -169,10 +201,11 @@ namespace mudock {
                               const knobs& conf,
                               const size_t max_mem = 1000000000) {
       const int mem = adadelta<queue_type, adt_score>::get_ligand_mem(atoms, conf);
-      return get_adt_score_batch<queue_type>(atoms, q, max_mem / mem);
+      return get_adt_score_batch_multiple<queue_type>(atoms, q, max_mem / mem);
     }
   };
 
-  using adt_score_pipeline   = scoring_pipeline<adt_score>;
-  using genetic_adt_pipeline = genetic_scoring_pipeline<adt_score>;
+  using adt_score_pipeline                  = scoring_pipeline<adt_score>;
+  using genetic_adt_pipeline                = genetic_scoring_pipeline<adt_score>;
+  using lamarckian_genetic_adt_adadelta_pipeline = lamarckian_genetic_scoring_pipeline<adt_score, adadelta>;
 } // namespace mudock
