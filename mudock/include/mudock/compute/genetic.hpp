@@ -157,6 +157,7 @@ namespace mudock {
       geom_trans.set_chromosomes_buffer(current_population_p);
       kernel->initialize();
 
+      printf("Running GA...\n");
       for (int generation = 0; generation < num_generations; ++generation) {
         geom_trans();
         (*score_stage)();

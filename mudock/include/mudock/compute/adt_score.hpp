@@ -453,9 +453,9 @@ namespace mudock {
 
     buffer_vector<int, queue_type> ligand_fragments;
     buffer_vector<int, queue_type> ligand_fragments_start;
-    buffer_vector<int, queue_type> frag_indices_start;
     buffer_vector<int, queue_type> frag_start_atom_indices;
     buffer_vector<int, queue_type> frag_stop_atom_indices;
+    buffer_vector<int, queue_type> frag_indices_start;
 
     std::shared_ptr<scratchpad<queue_type>> device_scratch;
     std::unique_ptr<adt_score_kernel<queue_type>> score_kernel;

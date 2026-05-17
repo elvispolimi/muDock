@@ -46,8 +46,8 @@ namespace mudock {
     ~adadelta_kernel() = default;
 
   private:
-    const int batch_ligands;
     const int individuals_per_ligand;
+    const int batch_ligands;
     std::shared_ptr<differentiable_scoring<queue_type>> score_stage;
     gradient *__restrict__ gradients_b;
     chromosome* population_b;

@@ -81,8 +81,8 @@ namespace mudock {
     void prepare(batch<static_molecule>& batch) override {
       const knobs& configuration  = (*this->scratch).configuration;
       this->batch_ligands         = batch.num_ligands;
-      this->num_generations       = configuration.num_generations;
-      const int population_number = configuration.population_number;
+      this->num_generations       = static_cast<int>(configuration.num_generations);
+      const int population_number = static_cast<int>(configuration.population_number);
       auto q                      = (*this->scratch).get_queue();
 
       auto& num_rotamers_b = (*this->scratch).template get<buffer_data_type::NUM_ROTAMERS>();
@@ -133,8 +133,8 @@ namespace mudock {
       assert(this->lamarckian_kernel && "lamarckian_kernel method not yet prepared");
       this->lamarckian_kernel->initialize();
 
+      printf("Running LGA...\n");
       for (int generation = 0; generation < this->num_generations; ++generation) {
-        printf("LGA gen %d\n", generation);
         this->geom_trans();
         (*this->score_stage)();
         local_search_stage();
@@ -146,7 +146,7 @@ namespace mudock {
 
     // TODO: Adapt this get mem 
     static int get_ligand_mem(const int max_atoms, const knobs conf) {
-      int mem{0};
+      std::size_t mem{0};
 
       mem += sizeof(int);                                 // num_rotamers
       mem += sizeof(chromosome) * conf.population_number; // chromosomes
@@ -158,7 +158,7 @@ namespace mudock {
       mem += scoring_t<queue_t>::get_ligand_mem(max_atoms, conf);
       mem += geometric<queue_t>::get_ligand_mem(max_atoms, conf);
       mem += local_search_t<queue_t, scoring_t>::get_ligand_mem(max_atoms, conf);
-      return mem;
+      return static_cast<int>(mem);
     }
 
   private:

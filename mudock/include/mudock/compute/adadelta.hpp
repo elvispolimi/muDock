@@ -104,12 +104,12 @@ namespace mudock {
       // TODO L try to move the reset of inactives here which is more elegant, for now it is in adadelta cpp
 
 
-      for (int i = 0; i < this->iterations; ++i) {
+      for (std::size_t i = 0; i < this->iterations; ++i) {
         if (coordinate_update) {
           coordinate_update();
         }
         ls_ad_kernel->compute_gradients();
-        ls_ad_kernel->apply_adadelta(i);
+        ls_ad_kernel->apply_adadelta(static_cast<int>(i));
       }
 
     }
@@ -117,8 +117,10 @@ namespace mudock {
     void set_coordinate_update(std::function<void()> update) { coordinate_update = std::move(update); }
 
     static int get_ligand_mem(const int max_atoms, const knobs conf) {
-      int mem{0};
+      std::size_t mem{0};
       const int individuals_per_ligand = std::max(1, static_cast<int>(conf.population_number));
+
+      mem += scoring_t<queue_type>::get_ligand_mem(max_atoms, conf);
 
       // One gradient per individual per ligand
       mem += sizeof(gradient) * individuals_per_ligand;
@@ -127,7 +129,7 @@ namespace mudock {
       mem += sizeof(chromosome) * individuals_per_ligand; // E[delta_w^2]
       mem += sizeof(int) * individuals_per_ligand;        // stall counter
       mem += sizeof(int) * individuals_per_ligand;        // inactive flag
-      return mem;
+      return static_cast<int>(mem);
     }
 
     static batch_multiple get_batch_size(const int atoms,

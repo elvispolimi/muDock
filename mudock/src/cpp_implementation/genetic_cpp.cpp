@@ -109,6 +109,18 @@ namespace mudock {
       chromosome* __restrict__ population_l      = population + population_number * ligand_index;
       chromosome* __restrict__ next_population_l = next_population + population_number * ligand_index;
       fp_type* __restrict__ scores               = scores_b + population_number * ligand_index;
+
+      // TODO L remove this print
+      // print best score
+      fp_type best = scores[0];
+      for(int i = 0; i < population_number; ++i){
+        if (scores[i] < best){
+          best = scores[i];
+        }
+      }
+      printf("Best score: %f\n", best);
+      // end print best score 
+
       // Generate the new population
       for (int element_index = 0; element_index < population_number; ++element_index) {
         auto& next_individual = next_population_l[element_index];

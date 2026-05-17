@@ -41,15 +41,16 @@ namespace mudock {
         int &inactive = inactive_l[individual_index];
 
         // Reset values for in each generation of genetic.
-        // TODO L this reset is crap. make it better
+        // TODO L this reset is garbage. make it better
         if (i == 0){
           stall_counter = 0;
           inactive = 0;
         }
         
         // Skip individual if it already converged 
+        // TODO remove comment to enable early stop
         if (inactive == 1){
-          //printf("id: %d iter: %d, skipping for ES...\n", individual_index, i);
+          // printf("id: %d iter: %d, skipping for ES...\n", individual_index, i);
           continue;
         }
 
@@ -82,7 +83,7 @@ namespace mudock {
         // - chiedere a gianmarco se ha gia fatto to_mol2
 
         if(i % 5 == 0){
-          printf("id: %d iter: %d, delta_norm2: %f\n", individual_index, i, delta_norm2);
+          //printf("id: %d iter: %d, delta_norm2: %f\n", individual_index, i, delta_norm2);
         }
 
         // Checking convergence
@@ -94,7 +95,7 @@ namespace mudock {
         }
         if (stall_counter >= ADADELTA_CONVERGENCE_PATIENCE){
           inactive = 1;
-          printf("HIT CONVERGENCE - id: %d at iter: %d\n", individual_index, i);
+          //printf("HIT CONVERGENCE - id: %d at iter: %d\n", individual_index, i);
         }
 
       }

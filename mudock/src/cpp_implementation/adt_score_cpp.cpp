@@ -29,15 +29,15 @@ namespace mudock {
   inline void get_grid_values(const fp_type *__restrict__ map,
                               const int &map_index_x,
                               const int &map_index_xy,
-                              const fp_type* (&out_values)[8]) {
-    out_values[0] = &map[0];
-    out_values[1] = &map[map_index_xy];
-    out_values[2] = &map[map_index_x];
-    out_values[3] = &map[map_index_x + map_index_xy];
-    out_values[4] = &map[1];
-    out_values[5] = &map[1 + map_index_xy];
-    out_values[6] = &map[1 + map_index_x];
-    out_values[7] = &map[1 + map_index_x + map_index_xy];
+                              fp_type *__restrict__ out_values) {
+    out_values[0] = map[0];
+    out_values[1] = map[map_index_xy];
+    out_values[2] = map[map_index_x];
+    out_values[3] = map[map_index_x + map_index_xy];
+    out_values[4] = map[1];
+    out_values[5] = map[1 + map_index_xy];
+    out_values[6] = map[1 + map_index_x];
+    out_values[7] = map[1 + map_index_x + map_index_xy];
   }
 
   inline fp_type dot_product(const point3D& u, const point3D& v){
@@ -321,22 +321,22 @@ namespace mudock {
             coord[1] = (coord[1] - minimum[1]) * inv_spacing;
             coord[2] = (coord[2] - minimum[2]) * inv_spacing;
 
-            const int u0      = coord[0];
+            const int u0      = static_cast<int>(coord[0]);
             const fp_type p0u = coord[0] - static_cast<fp_type>(u0);
             const fp_type p1u = fp_type{1} - p0u;
 
-            const int v0      = coord[1];
+            const int v0      = static_cast<int>(coord[1]);
             const fp_type p0v = coord[1] - static_cast<fp_type>(v0);
             const fp_type p1v = fp_type{1} - p0v;
 
-            const int w0      = coord[2];
+            const int w0      = static_cast<int>(coord[2]);
             const fp_type p0w = coord[2] - static_cast<fp_type>(w0);
             const fp_type p1w = fp_type{1} - p0w;
 
             // Precompute flattened indices
             const int base_index = FLATTENED_3D(u0, v0, w0, map_index_x, map_index_xy);
             // Trilinear Interpolationp
-            const fp_type* grid_values[8];
+            fp_type grid_values[8];
             get_grid_values(electro_map + base_index, map_index_x, map_index_xy, grid_values);
             dE_dX[index].x() += inv_spacing * atom_charge * (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
             dE_dX[index].y() += inv_spacing * atom_charge * (p1w * (p1u * (grid_values[2] - grid_values[0]) + p0u * (grid_values[6] - grid_values[4])) + p0w * (p1u * (grid_values[3] - grid_values[1]) + p0u * (grid_values[7] - grid_values[5])));
@@ -428,9 +428,6 @@ namespace mudock {
 
             fp_type dE_dr_vdw = 0;
             if (distance_two_clamp < nbc2) {
-              //  Find internal energy parameters, i.e.  epsilon and r-equilibrium values...
-              //  Lennard-Jones and Hydrogen Bond Potentials
-              // This can be precomputed as in intnbtable.cc
               const int xA = xA_default;
               const int xB = nonbond_xB_l[i];
 
@@ -446,7 +443,7 @@ namespace mudock {
                 // VdW derivative
                 const fp_type rA1 = rA * inv_r; // r^{-(xA+1)}
                 const fp_type rB1 = rB * inv_r; // r^{-(xB+1)}
-                dE_dr_vdw = -xA * cA * rA1 + xB * cB * rB1;
+                dE_dr_vdw = -static_cast<fp_type>(xA) * cA * rA1 + static_cast<fp_type>(xB) * cB * rB1;
               }
             }
 
