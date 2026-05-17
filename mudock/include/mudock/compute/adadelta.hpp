@@ -7,6 +7,7 @@
 #include <mudock/chem/autodock_grid_types.hpp>
 #include <mudock/chem/autodock_ligand.hpp>
 #include <mudock/chem/autodock_protein.hpp>
+#include <mudock/compute/batch_multiple.hpp>
 #include <mudock/compute/adadelta_kernel.hpp>
 #include <mudock/compute/local_search.hpp>
 #ifndef __CUDACC__
@@ -28,6 +29,8 @@ namespace mudock {
   // TODO check that the object type and the kernel impl are the same
   template<typename queue_type, template<typename> typename scoring_t>
   struct adadelta: public local_search<queue_type, scoring_t> {
+    static constexpr const char stage_name[] = "ADADELTA";
+    
     adadelta(std::shared_ptr<scratchpad<queue_type>> _scratch,
              std::shared_ptr<scoring_t<queue_type>> _score) 
              : local_search<queue_type, scoring_t>(_scratch, _score) {}
@@ -125,6 +128,28 @@ namespace mudock {
       mem += sizeof(int) * individuals_per_ligand;        // stall counter
       mem += sizeof(int) * individuals_per_ligand;        // inactive flag
       return mem;
+    }
+
+    static batch_multiple get_batch_size(const int atoms,
+                                         std::shared_ptr<queue_type> q,
+                                         const knobs &conf,
+                                         const size_t max_bucket_size) {
+      (void) conf;
+      const auto plain_multiple_info =
+          normalize_batch_multiple(get_adt_score_batch_multiple<queue_type>(atoms, q));
+      mudock::stage_bucket_trace("ADADELTA stage plain multiple for ",
+                                 atoms,
+                                 " atoms -> total=",
+                                 plain_multiple_info.total_multiple(),
+                                 " (active_blocks_per_sm=",
+                                 plain_multiple_info.active_blocks_per_sm,
+                                 ", num_sms=",
+                                 plain_multiple_info.num_sms,
+                                 ")",
+                                 " (max_bucket_size hint=",
+                                 max_bucket_size,
+                                 ")");
+      return plain_multiple_info;
     }
 
   private:

@@ -7,8 +7,6 @@
 #include <mudock/cpp_implementation/chromosome.hpp>
 
 namespace mudock {
-  // A general local search might or might not use the scoring function gradient, so the method to compute is not here natively,
-  // but it is inside a scoring_t object instead (the gradient is specific for each scoring function, see scoring)
   template<typename queue_t, template<typename> typename scoring_t>
     requires std::derived_from<queue_t, queue> && std::derived_from<scoring_t<queue_t>, scoring<queue_t>>
   struct local_search: public stage<queue_t> {
