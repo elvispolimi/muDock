@@ -18,6 +18,7 @@ namespace mudock {
                     std::shared_ptr<differentiable_scoring<queue_type>> score_stage_,
                     gradient *__restrict__ gradients_b_,
                     chromosome *__restrict__ population_b_,
+                    int *__restrict__ num_rotamers_b_,
                     chromosome *__restrict__ adadelta_e_g2_b_,
                     chromosome *__restrict__ adadelta_e_dw2_b_,
                     int *__restrict__ stall_counter_b_,
@@ -28,6 +29,7 @@ namespace mudock {
           score_stage(score_stage_),
           gradients_b(gradients_b_),
           population_b(population_b_),
+          num_rotamers_b(num_rotamers_b_),
           adadelta_e_g2_b(adadelta_e_g2_b_),
           adadelta_e_dw2_b(adadelta_e_dw2_b_),
           stall_counter_b(stall_counter_b_),
@@ -51,6 +53,7 @@ namespace mudock {
     std::shared_ptr<differentiable_scoring<queue_type>> score_stage;
     gradient *__restrict__ gradients_b;
     chromosome* population_b;
+    int *__restrict__ num_rotamers_b;
     chromosome *__restrict__ adadelta_e_g2_b;
     chromosome *__restrict__ adadelta_e_dw2_b;
     int *__restrict__ stall_counter_b;

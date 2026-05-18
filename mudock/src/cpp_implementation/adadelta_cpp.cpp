@@ -14,15 +14,12 @@ namespace mudock {
                                     const int individuals_per_ligand,
                                     gradient *__restrict__ gradients_b,
                                     chromosome *__restrict__ population_b,
+                                    int* __restrict__ num_rotamers_b,
                                     chromosome *__restrict__ adadelta_e_g2_b,
                                     chromosome *__restrict__ adadelta_e_dw2_b,
                                     int *__restrict__ stall_counter_b,
                                     int *__restrict__ inactive_b,
                                     int i) { // TODO L remove i (number iteration) if not needed 
-    
-    // Gradient size matches chromosome size (6 + max_rotamers)
-    // TODO L is this ok?
-    constexpr int gradient_size = 6 + max_static_bonds();
     
     for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
       gradient *gradients_l = gradients_b + ligand_index * individuals_per_ligand;
@@ -31,6 +28,8 @@ namespace mudock {
       chromosome *e_dw2_l = adadelta_e_dw2_b + ligand_index * individuals_per_ligand;
       int *stall_counter_l = stall_counter_b + ligand_index * individuals_per_ligand;
       int *inactive_l = inactive_b + ligand_index * individuals_per_ligand;
+      const int num_rotamers = num_rotamers_b[ligand_index];
+      const int gradient_size = 6 + num_rotamers;
       
       for (int individual_index = 0; individual_index < individuals_per_ligand; ++individual_index) {
         gradient &grad = gradients_l[individual_index];
@@ -50,7 +49,7 @@ namespace mudock {
         // Skip individual if it already converged 
         // TODO remove comment to enable early stop
         if (inactive == 1){
-          // printf("id: %d iter: %d, skipping for ES...\n", individual_index, i);
+          //printf("id: %d iter: %d, skipping for ES...\n", individual_index, i);
           continue;
         }
 
@@ -76,14 +75,14 @@ namespace mudock {
         // per la convergenza: calcolo l'uno per cento dello spazio di movimento delle varie dimensioni (-9;9 A per traslazioni, -180;180 per gli angoli).
         // controllo se esiste almeno una delle dimensioni che ha un cambiamento maggiore di questo. converge quando tutte le dimensioni sono sotto la loro soglia
 
-        // // todo 
+        // // TODO L 
         // - usare address sanitizer
         // - gradiente della dimensione giusta e non massima
         // - controllare se è VdW a causare l'esplosione dello score dopo tot iterazioni
         // - chiedere a gianmarco se ha gia fatto to_mol2
 
         if(i % 5 == 0){
-          //printf("id: %d iter: %d, delta_norm2: %f\n", individual_index, i, delta_norm2);
+          // printf("id: %d iter: %d, delta_norm2: %f\n", individual_index, i, delta_norm2);
         }
 
         // Checking convergence
@@ -95,7 +94,7 @@ namespace mudock {
         }
         if (stall_counter >= ADADELTA_CONVERGENCE_PATIENCE){
           inactive = 1;
-          //printf("HIT CONVERGENCE - id: %d at iter: %d\n", individual_index, i);
+          // printf("HIT CONVERGENCE - id: %d at iter: %d\n", individual_index, i);
         }
 
       }
@@ -114,6 +113,7 @@ namespace mudock {
                                                 individuals_per_ligand,
                                                 gradients_b,
                                                 population_b,
+                                                num_rotamers_b,
                                                 adadelta_e_g2_b,
                                                 adadelta_e_dw2_b,
                                                 stall_counter_b,

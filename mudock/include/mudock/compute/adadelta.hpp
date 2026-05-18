@@ -49,6 +49,10 @@ namespace mudock {
       }
       gradient *gradients_b = gradient_b.dev_pointer();
 
+      auto& num_rotamers_b = (*this->scratch).template get<buffer_data_type::NUM_ROTAMERS>();
+      num_rotamers_b.alloc(batch_ligands);
+      load_num_rotamers<queue_type>(batch, this->scratch);
+
       auto &chromosomes_b = (*this->scratch).template get<buffer_data_type::CHROMOSOMES>();
       chromosomes_b.alloc(static_cast<size_t>(batch_ligands) * individuals_per_ligand);
       chromosomes_b.set_valid();
@@ -72,6 +76,8 @@ namespace mudock {
         inactive_b.set_valid();
 
       }
+
+      int* __restrict__ num_rotamers_p            = num_rotamers_b.dev_pointer();
       chromosome *adadelta_e_g2 = adadelta_e_g2_b.dev_pointer();
       chromosome *adadelta_e_dw2 = adadelta_e_dw2_b.dev_pointer();
       int *stall_counter = stall_counter_b.dev_pointer();
@@ -84,6 +90,7 @@ namespace mudock {
                                                                   this->score_stage,
                                                                   gradients_b,
                                                                   population_b,
+                                                                  num_rotamers_p,
                                                                   adadelta_e_g2,
                                                                   adadelta_e_dw2,
                                                                   stall_counter,
