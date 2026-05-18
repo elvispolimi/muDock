@@ -57,6 +57,9 @@ if(MUDOCK_ENABLE_TEST)
   add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/src/tests" tests)
 endif()
 
+add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/src/local_search" local_search)
+
+
 # if(MUDOCK_ENABLE_LIKWID)
 #   # target_include_directories("${CMAKE_PROJECT_NAME}" PRIVATE
 #   # ${LIKWID_INCLUDE_DIR})

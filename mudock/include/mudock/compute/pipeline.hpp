@@ -230,8 +230,8 @@ namespace mudock {
     }
   };
 
-  using adt_score_pipeline                          = scoring_pipeline<adt_score>;
-  using genetic_adt_pipeline                        = genetic_scoring_pipeline<adt_score>;
-  using lamarckian_genetic_adt_adadelta_pipeline    = lamarckian_genetic_scoring_pipeline<adt_score, adadelta>;
-  using adadelta_ls_pipeline                        = local_search_pipeline<adt_score, adadelta>;
+  using adt_score_pipeline           = scoring_pipeline<adt_score>;
+  using genetic_adt_pipeline         = genetic_scoring_pipeline<adt_score>;
+  using lga_adt_adadelta_pipeline    = lamarckian_genetic_scoring_pipeline<adt_score, adadelta>;
+  using ls_adt_adadelta_pipeline     = local_search_pipeline<adt_score, adadelta>;
 } // namespace mudock

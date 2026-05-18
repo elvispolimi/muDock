@@ -95,7 +95,8 @@ int main(int argc, char** argv) {
 
   in.seekg(static_cast<std::streamoff>(effective_range.begin), std::ios::beg);
 
-  mudock::lamarckian_genetic_adt_adadelta_pipeline pipe{protein};
+  mudock::lga_adt_adadelta_pipeline pipe{protein};
+  // mudock::genetic_adt_pipeline pipe{protein};
           mudock::run_tbb_pipeline<mudock::supported_format::ADTMOL2>(
               in, args.device_confs, args.knobs, pipe, effective_range.end, args.time_limit_sec, args.observer);
   MUDOCK_MARKER_CLOSE;

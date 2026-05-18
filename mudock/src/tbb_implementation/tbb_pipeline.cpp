@@ -181,38 +181,38 @@ namespace mudock {
         std::optional<double>,
         std::optional<double>);
 
-    template void mudock::run_tbb_pipeline<mudock::supported_format::ADTMOL2, mudock::lamarckian_genetic_adt_adadelta_pipeline>(
+    template void mudock::run_tbb_pipeline<mudock::supported_format::ADTMOL2, mudock::lga_adt_adadelta_pipeline>(
         std::istream&,
         const std::vector<std::string>&,
         const mudock::knobs&,
-        mudock::lamarckian_genetic_adt_adadelta_pipeline&,
+        mudock::lga_adt_adadelta_pipeline&,
         std::size_t,
         std::optional<double>,
         std::optional<double>);
 
-    template void mudock::run_tbb_pipeline<mudock::supported_format::MOL2, mudock::lamarckian_genetic_adt_adadelta_pipeline>(
+    template void mudock::run_tbb_pipeline<mudock::supported_format::MOL2, mudock::lga_adt_adadelta_pipeline>(
         std::istream&,
         const std::vector<std::string>&,
         const mudock::knobs&,
-        mudock::lamarckian_genetic_adt_adadelta_pipeline&,
+        mudock::lga_adt_adadelta_pipeline&,
         std::size_t,
         std::optional<double>,
         std::optional<double>);
 
-    template void mudock::run_tbb_pipeline<mudock::supported_format::ADTMOL2, mudock::adadelta_ls_pipeline>(
+    template void mudock::run_tbb_pipeline<mudock::supported_format::ADTMOL2, mudock::ls_adt_adadelta_pipeline>(
         std::istream&,
         const std::vector<std::string>&,
         const mudock::knobs&,
-        mudock::adadelta_ls_pipeline&,
+        mudock::ls_adt_adadelta_pipeline&,
         std::size_t,
         std::optional<double>,
         std::optional<double>);
 
-    template void mudock::run_tbb_pipeline<mudock::supported_format::MOL2, mudock::adadelta_ls_pipeline>(
+    template void mudock::run_tbb_pipeline<mudock::supported_format::MOL2, mudock::ls_adt_adadelta_pipeline>(
         std::istream&,
         const std::vector<std::string>&,
         const mudock::knobs&,
-        mudock::adadelta_ls_pipeline&,
+        mudock::ls_adt_adadelta_pipeline&,
         std::size_t,
         std::optional<double>,
         std::optional<double>);
