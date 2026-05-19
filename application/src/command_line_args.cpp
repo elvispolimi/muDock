@@ -52,6 +52,10 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
       po::value(&args.knobs.ls_iterations)->default_value(args.knobs.ls_iterations),
       "Number of local search iterations");
   knobs_description.add_options()(
+      "adadelta_convergence_patience",
+      po::value(&args.knobs.adadelta_convergence_patience)->default_value(args.knobs.adadelta_convergence_patience),
+      "Local search patience (adadelta)");
+  knobs_description.add_options()(
       "mutation",
       po::value(&args.knobs.mutation_prob)->default_value(args.knobs.mutation_prob),
       "Probability of a mutation to happen during GA");

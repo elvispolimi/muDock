@@ -19,7 +19,8 @@ namespace mudock {
                                     chromosome *__restrict__ adadelta_e_dw2_b,
                                     int *__restrict__ stall_counter_b,
                                     int *__restrict__ inactive_b,
-                                    int i) { // TODO L remove i (number iteration) if not needed 
+                                    int i,
+                                    int convergence_patience) { // TODO L remove i (number iteration) if not needed 
     
     for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
       gradient *gradients_l = gradients_b + ligand_index * individuals_per_ligand;
@@ -71,18 +72,14 @@ namespace mudock {
           // To check convergence of an individual, we check if all the dimension has not improved significantly.
           // If at least one does improve, we continue the search.
           if (d < 3) {
-            if (delta_w > ADADELTA_CONVERGENCE_THRESHOLD_COORD) {
+            if (delta_w > ADADELTA_CONVERGENCE_THRESHOLD_COORD) { // 0.18
               improvement = true;
             }
           } else {
-            if (delta_w > ADADELTA_CONVERGENCE_THRESHOLD_ANGLE) {
+            if (delta_w > ADADELTA_CONVERGENCE_THRESHOLD_ANGLE) { // 3.6
               improvement = true;
             }
           }
-        }
-
-        if(i % 5 == 0){
-          // printf("id: %d iter: %d, delta_norm2: %f\n", individual_index, i, delta_norm2);
         }
 
         // Checking convergence
@@ -92,7 +89,7 @@ namespace mudock {
         else{
           stall_counter = 0;
         }
-        if (stall_counter >= ADADELTA_CONVERGENCE_PATIENCE){
+        if (stall_counter >= convergence_patience){
           inactive = 1;
           printf("HIT CONVERGENCE - id: %d at iter: %d\n", individual_index, i);
         }
@@ -107,7 +104,7 @@ namespace mudock {
   }
   
   template<>
-  void adadelta_kernel<queue_cpp>::apply_adadelta(int i) {
+  void adadelta_kernel<queue_cpp>::apply_adadelta(int i, int convergence_patience) {
     q->invoke_kernel<this->adadelta_region_name>(apply_adadelta_update,
                                                 batch_ligands,
                                                 individuals_per_ligand,
@@ -118,7 +115,8 @@ namespace mudock {
                                                 adadelta_e_dw2_b,
                                                 stall_counter_b,
                                                 inactive_b,
-                                                i);
+                                                i,
+                                                convergence_patience);
   }
 
   // TODO L what to do with this? i moved the iterations in adadelta.hpp
