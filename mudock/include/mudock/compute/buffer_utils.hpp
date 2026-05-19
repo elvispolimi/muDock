@@ -30,12 +30,12 @@ namespace mudock {
       for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
         auto &ligand = *batch.molecules[ligand_index];
 
-        const int stride_atoms = ligand_index * batch_atoms;
-        const int num_atoms    = ligand.num_atoms();
+        const int num_atoms = ligand.num_atoms();
 
         const auto x = ligand.x(), y = ligand.y(), z = ligand.z();
         for (int score_index = 0; score_index < scores_per_ligand; ++score_index) {
-          const int score_offset = score_index * tot_atoms_in_batch + stride_atoms;
+          const int score_offset = ligand_index * batch_atoms * scores_per_ligand +
+                                   score_index * batch_atoms;
           std::memcpy((void *) (scratch_x() + score_offset), x, num_atoms * sizeof(fp_type));
           std::memcpy((void *) (scratch_y() + score_offset), y, num_atoms * sizeof(fp_type));
           std::memcpy((void *) (scratch_z() + score_offset), z, num_atoms * sizeof(fp_type));
