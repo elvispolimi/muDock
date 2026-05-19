@@ -47,14 +47,13 @@ namespace mudock {
         }
         
         // Skip individual if it already converged 
-        // TODO remove comment to enable early stop
         if (inactive == 1){
           //printf("id: %d iter: %d, skipping for ES...\n", individual_index, i);
           continue;
         }
 
-        fp_type delta_norm2 = 0;
-
+        bool improvement = false;
+      
         // Apply AdaDelta update for each dimension
         for (int d = 0; d < gradient_size; ++d) {
           E_g2_i[d] = ADADELTA_RHO * E_g2_i[d] + (1.0f - ADADELTA_RHO) * grad[d] * grad[d];
@@ -64,29 +63,30 @@ namespace mudock {
           const fp_type rms_dw = std::sqrt(E_dw2_i[d] + ADADELTA_EPSILON);
           
           const fp_type delta_w = -(rms_dw / rms_g) * grad[d];
-
-          delta_norm2 += delta_w * delta_w;
           
           E_dw2_i[d] = ADADELTA_RHO * E_dw2_i[d] + (1.0f - ADADELTA_RHO) * delta_w * delta_w;
 
           w[d] = w[d] + delta_w;
+
+          // To check convergence of an individual, we check if all the dimension has not improved significantly.
+          // If at least one does improve, we continue the search.
+          if (d < 3) {
+            if (delta_w > ADADELTA_CONVERGENCE_THRESHOLD_COORD) {
+              improvement = true;
+            }
+          } else {
+            if (delta_w > ADADELTA_CONVERGENCE_THRESHOLD_ANGLE) {
+              improvement = true;
+            }
+          }
         }
-
-        // per la convergenza: calcolo l'uno per cento dello spazio di movimento delle varie dimensioni (-9;9 A per traslazioni, -180;180 per gli angoli).
-        // controllo se esiste almeno una delle dimensioni che ha un cambiamento maggiore di questo. converge quando tutte le dimensioni sono sotto la loro soglia
-
-        // // TODO L 
-        // - usare address sanitizer
-        // - gradiente della dimensione giusta e non massima
-        // - controllare se è VdW a causare l'esplosione dello score dopo tot iterazioni
-        // - chiedere a gianmarco se ha gia fatto to_mol2
 
         if(i % 5 == 0){
           // printf("id: %d iter: %d, delta_norm2: %f\n", individual_index, i, delta_norm2);
         }
 
         // Checking convergence
-        if (delta_norm2 < ADADELTA_CONVERGENCE_THRESHOLD) {
+        if (!improvement) {
           stall_counter++;
         }
         else{
@@ -94,7 +94,7 @@ namespace mudock {
         }
         if (stall_counter >= ADADELTA_CONVERGENCE_PATIENCE){
           inactive = 1;
-          // printf("HIT CONVERGENCE - id: %d at iter: %d\n", individual_index, i);
+          printf("HIT CONVERGENCE - id: %d at iter: %d\n", individual_index, i);
         }
 
       }

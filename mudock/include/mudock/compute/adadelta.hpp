@@ -21,9 +21,11 @@
 namespace mudock {
 
   #define ADADELTA_RHO 0.85f
-  #define ADADELTA_EPSILON 1e-6f
-  #define ADADELTA_CONVERGENCE_THRESHOLD 1e-6f
+  #define ADADELTA_EPSILON 1e-6f                // TODO use variables instead of numbers for coordinate and angle step
+  #define ADADELTA_CONVERGENCE_THRESHOLD_COORD (static_cast<fp_type>(0.2 * 90 * 0.01)) // 90*0.2 = 18 is the range of movement for translations
+  #define ADADELTA_CONVERGENCE_THRESHOLD_ANGLE (static_cast<fp_type>(4 * 90 * 0.01))      // 90*4 = 360 is the range of movement for angles
   #define ADADELTA_CONVERGENCE_PATIENCE 5
+
 
   #ifndef __CUDACC__
   // TODO check that the object type and the kernel impl are the same
@@ -38,7 +40,6 @@ namespace mudock {
     void prepare(batch<static_molecule> &batch) {
       // TODO L i don't like initializing iterations here, not scalable. Better move it to local_search
       this->iterations  = (*this->scratch).configuration.ls_iterations;
-      // Allocate gradient buffer for AdaDelta (one gradient per individual per ligand)
       batch_ligands = batch.num_ligands;
       const int individuals_per_ligand = std::max(1, static_cast<int>((*this->scratch).configuration.population_number));
       auto &gradient_b = (*this->scratch).template get<buffer_data_type::GRADIENTS>();
