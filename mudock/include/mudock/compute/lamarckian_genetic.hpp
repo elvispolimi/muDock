@@ -59,6 +59,7 @@ namespace mudock {
     void operator()() { genetic_kernel<queue_type>::operator()(); }
     void initialize() { genetic_kernel<queue_type>::initialize(); }
     void finalize() { genetic_kernel<queue_type>::finalize(); }
+    inline void set_population_buffers(chromosome* population_, chromosome* next_population_) { genetic_kernel<queue_type>::set_population_buffers(population_, next_population_); }
 
   private:
   };
@@ -129,8 +130,12 @@ namespace mudock {
 
     void operator()() override {
       auto& chromosomes_b = (*this->scratch).template get<buffer_data_type::CHROMOSOMES>();
-
+      chromosome* current_population_p = chromosomes_b.dev_pointer();
+      chromosome* next_population_p    = this->next_population.dev_pointer();
+      
       assert(this->lamarckian_kernel && "lamarckian_kernel method not yet prepared");
+      this->lamarckian_kernel->set_population_buffers(current_population_p, next_population_p);
+      this->geom_trans.set_chromosomes_buffer(current_population_p);
       this->lamarckian_kernel->initialize();
 
       printf("Running LGA...\n");
@@ -139,8 +144,15 @@ namespace mudock {
         (*this->score_stage)();
         local_search_stage();
         (*this->lamarckian_kernel)();
-        chromosomes_b.copy_device2device(this->next_population);
+
+        // Avoid full device-to-device copy by ping-ponging population buffers.
+        if (generation + 1 < this->num_generations) {
+          std::swap(current_population_p, next_population_p);
+          this->lamarckian_kernel->set_population_buffers(current_population_p, next_population_p);
+          this->geom_trans.set_chromosomes_buffer(current_population_p);
+        }
       }
+      this->lamarckian_kernel->set_population_buffers(current_population_p, next_population_p);
       this->lamarckian_kernel->finalize();
     }
 
