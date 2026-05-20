@@ -91,7 +91,7 @@ namespace mudock {
     }
 
     void prepare(batch<static_molecule> &batch) {
-      // TODO L not very elegant check, try to do better. This comes from the need of 
+      // TODO L IMPORTANT not very elegant check, try to do better. This comes from the need of 
       // preparing the scoring function in the local search pipeline, which otherwise woudn't do it alone 
       // because it was managed in the genetic preparation
       

@@ -36,6 +36,10 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
   // define the knobs command line arguments
   po::options_description knobs_description("Virtual Screening Knobs");
   knobs_description.add_options()(
+      "use_local_search",
+      po::value(&args.knobs.use_local_search)->default_value(args.knobs.use_local_search),
+      "Boolean to trigger LGA");
+  knobs_description.add_options()(
       "population",
       po::value(&args.knobs.population_number)->default_value(args.knobs.population_number),
       "Number of individual(s) in the GA population");
