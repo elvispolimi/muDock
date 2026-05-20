@@ -9,6 +9,7 @@
 #include <mudock/chem/autodock_protein.hpp>
 #include <mudock/compute/batch_multiple.hpp>
 #include <mudock/compute/adadelta_kernel.hpp>
+#include <mudock/compute/geometric_transform.hpp>
 #include <mudock/compute/local_search.hpp>
 #ifndef __CUDACC__
   #include <mudock/compute/buffer_utils.hpp>
@@ -21,7 +22,7 @@
 namespace mudock {
 
   #define ADADELTA_RHO 0.85f
-  #define ADADELTA_EPSILON 1e-6f                // TODO use variables instead of numbers for coordinate and angle step
+  #define ADADELTA_EPSILON 1e-6f                // TODO L use variables instead of numbers for coordinate and angle step
   #define ADADELTA_CONVERGENCE_THRESHOLD_COORD (static_cast<fp_type>(0.2 * 90 * 0.01)) // 90*0.2 = 18 is the range of movement for translations
   #define ADADELTA_CONVERGENCE_THRESHOLD_ANGLE (static_cast<fp_type>(4 * 90 * 0.01))      // 90*4 = 360 is the range of movement for angles
 
@@ -34,7 +35,8 @@ namespace mudock {
     
     adadelta(std::shared_ptr<scratchpad<queue_type>> _scratch,
              std::shared_ptr<scoring_t<queue_type>> _score) 
-             : local_search<queue_type, scoring_t>(_scratch, _score) {}
+             : local_search<queue_type, scoring_t>(_scratch, _score),
+               geom_trans(_scratch, _score->get_protein()) {}
 
     void prepare(batch<static_molecule> &batch) {
       // TODO L i don't like initializing iterations here, not scalable. Better move it to local_search
@@ -102,7 +104,7 @@ namespace mudock {
 
       // Initialize the scoring kernel buffers
       this->score_stage->prepare(batch);
-      
+      geom_trans.prepare(batch);
     }
 
     void operator()() {
@@ -111,20 +113,35 @@ namespace mudock {
           "Number of gradients is not a multiple of ligands in the batch");
       assert(ls_ad_kernel && "Adadelta local search kernel method not yet prepared");
 
+      auto &scores_b              = (*this->scratch).template get<buffer_data_type::SCORES>();
+
       // TODO L try to move the reset of inactives here which is more elegant, for now it is in adadelta cpp
 
+      const bool only_local_search =
+          ((*this->scratch).configuration.population_number == 1) &&
+          ((*this->scratch).configuration.num_generations == 1);
 
       for (std::size_t i = 0; i < this->iterations; ++i) {
-        if (coordinate_update) {
-          coordinate_update();
+        geom_trans();
+        
+        if (only_local_search) {
+          (*this->score_stage)();
+
+          // copy scores back to host and print best score (first element)
+          scores_b.copy_device2host();
+          (*this->scratch).get_queue()->synchronize();
+          printf("Score: %f\n", scores_b()[0]);
         }
+
         ls_ad_kernel->compute_gradients();
         ls_ad_kernel->apply_adadelta(static_cast<int>(i), static_cast<int>(this->convergence_patience));
       }
 
+      if (only_local_search) {
+        geom_trans();
+        (*this->score_stage)();
+      }
     }
-
-    void set_coordinate_update(std::function<void()> update) { coordinate_update = std::move(update); }
 
     static int get_ligand_mem(const int max_atoms, const knobs conf) {
       std::size_t mem{0};
@@ -168,12 +185,11 @@ namespace mudock {
     int batch_ligands;
 
     std::unique_ptr<adadelta_kernel<queue_type>> ls_ad_kernel;
+    geometric<queue_type> geom_trans;
     std::function<void()> coordinate_update;
 
     // TODO L: Implement teardown
     void teardown_impl(batch<static_molecule> &batch) override {
-      assert(batch.num_ligands == batch_ligands && "Scoring algorithm received different batch for teardown");
-
       auto &scores_b              = (*this->scratch).template get<buffer_data_type::SCORES>();
       const int scores_per_ligand = static_cast<int>(scores_b.num_elements() / batch_ligands);
       scores_b.copy_device2host();

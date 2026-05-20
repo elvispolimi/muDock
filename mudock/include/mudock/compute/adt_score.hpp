@@ -49,7 +49,8 @@ namespace mudock {
           frag_start_atom_indices(_scratch->get_queue()),
           frag_stop_atom_indices(_scratch->get_queue()),
           frag_indices_start(_scratch->get_queue()),
-          device_scratch(_device_scratch) {
+          device_scratch(_device_scratch),
+          protein_(protein) {
       if (!(*device_scratch).template exists<buffer_data_type::PROT_GRID_MAPS>()) {
         autodock_protein adt_prot(protein);
 
@@ -436,6 +437,9 @@ namespace mudock {
       return plain_multiple_info;
     }
 
+    dynamic_molecule& get_protein() { return protein_; }
+    const dynamic_molecule& get_protein() const { return protein_; }
+
   private:
     int batch_ligands;
     int batch_atoms;
@@ -460,6 +464,7 @@ namespace mudock {
     std::shared_ptr<scratchpad<queue_type>> device_scratch;
     std::unique_ptr<adt_score_kernel<queue_type>> score_kernel;
     std::unique_ptr<adt_gradient_kernel<queue_type>> gradient_kernel;
+    dynamic_molecule& protein_;
 
     void teardown_impl(batch<static_molecule> &batch) override {
       assert(batch.num_ligands == batch_ligands && "Scoring algorithm received different batch for teardown");
