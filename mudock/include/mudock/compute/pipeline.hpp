@@ -189,12 +189,19 @@ namespace mudock {
   struct local_search_pipeline: pipeline {
     using pipeline::pipeline;
 
+    static knobs normalize_knobs(knobs conf) {
+      conf.population_number = 1;
+      conf.num_generations   = 1;
+      return conf;
+    }
+
     template<typename queue_type>
     local_search_t<queue_type, scoring_t> get_pipeline(const knobs& conf,
-                                                     const int id,
-                                                     const device_type dev_type,
-                                                     std::shared_ptr<scratchpad<queue_type>> device_scratch) {
-      auto q = std::make_shared<mudock::scratchpad<queue_type>>(conf, id, dev_type);
+                                                       const int id,
+                                                       const device_type dev_type,
+                                                       std::shared_ptr<scratchpad<queue_type>> device_scratch) {
+      const auto effective_conf = normalize_knobs(conf);
+      auto q = std::make_shared<mudock::scratchpad<queue_type>>(effective_conf, id, dev_type);
       auto scoring = std::make_shared<scoring_t<queue_type>>(q, device_scratch, *protein);
       return local_search_t<queue_type, scoring_t>(q, scoring);
     }
@@ -204,7 +211,8 @@ namespace mudock {
                               std::shared_ptr<queue_type> q,
                               const knobs& conf,
                               const size_t max_mem = 1000000000) {
-      const size_t mem_per_ligand = static_cast<size_t>(local_search_t<queue_type, scoring_t>::get_ligand_mem(atoms, conf));
+      const auto effective_conf = normalize_knobs(conf);
+      const size_t mem_per_ligand = static_cast<size_t>(local_search_t<queue_type, scoring_t>::get_ligand_mem(atoms, effective_conf));
       const size_t max_bucket_size = std::max<size_t>(1, max_mem / mem_per_ligand);
       mudock::stage_bucket_trace("PIPELINE(",
                                  local_search_t<queue_type, scoring_t>::stage_name,
@@ -224,7 +232,7 @@ namespace mudock {
                                        [&]() {
                                          return local_search_t<queue_type, scoring_t>::get_batch_size(atoms,
                                                                                                 q,
-                                                                                                conf,
+                                                                                                effective_conf,
                                                                                                 max_bucket_size);
                                        });
     }

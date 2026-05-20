@@ -170,8 +170,19 @@ namespace mudock {
     std::unique_ptr<adadelta_kernel<queue_type>> ls_ad_kernel;
     std::function<void()> coordinate_update;
 
+    // TODO L: Implement teardown
     void teardown_impl(batch<static_molecule> &batch) override {
-      // TODO L: Implement teardown
+      assert(batch.num_ligands == batch_ligands && "Scoring algorithm received different batch for teardown");
+
+      auto &scores_b              = (*this->scratch).template get<buffer_data_type::SCORES>();
+      const int scores_per_ligand = static_cast<int>(scores_b.num_elements() / batch_ligands);
+      scores_b.copy_device2host();
+      (*this->scratch).get_queue()->synchronize();
+      for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
+        auto &ligand          = *batch.molecules[ligand_index];
+        const int score_index = ligand_index * scores_per_ligand;
+        ligand.properties.assign(property_type::SCORE, std::to_string(scores_b()[score_index]));
+      }
     };
   };
   #endif
