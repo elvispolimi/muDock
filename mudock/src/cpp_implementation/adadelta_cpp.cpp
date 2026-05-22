@@ -23,17 +23,18 @@ namespace mudock {
                                     int convergence_patience) { // TODO L remove i (number iteration) if not needed 
     
     for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
-      gradient *gradients_l = gradients_b + ligand_index * individuals_per_ligand;
-      chromosome *population_l = population_b + ligand_index * individuals_per_ligand;
-      chromosome *e_g2_l = adadelta_e_g2_b + ligand_index * individuals_per_ligand;
-      chromosome *e_dw2_l = adadelta_e_dw2_b + ligand_index * individuals_per_ligand;
-      int *stall_counter_l = stall_counter_b + ligand_index * individuals_per_ligand;
-      int *inactive_l = inactive_b + ligand_index * individuals_per_ligand;
+      chromosome *__restrict__ population_l    = population_b + ligand_index * individuals_per_ligand;
+      chromosome *__restrict__ e_g2_l          = adadelta_e_g2_b + ligand_index * individuals_per_ligand;
+      chromosome *__restrict__ e_dw2_l         = adadelta_e_dw2_b + ligand_index * individuals_per_ligand;
+      gradient   *__restrict__ gradients_l     = gradients_b + ligand_index * individuals_per_ligand;
+      int        *__restrict__ stall_counter_l = stall_counter_b + ligand_index * individuals_per_ligand;
+      int        *__restrict__ inactive_l      = inactive_b + ligand_index * individuals_per_ligand;
+      
       const int num_rotamers = num_rotamers_b[ligand_index];
       const int gradient_size = 6 + num_rotamers;
       
       for (int individual_index = 0; individual_index < individuals_per_ligand; ++individual_index) {
-        gradient &grad = gradients_l[individual_index];
+        gradient   &grad = gradients_l[individual_index];
         chromosome &w = population_l[individual_index];
         chromosome &E_g2_i = e_g2_l[individual_index];
         chromosome &E_dw2_i = e_dw2_l[individual_index];
@@ -90,8 +91,9 @@ namespace mudock {
           stall_counter = 0;
         }
         if (stall_counter >= convergence_patience){
-          inactive = 1;
-          printf("HIT CONVERGENCE - id: %d at iter: %d\n", individual_index, i);
+          // TODO WARNING EARLY STOPPING IS DISABLED, UNCOMMENT INSTRUCTION TO ENABLE IT!
+          // inactive = 1;
+          // printf("HIT CONVERGENCE - id: %d at iter: %d\n", individual_index, i);
         }
 
       }

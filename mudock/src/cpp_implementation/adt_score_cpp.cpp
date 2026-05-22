@@ -257,7 +257,7 @@ namespace mudock {
                             const int map_index_x,
                             const int map_index_xy,
                             const int map_index_xyz,
-                            fp_type *__restrict__ gradients_b) {
+                            gradient *__restrict__ gradients_b) {
     for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
       const int atom_stride  = ligand_index * batch_atoms;
       const int num_atoms    = num_atoms_b[ligand_index];
@@ -281,7 +281,7 @@ namespace mudock {
       const int* frag_start_indices = frag_start_indices_b + frag_indices_start_b[ligand_index];
       const int* frag_stop_indices = frag_stop_indices_b + frag_indices_start_b[ligand_index];
 
-      fp_type *__restrict__ gradients_l = gradients_b + ligand_index * individuals_per_ligand;
+      gradient *__restrict__ gradients_l = gradients_b + ligand_index * individuals_per_ligand;
       for (int individual_index = 0; individual_index < individuals_per_ligand; ++individual_index) {
         const fp_type *__restrict__ scratch_x_l = scratch_x + individual_index * batch_atoms;
         const fp_type *__restrict__ scratch_y_l = scratch_y + individual_index * batch_atoms;
@@ -515,8 +515,10 @@ namespace mudock {
           }
         }
 
+        gradient &grad_l = gradients_l[individual_index];
         for (int i = 0; i < 6 + num_rotamers; ++i) {
-          gradients_l[individual_index * (6 + num_rotamers) + i] = grad[i];
+          // gradients_l[individual_index * (6 + num_rotamers) + i] = grad[i];
+          grad_l[i] = grad[i];
         }
         
       }

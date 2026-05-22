@@ -141,7 +141,7 @@ namespace mudock {
                         const int map_index_x_,
                         const int map_index_xy_,
                         const int map_index_xyz_,
-                        fp_type *__restrict__ gradients_b_,
+                        gradient *__restrict__ gradients_b_,
                         std::shared_ptr<queue_type> q_)
         : scores_per_ligand(scores_per_ligand_),
           batch_ligands(batch_ligands_),
@@ -216,7 +216,7 @@ namespace mudock {
     const int map_index_x;
     const int map_index_xy;
     const int map_index_xyz;
-    fp_type *__restrict__ gradients_b;
+    gradient *__restrict__ gradients_b;
     std::shared_ptr<queue_type> q;
   };
 

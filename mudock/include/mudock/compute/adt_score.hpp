@@ -321,7 +321,7 @@ namespace mudock {
 
       // Get gradient buffer pointer for gradient kernel
       // gradient is std::array<fp_type, 516>, so we need to cast to fp_type* for the kernel
-      fp_type *gradients_b = reinterpret_cast<fp_type*>(gradient_b.dev_pointer());
+      gradient *gradients_b = gradient_b.dev_pointer();
 
       gradient_kernel = std::make_unique<adt_gradient_kernel<queue_type>>(scores_per_ligand,
                                                               batch_ligands,
