@@ -40,6 +40,10 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
       po::value(&args.knobs.use_local_search)->default_value(args.knobs.use_local_search),
       "Boolean to trigger LGA");
   knobs_description.add_options()(
+      "use_early_stopping",
+      po::value(&args.knobs.use_early_stopping)->default_value(args.knobs.use_early_stopping),
+      "Boolean to trigger early stopping in local search");
+  knobs_description.add_options()(
       "population",
       po::value(&args.knobs.population_number)->default_value(args.knobs.population_number),
       "Number of individual(s) in the GA population");

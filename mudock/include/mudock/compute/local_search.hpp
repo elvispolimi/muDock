@@ -23,5 +23,6 @@ namespace mudock {
     std::shared_ptr<scoring_t<queue_t>> score_stage;
     size_t iterations;
     size_t convergence_patience;
+    bool use_early_stopping;
   };
 } // namespace mudock

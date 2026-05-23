@@ -38,7 +38,7 @@ namespace mudock {
 
     void operator()();
     void compute_gradients();
-    void apply_adadelta(int i, int convergence_patience);
+    void apply_adadelta(int i, int convergence_patience, bool use_early_stopping);
 
     adadelta_kernel(const adadelta_kernel &)            = default;
     adadelta_kernel(adadelta_kernel &&)                 = default;

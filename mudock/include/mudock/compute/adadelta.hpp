@@ -42,6 +42,7 @@ namespace mudock {
       // TODO L i don't like initializing iterations here, not scalable. Better move it to local_search
       this->iterations           = (*this->scratch).configuration.ls_iterations;
       this->convergence_patience = (*this->scratch).configuration.adadelta_convergence_patience;
+      this->use_early_stopping   = (*this->scratch).configuration.use_early_stopping; 
 
 
       batch_ligands = batch.num_ligands;
@@ -130,11 +131,13 @@ namespace mudock {
           // copy scores back to host and print best score (first element)
           scores_b.copy_device2host();
           (*this->scratch).get_queue()->synchronize();
-          printf("Score: %f\n", scores_b()[0]);
+          if(i % (this->iterations/10) == 0){ // print eveery 10% of the process
+            printf("Score: %f\n", scores_b()[0]);
+          }
         }
 
         ls_ad_kernel->compute_gradients();
-        ls_ad_kernel->apply_adadelta(static_cast<int>(i), static_cast<int>(this->convergence_patience));
+        ls_ad_kernel->apply_adadelta(static_cast<int>(i), static_cast<int>(this->convergence_patience), this->use_early_stopping);
       }
 
       if (only_local_search) {
