@@ -4,6 +4,7 @@
 #include <cassert>
 #include <fstream>
 #include <memory>
+#include <mudock/format/mol2.hpp>
 #include <mudock/format/ob_wrapper.hpp>
 #include <mudock/format/reader.hpp>
 #include <mudock/log.hpp>

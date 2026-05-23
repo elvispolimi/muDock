@@ -1,5 +1,8 @@
 #pragma once
 
+#if defined(MUDOCK_USE_ALPAKA) 
+  #include <mudock/alpaka_implementation.hpp>
+#endif
 #include <mudock/batch.hpp>
 #include <mudock/chem.hpp>
 #include <mudock/compute.hpp>

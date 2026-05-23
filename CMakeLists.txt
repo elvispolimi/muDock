@@ -178,8 +178,21 @@ endif()
 # CUDA
 option(MUDOCK_ENABLE_CUDA "Enable the CUDA kernel implementation" OFF)
 option(MUDOCK_ENABLE_KERNEL_LOCK "Serialize kernel launches per device" OFF)
+option(MUDOCK_ENABLE_ALPAKA "Enable the Alpaka kernel implementation" OFF)
+option(MUDOCK_FETCH_ALPAKA "Download Alpaka with FetchContent when it is not installed" OFF)
+set(MUDOCK_ALPAKA_BACKEND
+    "serial"
+    CACHE STRING "Alpaka backend: serial|threads|tbb|omp2|cuda|hip|sycl")
+set_property(CACHE MUDOCK_ALPAKA_BACKEND PROPERTY STRINGS serial threads tbb
+                                                     omp2 cuda hip sycl)
 
-if(MUDOCK_ENABLE_CUDA)
+set(MUDOCK_ENABLE_CUDA_LANGUAGE OFF)
+if(MUDOCK_ENABLE_CUDA
+   OR (MUDOCK_ENABLE_ALPAKA AND MUDOCK_ALPAKA_BACKEND STREQUAL "cuda"))
+  set(MUDOCK_ENABLE_CUDA_LANGUAGE ON)
+endif()
+
+if(MUDOCK_ENABLE_CUDA_LANGUAGE)
   if(NOT MUDOCK_ENABLE_HIP
      AND NOT MUDOCK_ENABLE_SYCL
      AND NOT MUDOCK_ENABLE_OMP_OFFLOAD)
@@ -191,13 +204,19 @@ if(MUDOCK_ENABLE_CUDA)
     set(CMAKE_CUDA_USE_RESPONSE_FILE_FOR_OBJECTS 0)
 
     # Find the position of the _
-    string(FIND ${GPU_ARCHITECTURE} "_" UNDER_POS)
+    if("${GPU_ARCHITECTURE}" STREQUAL "")
+      message(FATAL_ERROR
+        "CUDA requires MUDOCK_GPU_ARCHITECTURES in the form cuda:sm_XX, "
+        "for example -DMUDOCK_GPU_ARCHITECTURES=cuda:sm_80.")
+    endif()
+
+    string(FIND "${GPU_ARCHITECTURE}" "_" UNDER_POS)
 
     # Separate the two parts
     if(UNDER_POS GREATER_EQUAL 0)
       # Get the part after the _
-      string(SUBSTRING ${GPU_ARCHITECTURE} ${UNDER_POS} 1000 CMAKE_CUDA_TEMP)
-      string(SUBSTRING ${CMAKE_CUDA_TEMP} 1 1000 CUDA_ARCHITECTURES)
+      string(SUBSTRING "${GPU_ARCHITECTURE}" ${UNDER_POS} 1000 CMAKE_CUDA_TEMP)
+      string(SUBSTRING "${CMAKE_CUDA_TEMP}" 1 1000 CUDA_ARCHITECTURES)
       set(CMAKE_CUDA_ARCHITECTURES
           "${CUDA_ARCHITECTURES}"
           CACHE STRING "CUDA architectures to target (e.g., 75 for Turing)"
@@ -227,6 +246,11 @@ set(MUDOCK_STAGE_BUCKET_POLICY "${MUDOCK_DEFAULT_STAGE_BUCKET_POLICY}" CACHE STR
 set_property(CACHE MUDOCK_STAGE_BUCKET_POLICY PROPERTY STRINGS DEVICE_ALIGNED
                                                           SM_ALIGNED
                                                           MAX_UTILIZATION)
+set(MUDOCK_ADT_BUCKET_POLICY "${MUDOCK_DEFAULT_STAGE_BUCKET_POLICY}" CACHE STRING
+    "ADT bucket policy: DEVICE_ALIGNED|SM_ALIGNED|MAX_UTILIZATION")
+set_property(CACHE MUDOCK_ADT_BUCKET_POLICY PROPERTY STRINGS DEVICE_ALIGNED
+                                                        SM_ALIGNED
+                                                        MAX_UTILIZATION)
 set(MUDOCK_GENETIC_BUCKET_COMBINE "${MUDOCK_DEFAULT_GENETIC_BUCKET_COMBINE}" CACHE STRING "GENETIC score/geom combine policy: MIN|SCORE_ONLY|GEOM_ONLY|LCM")
 set_property(CACHE MUDOCK_GENETIC_BUCKET_COMBINE PROPERTY STRINGS MIN SCORE_ONLY GEOM_ONLY LCM)
 option(MUDOCK_ENABLE_STAGE_BUCKET_TRACE
@@ -337,6 +361,72 @@ if(MUDOCK_ENABLE_SYCL)
   endif()
 endif()
 
+if(MUDOCK_ENABLE_ALPAKA)
+  if(MUDOCK_ALPAKA_BACKEND STREQUAL "cuda")
+    if(MUDOCK_ENABLE_HIP
+       OR MUDOCK_ENABLE_SYCL
+       OR MUDOCK_ENABLE_OMP_OFFLOAD)
+      message(FATAL_ERROR "Enable only one GPU framework at a time.")
+    endif()
+    if(NOT CMAKE_CUDA_COMPILER)
+      enable_language(CUDA)
+    endif()
+    set(CMAKE_CUDA_USE_RESPONSE_FILE_FOR_INCLUDES 0)
+    set(CMAKE_CUDA_USE_RESPONSE_FILE_FOR_LIBRARIES 0)
+    set(CMAKE_CUDA_USE_RESPONSE_FILE_FOR_OBJECTS 0)
+    string(FIND ${GPU_ARCHITECTURE} "_" UNDER_POS)
+    if(UNDER_POS GREATER_EQUAL 0)
+      string(SUBSTRING ${GPU_ARCHITECTURE} ${UNDER_POS} 1000 CMAKE_CUDA_TEMP)
+      string(SUBSTRING ${CMAKE_CUDA_TEMP} 1 1000 CUDA_ARCHITECTURES)
+      set(CMAKE_CUDA_ARCHITECTURES
+          "${CUDA_ARCHITECTURES}"
+          CACHE STRING "CUDA architectures to target (e.g., 75 for Turing)"
+                FORCE)
+    else()
+      message(FATAL_ERROR "${MUDOCK_GPU_ARCHITECTURES} cannot get CUDA GPUs.")
+    endif()
+    set(alpaka_ACC_GPU_CUDA_ENABLE ON CACHE BOOL "Enable the CUDA GPU back-end" FORCE)
+  elseif(MUDOCK_ALPAKA_BACKEND STREQUAL "hip")
+    if(MUDOCK_ENABLE_CUDA
+       OR MUDOCK_ENABLE_SYCL
+       OR MUDOCK_ENABLE_OMP_OFFLOAD)
+      message(FATAL_ERROR "Enable only one GPU framework at a time.")
+    endif()
+    if(NOT CMAKE_HIP_COMPILER)
+      enable_language(HIP)
+    endif()
+    set(alpaka_ACC_GPU_HIP_ENABLE ON CACHE BOOL "Enable the HIP back-end" FORCE)
+  elseif(MUDOCK_ALPAKA_BACKEND STREQUAL "sycl")
+    set(alpaka_ACC_SYCL_ENABLE ON CACHE BOOL "Enable the SYCL back-end" FORCE)
+  elseif(MUDOCK_ALPAKA_BACKEND STREQUAL "threads")
+    set(alpaka_ACC_CPU_B_SEQ_T_THREADS_ENABLE ON CACHE BOOL "Enable the threads CPU back-end" FORCE)
+  elseif(MUDOCK_ALPAKA_BACKEND STREQUAL "tbb")
+    set(alpaka_ACC_CPU_B_TBB_T_SEQ_ENABLE ON CACHE BOOL "Enable the TBB CPU back-end" FORCE)
+  elseif(MUDOCK_ALPAKA_BACKEND STREQUAL "omp2")
+    set(alpaka_ACC_CPU_B_OMP2_T_SEQ_ENABLE ON CACHE BOOL "Enable the OpenMP 2.0 CPU back-end" FORCE)
+  elseif(MUDOCK_ALPAKA_BACKEND STREQUAL "serial")
+    set(alpaka_ACC_CPU_B_SEQ_T_SEQ_ENABLE ON CACHE BOOL "Enable the serial CPU back-end" FORCE)
+  else()
+    message(FATAL_ERROR "MUDOCK_ALPAKA_BACKEND must be one of: serial, threads, tbb, omp2, cuda, hip, sycl")
+  endif()
+endif()
+
+if(MUDOCK_ENABLE_CUDA
+   AND MUDOCK_ENABLE_ALPAKA
+   AND MUDOCK_ALPAKA_BACKEND STREQUAL "cuda")
+  message(FATAL_ERROR
+    "Do not enable both MUDOCK_ENABLE_CUDA and MUDOCK_ENABLE_ALPAKA with "
+    "MUDOCK_ALPAKA_BACKEND=cuda. Pick one CUDA build path.")
+endif()
+
+if(MUDOCK_ENABLE_HIP
+   AND MUDOCK_ENABLE_ALPAKA
+   AND MUDOCK_ALPAKA_BACKEND STREQUAL "hip")
+  message(FATAL_ERROR
+    "Do not enable both MUDOCK_ENABLE_HIP and MUDOCK_ENABLE_ALPAKA with "
+    "MUDOCK_ALPAKA_BACKEND=hip. Pick one HIP build path.")
+endif()
+
 mudock_normalize_stage_bucket_policy(MUDOCK_STAGE_BUCKET_POLICY
                                      "${MUDOCK_STAGE_BUCKET_POLICY}")
 if(NOT MUDOCK_STAGE_BUCKET_POLICY STREQUAL "MAX_UTILIZATION"
@@ -377,6 +467,10 @@ if(NOT MUDOCK_ENABLE_FAST AND CMAKE_BUILD_TYPE STREQUAL "Release")
 endif()
 
 if(MUDOCK_ENABLE_OMP OR MUDOCK_ENABLE_OMP_OFFLOAD)
+  find_package(OpenMP REQUIRED)
+endif()
+
+if(MUDOCK_ENABLE_ALPAKA AND MUDOCK_ALPAKA_BACKEND STREQUAL "omp2")
   find_package(OpenMP REQUIRED)
 endif()
 
@@ -524,6 +618,78 @@ endforeach()
 # ##############################################################################
 # ### Add each component that compose this project
 # ##############################################################################
+if(MUDOCK_ENABLE_ALPAKA)
+  set(alpaka_BUILD_EXAMPLES OFF CACHE BOOL "Build the examples" FORCE)
+  set(alpaka_BUILD_BENCHMARKS OFF CACHE BOOL "Build the benchmarks" FORCE)
+
+  set(alpaka_ACC_CPU_B_SEQ_T_SEQ_ENABLE OFF CACHE BOOL "Enable the serial CPU back-end" FORCE)
+  set(alpaka_ACC_CPU_B_SEQ_T_THREADS_ENABLE OFF CACHE BOOL "Enable the threads CPU block thread back-end" FORCE)
+  set(alpaka_ACC_CPU_B_TBB_T_SEQ_ENABLE OFF CACHE BOOL "Enable the TBB CPU grid block back-end" FORCE)
+  set(alpaka_ACC_CPU_B_OMP2_T_SEQ_ENABLE OFF CACHE BOOL "Enable the OpenMP 2.0 CPU grid block back-end" FORCE)
+  set(alpaka_ACC_CPU_B_SEQ_T_OMP2_ENABLE OFF CACHE BOOL "Enable the OpenMP 2.0 CPU block thread back-end" FORCE)
+  set(alpaka_ACC_GPU_CUDA_ENABLE OFF CACHE BOOL "Enable the CUDA GPU back-end" FORCE)
+  set(alpaka_ACC_GPU_HIP_ENABLE OFF CACHE BOOL "Enable the HIP back-end" FORCE)
+  set(alpaka_ACC_SYCL_ENABLE OFF CACHE BOOL "Enable the SYCL back-end" FORCE)
+
+  if(MUDOCK_ALPAKA_BACKEND STREQUAL "serial")
+    set(alpaka_ACC_CPU_B_SEQ_T_SEQ_ENABLE ON CACHE BOOL "Enable the serial CPU back-end" FORCE)
+  elseif(MUDOCK_ALPAKA_BACKEND STREQUAL "threads")
+    set(alpaka_ACC_CPU_B_SEQ_T_THREADS_ENABLE ON CACHE BOOL "Enable the threads CPU block thread back-end" FORCE)
+  elseif(MUDOCK_ALPAKA_BACKEND STREQUAL "tbb")
+    set(alpaka_ACC_CPU_B_TBB_T_SEQ_ENABLE ON CACHE BOOL "Enable the TBB CPU grid block back-end" FORCE)
+  elseif(MUDOCK_ALPAKA_BACKEND STREQUAL "omp2")
+    set(alpaka_ACC_CPU_B_OMP2_T_SEQ_ENABLE ON CACHE BOOL "Enable the OpenMP 2.0 CPU grid block back-end" FORCE)
+  elseif(MUDOCK_ALPAKA_BACKEND STREQUAL "cuda")
+    set(alpaka_ACC_GPU_CUDA_ENABLE ON CACHE BOOL "Enable the CUDA GPU back-end" FORCE)
+  elseif(MUDOCK_ALPAKA_BACKEND STREQUAL "hip")
+    set(alpaka_ACC_GPU_HIP_ENABLE ON CACHE BOOL "Enable the HIP back-end" FORCE)
+  elseif(MUDOCK_ALPAKA_BACKEND STREQUAL "sycl")
+    set(alpaka_ACC_SYCL_ENABLE ON CACHE BOOL "Enable the SYCL back-end" FORCE)
+  else()
+    message(FATAL_ERROR
+      "Unsupported MUDOCK_ALPAKA_BACKEND='${MUDOCK_ALPAKA_BACKEND}'. "
+      "Valid values are: serial, threads, tbb, omp2, cuda, hip, sycl.")
+  endif()
+
+  set(mudock_enabled_alpaka_backends)
+  foreach(alpaka_backend IN ITEMS
+          alpaka_ACC_CPU_B_SEQ_T_SEQ_ENABLE
+          alpaka_ACC_CPU_B_SEQ_T_THREADS_ENABLE
+          alpaka_ACC_CPU_B_TBB_T_SEQ_ENABLE
+          alpaka_ACC_CPU_B_OMP2_T_SEQ_ENABLE
+          alpaka_ACC_CPU_B_SEQ_T_OMP2_ENABLE
+          alpaka_ACC_GPU_CUDA_ENABLE
+          alpaka_ACC_GPU_HIP_ENABLE
+          alpaka_ACC_SYCL_ENABLE)
+    if(${alpaka_backend})
+      list(APPEND mudock_enabled_alpaka_backends "${alpaka_backend}")
+    endif()
+  endforeach()
+  list(LENGTH mudock_enabled_alpaka_backends mudock_num_enabled_alpaka_backends)
+  if(mudock_num_enabled_alpaka_backends GREATER 1)
+    string(JOIN ", " mudock_enabled_alpaka_backends_msg ${mudock_enabled_alpaka_backends})
+    message(FATAL_ERROR
+      "Enable only one Alpaka backend at a time. Enabled Alpaka backends: "
+      "${mudock_enabled_alpaka_backends_msg}.")
+  endif()
+
+  find_package(alpaka 1.2.0 CONFIG QUIET)
+  if(NOT TARGET alpaka::alpaka)
+    if(NOT MUDOCK_FETCH_ALPAKA)
+      message(FATAL_ERROR
+        "MUDOCK_ENABLE_ALPAKA=ON requires Alpaka >= 1.2.0. "
+        "Install Alpaka and provide alpaka_DIR, or enable MUDOCK_FETCH_ALPAKA.")
+    endif()
+
+    include(FetchContent)
+    FetchContent_Declare(
+      alpaka
+      GIT_REPOSITORY https://github.com/alpaka-group/alpaka.git
+      GIT_TAG d6961e8e90489d8e5f9d4617d0474ef2dd3c12ef)
+    FetchContent_MakeAvailable(alpaka)
+  endif()
+endif()
+
 add_subdirectory(application)
 add_subdirectory(mudock)
 
@@ -602,6 +768,16 @@ if(NOT MUDOCK_GENETIC_BUCKET_COMBINE STREQUAL
                       "${MUDOCK_GENETIC_BUCKET_COMBINE}"
                       "MUDOCK_GENETIC_BUCKET_COMBINE")
 endif()
+if(NOT MUDOCK_ADT_BUCKET_POLICY STREQUAL "${MUDOCK_DEFAULT_STAGE_BUCKET_POLICY}")
+  if(NOT MUDOCK_ADT_BUCKET_POLICY STREQUAL "MAX_UTILIZATION"
+     AND NOT MUDOCK_ADT_BUCKET_POLICY STREQUAL "SM_ALIGNED"
+     AND NOT MUDOCK_ADT_BUCKET_POLICY STREQUAL "DEVICE_ALIGNED")
+    message(FATAL_ERROR
+      "MUDOCK_ADT_BUCKET_POLICY must be one of: DEVICE_ALIGNED, SM_ALIGNED, MAX_UTILIZATION")
+  endif()
+endif()
+mudock_print_config("ADT bucket policy" "${MUDOCK_ADT_BUCKET_POLICY}"
+                    "MUDOCK_ADT_BUCKET_POLICY")
 if(MUDOCK_ENABLE_LIKWID)
   mudock_print_config("Likwid CPP Profiling" "${MUDOCK_LIKWID_CPP}"
                       "MUDOCK_LIKWID_CPP")
@@ -634,6 +810,13 @@ if(MUDOCK_ENABLE_HIP)
 endif()
 
 mudock_print_config("Enable SYCL" "${MUDOCK_ENABLE_SYCL}" "MUDOCK_ENABLE_SYCL")
+
+mudock_print_config("Enable Alpaka" "${MUDOCK_ENABLE_ALPAKA}" "MUDOCK_ENABLE_ALPAKA")
+
+if(MUDOCK_ENABLE_ALPAKA)
+  mudock_print_config("Alpaka backend" "${MUDOCK_ALPAKA_BACKEND}"
+                      "MUDOCK_ALPAKA_BACKEND")
+endif()                      
 
 if(MUDOCK_ENABLE_SYCL)
   mudock_print_config("Target SYCL architecture" "${SYCL_TARGETS}"
