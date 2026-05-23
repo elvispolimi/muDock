@@ -59,26 +59,33 @@ namespace mudock {
       
         // Apply AdaDelta update for each dimension
         for (int d = 0; d < gradient_size; ++d) {
-          E_g2_i[d] = ADADELTA_RHO * E_g2_i[d] + (1.0f - ADADELTA_RHO) * grad[d] * grad[d];
+          E_g2_i[d] = RHO * E_g2_i[d] + (1.0f - RHO) * grad[d] * grad[d];
           
-          const fp_type rms_g = std::sqrt(E_g2_i[d] + ADADELTA_EPSILON);
+          const fp_type rms_g = std::sqrt(E_g2_i[d] + EPSILON);
           
-          const fp_type rms_dw = std::sqrt(E_dw2_i[d] + ADADELTA_EPSILON);
+          const fp_type rms_dw = std::sqrt(E_dw2_i[d] + EPSILON);
           
-          const fp_type delta_w = -(rms_dw / rms_g) * grad[d];
+          fp_type delta_w = -(rms_dw / rms_g) * grad[d];
+
+          // delta_w = std::clamp(delta_w, -MAX_STEP, MAX_STEP);
           
-          E_dw2_i[d] = ADADELTA_RHO * E_dw2_i[d] + (1.0f - ADADELTA_RHO) * delta_w * delta_w;
+          if (d < 3)      delta_w = std::clamp(delta_w, -MAX_STEP_POS, MAX_STEP_POS);
+          else if (d < 6) delta_w = std::clamp(delta_w, -MAX_STEP_ROT, MAX_STEP_ROT);
+          else            delta_w = std::clamp(delta_w, -MAX_STEP_TORS, MAX_STEP_TORS);
+
+          
+          E_dw2_i[d] = RHO * E_dw2_i[d] + (1.0f - RHO) * delta_w * delta_w;
 
           w[d] = w[d] + delta_w;
 
           // To check convergence of an individual, we check if all the dimension has not improved significantly.
           // If at least one does improve, we continue the search.
           if (d < 3) {
-            if (std::abs(delta_w) > ADADELTA_CONVERGENCE_THRESHOLD_COORD) {
+            if (std::abs(delta_w) > CONVERGENCE_THRESHOLD_COORD) {
               improvement = true;
             }
           } else {
-            if (std::abs(delta_w) > ADADELTA_CONVERGENCE_THRESHOLD_ANGLE) {
+            if (std::abs(delta_w) > CONVERGENCE_THRESHOLD_ANGLE) {
               improvement = true;
             }
           }

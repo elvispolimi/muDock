@@ -21,11 +21,14 @@
 
 namespace mudock {
 
-  #define ADADELTA_RHO 0.85f
-  #define ADADELTA_EPSILON 1e-6f                // TODO L use variables instead of numbers for coordinate and angle step
-  #define ADADELTA_CONVERGENCE_THRESHOLD_COORD (static_cast<fp_type>(0.2 * 90 * 0.01)) // 90*0.2 = 18 is the range of movement for translations
-  #define ADADELTA_CONVERGENCE_THRESHOLD_ANGLE (static_cast<fp_type>(4 * 90 * 0.01))      // 90*4 = 360 is the range of movement for angles
-
+  #define RHO 0.85f
+  #define EPSILON 1e-2f                // TODO L use variables instead of numbers for coordinate and angle step
+  #define CONVERGENCE_THRESHOLD_COORD (static_cast<fp_type>(0.2 * 90 * 0.01)) // 90*0.2 = 18 is the range of movement for translations
+  #define CONVERGENCE_THRESHOLD_ANGLE (static_cast<fp_type>(4 * 90 * 0.01))      // 90*4 = 360 is the range of movement for angles
+  //#define MAX_STEP 1e-1f
+  #define MAX_STEP_POS  0.1f
+  #define MAX_STEP_ROT  0.03f
+  #define MAX_STEP_TORS 0.05f
 
   #ifndef __CUDACC__
   // TODO check that the object type and the kernel impl are the same
@@ -132,7 +135,7 @@ namespace mudock {
           scores_b.copy_device2host();
           (*this->scratch).get_queue()->synchronize();
           if(i % (this->iterations/10) == 0){ // print eveery 10% of the process
-            printf("Score: %f\n", scores_b()[0]);
+            printf("Iter: %ld, Score: %f\n", i, scores_b()[0]);
           }
         }
 
