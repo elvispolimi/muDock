@@ -38,6 +38,10 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
       "mode",
       po::value(&args.pipeline_mode)->default_value(args.pipeline_mode),
       "Scoring architecture to use: STANDARD (default), PRECOMPUTED, or QUANT");
+  arguments_description.add_options()(
+      "score-only",
+      po::bool_switch(&args.score_only)->default_value(false),
+      "Whether to use the score only (true) or the standard path (false, default)");
 
   // define the knobs command line arguments
   po::options_description knobs_description("Virtual Screening Knobs");

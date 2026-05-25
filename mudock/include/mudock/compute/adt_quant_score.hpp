@@ -7,6 +7,7 @@
 #include <mudock/chem/autodock_protein.hpp>
 #include <mudock/chem/autodock_quant_protein.hpp>
 #include <mudock/compute/adt_quant_score_kernel.hpp>
+#include <mudock/likwid_utils.hpp>
 #ifndef __CUDACC__
   #include <mudock/compute/buffer_utils.hpp>
   #include <mudock/compute/scoring.hpp>
@@ -264,7 +265,9 @@ namespace mudock {
           (((*this->scratch).template get<buffer_data_type::SCORES>().num_elements() % batch_ligands) == 0) &&
           "Number of scores is not a multiple of ligands in the batch");
       assert(kernel && "Kernel method not yet prepared");
+      LIKWID_MARKER_START("Score_Kernel_Quant");
       (*kernel)();
+      LIKWID_MARKER_STOP("Score_Kernel_Quant");
     }
 
   private:

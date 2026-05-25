@@ -13,6 +13,7 @@ struct command_line_arguments {
   std::optional<double> time_limit_sec  = std::nullopt;
   std::optional<double> observer        = std::nullopt;
   std::string pipeline_mode = "STANDARD";
+  bool score_only = false;
   mudock::knobs knobs;
 };
 command_line_arguments parse_command_line_arguments(const int argc, char *argv[]);
