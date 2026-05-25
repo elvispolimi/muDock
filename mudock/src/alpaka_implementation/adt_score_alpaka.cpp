@@ -21,8 +21,8 @@
 
 namespace mudock {
   namespace {
-    ALPAKA_FN_ACC fp_type trilinear_interpolation_alpaka(const fp_type* map,
-                                                         const fp_type* coeffs,
+    ALPAKA_FN_ACC fp_type trilinear_interpolation_alpaka(const fp_type* __restrict__ map,
+                                                         const fp_type* __restrict__ coeffs,
                                                          const int map_index_x,
                                                          const int map_index_xy) {
       fp_type value{0};
@@ -45,29 +45,29 @@ namespace mudock {
       ALPAKA_FN_ACC void operator()(TAcc const& acc,
                                     const int atom_stride,
                                     const int scores_per_ligand,
-                                    const fp_type* scratch_x,
-                                    const fp_type* scratch_y,
-                                    const fp_type* scratch_z,
-                                    const fp_type* vols_b,
-                                    const fp_type* solpars_b,
-                                    const fp_type* charges_b,
+                                    const fp_type* __restrict__ scratch_x,
+                                    const fp_type* __restrict__ scratch_y,
+                                    const fp_type* __restrict__ scratch_z,
+                                    const fp_type* __restrict__ vols_b,
+                                    const fp_type* __restrict__ solpars_b,
+                                    const fp_type* __restrict__ charges_b,
                                     const int* num_atoms_b,
                                     const int* num_rotamers_b,
                                     const int* num_nonbonds_b,
-                                    const int* nonbond_a1_b,
-                                    const int* nonbond_a2_b,
-                                    const fp_type* nonbond_cA_b,
-                                    const fp_type* nonbond_cB_b,
-                                    const int* nonbond_xB_b,
+                                    const int* __restrict__ nonbond_a1_b,
+                                    const int* __restrict__ nonbond_a2_b,
+                                    const fp_type* __restrict__ nonbond_cA_b,
+                                    const fp_type* __restrict__ nonbond_cB_b,
+                                    const int* __restrict__ nonbond_xB_b,
                                     const fp_type* minimum,
-                                    const fp_type* maximum,
+                                    const fp_type* maxgetimum,
                                     const fp_type* center,
                                     const int map_index_x,
                                     const int map_index_xy,
                                     const int map_index_xyz,
-                                    const fp_type* grid_maps,
-                                    const int* map_offsets_b,
-                                    fp_type* scores_b) const {
+                                    const fp_type* __restrict__ grid_maps,
+                                    const int* __restrict__ map_offsets_b,
+                                    fp_type* __restrict__ scores_b) const {
         const int ligand_id = static_cast<int>(alpaka::getIdx<alpaka::Grid, alpaka::Blocks>(acc)[0u]);
         const int thread_id = static_cast<int>(alpaka::getIdx<alpaka::Block, alpaka::Threads>(acc)[0u]);
         const int thread_per_block =

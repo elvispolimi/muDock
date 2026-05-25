@@ -88,9 +88,9 @@ namespace mudock {
       template<typename TAcc>
       ALPAKA_FN_ACC void operator()(TAcc const& acc,
                                     const int chromosome_number,
-                                    const int* ligand_num_rotamers,
-                                    chromosome* chromosomes,
-                                    fp_type* ligand_scores,
+                                    const int* __restrict__ ligand_num_rotamers,
+                                    chromosome* __restrict__ chromosomes,
+                                    fp_type* __restrict__ ligand_scores,
                                     const std::size_t seed) const {
         const int ligand_id = static_cast<int>(alpaka::getIdx<alpaka::Grid, alpaka::Blocks>(acc)[0u]);
         const int local_thread_id =
@@ -124,10 +124,10 @@ namespace mudock {
                                     const int tournament_length,
                                     const fp_type mutation_prob,
                                     const int chromosome_number,
-                                    const int* ligand_num_rotamers,
-                                    chromosome* chromosomes,
-                                    chromosome* next_chromosomes,
-                                    fp_type* ligand_scores,
+                                    const int* __restrict__ ligand_num_rotamers,
+                                    chromosome* __restrict__ chromosomes,
+                                    chromosome* __restrict__ next_chromosomes,
+                                    fp_type* __restrict__ ligand_scores,
                                     const std::size_t seed) const {
         const int ligand_id = static_cast<int>(alpaka::getIdx<alpaka::Grid, alpaka::Blocks>(acc)[0u]);
         const int local_thread_id =
@@ -136,9 +136,9 @@ namespace mudock {
             static_cast<int>(alpaka::getWorkDiv<alpaka::Block, alpaka::Threads>(acc)[0u]);
 
         const int num_rotamers = ligand_num_rotamers[ligand_id];
-        chromosome* l_chromosomes = chromosomes + ligand_id * chromosome_number;
-        chromosome* l_next_chromosomes = next_chromosomes + ligand_id * chromosome_number;
-        const fp_type* scores = ligand_scores + chromosome_number * ligand_id;
+        chromosome* __restrict__ l_chromosomes = chromosomes + ligand_id * chromosome_number;
+        chromosome* __restrict__ l_next_chromosomes = next_chromosomes + ligand_id * chromosome_number;
+        const fp_type* __restrict__ scores = ligand_scores + chromosome_number * ligand_id;
 
         for (int chromosome_index = local_thread_id; chromosome_index < chromosome_number;
              chromosome_index += thread_per_block) {
@@ -179,8 +179,8 @@ namespace mudock {
                                     const int* ligand_num_rotamers,
                                     fp_type* ligand_scores,
                                     fp_type* ligand_best_scores,
-                                    chromosome* chromosomes,
-                                    chromosome* best_chromosomes) const {
+                                    chromosome* __restrict__ chromosomes,
+                                    chromosome* __restrict__ best_chromosomes) const {
         const int ligand_id = static_cast<int>(alpaka::getIdx<alpaka::Grid, alpaka::Blocks>(acc)[0u]);
         const int thread_id = static_cast<int>(alpaka::getIdx<alpaka::Block, alpaka::Threads>(acc)[0u]);
         if (thread_id != 0) {
@@ -188,8 +188,8 @@ namespace mudock {
         }
 
         const int num_rotamers = ligand_num_rotamers[ligand_id];
-        chromosome* l_chromosomes = chromosomes + ligand_id * chromosome_number;
-        fp_type* scores = ligand_scores + chromosome_number * ligand_id;
+        chromosome* __restrict__ l_chromosomes = chromosomes + ligand_id * chromosome_number;
+        fp_type* __restrict__ scores = ligand_scores + chromosome_number * ligand_id;
 
         int min_index = 0;
         fp_type min_score = scores[0];
