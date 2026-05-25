@@ -19,17 +19,16 @@
   #include <mudock/compute/scoring.hpp>
   #include <mudock/compute/scratchpad.hpp>
 #endif
-#include <mudock/format/writer.hpp>
 #include <mudock/molecule.hpp>
 #include <mudock/type_alias.hpp>
 
 namespace mudock {
 
-  #define RHO 0.85f
+  #define RHO 0.8f
   #define EPSILON 1e-2f                // TODO L use variables instead of numbers for coordinate and angle step
   #define CONVERGENCE_THRESHOLD_COORD (static_cast<fp_type>(0.2 * 90 * 0.01)) // 90*0.2 = 18 is the range of movement for translations
   #define CONVERGENCE_THRESHOLD_ANGLE (static_cast<fp_type>(4 * 90 * 0.01))      // 90*4 = 360 is the range of movement for angles
-  //#define MAX_STEP 1e-1f
+  #define MAX_STEP 1e-1f
   #define MAX_STEP_POS  0.1f
   #define MAX_STEP_ROT  0.03f
   #define MAX_STEP_TORS 0.05f
@@ -46,14 +45,9 @@ namespace mudock {
                geom_trans(_scratch, _score->get_protein()) {}
 
     void prepare(batch<static_molecule> &batch) {
-      // TODO L i don't like initializing iterations here, not scalable. Better move it to local_search
-      this->iterations           = (*this->scratch).configuration.ls_iterations;
-      this->convergence_patience = (*this->scratch).configuration.adadelta_convergence_patience;
-      this->use_early_stopping   = (*this->scratch).configuration.use_early_stopping; 
-
       // TODO L check if this makes a copy or a reference
       assert(batch.num_ligands == 1 && "AdaDelta dump_pose currently expects a single ligand in the batch");
-      ligand_template = *batch.molecules[0];
+      this->ligand_template = *batch.molecules[0];
 
       batch_ligands = batch.num_ligands;
       const int individuals_per_ligand = std::max(1, static_cast<int>((*this->scratch).configuration.population_number));
@@ -142,7 +136,7 @@ namespace mudock {
           scores_b.copy_device2host();
           (*this->scratch).get_queue()->synchronize();
           if(i % (this->iterations/10) == 0){ // print eveery 10% of the process
-            dump_pose(int(i));
+            this->dump_pose(int(i));
             printf("Iter: %ld, Score: %f\n", i, scores_b()[0]);
           }
         }
@@ -197,7 +191,6 @@ namespace mudock {
 
   private:
     int batch_ligands;
-    std::optional<static_molecule> ligand_template;
 
     std::unique_ptr<adadelta_kernel<queue_type>> ls_ad_kernel;
     geometric<queue_type> geom_trans;
@@ -215,29 +208,6 @@ namespace mudock {
         ligand.properties.assign(property_type::SCORE, std::to_string(scores_b()[score_index]));
       }
     };
-
-
-    void dump_pose(int i) {
-      assert(ligand_template.has_value() && "Ligand template was not stored before dump_pose");
-
-      auto& x_scratch_b = (*this->scratch).template get<buffer_data_type::X_SCRATCH>();
-      auto& y_scratch_b = (*this->scratch).template get<buffer_data_type::Y_SCRATCH>();
-      auto& z_scratch_b = (*this->scratch).template get<buffer_data_type::Z_SCRATCH>();
-      x_scratch_b.copy_device2host();
-      y_scratch_b.copy_device2host();
-      z_scratch_b.copy_device2host();
-      (*this->scratch).get_queue()->synchronize();
-
-      static_molecule pose = *ligand_template;
-      const int num_atoms = pose.num_atoms();
-      std::memcpy(pose.x(), x_scratch_b.host_pointer(), num_atoms * sizeof(fp_type));
-      std::memcpy(pose.y(), y_scratch_b.host_pointer(), num_atoms * sizeof(fp_type));
-      std::memcpy(pose.z(), z_scratch_b.host_pointer(), num_atoms * sizeof(fp_type));
-
-      const std::string filename = "dump/pose_iter_" + std::to_string(i) + ".adtmol2";
-      std::ofstream ofs(filename, std::ios::out);
-      writer<supported_format::ADTMOL2>(pose, ofs);
-    }
 
   };
   #endif
