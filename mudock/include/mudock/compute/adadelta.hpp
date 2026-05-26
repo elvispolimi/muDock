@@ -135,7 +135,7 @@ namespace mudock {
           // copy scores back to host and print best score (first element)
           scores_b.copy_device2host();
           (*this->scratch).get_queue()->synchronize();
-          if(i % (this->iterations/10) == 0){ // print eveery 10% of the process
+          if(i % (this->iterations/10) == 0){ // print every 10% of the process
             this->dump_pose(int(i));
             printf("Iter: %ld, Score: %f\n", i, scores_b()[0]);
           }

@@ -28,8 +28,9 @@ namespace mudock {
     
   protected:
     std::shared_ptr<scoring_t<queue_t>> score_stage;
-    std::optional<static_molecule> ligand_template;
     size_t iterations;
+    
+    std::optional<static_molecule> ligand_template;
     size_t convergence_patience;
     bool use_early_stopping;
 

@@ -5,6 +5,7 @@
 #include <mudock/batch.hpp>
 #include <mudock/chem/autodock_grid_types.hpp>
 #include <mudock/chem/autodock_ligand.hpp>
+#include <mudock/chem/geom_ligand.hpp>
 #include <mudock/chem/autodock_protein.hpp>
 #include <mudock/compute/adt_score_kernel.hpp>
 #include <mudock/compute/batch_multiple.hpp>
@@ -216,26 +217,26 @@ namespace mudock {
       // TODO L IMPORTANT check this FOR LOOP initialization
       for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
         auto &ligand = *batch.molecules[ligand_index];
-        autodock_ligand adt_ligand{ligand};
+        geom_ligand geom_lig{ligand};
 
         const int num_atoms = ligand.num_atoms();
-        const int num_rotamers = num_rotamers_b[ligand_index];
+        
+        const auto num_rotamers = ligand.num_rotamers();
+        assert(batch_rotamers > num_rotamers);
 
-        // Initialize fragment data to zeros (placeholder - gradient kernel needs proper data)
-        // The actual fragment data should be loaded from the molecule structure
-        const int frag_size = num_atoms * num_rotamers;
-        if (frag_size > 0) {
-          std::memset((void *) (ligand_fragments() + ligand_fragments_start()[ligand_index]),
-                      0,
-                      frag_size * sizeof(int));
-        }
-
-        ligand_fragments_start()[ligand_index + 1] = ligand_fragments_start()[ligand_index] + frag_size;
-
-        // For now, set fragment indices to default values (can be updated based on rotamer structure)
-        frag_indices_start()[ligand_index + 1] = frag_indices_start()[ligand_index];
-        frag_start_atom_indices()[ligand_index + 1] = frag_start_atom_indices()[ligand_index];
-        frag_stop_atom_indices()[ligand_index + 1] = frag_stop_atom_indices()[ligand_index];
+        std::memcpy((void*) (ligand_fragments() + ligand_fragments_start()[ligand_index]),
+                    geom_lig.fragments_masks(),
+                    num_atoms * num_rotamers * sizeof(int));
+        ligand_fragments_start()[ligand_index + 1] =
+            static_cast<int>(ligand_fragments_start()[ligand_index] + (num_atoms * num_rotamers));
+        std::memcpy((void*) (frag_start_atom_indices() + frag_indices_start()[ligand_index]),
+                    geom_lig.fragmets_starts(),
+                    num_rotamers * sizeof(int));
+        std::memcpy((void*) (frag_stop_atom_indices() + frag_indices_start()[ligand_index]),
+                    geom_lig.fragments_stops(),
+                    num_rotamers * sizeof(int));
+        frag_indices_start()[ligand_index + 1] =
+            static_cast<int>(frag_indices_start()[ligand_index] + num_rotamers);
       }
 
       ligand_fragments.copy_host2device();

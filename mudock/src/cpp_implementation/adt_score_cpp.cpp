@@ -264,7 +264,6 @@ namespace mudock {
       const int num_atoms    = num_atoms_b[ligand_index];
       const int num_nonbonds = num_nonbonds_b[ligand_index + 1] - num_nonbonds_b[ligand_index];
       const int num_rotamers = num_rotamers_b[ligand_index];
-
       const fp_type *__restrict__ scratch_x = x_scratch_b + atom_stride * individuals_per_ligand;
       const fp_type *__restrict__ scratch_y = y_scratch_b + atom_stride * individuals_per_ligand;
       const fp_type *__restrict__ scratch_z = z_scratch_b + atom_stride * individuals_per_ligand;
@@ -277,12 +276,11 @@ namespace mudock {
       const fp_type *nonbond_cA_l           = nonbond_cA_b + num_nonbonds_b[ligand_index];
       const fp_type *nonbond_cB_l           = nonbond_cB_b + num_nonbonds_b[ligand_index];
       const int *nonbond_xB_l               = nonbond_xB_b + num_nonbonds_b[ligand_index];
-
       const int* fragments = ligand_fragments_b + ligand_fragments_start_b[ligand_index];
       const int* frag_start_indices = frag_start_indices_b + frag_indices_start_b[ligand_index];
       const int* frag_stop_indices = frag_stop_indices_b + frag_indices_start_b[ligand_index];
-
       gradient *__restrict__ gradients_l = gradients_b + ligand_index * individuals_per_ligand;
+
       for (int individual_index = 0; individual_index < individuals_per_ligand; ++individual_index) {
         const fp_type *__restrict__ scratch_x_l = scratch_x + individual_index * batch_atoms;
         const fp_type *__restrict__ scratch_y_l = scratch_y + individual_index * batch_atoms;
