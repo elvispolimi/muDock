@@ -105,7 +105,7 @@ int main(int argc, char** argv) {
       mudock::run_tbb_pipeline<mudock::supported_format::ADTMOL2>(
           in, args.device_confs, args.knobs, pipe, effective_range.end, args.time_limit_sec, args.observer);
     } else if (args.pipeline_mode == "QUANT") {
-      mudock::dt_quant_score_pipeline pipe{protein};
+      mudock::adt_quant_score_pipeline pipe{protein};
       mudock::run_tbb_pipeline<mudock::supported_format::ADTMOL2>(
           in, args.device_confs, args.knobs, pipe, effective_range.end, args.time_limit_sec, args.observer);
     } else {
@@ -116,7 +116,7 @@ int main(int argc, char** argv) {
   } else {
     mudock::info("Virtual screening the ligands ...");
     if (args.pipeline_mode == "PRECOMPUTED") {
-      mudock::precomputed_genetic_adt_pipeline pipe{protein};
+      mudock::genetic_precomputed_adt_pipeline pipe{protein};
       mudock::run_tbb_pipeline<mudock::supported_format::ADTMOL2>(
           in, args.device_confs, args.knobs, pipe, effective_range.end, args.time_limit_sec, args.observer);
     } else if (args.pipeline_mode == "QUANT") {

@@ -1,12 +1,15 @@
 #pragma once
 
 #include <cstring>
+#include <mudock/molecule.hpp>
+#include <mudock/type_alias.hpp>
+
 #include <mudock/batch.hpp>
 #include <mudock/chem/autodock_grid_types.hpp>
 #include <mudock/chem/autodock_ligand.hpp>
 #include <mudock/chem/autodock_protein.hpp>
 #include <mudock/compute/adt_score_kernel.hpp>
-
+#include <mudock/compute/batch_multiple.hpp>
 #include <mudock/chem/precomputed_layer.hpp>
 #include <mudock/compute/precomputed_adt_score_kernel.hpp>
 #ifndef __CUDACC__
@@ -14,20 +17,22 @@
   #include <mudock/compute/scoring.hpp>
   #include <mudock/compute/scratchpad.hpp>
 #endif
-#include <mudock/molecule.hpp>
-#include <mudock/type_alias.hpp>
+
 
 
 namespace mudock {
 
   template<typename queue_type>
-  // requires std::derived_from<queue_type, queue>
-  int get_precomputed_adt_score_batch(const int, std::shared_ptr<queue_type>);
+  batch_multiple get_precomputed_adt_score_batch_multiple(const int, std::shared_ptr<queue_type>) {
+    return {};
+  }
 
 #ifndef __CUDACC__
   // TODO check that the object type and the kernel impl are the same
   template<typename queue_type>
   struct precomputed_adt_score: public scoring<queue_type> {
+    static constexpr const char stage_name[] = "PRECOMPUTED";
+
     precomputed_adt_score(std::shared_ptr<scratchpad<queue_type>> _scratch,
               std::shared_ptr<scratchpad<queue_type>> _device_scratch,
               dynamic_molecule &protein)
@@ -266,6 +271,57 @@ namespace mudock {
       assert(kernel && "Kernel method not yet prepared");
       (*kernel)();
     }
+    static std::size_t get_shared_ligand_mem(const int max_atoms, const knobs conf) {
+      const int scores_per_ligand = std::max(1, static_cast<int>(conf.population_number));
+      return sizeof(int) + sizeof(int) + sizeof(fp_type) * scores_per_ligand +
+             3 * sizeof(fp_type) * max_atoms * scores_per_ligand;
+    }
+
+    static std::size_t get_private_ligand_mem(const int max_atoms, const knobs) {
+      const int non_bonds_atoms = max_atoms * max_atoms;
+      std::size_t mem{0};
+      mem += sizeof(fp_type) * max_atoms;       // vols
+      mem += sizeof(fp_type) * max_atoms;       // solpars
+      mem += sizeof(fp_type) * max_atoms;       // charges
+      mem += sizeof(int) * max_atoms;           // map_offsets
+      mem += sizeof(int);                       // num_nonbond
+      mem += sizeof(int) * non_bonds_atoms;     // nonbond_a1
+      mem += sizeof(int) * non_bonds_atoms;     // nonbond_a2
+      mem += sizeof(fp_type) * non_bonds_atoms; // nonbond_cA
+      mem += sizeof(fp_type) * non_bonds_atoms; // nonbond_cB
+      mem += sizeof(int) * non_bonds_atoms;     // nonbond_xB
+      // Nota: fused_maps non viene calcolato qui perché la size della griglia 
+      // non è nota a compile-time in questa fase, ma questo garantisce l'allineamento
+      // con le logiche di upstream per il calcolo base del batch.
+      return mem;
+    }
+
+    static int get_ligand_mem(const int max_atoms, const knobs conf) {
+      return static_cast<int>(get_shared_ligand_mem(max_atoms, conf) +
+                              get_private_ligand_mem(max_atoms, conf));
+    }
+
+    static batch_multiple get_batch_size(const int atoms,
+                                         std::shared_ptr<queue_type> q,
+                                         const knobs &conf,
+                                         const size_t max_bucket_size) {
+      (void) conf;
+      const auto plain_multiple_info =
+          normalize_batch_multiple(get_precomputed_adt_score_batch_multiple<queue_type>(atoms, q));
+      mudock::stage_bucket_trace("PRECOMPUTED stage plain multiple for ",
+                                 atoms,
+                                 " atoms -> total=",
+                                 plain_multiple_info.total_multiple(),
+                                 " (active_blocks_per_sm=",
+                                 plain_multiple_info.active_blocks_per_sm,
+                                 ", num_sms=",
+                                 plain_multiple_info.num_sms,
+                                 ")",
+                                 " (max_bucket_size hint=",
+                                 max_bucket_size,
+                                 ")");
+      return plain_multiple_info;
+    }
 
   private:
     int batch_ligands;
@@ -291,19 +347,15 @@ namespace mudock {
     void teardown_impl(batch<static_molecule> &batch) override {
       assert(batch.num_ligands == batch_ligands && "Scoring algorithm received different batch for teardown");
 
-      //TODO this could be an issue if the scores per population would be equal to 1;
-      if (batch_ligands ==
-          static_cast<int>((*this->scratch).template get<buffer_data_type::SCORES>().num_elements())) {
-        auto &scores_b = (*this->scratch).template get<buffer_data_type::SCORES>();
-        scores_b.copy_device2host();
-        (*this->scratch).get_queue()->synchronize();
-        for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
-          auto &ligand = *batch.molecules[ligand_index];
-
-          ligand.properties.assign(property_type::SCORE, std::to_string(scores_b()[ligand_index]));
-        }
+      auto &scores_b              = (*this->scratch).template get<buffer_data_type::SCORES>();
+      const int scores_per_ligand = static_cast<int>(scores_b.num_elements() / batch_ligands);
+      scores_b.copy_device2host();
+      (*this->scratch).get_queue()->synchronize();
+      for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
+        auto &ligand          = *batch.molecules[ligand_index];
+        const int score_index = ligand_index * scores_per_ligand;
+        ligand.properties.assign(property_type::SCORE, std::to_string(scores_b()[score_index]));
       }
-      // Otherwise the upper stage gave the responsibility to do so
     };
   };
 #endif

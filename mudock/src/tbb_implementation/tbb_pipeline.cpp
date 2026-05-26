@@ -162,7 +162,27 @@ namespace mudock {
         }
         info("Output drained");
     }
+    // =========================================================================
+    // Istanze per pipeline STANDARD (Singolo punto)
+    // =========================================================================
 
+    template void mudock::run_tbb_pipeline<mudock::supported_format::ADTMOL2, mudock::adt_score_pipeline>(
+        std::istream&,
+        const std::vector<std::string>&,
+        const mudock::knobs&,
+        mudock::adt_score_pipeline&,
+        std::size_t,
+        std::optional<double>,
+        std::optional<double>);
+
+    template void mudock::run_tbb_pipeline<mudock::supported_format::MOL2, mudock::adt_score_pipeline>(
+        std::istream&,
+        const std::vector<std::string>&,
+        const mudock::knobs&,
+        mudock::adt_score_pipeline&,
+        std::size_t,
+        std::optional<double>,
+        std::optional<double>);
     template void mudock::run_tbb_pipeline<mudock::supported_format::ADTMOL2, mudock::genetic_adt_pipeline>(
         std::istream&,
         const std::vector<std::string>&,
@@ -177,6 +197,89 @@ namespace mudock {
         const std::vector<std::string>&,
         const mudock::knobs&,
         mudock::genetic_adt_pipeline&,
+        std::size_t,
+        std::optional<double>,
+        std::optional<double>);
+    // =========================================================================
+    // Istanze per pipeline QUANT
+    // =========================================================================
+
+    // Singolo punto (adt_quant_score_pipeline)
+    template void mudock::run_tbb_pipeline<mudock::supported_format::ADTMOL2, mudock::adt_quant_score_pipeline>(
+        std::istream&,
+        const std::vector<std::string>&,
+        const mudock::knobs&,
+        mudock::adt_quant_score_pipeline&,
+        std::size_t,
+        std::optional<double>,
+        std::optional<double>);
+
+    template void mudock::run_tbb_pipeline<mudock::supported_format::MOL2, mudock::adt_quant_score_pipeline>(
+        std::istream&,
+        const std::vector<std::string>&,
+        const mudock::knobs&,
+        mudock::adt_quant_score_pipeline&,
+        std::size_t,
+        std::optional<double>,
+        std::optional<double>);
+
+    // Genetico (genetic_adt_quant_pipeline)
+    template void mudock::run_tbb_pipeline<mudock::supported_format::ADTMOL2, mudock::genetic_adt_quant_pipeline>(
+        std::istream&,
+        const std::vector<std::string>&,
+        const mudock::knobs&,
+        mudock::genetic_adt_quant_pipeline&,
+        std::size_t,
+        std::optional<double>,
+        std::optional<double>);
+
+    template void mudock::run_tbb_pipeline<mudock::supported_format::MOL2, mudock::genetic_adt_quant_pipeline>(
+        std::istream&,
+        const std::vector<std::string>&,
+        const mudock::knobs&,
+        mudock::genetic_adt_quant_pipeline&,
+        std::size_t,
+        std::optional<double>,
+        std::optional<double>);
+
+    // =========================================================================
+    // Istanze per pipeline PRECOMPUTED
+    // =========================================================================
+
+    // Singolo punto (precomputed_adt_score_pipeline)
+    template void mudock::run_tbb_pipeline<mudock::supported_format::ADTMOL2, mudock::precomputed_adt_score_pipeline>(
+        std::istream&,
+        const std::vector<std::string>&,
+        const mudock::knobs&,
+        mudock::precomputed_adt_score_pipeline&,
+        std::size_t,
+        std::optional<double>,
+        std::optional<double>);
+
+    template void mudock::run_tbb_pipeline<mudock::supported_format::MOL2, mudock::precomputed_adt_score_pipeline>(
+        std::istream&,
+        const std::vector<std::string>&,
+        const mudock::knobs&,
+        mudock::precomputed_adt_score_pipeline&,
+        std::size_t,
+        std::optional<double>,
+        std::optional<double>);
+
+    // Genetico (genetic_precomputed_adt_pipeline)
+    template void mudock::run_tbb_pipeline<mudock::supported_format::ADTMOL2, mudock::genetic_precomputed_adt_pipeline>(
+        std::istream&,
+        const std::vector<std::string>&,
+        const mudock::knobs&,
+        mudock::genetic_precomputed_adt_pipeline&,
+        std::size_t,
+        std::optional<double>,
+        std::optional<double>);
+
+    template void mudock::run_tbb_pipeline<mudock::supported_format::MOL2, mudock::genetic_precomputed_adt_pipeline>(
+        std::istream&,
+        const std::vector<std::string>&,
+        const mudock::knobs&,
+        mudock::genetic_precomputed_adt_pipeline&,
         std::size_t,
         std::optional<double>,
         std::optional<double>);
