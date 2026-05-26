@@ -27,8 +27,6 @@ namespace mudock {
 
   #define RHO 0.8f
   #define EPSILON 1e-2f                // TODO L use variables instead of numbers for coordinate and angle step
-  #define CONVERGENCE_THRESHOLD_COORD (static_cast<fp_type>(0.2 * 90 * 0.01)) // 90*0.2 = 18 is the range of movement for translations
-  #define CONVERGENCE_THRESHOLD_ANGLE (static_cast<fp_type>(4 * 90 * 0.01))      // 90*4 = 360 is the range of movement for angles
   #define MAX_STEP 1e-1f
   #define MAX_STEP_POS  0.1f
   #define MAX_STEP_ROT  0.03f
@@ -72,46 +70,40 @@ namespace mudock {
       // Allocate AdaDelta state buffers (E[g^2] and E[delta^2])
       auto &adadelta_e_g2_b  = (*this->scratch).template get<buffer_data_type::ADADELTA_E_G2>();
       auto &adadelta_e_dw2_b = (*this->scratch).template get<buffer_data_type::ADADELTA_E_DW2>();
-      auto &stall_counter_b  = (*this->scratch).template get<buffer_data_type::STALL_COUNTER>();
-      auto &inactive_b       = (*this->scratch).template get<buffer_data_type::INACTIVE>();
+      auto &active_b       = (*this->scratch).template get<buffer_data_type::ACTIVE>();
 
       if (!adadelta_e_g2_b.is_valid() || adadelta_e_g2_b.num_elements() != gradient_count) {
         adadelta_e_g2_b.alloc(gradient_count);
         adadelta_e_dw2_b.alloc(gradient_count);
-        stall_counter_b.alloc(gradient_count);
-        inactive_b.alloc(gradient_count);
+        active_b.alloc(gradient_count);
 
         adadelta_e_g2_b.set_valid();
         adadelta_e_dw2_b.set_valid();
-        stall_counter_b.set_valid();
-        inactive_b.set_valid();
+        active_b.set_valid();
 
       }
 
-      // TODO L move inactive from lsrate initialization from here to local search generic
-      // Initialize inactive population
-      std::vector<int> inactive_init(gradient_count);
+      // TODO L move active from lsrate initialization from here to local search generic
+      // Initialize active population
+      std::vector<int> active_init(gradient_count);
       
       std::mt19937 rng((*this->scratch).configuration.seed.value_or(std::random_device{}()));
-      double r = static_cast<double>((*this->scratch).configuration.lsrate / 100);
-      printf("rate: %f", r);
-      std::bernoulli_distribution dist(r);
+      std::bernoulli_distribution dist(static_cast<double>((*this->scratch).configuration.lsrate / 100));
 
       for (size_t i = 0; i < gradient_count; ++i) {
-        inactive_init[i] = dist(rng) ? 0 : 1; // TODO L change inactive to active to have a cleaner and more readable array coherent with lsrate
+        active_init[i] = dist(rng);
       }
 
       // Copy to device/managed buffer
       std::memcpy(
-          inactive_b.dev_pointer(),
-          inactive_init.data(),
+          active_b.dev_pointer(),
+          active_init.data(),
           gradient_count * sizeof(int));
 
       int* __restrict__ num_rotamers_p = num_rotamers_b.dev_pointer();
       chromosome *adadelta_e_g2        = adadelta_e_g2_b.dev_pointer();
       chromosome *adadelta_e_dw2       = adadelta_e_dw2_b.dev_pointer();
-      int *stall_counter               = stall_counter_b.dev_pointer();
-      int *inactive                    = inactive_b.dev_pointer();
+      int *active                    = active_b.dev_pointer();
 
       auto q = (*this->scratch).get_queue();
 
@@ -123,8 +115,7 @@ namespace mudock {
                                                                   num_rotamers_p,
                                                                   adadelta_e_g2,
                                                                   adadelta_e_dw2,
-                                                                  stall_counter,
-                                                                  inactive,
+                                                                  active,
                                                                   q);
 
       // Initialize the scoring kernel buffers
@@ -140,7 +131,7 @@ namespace mudock {
 
       auto &scores_b = (*this->scratch).template get<buffer_data_type::SCORES>();
 
-      // TODO L try to move the reset of inactives here which is more elegant, for now it is in adadelta cpp
+      // TODO L try to move the reset of actives here which is more elegant, for now it is in adadelta cpp
 
       const bool only_local_search =
           ((*this->scratch).configuration.population_number == 1) &&
@@ -162,7 +153,7 @@ namespace mudock {
         }
 
         ls_ad_kernel->compute_gradients();
-        ls_ad_kernel->apply_adadelta(static_cast<int>(i), static_cast<int>(this->convergence_patience), this->use_early_stopping);
+        ls_ad_kernel->apply_adadelta();
       }
 
       if (only_local_search) {
@@ -182,8 +173,7 @@ namespace mudock {
       // AdaDelta state buffers for each individual
       mem += sizeof(chromosome) * individuals_per_ligand; // E[g^2]
       mem += sizeof(chromosome) * individuals_per_ligand; // E[delta_w^2]
-      mem += sizeof(int) * individuals_per_ligand;        // stall counter
-      mem += sizeof(int) * individuals_per_ligand;        // inactive flag
+      mem += sizeof(int) * individuals_per_ligand;        // active flag
       return static_cast<int>(mem);
     }
 

@@ -8,13 +8,12 @@ namespace mudock {
 
   struct knobs {
     bool use_local_search                     = false;
-    bool use_early_stopping                   = false;
+    bool stop_at_convergence                  = true; // TODO L adapt it to genetic
     fp_type lsrate                            = static_cast<fp_type>(100);
     std::size_t population_number             = 100;
     std::size_t num_generations               = 1000;
     std::size_t tournament_length             = 10;
     std::size_t ls_iterations                 = 300;
-    std::size_t adadelta_convergence_patience = 50;
     fp_type mutation_prob                     = static_cast<fp_type>(0.01);
     std::optional<std::size_t> seed           = std::optional<std::size_t>{};
     std::size_t max_tbb_tokens                = 4;

@@ -12,5 +12,5 @@ namespace mudock {
   void adadelta_kernel<queue_cpp>::compute_gradients();
 
   template<>
-  void adadelta_kernel<queue_cpp>::apply_adadelta(int i, int convergence_patience, bool use_early_stopping);
+  void adadelta_kernel<queue_cpp>::apply_adadelta();
 } // namespace mudock

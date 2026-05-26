@@ -40,9 +40,9 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
       po::value(&args.knobs.use_local_search)->default_value(args.knobs.use_local_search),
       "Boolean to trigger LGA");
   knobs_description.add_options()(
-      "use_early_stopping",
-      po::value(&args.knobs.use_early_stopping)->default_value(args.knobs.use_early_stopping),
-      "Boolean to trigger early stopping in local search");
+      "stop_at_convergence",
+      po::value(&args.knobs.stop_at_convergence)->default_value(args.knobs.stop_at_convergence),
+      "Boolean to stop genetic algorithm when convergence is reached, for both GA and LGA");
  knobs_description.add_options()(
       "lsrate",
       po::value(&args.knobs.lsrate)->default_value(args.knobs.lsrate),
@@ -63,10 +63,6 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
       "ls_iterations",
       po::value(&args.knobs.ls_iterations)->default_value(args.knobs.ls_iterations),
       "Number of local search iterations");
-  knobs_description.add_options()(
-      "adadelta_convergence_patience",
-      po::value(&args.knobs.adadelta_convergence_patience)->default_value(args.knobs.adadelta_convergence_patience),
-      "Local search patience (adadelta)");
   knobs_description.add_options()(
       "mutation",
       po::value(&args.knobs.mutation_prob)->default_value(args.knobs.mutation_prob),

@@ -16,10 +16,7 @@ namespace mudock {
                  std::shared_ptr<scoring_t<queue_t>> _score)
                  : stage<queue_t>(_scratch),
                    score_stage(_score) {
-                   iterations           = (*this->scratch).configuration.ls_iterations;
-                     // TODO L 1) specific for adadelta in local search 2) maybe this patience will be obsolete and will be changed with global convergence of GA
-                   convergence_patience = (*this->scratch).configuration.adadelta_convergence_patience;
-                   use_early_stopping   = (*this->scratch).configuration.use_early_stopping; 
+                   iterations = (*this->scratch).configuration.ls_iterations;
                    };
     virtual void prepare(batch<static_molecule>&) = 0;
     virtual void operator()()                     = 0;
@@ -29,10 +26,8 @@ namespace mudock {
   protected:
     std::shared_ptr<scoring_t<queue_t>> score_stage;
     size_t iterations;
-    
     std::optional<static_molecule> ligand_template;
-    size_t convergence_patience;
-    bool use_early_stopping;
+    
 
     void dump_pose(int iteration) {
       assert(ligand_template.has_value() && "Ligand template was not stored before dump_pose");
@@ -51,9 +46,9 @@ namespace mudock {
       std::memcpy(pose.y(), y_scratch_b.host_pointer(), num_atoms * sizeof(fp_type));
       std::memcpy(pose.z(), z_scratch_b.host_pointer(), num_atoms * sizeof(fp_type));
 
-      const std::string filename = "dump/pose_iter_" + std::to_string(iteration) + ".adtmol2";
+      const std::string filename = "dump/pose_iter_" + std::to_string(iteration) + ".mol2";
       std::ofstream ofs(filename, std::ios::out);
-      writer<supported_format::ADTMOL2>(pose, ofs);
+      writer<supported_format::MOL2>(pose, ofs);
     }
   };
 } // namespace mudock
