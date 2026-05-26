@@ -43,6 +43,10 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
       "use_early_stopping",
       po::value(&args.knobs.use_early_stopping)->default_value(args.knobs.use_early_stopping),
       "Boolean to trigger early stopping in local search");
+ knobs_description.add_options()(
+      "lsrate",
+      po::value(&args.knobs.lsrate)->default_value(args.knobs.lsrate),
+      "Local search rate (in percentage)");
   knobs_description.add_options()(
       "population",
       po::value(&args.knobs.population_number)->default_value(args.knobs.population_number),

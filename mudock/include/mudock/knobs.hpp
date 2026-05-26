@@ -9,6 +9,7 @@ namespace mudock {
   struct knobs {
     bool use_local_search                     = false;
     bool use_early_stopping                   = false;
+    fp_type lsrate                            = static_cast<fp_type>(100);
     std::size_t population_number             = 100;
     std::size_t num_generations               = 1000;
     std::size_t tournament_length             = 10;

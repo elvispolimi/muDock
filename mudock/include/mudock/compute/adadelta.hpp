@@ -4,6 +4,7 @@
 #include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <random>
 #include <functional>
 #include <optional>
 #include <mudock/batch.hpp>
@@ -69,10 +70,10 @@ namespace mudock {
       chromosome *population_b = chromosomes_b.dev_pointer();
 
       // Allocate AdaDelta state buffers (E[g^2] and E[delta^2])
-      auto &adadelta_e_g2_b = (*this->scratch).template get<buffer_data_type::ADADELTA_E_G2>();
+      auto &adadelta_e_g2_b  = (*this->scratch).template get<buffer_data_type::ADADELTA_E_G2>();
       auto &adadelta_e_dw2_b = (*this->scratch).template get<buffer_data_type::ADADELTA_E_DW2>();
-      auto &stall_counter_b = (*this->scratch).template get<buffer_data_type::STALL_COUNTER>();
-      auto &inactive_b = (*this->scratch).template get<buffer_data_type::INACTIVE>();
+      auto &stall_counter_b  = (*this->scratch).template get<buffer_data_type::STALL_COUNTER>();
+      auto &inactive_b       = (*this->scratch).template get<buffer_data_type::INACTIVE>();
 
       if (!adadelta_e_g2_b.is_valid() || adadelta_e_g2_b.num_elements() != gradient_count) {
         adadelta_e_g2_b.alloc(gradient_count);
@@ -87,11 +88,30 @@ namespace mudock {
 
       }
 
-      int* __restrict__ num_rotamers_p            = num_rotamers_b.dev_pointer();
-      chromosome *adadelta_e_g2 = adadelta_e_g2_b.dev_pointer();
-      chromosome *adadelta_e_dw2 = adadelta_e_dw2_b.dev_pointer();
-      int *stall_counter = stall_counter_b.dev_pointer();
-      int *inactive = inactive_b.dev_pointer();
+      // TODO L move inactive from lsrate initialization from here to local search generic
+      // Initialize inactive population
+      std::vector<int> inactive_init(gradient_count);
+      
+      std::mt19937 rng((*this->scratch).configuration.seed.value_or(std::random_device{}()));
+      double r = static_cast<double>((*this->scratch).configuration.lsrate / 100);
+      printf("rate: %f", r);
+      std::bernoulli_distribution dist(r);
+
+      for (size_t i = 0; i < gradient_count; ++i) {
+        inactive_init[i] = dist(rng) ? 0 : 1; // TODO L change inactive to active to have a cleaner and more readable array coherent with lsrate
+      }
+
+      // Copy to device/managed buffer
+      std::memcpy(
+          inactive_b.dev_pointer(),
+          inactive_init.data(),
+          gradient_count * sizeof(int));
+
+      int* __restrict__ num_rotamers_p = num_rotamers_b.dev_pointer();
+      chromosome *adadelta_e_g2        = adadelta_e_g2_b.dev_pointer();
+      chromosome *adadelta_e_dw2       = adadelta_e_dw2_b.dev_pointer();
+      int *stall_counter               = stall_counter_b.dev_pointer();
+      int *inactive                    = inactive_b.dev_pointer();
 
       auto q = (*this->scratch).get_queue();
 

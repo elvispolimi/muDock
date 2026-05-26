@@ -95,7 +95,12 @@ int main(int argc, char** argv) {
 
   in.seekg(static_cast<std::streamoff>(effective_range.begin), std::ios::beg);
 
-  if (args.knobs.use_local_search){
+
+  mudock::fp_type ls_rate = args.knobs.lsrate;
+  if (args.knobs.use_local_search && ls_rate > 0){
+    if (ls_rate < 0.0f || ls_rate > 100.0f) {
+      throw std::out_of_range("ls_rate must be between 0 and 100");
+    }
     mudock::lga_adt_adadelta_pipeline pipe{protein};
     mudock::run_tbb_pipeline<mudock::supported_format::ADTMOL2>(
       in, args.device_confs, args.knobs, pipe, effective_range.end, args.time_limit_sec, args.observer);

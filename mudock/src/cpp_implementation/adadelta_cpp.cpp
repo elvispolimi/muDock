@@ -41,19 +41,10 @@ namespace mudock {
         chromosome &E_dw2_i = e_dw2_l[individual_index];
         int &stall_counter = stall_counter_l[individual_index];
         int &inactive = inactive_l[individual_index];
-
-        // Reset values for in each generation of genetic.
-        // TODO L this reset is garbage. make it better
-        if (i == 0){
-          stall_counter = 0;
-          inactive = 0;
-        }
         
-        // Skip individual if it already converged 
         if (inactive == 1){
-          //printf("id: %d iter: %d, skipping for ES...\n", individual_index, i);
           continue;
-        }
+        } // TODO sistemare inactive che prima si riferiva alla convergenza della ls, mentre ora è per il lsrate
 
         bool improvement = false;
       
@@ -67,11 +58,11 @@ namespace mudock {
           
           fp_type delta_w = -(rms_dw / rms_g) * grad[d];
 
-          // delta_w = std::clamp(delta_w, -MAX_STEP, MAX_STEP);
+          delta_w = std::clamp(delta_w, -MAX_STEP, MAX_STEP);
           
-          if (d < 3)      delta_w = std::clamp(delta_w, -MAX_STEP_POS, MAX_STEP_POS);
-          else if (d < 6) delta_w = std::clamp(delta_w, -MAX_STEP_ROT, MAX_STEP_ROT);
-          else            delta_w = std::clamp(delta_w, -MAX_STEP_TORS, MAX_STEP_TORS);
+          // if (d < 3)      delta_w = std::clamp(delta_w, -MAX_STEP_POS, MAX_STEP_POS);
+          // else if (d < 6) delta_w = std::clamp(delta_w, -MAX_STEP_ROT, MAX_STEP_ROT);
+          // else            delta_w = std::clamp(delta_w, -MAX_STEP_TORS, MAX_STEP_TORS);
 
           
           E_dw2_i[d] = RHO * E_dw2_i[d] + (1.0f - RHO) * delta_w * delta_w;
@@ -99,10 +90,10 @@ namespace mudock {
           stall_counter = 0;
         }
         if (use_early_stopping && stall_counter >= convergence_patience){
-          // TODO WARNING EARLY STOPPING IS DISABLED, UNCOMMENT INSTRUCTION TO ENABLE IT!
-          inactive = 1;
-          //printf("HIT CONVERGENCE - id: %d at iter: %d\n", individual_index, i);
-          printf(".");
+          // // TODO WARNING EARLY STOPPING IS DISABLED, UNCOMMENT INSTRUCTION TO ENABLE IT!
+          // inactive = 1;
+          // //printf("HIT CONVERGENCE - id: %d at iter: %d\n", individual_index, i);
+          // printf(".");
         }
 
       }
