@@ -17,6 +17,23 @@
   #include <mudock/mpi_implementation/distributed_ranges.hpp>
 #endif
 
+namespace {
+  int run_selected_pipeline(std::istream& in,
+                            const command_line_arguments& args,
+                            std::shared_ptr<mudock::dynamic_molecule> protein,
+                            const std::uint64_t range_end) {
+    mudock::info("Pipeline selection: search=", to_string(args.search), ", score=", to_string(args.scoring));
+
+    dispatch_selected_pipeline(args.search, args.scoring, [&]<typename pipeline_t>(const auto, const auto) {
+      pipeline_t pipe{protein};
+      mudock::run_tbb_pipeline<mudock::supported_format::ADTMOL2>(
+          in, args.device_confs, args.knobs, pipe, range_end, args.time_limit_sec, args.observer);
+    });
+
+    return EXIT_SUCCESS;
+  }
+} // namespace
+
 int main(int argc, char** argv) {
   const auto args = parse_command_line_arguments(argc, argv);
   std::optional<mudock::byte_range> range = std::nullopt;
@@ -95,15 +112,15 @@ int main(int argc, char** argv) {
 
   in.seekg(static_cast<std::streamoff>(effective_range.begin), std::ios::beg);
 
-  mudock::genetic_adt_pipeline pipe{protein};
-          mudock::run_tbb_pipeline<mudock::supported_format::ADTMOL2>(
-              in, args.device_confs, args.knobs, pipe, effective_range.end, args.time_limit_sec, args.observer);
+  const int status = run_selected_pipeline(in, args, std::move(protein), effective_range.end);
   MUDOCK_MARKER_CLOSE;
-  mudock::info("All Done!");
+  if (status == EXIT_SUCCESS) {
+    mudock::info("All Done!");
+  }
 
 #ifdef MUDOCK_USE_MPI
   MPI_Finalize();
 #endif
 
-  return EXIT_SUCCESS;
+  return status;
 }
