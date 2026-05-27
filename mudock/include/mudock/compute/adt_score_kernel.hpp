@@ -4,6 +4,8 @@
 #include <memory>
 #include <mudock/compute/queue.hpp>
 #include <mudock/type_alias.hpp>
+  
+#include <iostream> 
 
 namespace mudock {
   // TODO check maybe the kernel can be fused togheter with main adt score

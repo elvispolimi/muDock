@@ -27,3 +27,4 @@ move 1fkb_ligand.pdbqt
 epdb                                 # small molecule to be evaluated
 
 ## AUTODOCK_SCORE -12.70 
+

@@ -1,6 +1,6 @@
-GRID_PARAMETER_FILE /home/gaccordi/repo/muDock/data/5uez/5uez_pocket.gpf
-GRID_DATA_FILE /home/gaccordi/repo/muDock/data/5uez/5uez_pocket.maps.fld
-MACROMOLECULE /home/gaccordi/repo/muDock/data/5uez/5uez_pocket.pdbqt
+GRID_PARAMETER_FILE /mnt/c/Users/lucav/OneDrive/Desktop/Polimi/Progetti/Progetto_muDock/muDock/data/5uez/5uez_pocket.gpf
+GRID_DATA_FILE /mnt/c/Users/lucav/OneDrive/Desktop/Polimi/Progetti/Progetto_muDock/muDock/data/5uez/5uez_pocket.maps.fld
+MACROMOLECULE /mnt/c/Users/lucav/OneDrive/Desktop/Polimi/Progetti/Progetto_muDock/muDock/data/5uez/5uez_pocket.pdbqt
 SPACING 0.500
 NELEMENTS 80 92 90
 CENTER 13.000 9.500 0.000

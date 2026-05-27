@@ -3,6 +3,8 @@
 #include <mudock/chem/mehler_solmajer.hpp>
 #include <mudock/cpp_implementation/adt_score_cpp.hpp>
 
+#include <iostream>
+
 #define FLATTENED_2D(x, y, index_x)              ((y) * index_x + (x))
 #define FLATTENED_3D(x, y, z, index_x, index_xy) (index_xy * (z) + (y) * index_x + (x))
 
@@ -132,6 +134,7 @@ namespace mudock {
 
             // Precompute flattened indices
             const int base_index = FLATTENED_3D(u0, v0, w0, map_index_x, map_index_xy);
+            
             // Trilinear Interpolationp
             elect_total_trilinear +=
                 trilinear_interpolation(electro_map + base_index, coeffs, map_index_x, map_index_xy) *
@@ -236,5 +239,6 @@ namespace mudock {
                                             map_index_xy,
                                             map_index_xyz,
                                             scores_b);
+  
   }
 } // namespace mudock
