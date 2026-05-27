@@ -5,7 +5,6 @@
 #include <mudock/compute/queue.hpp>
 #include <mudock/type_alias.hpp>
 
-#include <chrono>  
 #include <iostream> 
 //letteralmente identico a quello di prima
 namespace mudock {
@@ -32,7 +31,7 @@ namespace mudock {
                      const fp_type *__restrict__ nonbond_cA_b_,
                      const fp_type *__restrict__ nonbond_cB_b_,
                      const int *__restrict__ nonbond_xB_b_,
-                     const fp_type *__restrict__ fused_maps_, // <-- Rinominato per coerenza
+                     const fp_type *__restrict__ fused_maps_,
                      const fp_type *__restrict__ minimum_,
                      const fp_type *__restrict__ maximum_,
                      const fp_type *__restrict__ center_,
@@ -59,7 +58,7 @@ namespace mudock {
           nonbond_cA_b(nonbond_cA_b_),
           nonbond_cB_b(nonbond_cB_b_),
           nonbond_xB_b(nonbond_xB_b_),
-          fused_maps(fused_maps_), // <-- Rinominato
+          fused_maps(fused_maps_),
           minimum(minimum_),
           maximum(maximum_),
           center(center_),
@@ -76,11 +75,7 @@ namespace mudock {
     precomputed_adt_score_kernel &operator=(const precomputed_adt_score_kernel &) = delete;
     precomputed_adt_score_kernel &operator=(precomputed_adt_score_kernel &&)      = delete;
 
-    ~precomputed_adt_score_kernel() {
-        std::cout << "\n[PROFILAZIONE CUSTOM] Tempo TOTALE dentro lo Score Kernel: " 
-                  << total_kernel_time << " secondi su " 
-                  << total_calls << " chiamate." << std::endl;
-    }
+    ~precomputed_adt_score_kernel() = default;
 
   private:
     const int scores_per_ligand;
@@ -101,7 +96,7 @@ namespace mudock {
     const fp_type *__restrict__ nonbond_cA_b;
     const fp_type *__restrict__ nonbond_cB_b;
     const int *__restrict__ nonbond_xB_b;
-    const fp_type *__restrict__ fused_maps; // <-- Rinominato
+    const fp_type *__restrict__ fused_maps; 
     const fp_type *__restrict__ minimum;
     const fp_type *__restrict__ maximum;
     const fp_type *__restrict__ center;
@@ -110,9 +105,6 @@ namespace mudock {
     const int map_index_xyz;
     fp_type *__restrict__ scores_b;
     std::shared_ptr<queue_type> q;
-    //per misurare il tempo
-    double total_kernel_time{0.0};
-    long long total_calls{0};
   };
 
 } // namespace mudock

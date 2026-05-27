@@ -3,8 +3,7 @@
 #include <mudock/chem/mehler_solmajer.hpp>
 #include <mudock/likwid_utils.hpp>
 #include <mudock/cpp_implementation/precomputed_adt_score_cpp.hpp>
-
-#include <chrono>  
+  
 #include <iostream>
 
 #define FLATTENED_2D(x, y, index_x)              ((y) * index_x + (x))
@@ -214,8 +213,6 @@ MUDOCK_CPP_MARKER_START("Fase_Scoring");
 
   template<>
   void precomputed_adt_score_kernel<queue_cpp>::operator()() {
-    //cronometro
-    auto t_start = std::chrono::high_resolution_clock::now();
     q->invoke_kernel<this->adt_region_name>(precomputed_calc_energy,
                                             batch_atoms,
                                             batch_ligands,
@@ -244,10 +241,5 @@ MUDOCK_CPP_MARKER_START("Fase_Scoring");
                                             map_index_xyz,
                                             scores_b);
 
-  auto t_end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> t_diff = t_end - t_start;
-    
-    total_kernel_time += t_diff.count();
-    total_calls++;
   }
 } // namespace mudock

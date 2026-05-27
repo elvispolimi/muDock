@@ -5,9 +5,7 @@
 #include <mudock/chem/autodock_ligand.hpp>
 #include <cmath>    
 #include <iostream> 
-
-#include <chrono>  
-#include <iostream>
+ 
 
 namespace mudock {
 
@@ -22,8 +20,6 @@ void precomputed_protein::prepare_fused_maps(const fp_type* grid_maps,
     fp_type* raw_fused_ptr = const_cast<fp_type*>(fused_data.data());
 
     MUDOCK_CPP_MARKER_START("Fase_Setup");
-    auto t_start = std::chrono::high_resolution_clock::now();
-
     // Indici per le mappe globali ELEC e DESOLV
     const int ELEC_IDX  = static_cast<int>(autodock_grid_type::ELEC); 
     const int DSOLV_IDX = static_cast<int>(autodock_grid_type::DESOLV);
@@ -51,12 +47,6 @@ void precomputed_protein::prepare_fused_maps(const fp_type* grid_maps,
                     // Indice 1D della griglia originale [Z][Y][X]
                     std::size_t voxel_idx = (index_z * sy * sx) + (index_y * sx) + index_x;
 
-                    // --- DEBUG ---
-                    // if (index_a == 0 && index_z == 30 && index_y == 30 && index_x == 30) {
-                    //     std::cout << "[DEBUG MIO] Atomo 0 - Offset: " << map_offsets[index_a] << std::endl;
-                    //     std::cout << "            Valore Mappa VdW: " << atom_grid[voxel_idx] << std::endl;
-                    // }
-
                     const auto grid_elec   = elec_grid[voxel_idx];
                     const auto grid_desolv = dsolv_grid[voxel_idx];
                     const auto atom_contr  = atom_grid[voxel_idx];
@@ -71,10 +61,6 @@ void precomputed_protein::prepare_fused_maps(const fp_type* grid_maps,
             }
         }
     }
-
-    auto t_end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> t_diff = t_end - t_start;
-    std::cout << "[PROFILAZIONE] Tempo fusione: " << t_diff.count() << "s" << std::endl;
 
     MUDOCK_CPP_MARKER_STOP("Fase_Setup");     
 }

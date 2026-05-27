@@ -5,7 +5,6 @@
 #include <mudock/chem/autodock_ligand.hpp>
 #include <cmath>
 #include <iostream>
-#include <chrono>
 
 namespace mudock {
 
@@ -27,7 +26,6 @@ void autodock_quant_protein::prepare_fused_maps(const autodock_protein* base_pro
     fp_type* raw_fused_ptr = const_cast<fp_type*>(quantized_fused_maps.data());
 
     MUDOCK_CPP_MARKER_START("Fase_Setup_Quant");
-    auto t_start = std::chrono::high_resolution_clock::now();
 
     const int ELEC_IDX  = static_cast<int>(autodock_grid_type::ELEC); 
     const int DSOLV_IDX = static_cast<int>(autodock_grid_type::DESOLV);
@@ -58,10 +56,6 @@ void autodock_quant_protein::prepare_fused_maps(const autodock_protein* base_pro
             }
         }
     }
-
-    auto t_end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> t_diff = t_end - t_start;
-    std::cout << "[PROFILAZIONE] Tempo fusione Ramo 2 (Mappe " << num_bins << "): " << t_diff.count() << "s" << std::endl;
 
     MUDOCK_CPP_MARKER_STOP("Fase_Setup_Quant");     
 }

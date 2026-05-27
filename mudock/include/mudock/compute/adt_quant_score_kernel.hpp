@@ -4,8 +4,7 @@
 #include <memory>
 #include <mudock/compute/queue.hpp>
 #include <mudock/type_alias.hpp>
-
-#include <chrono>  
+  
 #include <iostream> 
 
 namespace mudock {
@@ -81,11 +80,7 @@ namespace mudock {
     adt_quant_score_kernel &operator=(const adt_quant_score_kernel &) = delete;
     adt_quant_score_kernel &operator=(adt_quant_score_kernel &&)      = delete;
 
-    ~adt_quant_score_kernel() {
-        std::cout << "\n[PROFILAZIONE CUSTOM] Tempo TOTALE dentro lo Score Kernel: " 
-                  << total_kernel_time << " secondi su " 
-                  << total_calls << " chiamate." << std::endl;
-    }
+    ~adt_quant_score_kernel() = default;
 
   private:
     const int scores_per_ligand;
@@ -117,10 +112,6 @@ namespace mudock {
     const int map_index_xyz;
     fp_type *__restrict__ scores_b;
     std::shared_ptr<queue_type> q;
-
-    //per misurare il tempo
-    double total_kernel_time{0.0};
-    long long total_calls{0};
   };
 
 } // namespace mudock
