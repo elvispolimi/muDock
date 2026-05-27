@@ -11,6 +11,7 @@ venv/
 .codex
 docs/
 data/filtered_dataset
+data/1fkb/small.adtmol2
 data/mega_ligands
 data/targets.txt
 *.csv

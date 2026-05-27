@@ -50,7 +50,6 @@ namespace mudock {
           nonbond_xB(_scratch->get_queue()),
           device_scratch(_device_scratch)
           {
-            //controllo su PROT_MIN per vedere se è andato bene 
       if (!(*device_scratch).template exists<buffer_data_type::PROT_MIN>()) {
         autodock_protein adt_prot(protein);
 
@@ -113,8 +112,13 @@ namespace mudock {
       vols.alloc(tot_atoms_in_batch);
       solpars.alloc(tot_atoms_in_batch);
       charges.alloc(tot_atoms_in_batch);
-      //spazio per la mega mappa
-      fused_maps.alloc(tot_atoms_in_batch * map_flat_size);
+      //spazio per la mega mappa, test logica incrementale
+      if(m_allocated_atoms < tot_atoms_in_batch){
+        fused_maps.alloc(tot_atoms_in_batch * map_flat_size);
+        m_allocated_atoms = tot_atoms_in_batch;
+      }
+
+      // fused_maps.alloc(tot_atoms_in_batch * map_flat_size);
 
       map_offsets.alloc(tot_atoms_in_batch);
       num_nonbond.alloc(batch_ligands + 1);
@@ -326,7 +330,7 @@ namespace mudock {
   private:
     int batch_ligands;
     int batch_atoms;
-
+    int m_allocated_atoms = 0;
    
 
     
