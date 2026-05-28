@@ -1,7 +1,10 @@
 #pragma once
 
 #include "mudock/format/supported_format.hpp"
+#include "mudock/utils.hpp"
 
+#include <algorithm>
+#include <array>
 #include <mudock/compute/algorithm.hpp>
 #include <mudock/compute/pipeline.hpp>
 #include <stdexcept>
