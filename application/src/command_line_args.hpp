@@ -17,6 +17,8 @@ struct command_line_arguments {
   std::optional<double> observer        = std::nullopt;
   mudock::search_algorithm search       = mudock::search_algorithm::NONE;
   mudock::scoring_function scoring      = mudock::scoring_function::ADT;
+  std::string pipeline_mode = "STANDARD";
+  bool score_only = false;
   mudock::knobs knobs;
 };
 command_line_arguments parse_command_line_arguments(const int argc, char *argv[]);

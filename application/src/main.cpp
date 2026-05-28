@@ -112,6 +112,40 @@ int main(int argc, char** argv) {
   in.seekg(static_cast<std::streamoff>(effective_range.begin), std::ios::beg);
 
   const int status = run_selected_pipeline(in, in_format, args, std::move(protein), effective_range.end);
+ // =========================================================================
+  // PIEPLINE SELECTION (Based on flags)
+  // =========================================================================
+  if (args.score_only) {
+    mudock::info(">> RUNNING: SINGLE-POINT SCORE CALCULATION (No Genetic Algorithm)");
+    if (args.pipeline_mode == "PRECOMPUTED") {
+      mudock::precomputed_adt_score_pipeline pipe{protein};
+      mudock::run_tbb_pipeline<mudock::supported_format::ADTMOL2>(
+          in, args.device_confs, args.knobs, pipe, effective_range.end, args.time_limit_sec, args.observer);
+    } else if (args.pipeline_mode == "QUANT") {
+      mudock::adt_quant_score_pipeline pipe{protein};
+      mudock::run_tbb_pipeline<mudock::supported_format::ADTMOL2>(
+          in, args.device_confs, args.knobs, pipe, effective_range.end, args.time_limit_sec, args.observer);
+    } else {
+      mudock::adt_score_pipeline pipe{protein};
+      mudock::run_tbb_pipeline<mudock::supported_format::ADTMOL2>(
+          in, args.device_confs, args.knobs, pipe, effective_range.end, args.time_limit_sec, args.observer);
+    }
+  } else {
+    mudock::info("Virtual screening the ligands ...");
+    if (args.pipeline_mode == "PRECOMPUTED") {
+      mudock::genetic_precomputed_adt_pipeline pipe{protein};
+      mudock::run_tbb_pipeline<mudock::supported_format::ADTMOL2>(
+          in, args.device_confs, args.knobs, pipe, effective_range.end, args.time_limit_sec, args.observer);
+    } else if (args.pipeline_mode == "QUANT") {
+      mudock::genetic_adt_quant_pipeline pipe{protein};
+      mudock::run_tbb_pipeline<mudock::supported_format::ADTMOL2>(
+          in, args.device_confs, args.knobs, pipe, effective_range.end, args.time_limit_sec, args.observer);
+    } else {
+      mudock::genetic_adt_pipeline pipe{protein};
+      mudock::run_tbb_pipeline<mudock::supported_format::ADTMOL2>(
+          in, args.device_confs, args.knobs, pipe, effective_range.end, args.time_limit_sec, args.observer);
+    }
+  }
   MUDOCK_MARKER_CLOSE;
   if (status == EXIT_SUCCESS) {
     mudock::info("All Done!");

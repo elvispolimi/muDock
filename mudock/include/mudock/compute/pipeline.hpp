@@ -4,6 +4,8 @@
 #include <memory>
 #include <mudock/compute/adt_score.hpp>
 #include <mudock/compute/algorithm.hpp>
+#include <mudock/compute/adt_quant_score.hpp>
+#include <mudock/compute/precomputed_adt_score.hpp>
 #include <mudock/compute/bucket_size.hpp>
 #include <mudock/compute/genetic.hpp>
 #include <mudock/compute/scratchpad.hpp>
@@ -116,4 +118,9 @@ namespace mudock {
 
   using adt_score_pipeline   = scoring_pipeline<adt_score>;
   using genetic_adt_pipeline = genetic_scoring_pipeline<adt_score>;
+  using adt_quant_score_pipeline   = scoring_pipeline<adt_quant_score>;
+  using genetic_adt_quant_pipeline = genetic_scoring_pipeline<adt_quant_score>;
+  using precomputed_adt_score_pipeline   = scoring_pipeline<precomputed_adt_score>;
+  using genetic_precomputed_adt_pipeline = genetic_scoring_pipeline<precomputed_adt_score>;
+
 } // namespace mudock
