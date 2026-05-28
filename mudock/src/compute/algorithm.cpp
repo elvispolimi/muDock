@@ -21,7 +21,7 @@ namespace mudock {
     if (element_it != std::end(SCORING_FUNCTION_DICT))
       return element_it->value;
     else
-      throw std::runtime_error("Missing search algorithm");
+      throw std::runtime_error("Missing scoring function");
   }
 
   std::string_view to_string(const search_algorithm algorithm) {
