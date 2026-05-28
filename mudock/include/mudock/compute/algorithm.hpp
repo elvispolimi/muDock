@@ -28,7 +28,11 @@ namespace mudock {
   [[nodiscard]] std::string_view to_string(search_algorithm algorithm);
   [[nodiscard]] std::string_view to_string(scoring_function scoring);
 
-  [[nodiscard]] constexpr int num_search_algorithms() { return static_cast<int>(2); }
+  [[nodiscard]] constexpr int num_search_algorithms() {
+    return static_cast<int>(SEARCH_ALGORITHM_DICT.size());
+  }
 
-  [[nodiscard]] constexpr int num_scoring_functions() { return static_cast<int>(1); }
+  [[nodiscard]] constexpr int num_scoring_functions() {
+    return static_cast<int>(SCORING_FUNCTION_DICT.size());
+  }
 } // namespace mudock
