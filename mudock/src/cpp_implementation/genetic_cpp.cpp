@@ -16,6 +16,7 @@
 namespace mudock {
   static constexpr auto coordinate_step = static_cast<fp_type>(0.2);
   static constexpr auto angle_step      = static_cast<fp_type>(4);
+  static constexpr int ELITE_SIZE       = 3; // Number of best individuals to preserve in each generation
 
   thread_local device_memory<std::mt19937> rand_device;
 
@@ -121,8 +122,38 @@ namespace mudock {
       printf("Best score: %f\n", best);
       // end print best score 
 
+      // Elitism: preserve the best ELITE_SIZE individuals
+      // elite_indices[k] contains the index in population_l of the k-th best individual
+      std::array<int, ELITE_SIZE> elite_indices;
+      elite_indices.fill(-1);
+
+      for (int i = 0; i < population_number; ++i) {
+        for (int e = 0; e < ELITE_SIZE; ++e) {
+          if (elite_indices[e] == -1 || scores[i] < scores[elite_indices[e]]) {
+
+            // shift worse elites to the right
+            for (int shift = ELITE_SIZE - 1; shift > e; --shift) {
+              elite_indices[shift] = elite_indices[shift - 1];
+            }
+
+            elite_indices[e] = i;
+            break;
+          }
+        }
+      }
+
+      for (int e = 0; e < ELITE_SIZE; ++e) {
+        if (elite_indices[e] == -1)
+          break;
+
+        std::copy(std::begin(population_l[elite_indices[e]]),
+                  std::end(population_l[elite_indices[e]]),
+                  std::begin(next_population_l[e]));
+      }
+
+
       // Generate the new population
-      for (int element_index = 0; element_index < population_number; ++element_index) {
+      for (int element_index = ELITE_SIZE; element_index < population_number; ++element_index) {
         auto& next_individual = next_population_l[element_index];
         // select the parent
         auto best_individual_1 = get_selection_distribution(rand_device(), dist, population_number);
