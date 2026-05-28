@@ -17,10 +17,10 @@ namespace mudock {
     std::string_view token;
   };
 
-  static constexpr std::array<search_algorithm_description, 2> SEARCH_ALGORITHM_DICT = {
+  inline constexpr std::array<search_algorithm_description, 2> SEARCH_ALGORITHM_DICT = {
       {{search_algorithm::NONE, "none"}, {search_algorithm::GENETIC, "genetic"}}};
 
-  static constexpr std::array<scoring_function_description, 1> SCORING_FUNCTION_DICT = {
+  inline constexpr std::array<scoring_function_description, 1> SCORING_FUNCTION_DICT = {
       {{scoring_function::ADT, "adt"}}};
 
   [[nodiscard]] search_algorithm parse_search_algorithm(std::string_view token);
