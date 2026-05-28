@@ -1,8 +1,7 @@
 #pragma once
 
-#include "pipeline_selection.hpp"
-
 #include <filesystem>
+#include <mudock/compute/algorithm.hpp>
 #include <mudock/knobs.hpp>
 #include <optional>
 #include <string_view>
@@ -16,8 +15,8 @@ struct command_line_arguments {
   std::vector<std::string> device_confs = {std::string{use_cpu_conf}};
   std::optional<double> time_limit_sec  = std::nullopt;
   std::optional<double> observer        = std::nullopt;
-  search_algorithm search               = search_algorithm::NONE;
-  scoring_function scoring             = scoring_function::ADT;
+  mudock::search_algorithm search       = mudock::search_algorithm::NONE;
+  mudock::scoring_function scoring      = mudock::scoring_function::ADT;
   mudock::knobs knobs;
 };
 command_line_arguments parse_command_line_arguments(const int argc, char *argv[]);

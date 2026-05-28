@@ -33,10 +33,9 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
       "time_limit_sec",
       po::value(&time_limit_sec),
       "Optional benchmark time limit in seconds; when reached, pending input ligands are discarded");
-  arguments_description.add_options()(
-      "observer",
-      po::value(&observer_sec),
-      "Optional throughput observer interval in seconds");
+  arguments_description.add_options()("observer",
+                                      po::value(&observer_sec),
+                                      "Optional throughput observer interval in seconds");
   arguments_description.add_options()("search",
                                       po::value(&search_name)->default_value(search_name),
                                       "Search algorithm to apply: none|genetic");
@@ -97,7 +96,8 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
               << "  --search none --score adt      adt scoring only" << std::endl
               << "  --search genetic --score adt   genetic + adt" << std::endl;
     std::cout << std::endl;
-    std::cout << "The use flag accepts one or more configurations that describe which implementation" << std::endl
+    std::cout << "The use flag accepts one or more configurations that describe which implementation"
+              << std::endl
               << "should run on which hardware." << std::endl
               << "It has the following grammar: " << std::endl
               << "  --use CONFIGURATION [CONFIGURATION ...]" << std::endl
@@ -124,15 +124,7 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
   if (vm.count("observer")) {
     args.observer = std::optional<double>{observer_sec};
   }
-  const auto parsed_search = parse_search_algorithm(search_name);
-  if (!parsed_search.has_value()) {
-    throw std::runtime_error("Invalid --search value '" + search_name + "'. Supported values: none, genetic.");
-  }
-  args.search = *parsed_search;
-  const auto parsed_score = parse_scoring_function(score_name);
-  if (!parsed_score.has_value()) {
-    throw std::runtime_error("Invalid --score value '" + score_name + "'. Supported values: adt.");
-  }
-  args.scoring = *parsed_score;
+  args.search  = mudock::parse_search_algorithm(search_name);
+  args.scoring = mudock::parse_scoring_function(score_name);
   return args;
 }

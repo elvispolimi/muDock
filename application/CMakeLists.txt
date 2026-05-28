@@ -4,13 +4,11 @@
 
 # headers
 set(header_path "${CMAKE_CURRENT_SOURCE_DIR}/src")
-list(APPEND header_files "${header_path}/command_line_args.hpp"
-                         "${header_path}/pipeline_selection.hpp")
+list(APPEND header_files "${header_path}/command_line_args.hpp")
 
 # sources
 set(source_path "${CMAKE_CURRENT_SOURCE_DIR}/src")
 list(APPEND source_files "${header_path}/command_line_args.cpp"
-                         "${source_path}/pipeline_selection.cpp"
                          "${source_path}/main.cpp")
 
 # ##############################################################################
