@@ -17,30 +17,28 @@ namespace mudock {
                                     int* __restrict__ num_rotamers_b,
                                     chromosome *__restrict__ adadelta_e_g2_b,
                                     chromosome *__restrict__ adadelta_e_dw2_b,
-                                    int *__restrict__ active_b) {
+                                    int *__restrict__ active_individuals_b) {
     
     for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
-      chromosome *__restrict__ population_l    = population_b + ligand_index * individuals_per_ligand;
-      chromosome *__restrict__ e_g2_l          = adadelta_e_g2_b + ligand_index * individuals_per_ligand;
-      chromosome *__restrict__ e_dw2_l         = adadelta_e_dw2_b + ligand_index * individuals_per_ligand;
-      gradient   *__restrict__ gradients_l     = gradients_b + ligand_index * individuals_per_ligand;
-      int        *__restrict__ active_l      = active_b + ligand_index * individuals_per_ligand;
+      chromosome *__restrict__ population_l         = population_b + ligand_index * individuals_per_ligand;
+      chromosome *__restrict__ e_g2_l               = adadelta_e_g2_b + ligand_index * individuals_per_ligand;
+      chromosome *__restrict__ e_dw2_l              = adadelta_e_dw2_b + ligand_index * individuals_per_ligand;
+      gradient   *__restrict__ gradients_l          = gradients_b + ligand_index * individuals_per_ligand;
+      const int  *__restrict__ active_individuals_l = active_individuals_b + ligand_index * individuals_per_ligand;
       
       const int num_rotamers = num_rotamers_b[ligand_index];
       const int gradient_size = 6 + num_rotamers;
       
       for (int individual_index = 0; individual_index < individuals_per_ligand; ++individual_index) {
+        if (!active_individuals_l[individual_index]){
+          continue;
+        }
+        
         gradient   &grad = gradients_l[individual_index];
         chromosome &w = population_l[individual_index];
         chromosome &E_g2_i = e_g2_l[individual_index];
         chromosome &E_dw2_i = e_dw2_l[individual_index];
-        int &active = active_l[individual_index];
-        
-        if (!active){
-          continue;
-        } // TODO sistemare active che prima si riferiva alla convergenza della ls, mentre ora è per il lsrate
-        // piu che altro serve che non si faccia lavoro nemmeno per il calcolo del gradiente degli inactive
-      
+
         // Apply AdaDelta update for each dimension
         for (int d = 0; d < gradient_size; ++d) {
           E_g2_i[d] = RHO * E_g2_i[d] + (1.0f - RHO) * grad[d] * grad[d];
@@ -51,7 +49,9 @@ namespace mudock {
           
           fp_type delta_w = -(rms_dw / rms_g) * grad[d];
 
-          delta_w = std::clamp(delta_w, -MAX_STEP, MAX_STEP);
+          // TODO L understand if we should use clamping
+          
+          // delta_w = std::clamp(delta_w, -MAX_STEP, MAX_STEP);
           
           // if (d < 3)      delta_w = std::clamp(delta_w, -MAX_STEP_POS, MAX_STEP_POS);
           // else if (d < 6) delta_w = std::clamp(delta_w, -MAX_STEP_ROT, MAX_STEP_ROT);
@@ -81,7 +81,7 @@ namespace mudock {
                                                 num_rotamers_b,
                                                 adadelta_e_g2_b,
                                                 adadelta_e_dw2_b,
-                                                active_b);
+                                                active_individuals_b);
   }
 
   // TODO L what to do with this? i moved the iterations in adadelta.hpp

@@ -214,7 +214,6 @@ namespace mudock {
       // Load ligand fragment data from batch (using data already loaded in first loop)
       // Get num_rotamers from scratch
       const int *num_rotamers_b = (*this->scratch).template get<buffer_data_type::NUM_ROTAMERS>().dev_pointer();
-      // TODO L IMPORTANT check this FOR LOOP initialization
       for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
         auto &ligand = *batch.molecules[ligand_index];
         geom_ligand geom_lig{ligand};
@@ -323,6 +322,8 @@ namespace mudock {
       // Get gradient buffer pointer for gradient kernel
       // gradient is std::array<fp_type, 516>, so we need to cast to fp_type* for the kernel
       gradient *gradients_b = gradient_b.dev_pointer();
+      auto &active_individuals_b = (*this->scratch).template get<buffer_data_type::ACTIVE_INDIVIDUALS>();
+      int *active_individuals    = active_individuals_b.dev_pointer();
 
       gradient_kernel = std::make_unique<adt_gradient_kernel<queue_type>>(scores_per_ligand,
                                                               batch_ligands,
@@ -355,6 +356,7 @@ namespace mudock {
                                                               map_index_xy,
                                                               map_index_xyz,
                                                               gradients_b,
+                                                              active_individuals,
                                                               q);
     }
 

@@ -68,18 +68,18 @@ namespace mudock {
       chromosome *population_b = chromosomes_b.dev_pointer();
 
       // Allocate AdaDelta state buffers (E[g^2] and E[delta^2])
-      auto &adadelta_e_g2_b  = (*this->scratch).template get<buffer_data_type::ADADELTA_E_G2>();
-      auto &adadelta_e_dw2_b = (*this->scratch).template get<buffer_data_type::ADADELTA_E_DW2>();
-      auto &active_b       = (*this->scratch).template get<buffer_data_type::ACTIVE>();
+      auto &adadelta_e_g2_b      = (*this->scratch).template get<buffer_data_type::ADADELTA_E_G2>();
+      auto &adadelta_e_dw2_b     = (*this->scratch).template get<buffer_data_type::ADADELTA_E_DW2>();
+      auto &active_individuals_b = (*this->scratch).template get<buffer_data_type::ACTIVE_INDIVIDUALS>();
 
       if (!adadelta_e_g2_b.is_valid() || adadelta_e_g2_b.num_elements() != gradient_count) {
         adadelta_e_g2_b.alloc(gradient_count);
         adadelta_e_dw2_b.alloc(gradient_count);
-        active_b.alloc(gradient_count);
+        active_individuals_b.alloc(gradient_count);
 
         adadelta_e_g2_b.set_valid();
         adadelta_e_dw2_b.set_valid();
-        active_b.set_valid();
+        active_individuals_b.set_valid();
 
       }
 
@@ -96,14 +96,14 @@ namespace mudock {
 
       // Copy to device/managed buffer
       std::memcpy(
-          active_b.dev_pointer(),
+          active_individuals_b.dev_pointer(),
           active_init.data(),
           gradient_count * sizeof(int));
 
       int* __restrict__ num_rotamers_p = num_rotamers_b.dev_pointer();
       chromosome *adadelta_e_g2        = adadelta_e_g2_b.dev_pointer();
       chromosome *adadelta_e_dw2       = adadelta_e_dw2_b.dev_pointer();
-      int *active                    = active_b.dev_pointer();
+      int *active_individuals          = active_individuals_b.dev_pointer();
 
       auto q = (*this->scratch).get_queue();
 
@@ -115,7 +115,7 @@ namespace mudock {
                                                                   num_rotamers_p,
                                                                   adadelta_e_g2,
                                                                   adadelta_e_dw2,
-                                                                  active,
+                                                                  active_individuals,
                                                                   q);
 
       // Initialize the scoring kernel buffers

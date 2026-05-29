@@ -21,7 +21,7 @@ namespace mudock {
                     int *__restrict__ num_rotamers_b_,
                     chromosome *__restrict__ adadelta_e_g2_b_,
                     chromosome *__restrict__ adadelta_e_dw2_b_,
-                    int *__restrict__ active_b_,
+                    int *__restrict__ active_individuals_b_,
                     std::shared_ptr<queue_type> q_)
         : individuals_per_ligand(individuals_per_ligand_),
           batch_ligands(batch_ligands_),
@@ -31,7 +31,7 @@ namespace mudock {
           num_rotamers_b(num_rotamers_b_),
           adadelta_e_g2_b(adadelta_e_g2_b_),
           adadelta_e_dw2_b(adadelta_e_dw2_b_),
-          active_b(active_b_),
+          active_individuals_b(active_individuals_b_),
           q(q_) {}
 
     void operator()();
@@ -54,7 +54,7 @@ namespace mudock {
     int *__restrict__ num_rotamers_b;
     chromosome *__restrict__ adadelta_e_g2_b;
     chromosome *__restrict__ adadelta_e_dw2_b;
-    int *__restrict__ active_b;
+    int *__restrict__ active_individuals_b;
     std::shared_ptr<queue_type> q;
   };
 

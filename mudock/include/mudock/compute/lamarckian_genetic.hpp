@@ -124,8 +124,10 @@ namespace mudock {
                                                                                     q);
 
       this->geom_trans.prepare(batch);
+      local_search_stage.prepare(batch);  
       (this->score_stage).get()->prepare(batch);
-      local_search_stage.prepare(batch);
+      // TODO L at the moment this prepare() call order must be kept
+      // (ls and then score) in order to initialize correctly inactive also in score. Try to make it independent
     };
 
     void operator()() override {
