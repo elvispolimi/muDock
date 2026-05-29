@@ -181,4 +181,22 @@ namespace mudock {
         std::optional<double>,
         std::optional<double>);
 
+    template void mudock::run_tbb_pipeline<mudock::supported_format::ADTMOL2, mudock::adt_score_pipeline>(
+        std::istream&,
+        const std::vector<std::string>&,
+        const mudock::knobs&,
+        mudock::adt_score_pipeline&,
+        std::size_t,
+        std::optional<double>,
+        std::optional<double>);
+
+    template void mudock::run_tbb_pipeline<mudock::supported_format::MOL2, mudock::adt_score_pipeline>(
+        std::istream&,
+        const std::vector<std::string>&,
+        const mudock::knobs&,
+        mudock::adt_score_pipeline&,
+        std::size_t,
+        std::optional<double>,
+        std::optional<double>);
+
 } // namespace mudock

@@ -8,7 +8,8 @@ list(APPEND header_files "${header_path}/command_line_args.hpp")
 
 # sources
 set(source_path "${CMAKE_CURRENT_SOURCE_DIR}/src")
-list(APPEND source_files "${header_path}/command_line_args.cpp" "${source_path}/main.cpp")
+list(APPEND source_files "${header_path}/command_line_args.cpp"
+                         "${source_path}/main.cpp")
 
 # ##############################################################################
 # ### Declare the compile step

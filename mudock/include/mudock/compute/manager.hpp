@@ -1,8 +1,5 @@
 #pragma once
 
-#include "mudock/log.hpp"
-
-#include <array>
 #include <concepts>
 #include <memory>
 #include <mudock/compute/buffer.hpp>
@@ -18,6 +15,7 @@
 #include <mudock/grid.hpp>
 #include <mudock/implementations.hpp>
 #include <mudock/knobs.hpp>
+#include <mudock/log.hpp>
 #include <mudock/molecule.hpp>
 #include <mudock/utils.hpp>
 #include <ranges>
@@ -138,16 +136,21 @@ namespace mudock {
                std::atomic<std::size_t>* in_flight_ligands = nullptr) {
     for (auto& configuration: configurations) {
       const auto parts = parse_worker_configuration(configuration);
-      auto dev_t  = get_device_type(parts[1]);
-      auto impl_t = get_impl_type(parts[0]);
+      auto dev_t       = get_device_type(parts[1]);
+      auto impl_t      = get_impl_type(parts[0]);
       switch (dev_t) {
         case device_type::CPU: {
           constexpr_for<0, num_cpu_kernel_type(), 1>([&](const auto kernel) {
             constexpr auto kernel_type = cpu_kernel_type[kernel];
             if (kernel_type == impl_t) {
               using k_t = typename kernel_type_traits<kernel_type>::type;
-              launch_worker_cpu<k_t, pipeline_t>(
-                  knobs, parts, pool, input_molecules, output_molecules, pipe, in_flight_ligands);
+              launch_worker_cpu<k_t, pipeline_t>(knobs,
+                                                 parts,
+                                                 pool,
+                                                 input_molecules,
+                                                 output_molecules,
+                                                 pipe,
+                                                 in_flight_ligands);
             }
           });
           break;
@@ -157,8 +160,13 @@ namespace mudock {
             constexpr auto kernel_type = gpu_kernel_type[kernel];
             if (kernel_type == impl_t) {
               using k_t = typename kernel_type_traits<kernel_type>::type;
-              launch_worker_gpu<k_t, pipeline_t>(
-                  knobs, parts, pool, input_molecules, output_molecules, pipe, in_flight_ligands);
+              launch_worker_gpu<k_t, pipeline_t>(knobs,
+                                                 parts,
+                                                 pool,
+                                                 input_molecules,
+                                                 output_molecules,
+                                                 pipe,
+                                                 in_flight_ligands);
             }
           });
           break;
