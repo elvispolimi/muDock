@@ -50,6 +50,7 @@ namespace mudock {
 
       batch_ligands = batch.num_ligands;
       const int individuals_per_ligand = std::max(1, static_cast<int>((*this->scratch).configuration.population_number));
+      
       auto &gradient_b = (*this->scratch).template get<buffer_data_type::GRADIENTS>();
       const size_t gradient_count = static_cast<size_t>(batch_ligands) * static_cast<size_t>(individuals_per_ligand);
       if (!gradient_b.is_valid() || gradient_b.num_elements() != gradient_count) {
@@ -63,28 +64,29 @@ namespace mudock {
       load_num_rotamers<queue_type>(batch, this->scratch);
 
       auto &chromosomes_b = (*this->scratch).template get<buffer_data_type::CHROMOSOMES>();
-      chromosomes_b.alloc(static_cast<size_t>(batch_ligands) * individuals_per_ligand);
+      chromosomes_b.alloc(static_cast<size_t>(batch_ligands) * static_cast<size_t>(individuals_per_ligand));
       chromosomes_b.set_valid();
       chromosome *population_b = chromosomes_b.dev_pointer();
 
       // Allocate AdaDelta state buffers (E[g^2] and E[delta^2])
       auto &adadelta_e_g2_b      = (*this->scratch).template get<buffer_data_type::ADADELTA_E_G2>();
       auto &adadelta_e_dw2_b     = (*this->scratch).template get<buffer_data_type::ADADELTA_E_DW2>();
-      auto &active_individuals_b = (*this->scratch).template get<buffer_data_type::ACTIVE_INDIVIDUALS>();
-
+      
       if (!adadelta_e_g2_b.is_valid() || adadelta_e_g2_b.num_elements() != gradient_count) {
         adadelta_e_g2_b.alloc(gradient_count);
         adadelta_e_dw2_b.alloc(gradient_count);
-        active_individuals_b.alloc(gradient_count);
-
         adadelta_e_g2_b.set_valid();
         adadelta_e_dw2_b.set_valid();
-        active_individuals_b.set_valid();
-
       }
-
-      // TODO L move active from lsrate initialization from here to local search generic
+      
+      
+      // TODO L move active from lsrate initialization from here to local search generic or LGA?
       // Initialize active population
+      auto &active_individuals_b = (*this->scratch).template get<buffer_data_type::ACTIVE_INDIVIDUALS>();
+      if (!active_individuals_b.is_valid() || active_individuals_b.num_elements() != gradient_count) {
+        active_individuals_b.alloc(gradient_count);
+        active_individuals_b.set_valid();
+      }
       std::vector<int> active_init(gradient_count);
       
       std::mt19937 rng((*this->scratch).configuration.seed.value_or(std::random_device{}()));
@@ -93,7 +95,7 @@ namespace mudock {
       for (size_t i = 0; i < gradient_count; ++i) {
         active_init[i] = dist(rng);
       }
-
+// TODO L IMPORTANT magari devo fare copyhost2device di active individuals??? come in adt_score.hpp
       // Copy to device/managed buffer
       std::memcpy(
           active_individuals_b.dev_pointer(),
@@ -119,7 +121,7 @@ namespace mudock {
                                                                   q);
 
       // Initialize the scoring kernel buffers
-      this->score_stage->prepare(batch);
+      this->score_stage->prepare(batch); //TODO L se non sbaglio l'ho aggiunto per quando deve fare solo local search nell'eseguibile stand alone
       geom_trans.prepare(batch);
     }
 
@@ -173,7 +175,7 @@ namespace mudock {
       // AdaDelta state buffers for each individual
       mem += sizeof(chromosome) * individuals_per_ligand; // E[g^2]
       mem += sizeof(chromosome) * individuals_per_ligand; // E[delta_w^2]
-      mem += sizeof(int) * individuals_per_ligand;        // active flag
+      mem += sizeof(int)        * individuals_per_ligand; // active flag
       return static_cast<int>(mem);
     }
 

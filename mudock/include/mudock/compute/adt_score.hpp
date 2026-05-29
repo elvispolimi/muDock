@@ -128,12 +128,10 @@ namespace mudock {
         score_b.set_valid();
       }
 
-      // Allocate gradient buffer (6 + max_rotamers per ligand)
       auto &gradient_b = (*this->scratch).template get<buffer_data_type::GRADIENTS>();
-      const int max_rotamers = batch.batch_max_rotamers;
-      const size_t gradient_elements = static_cast<size_t>(batch_ligands) * static_cast<size_t>(scores_per_ligand) * (6 + max_rotamers);
-      if (!gradient_b.is_valid() || gradient_b.num_elements() != gradient_elements) {
-        gradient_b.alloc(gradient_elements);
+      const size_t gradient_count = static_cast<size_t>(batch_ligands) * static_cast<size_t>(scores_per_ligand);
+      if (!gradient_b.is_valid() || gradient_b.num_elements() != gradient_count) {
+        gradient_b.alloc(gradient_count);
         gradient_b.set_valid();
       }
 
@@ -319,11 +317,14 @@ namespace mudock {
                                                               scores_b,
                                                               q);
 
-      // Get gradient buffer pointer for gradient kernel
-      // gradient is std::array<fp_type, 516>, so we need to cast to fp_type* for the kernel
       gradient *gradients_b = gradient_b.dev_pointer();
+
       auto &active_individuals_b = (*this->scratch).template get<buffer_data_type::ACTIVE_INDIVIDUALS>();
-      int *active_individuals    = active_individuals_b.dev_pointer();
+      if (!active_individuals_b.is_valid() || active_individuals_b.num_elements() != gradient_count) {
+        active_individuals_b.alloc(gradient_count);
+        active_individuals_b.set_valid();
+      }
+      int *active_individuals = active_individuals_b.dev_pointer();
 
       gradient_kernel = std::make_unique<adt_gradient_kernel<queue_type>>(scores_per_ligand,
                                                               batch_ligands,
@@ -384,8 +385,9 @@ namespace mudock {
              3 * sizeof(fp_type) * max_atoms * scores_per_ligand;
     }
 
-    static std::size_t get_private_ligand_mem(const int max_atoms, const knobs) {
+    static std::size_t get_private_ligand_mem(const int max_atoms, const knobs conf) {
       const int non_bonds_atoms = max_atoms * max_atoms;
+      const int individuals_per_ligand = std::max(1, static_cast<int>(conf.population_number));
       std::size_t mem{0};
       mem += sizeof(fp_type) * max_atoms;       // vols
       mem += sizeof(fp_type) * max_atoms;       // solpars
@@ -406,9 +408,10 @@ namespace mudock {
       mem += sizeof(int) * batch_rotamers;              //frag_start_atom_indices
       mem += sizeof(int) * batch_rotamers;              //frag_stop_atom_indices
       mem += sizeof(int);                               //frag_indices_start
-      mem += sizeof(fp_type) * max_atoms; //x_coords_b
-      mem += sizeof(fp_type) * max_atoms; //y_coords_b
-      mem += sizeof(fp_type) * max_atoms; //z_coords_b
+      mem += sizeof(fp_type) * max_atoms;               //x_coords_b
+      mem += sizeof(fp_type) * max_atoms;               //y_coords_b
+      mem += sizeof(fp_type) * max_atoms;               //z_coords_b
+      mem += sizeof(int) * individuals_per_ligand;      //active flag
       
       return mem;
     }

@@ -127,7 +127,8 @@ namespace mudock {
       local_search_stage.prepare(batch);  
       (this->score_stage).get()->prepare(batch);
       // TODO L at the moment this prepare() call order must be kept
-      // (ls and then score) in order to initialize correctly inactive also in score. Try to make it independent
+      // (ls and then score) in order to initialize correctly active population also in score. Try to make it independent
+      // maybe moving it here in LGA
     };
 
     void operator()() override {
