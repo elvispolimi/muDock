@@ -11,59 +11,25 @@
 #include <mudock/mpi_implementation/byte_range.hpp>
 #include <mudock/tbb_implementation/tbb_pipeline.hpp>
 
-#ifdef MUDOCK_USE_MPI
-  #include <mpi.h>
-
-  #include <mudock/mpi_implementation/distributed_ranges.hpp>
-#endif
-
 int main(int argc, char** argv) {
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  //  WARNING: to ensure a stan-alone application of local search, some knobs are forced in the local_search_pipeline,  //
+  //           like population_number = 1 and num_generations = 1                                                       //
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   const auto args = parse_command_line_arguments(argc, argv);
   std::optional<mudock::byte_range> range = std::nullopt;
   std::optional<int> rank                 = std::nullopt;
   const auto in_format                    = mudock::parse_supported_format(args.ligand_path);
 
-#ifdef MUDOCK_USE_MPI
-  MPI_Init(&argc, &argv);
-
-  int mpi_rank = 0, nranks = 1;
-  MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
-  MPI_Comm_size(MPI_COMM_WORLD, &nranks);
-  rank = mpi_rank;
-
-  if (rank == 0) {
-    mudock::info("Running with ", nranks, " MPI processes.");
-  }
-
-  {
-    std::ifstream probe(args.ligand_path, std::ios::binary);
-    if (!probe) {
-      mudock::error("[rank ", *rank, "] Cannot open ligand file: ", args.ligand_path);
-      MPI_Abort(MPI_COMM_WORLD, 2);
-    }
-  }
-
-  if (in_format != mudock::supported_format::ADTMOL2) {
-    if (*rank == 0) {
-      mudock::error("MPI implementation currently supports only ADTMOL2 input format.");
-    }
-    MPI_Abort(MPI_COMM_WORLD, 3);
-  }
-
-  range = mudock::distribute_aligned_ranges<mudock::supported_format::ADTMOL2>(args.ligand_path, *rank, nranks);
-  mudock::info("rank ", *rank, ": [", range->begin, ", ", range->end, "]\n");
-#else
   if (in_format != mudock::supported_format::ADTMOL2) {
     mudock::error("Stream implementation currently supports only ADTMOL2 input format.");
     return 1;
   }
-#endif
 
   MUDOCK_MARKER_INIT;
 
   mudock::info("Reading and parsing protein ", args.protein_path, " ...");
-  auto protein =
-      std::make_shared<mudock::dynamic_molecule>(mudock::parser<mudock::dynamic_molecule>(args.protein_path));
+  auto protein = std::make_shared<mudock::dynamic_molecule>(mudock::parser<mudock::dynamic_molecule>(args.protein_path));
 
   mudock::info("Reading ligand ", args.ligand_path, " ...");
   std::ifstream in(args.ligand_path, std::ios::binary);
@@ -73,9 +39,6 @@ int main(int argc, char** argv) {
     } else {
       mudock::error("Can't open input file ", args.ligand_path);
     }
-#ifdef MUDOCK_USE_MPI
-    MPI_Finalize();
-#endif
     return 1;
   }
 
@@ -87,9 +50,6 @@ int main(int argc, char** argv) {
     }
     MUDOCK_MARKER_CLOSE;
     mudock::info("All Done!");
-#ifdef MUDOCK_USE_MPI
-    MPI_Finalize();
-#endif
     return EXIT_SUCCESS;
   }
 
@@ -100,10 +60,6 @@ int main(int argc, char** argv) {
               in, args.device_confs, args.knobs, pipe, effective_range.end, args.time_limit_sec, args.observer);
   MUDOCK_MARKER_CLOSE;
   mudock::info("All Done!");
-
-#ifdef MUDOCK_USE_MPI
-  MPI_Finalize();
-#endif
 
   return EXIT_SUCCESS;
 }

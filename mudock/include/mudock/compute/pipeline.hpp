@@ -192,6 +192,7 @@ namespace mudock {
     static knobs normalize_knobs(knobs conf) {
       conf.population_number = 1;
       conf.num_generations   = 1;
+      conf.lsrate            = 100;
       return conf;
     }
 

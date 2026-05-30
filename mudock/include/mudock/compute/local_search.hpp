@@ -29,7 +29,7 @@ namespace mudock {
     std::optional<static_molecule> ligand_template;
     
 
-    void dump_pose(int iteration) {
+    void dump_pose(int i) {
       assert(ligand_template.has_value() && "Ligand template was not stored before dump_pose");
 
       auto& x_scratch_b = (*this->scratch).template get<buffer_data_type::X_SCRATCH>();
@@ -46,7 +46,7 @@ namespace mudock {
       std::memcpy(pose.y(), y_scratch_b.host_pointer(), num_atoms * sizeof(fp_type));
       std::memcpy(pose.z(), z_scratch_b.host_pointer(), num_atoms * sizeof(fp_type));
 
-      const std::string filename = "dump/pose_iter_" + std::to_string(iteration) + ".mol2";
+      const std::string filename = "dump/pose_" + std::to_string(i) + ".mol2";
       std::ofstream ofs(filename, std::ios::out);
       writer<supported_format::MOL2>(pose, ofs);
     }

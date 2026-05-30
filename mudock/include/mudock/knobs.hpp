@@ -8,7 +8,7 @@ namespace mudock {
 
   struct knobs {
     bool use_local_search                     = false;
-    bool stop_at_convergence                  = true; // TODO L adapt it to genetic
+    bool genetic_convergence                  = true; // TODO L adapt it to genetic
     fp_type lsrate                            = static_cast<fp_type>(100);
     std::size_t population_number             = 100;
     std::size_t num_generations               = 1000;

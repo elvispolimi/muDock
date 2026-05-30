@@ -40,8 +40,8 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
       po::value(&args.knobs.use_local_search)->default_value(args.knobs.use_local_search),
       "Boolean to trigger LGA");
   knobs_description.add_options()(
-      "stop_at_convergence",
-      po::value(&args.knobs.stop_at_convergence)->default_value(args.knobs.stop_at_convergence),
+      "genetic_convergence",
+      po::value(&args.knobs.genetic_convergence)->default_value(args.knobs.genetic_convergence),
       "Boolean to stop genetic algorithm when convergence is reached, for both GA and LGA");
  knobs_description.add_options()(
       "lsrate",

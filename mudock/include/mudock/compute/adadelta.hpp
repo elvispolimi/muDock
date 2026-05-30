@@ -139,6 +139,7 @@ namespace mudock {
           ((*this->scratch).configuration.population_number == 1) &&
           ((*this->scratch).configuration.num_generations == 1);
 
+      int j = 1;
       for (std::size_t i = 0; i < this->iterations; ++i) {
         geom_trans();
         
@@ -149,7 +150,7 @@ namespace mudock {
           scores_b.copy_device2host();
           (*this->scratch).get_queue()->synchronize();
           if(i % (this->iterations/10) == 0){ // print every 10% of the process
-            this->dump_pose(int(i));
+            this->dump_pose(int(j++));
             printf("Iter: %ld, Score: %f\n", i, scores_b()[0]);
           }
         }
