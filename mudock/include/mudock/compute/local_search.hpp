@@ -16,7 +16,7 @@ namespace mudock {
                  std::shared_ptr<scoring_t<queue_t>> _score)
                  : stage<queue_t>(_scratch),
                    score_stage(_score) {
-                   iterations = (*this->scratch).configuration.ls_iterations;
+                   iterations = (*this->scratch).configuration.lsit;
                    };
     virtual void prepare(batch<static_molecule>&) = 0;
     virtual void operator()()                     = 0;

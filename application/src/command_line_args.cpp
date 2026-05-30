@@ -60,8 +60,8 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
       po::value(&args.knobs.tournament_length)->default_value(args.knobs.tournament_length),
       "Number of classes to select a parent in GA");
   knobs_description.add_options()(
-      "ls_iterations",
-      po::value(&args.knobs.ls_iterations)->default_value(args.knobs.ls_iterations),
+      "lsit",
+      po::value(&args.knobs.lsit)->default_value(args.knobs.lsit),
       "Number of local search iterations");
   knobs_description.add_options()(
       "mutation",
