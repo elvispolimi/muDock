@@ -71,7 +71,7 @@ namespace mudock {
         auto sy = base_protein->get_size_xy() / sx;
         auto sz = base_protein->get_size_xyz() / base_protein->get_size_xy();
         
-        int num_bins = thresholds.size() + 1;
+        int num_bins = static_cast<int>(thresholds.size()) + 1;
         quantized_fused_maps = md_vector<fp_type, 4>(num_bins, sz, sy, sx);
         LIKWID_MARKER_START("Setup_Quant_Maps");
         prepare_fused_maps(base_protein);
@@ -91,7 +91,7 @@ namespace mudock {
           fp_type q = ligand.charge(i);
           // Ricerca binaria
           auto it = std::upper_bound(thresh.begin(), thresh.end(), q);
-          atom_bins[i] = std::distance(thresh.begin(), it);
+          atom_bins[i] = static_cast<int>(std::distance(thresh.begin(), it));
       }
       return atom_bins;
   }

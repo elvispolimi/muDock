@@ -29,7 +29,7 @@ void precomputed_protein::prepare_fused_maps(const fp_type* grid_maps,
 
    
 
-    for(std::size_t index_a = 0; index_a < size_a; ++index_a) {
+    for(int index_a = 0; index_a < size_a; ++index_a) {
         
         const fp_type q = ligand.charge(index_a);
         const fp_type abs_q = std::abs(q);

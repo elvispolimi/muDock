@@ -4,16 +4,5 @@ build*/
 .gdb_history
 *.o
 *.a
-*.tar.gz
-*.zip
-CASF-2016/
-venv/
 .codex
 docs/
-data/filtered_dataset
-data/mega_ligands
-data/big.adtmol2
-data/mid.adtmol2
-data/small.adtmol2
-*.csv
-*.sh

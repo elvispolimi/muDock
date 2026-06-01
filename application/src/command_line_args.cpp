@@ -18,6 +18,7 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
   double observer_sec{};
   std::string search_name = std::string{to_string(args.search)};
   std::string score_name  = std::string{to_string(args.scoring)};
+  std::string temp_mode = "STANDARD";
   arguments_description.add_options()("help,h", "print this help message");
   arguments_description.add_options()("protein,p",
                                       po::value(&args.protein_path)->default_value(args.protein_path),
@@ -49,7 +50,7 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
     // Ho aggiunto la flag per la scelta dell'architettura, non aggiornerò l'help per ora
   arguments_description.add_options()(
       "mode",
-      po::value(&args.pipeline_mode)->default_value(args.pipeline_mode),
+      po::value(&temp_mode)->default_value(temp_mode), 
       "Scoring architecture to use: STANDARD (default), PRECOMPUTED, or QUANT");
   arguments_description.add_options()(
       "score-only",
@@ -129,6 +130,12 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
 
   // make sure that the arguments make sense before returning them
   po::notify(vm);
+  try {
+      args.score_mode = mudock::parse_scoring_mode(temp_mode);
+  } catch (const std::invalid_argument& e) {
+      std::cerr << "Command line error: " << e.what() << "\n";
+      exit(EXIT_FAILURE);
+  }
   if (vm.count("seed")) {
     args.knobs.seed = std::optional<size_t>{seed};
   }

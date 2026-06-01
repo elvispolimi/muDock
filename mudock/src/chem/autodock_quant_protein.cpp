@@ -20,7 +20,7 @@ void autodock_quant_protein::prepare_fused_maps(const autodock_protein* base_pro
    
     const fp_type* grid_maps = base_protein->get_maps_pointer();
 
-    const int num_bins =thresholds.size() + 1;
+    const int num_bins = static_cast<int>(thresholds.size()) + 1;
 
     
     fp_type* raw_fused_ptr = const_cast<fp_type*>(quantized_fused_maps.data());

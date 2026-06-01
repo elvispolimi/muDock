@@ -70,9 +70,9 @@ namespace mudock {
         std::memcpy(prot_min(), adt_prot.get_min_p(), 3 * sizeof(fp_type));
         std::memcpy(prot_max(), adt_prot.get_max_p(), 3 * sizeof(fp_type));
         std::memcpy(prot_center(), adt_prot.get_center_p(), 3 * sizeof(fp_type));
-        prot_index_x()[0]   = adt_prot.get_size_x();
-        prot_index_xy()[0]  = adt_prot.get_size_xy();
-        prot_index_xyz()[0] = adt_prot.get_size_xyz();
+        prot_index_x()[0]   = static_cast<int>(adt_prot.get_size_x());
+        prot_index_xy()[0]  = static_cast<int>(adt_prot.get_size_xy());
+        prot_index_xyz()[0] = static_cast<int>(adt_prot.get_size_xyz());
         //sistemo i puntatori
         const fp_type* vdw_maps_start = adt_prot.get_maps_pointer() + (adt_prot.get_map_flat_size() * 2);
         std::memcpy(prot_grid_maps(),
@@ -161,7 +161,7 @@ namespace mudock {
         std::memcpy((void *) (nonbond_xB() + num_nonbond()[ligand_index]),
                     adt_ligand.non_bond_xB(),
                     non_bond_size * sizeof(int));
-        num_nonbond()[ligand_index + 1] = num_nonbond()[ligand_index] + non_bond_size;
+        num_nonbond()[ligand_index + 1] = static_cast<int>(num_nonbond()[ligand_index] + non_bond_size);
 
         // Autodock typing
         std::memcpy((void *) (vols() + stride_atoms), adt_ligand.vol(), num_atoms * sizeof(fp_type));
@@ -269,9 +269,7 @@ namespace mudock {
           (((*this->scratch).template get<buffer_data_type::SCORES>().num_elements() % batch_ligands) == 0) &&
           "Number of scores is not a multiple of ligands in the batch");
       assert(kernel && "Kernel method not yet prepared");
-      LIKWID_MARKER_START("Score_Kernel_Quant");
       (*kernel)();
-      LIKWID_MARKER_STOP("Score_Kernel_Quant");
     }
     static constexpr const char stage_name[] = "QUANT";
 

@@ -117,11 +117,11 @@ int main(int argc, char** argv) {
   // =========================================================================
   if (args.score_only) {
     mudock::info(">> RUNNING: SINGLE-POINT SCORE CALCULATION (No Genetic Algorithm)");
-    if (args.pipeline_mode == "PRECOMPUTED") {
+    if (args.score_mode == mudock::scoring_mode::precomputed) {
       mudock::precomputed_adt_score_pipeline pipe{protein};
       mudock::run_tbb_pipeline<mudock::supported_format::ADTMOL2>(
           in, args.device_confs, args.knobs, pipe, effective_range.end, args.time_limit_sec, args.observer);
-    } else if (args.pipeline_mode == "QUANT") {
+    } else if (args.score_mode == mudock::scoring_mode::quant) {
       mudock::adt_quant_score_pipeline pipe{protein};
       mudock::run_tbb_pipeline<mudock::supported_format::ADTMOL2>(
           in, args.device_confs, args.knobs, pipe, effective_range.end, args.time_limit_sec, args.observer);
@@ -132,11 +132,11 @@ int main(int argc, char** argv) {
     }
   } else {
     mudock::info("Virtual screening the ligands ...");
-    if (args.pipeline_mode == "PRECOMPUTED") {
+    if (args.score_mode == mudock::scoring_mode::precomputed) {
       mudock::genetic_precomputed_adt_pipeline pipe{protein};
       mudock::run_tbb_pipeline<mudock::supported_format::ADTMOL2>(
           in, args.device_confs, args.knobs, pipe, effective_range.end, args.time_limit_sec, args.observer);
-    } else if (args.pipeline_mode == "QUANT") {
+    } else if (args.score_mode == mudock::scoring_mode::quant) {
       mudock::genetic_adt_quant_pipeline pipe{protein};
       mudock::run_tbb_pipeline<mudock::supported_format::ADTMOL2>(
           in, args.device_confs, args.knobs, pipe, effective_range.end, args.time_limit_sec, args.observer);

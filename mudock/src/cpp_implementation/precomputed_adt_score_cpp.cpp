@@ -49,7 +49,7 @@ namespace mudock {
                           const fp_type *__restrict__ minimum,
                           const fp_type *__restrict__ maximum,
                           const fp_type *__restrict__ center,
-                          const int *__restrict__ map_offsets_b,
+                          const int *__restrict__ /*map_offsets_b*/,
                           const int map_index_x,
                           const int map_index_xy,
                           const int map_index_xyz,
@@ -105,15 +105,15 @@ MUDOCK_CPP_MARKER_START("Fase_Scoring");
             coord[1] = (coord[1] - minimum[1]) * inv_spacing;
             coord[2] = (coord[2] - minimum[2]) * inv_spacing;
 
-            const int u0      = coord[0];
+            const int u0      = static_cast<int>(coord[0]);
             const fp_type p0u = coord[0] - static_cast<fp_type>(u0);
             const fp_type p1u = fp_type{1} - p0u;
 
-            const int v0      = coord[1];
+            const int v0      = static_cast<int>(coord[1]);
             const fp_type p0v = coord[1] - static_cast<fp_type>(v0);
             const fp_type p1v = fp_type{1} - p0v;
 
-            const int w0      = coord[2];
+            const int w0      = static_cast<int>(coord[2]);
             const fp_type p0w = coord[2] - static_cast<fp_type>(w0);
             const fp_type p1w = fp_type{1} - p0w;
 
@@ -202,7 +202,7 @@ MUDOCK_CPP_MARKER_START("Fase_Scoring");
             emap_total_eintcal += e_vdW_Hb;
           }
         }
-        const fp_type tors_free_energy = num_rotamers * autodock_parameters::coeff_tors;
+        const fp_type tors_free_energy = static_cast<fp_type>(num_rotamers) * autodock_parameters::coeff_tors;
 
         const fp_type total_trilinear = fused_total_trilinear;
         const fp_type total_eintcal   = emap_total_eintcal + elect_total_eintcal + dmap_total_eintcal;
