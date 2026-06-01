@@ -86,7 +86,6 @@ namespace mudock {
         prot_index_xy.copy_host2device();
         prot_index_xyz.copy_host2device();
         // On CPU is not required and on GPUS we have probably to laod texture memory etc...
-        // prot_grid_maps.copy_host2device();
       }
     }
     
@@ -112,13 +111,11 @@ namespace mudock {
       vols.alloc(tot_atoms_in_batch);
       solpars.alloc(tot_atoms_in_batch);
       charges.alloc(tot_atoms_in_batch);
-      //spazio per la mega mappa, test logica incrementale
+      //Allocation of the fused maps buffer, following incremental approach to avoid over-allocation in case of multiple batches with different sizes
       if(m_allocated_atoms < tot_atoms_in_batch){
         fused_maps.alloc(tot_atoms_in_batch * map_flat_size);
         m_allocated_atoms = tot_atoms_in_batch;
       }
-
-      // fused_maps.alloc(tot_atoms_in_batch * map_flat_size);
 
       map_offsets.alloc(tot_atoms_in_batch);
       num_nonbond.alloc(batch_ligands + 1);
@@ -167,14 +164,12 @@ namespace mudock {
                     non_bond_size * sizeof(int));
         num_nonbond()[ligand_index + 1] = static_cast<int>(num_nonbond()[ligand_index] + non_bond_size);
 
-        //creazione mia nuova mappa fusa
         precomputed_protein my_fused_prot(grid_maps, sx, sy, sz, adt_ligand, ligand);
         // Autodock typing
 
         std::memcpy((void *) (vols() + stride_atoms), adt_ligand.vol(), num_atoms * sizeof(fp_type));
         std::memcpy((void *) (solpars() + stride_atoms), adt_ligand.solpar(), num_atoms * sizeof(fp_type));
         std::memcpy((void *) (charges() + stride_atoms), ligand.charge(), num_atoms * sizeof(fp_type));
-        //preparo la nostra mega mappa fusa fa mandare come mega buffer al kernel
         std::memcpy((void *) (fused_maps() + (stride_atoms * map_flat_size)),
                     my_fused_prot.get_raw_data(), 
                     num_atoms * map_flat_size * sizeof(fp_type));
@@ -183,7 +178,6 @@ namespace mudock {
                     adt_ligand.atom_map_index(),
                     num_atoms * sizeof(int));
       }
-      //spediamo il buffer
       fused_maps.copy_host2device();
       vols.copy_host2device();
       solpars.copy_host2device();
@@ -215,7 +209,6 @@ namespace mudock {
       const fp_type *vols_b       = vols.dev_pointer();
       const fp_type *solpars_b    = solpars.dev_pointer();
       const fp_type *charges_b    = charges.dev_pointer();
-      //preparo il puntatore
       const fp_type *fused_maps_b = fused_maps.dev_pointer();
       const int *map_offsets_b    = map_offsets.dev_pointer();
       const int *nonbond_a1_b     = nonbond_a1.dev_pointer();
@@ -225,8 +218,6 @@ namespace mudock {
       const int *nonbond_xB_b     = nonbond_xB.dev_pointer();
 
       // Use host pointer as on CPP you can use it, on GPU they will load their own memory
-    //   const fp_type *grid_maps =
-    //       (*device_scratch).template get<buffer_data_type::PROT_GRID_MAPS>().host_pointer();
       const fp_type *minimum = (*device_scratch).template get<buffer_data_type::PROT_MIN>().dev_pointer();
       const fp_type *maximum = (*device_scratch).template get<buffer_data_type::PROT_MAX>().dev_pointer();
       const fp_type *center  = (*device_scratch).template get<buffer_data_type::PROT_CENTER>().dev_pointer();
@@ -238,7 +229,6 @@ namespace mudock {
           (*device_scratch).template get<buffer_data_type::PROT_SIZE_XYZ>().host_pointer()[0];
 
       fp_type *scores_b = score_b.dev_pointer();
-      //il mio nuovo kernel personalizzato
       kernel = std::make_unique<precomputed_adt_score_kernel<queue_type>>(scores_per_ligand,
                                                               batch_ligands,
                                                               batch_atoms,
@@ -293,10 +283,7 @@ namespace mudock {
       mem += sizeof(int) * non_bonds_atoms;     // nonbond_a2
       mem += sizeof(fp_type) * non_bonds_atoms; // nonbond_cA
       mem += sizeof(fp_type) * non_bonds_atoms; // nonbond_cB
-      mem += sizeof(int) * non_bonds_atoms;     // nonbond_xB
-      // Nota: fused_maps non viene calcolato qui perché la size della griglia 
-      // non è nota a compile-time in questa fase, ma questo garantisce l'allineamento
-      // con le logiche di upstream per il calcolo base del batch.
+      mem += sizeof(int) * non_bonds_atoms;     // nonbond_xB.
       return mem;
     }
 
@@ -337,7 +324,7 @@ namespace mudock {
     buffer_vector<fp_type, queue_type> vols;
     buffer_vector<fp_type, queue_type> solpars;
     buffer_vector<fp_type, queue_type> charges;
-    buffer_vector<fp_type, queue_type> fused_maps; // <-- Aggiunta
+    buffer_vector<fp_type, queue_type> fused_maps; 
     buffer_vector<int, queue_type> map_offsets;
     buffer_vector<int, queue_type> num_nonbond;
     buffer_vector<int, queue_type> nonbond_a1;

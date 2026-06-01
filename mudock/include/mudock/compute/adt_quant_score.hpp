@@ -63,8 +63,7 @@ namespace mudock {
         prot_index_x.alloc(1);
         prot_index_xy.alloc(1);
         prot_index_xyz.alloc(1);
-        // prot_grid_maps.alloc(adt_prot.get_size_xyz() * num_autodock_grids());
-        //le mappe elttro e desolv non servono più puliamo la memoria
+        // We allocate only the vdw maps as the quantized scoring does not use electrostatic and desolvation maps
         prot_grid_maps.alloc(adt_prot.get_map_flat_size() * (num_autodock_grids() - 2));
 
         std::memcpy(prot_min(), adt_prot.get_min_p(), 3 * sizeof(fp_type));
@@ -73,7 +72,7 @@ namespace mudock {
         prot_index_x()[0]   = static_cast<int>(adt_prot.get_size_x());
         prot_index_xy()[0]  = static_cast<int>(adt_prot.get_size_xy());
         prot_index_xyz()[0] = static_cast<int>(adt_prot.get_size_xyz());
-        //sistemo i puntatori
+        //skipping electrostatic and desolvation maps as they are not used in the quantized scoring
         const fp_type* vdw_maps_start = adt_prot.get_maps_pointer() + (adt_prot.get_map_flat_size() * 2);
         std::memcpy(prot_grid_maps(),
                     vdw_maps_start,
@@ -86,7 +85,6 @@ namespace mudock {
         prot_index_xy.copy_host2device();
         prot_index_xyz.copy_host2device();
         // On CPU is not required and on GPUS we have probably to laod texture memory etc...
-        // prot_grid_maps.copy_host2device();
         if(!(*device_scratch).template exists<buffer_data_type::QUANT_GRID_MAPS>()){
             autodock_quant_protein quant_prot(&adt_prot);
             auto &quant_maps = (*device_scratch).template get<buffer_data_type::QUANT_GRID_MAPS>();
@@ -292,7 +290,7 @@ namespace mudock {
       mem += sizeof(fp_type) * non_bonds_atoms; // nonbond_cA
       mem += sizeof(fp_type) * non_bonds_atoms; // nonbond_cB
       mem += sizeof(int) * non_bonds_atoms;     // nonbond_xB
-      mem += sizeof(int) * max_atoms;           // atom_bins (Specifico per quant_score)
+      mem += sizeof(int) * max_atoms;           // atom_bins
       return mem;
     }
 

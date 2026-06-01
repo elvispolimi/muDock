@@ -66,7 +66,6 @@ namespace mudock {
       const fp_type *__restrict__ vol_l     = vols_b + atom_stride;
       const fp_type *__restrict__ solpar_l  = solpars_b + atom_stride;
       const fp_type *__restrict__ charge_l  = charges_b + atom_stride;
-    //   const int *__restrict__ map_offsets_l = map_offsets_b + atom_stride;
       const int *__restrict__ nonbond_a1_l  = nonbond_a1_b + num_nonbonds_b[ligand_index];
       const int *__restrict__ nonbond_a2_l  = nonbond_a2_b + num_nonbonds_b[ligand_index];
       const fp_type *nonbond_cA_l           = nonbond_cA_b + num_nonbonds_b[ligand_index];
@@ -78,9 +77,7 @@ namespace mudock {
         const fp_type *__restrict__ scratch_x_l = scratch_x + scores_index * batch_atoms;
         const fp_type *__restrict__ scratch_y_l = scratch_y + scores_index * batch_atoms;
         const fp_type *__restrict__ scratch_z_l = scratch_z + scores_index * batch_atoms;
-        //contatore unico (una sola interpolazione)
         fp_type fused_total_trilinear = 0;
-MUDOCK_CPP_MARKER_START("Fase_Scoring");
 #pragma omp simd 
         for (int index = 0; index < num_atoms; ++index) {
           fp_type coord[3]{scratch_x_l[index], scratch_y_l[index], scratch_z_l[index]};
@@ -92,14 +89,9 @@ MUDOCK_CPP_MARKER_START("Fase_Scoring");
             const auto diff_z      = coord[2] - center[2];
             const fp_type dist     = diff_x * diff_x + diff_y * diff_y + diff_z * diff_z;
             const fp_type epenalty = dist * ENERGYPENALTY;
-            //la pensality prima era su due -> linearità la radoppio 
+            //penality it's doubled because the same penalty is applied to both electrostatic and desolvation term, as they are both calculated with trilinear interpolation on the same grid
             fused_total_trilinear += (epenalty * fp_type{2.0});
-            // elect_total_trilinear += epenalty;
-            // emap_total_trilinear += epenalty;
           } else {
-            // const auto &atom_charge = charge_l[index];
-            // const fp_type *atom_map = grid_maps + map_offsets_l[index];
-            //mappa specifica di questo atomo di questo ligando
             const fp_type *atom_fused_map = fused_map + ((atom_stride + index) * map_index_xyz);
             coord[0] = (coord[0] - minimum[0]) * inv_spacing;
             coord[1] = (coord[1] - minimum[1]) * inv_spacing;
@@ -133,20 +125,9 @@ MUDOCK_CPP_MARKER_START("Fase_Scoring");
 
             // Precompute flattened indices
             const int base_index = FLATTENED_3D(u0, v0, w0, map_index_x, map_index_xy);
-            // Trilinear Interpolationp
-            // elect_total_trilinear +=
-            //     trilinear_interpolation(electro_map + base_index, coeffs, map_index_x, map_index_xy) *
-            //     atom_charge;
-            // emap_total_trilinear +=
-            //     trilinear_interpolation(atom_map + base_index, coeffs, map_index_x, map_index_xy);
-            // dmap_total_trilinear +=
-            //     trilinear_interpolation(desolv_map + base_index, coeffs, map_index_x, map_index_xy) *
-            //     std::fabs(atom_charge);
-            //unica fusa 
             fused_total_trilinear += trilinear_interpolation(atom_fused_map + base_index, coeffs, map_index_x, map_index_xy);
           }
         }
-        MUDOCK_CPP_MARKER_STOP("Fase_Scoring");
 
 
         fp_type elect_total_eintcal{0}, emap_total_eintcal{0}, dmap_total_eintcal{0};

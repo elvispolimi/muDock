@@ -6,7 +6,6 @@
 #include <mudock/type_alias.hpp>
 
 #include <iostream> 
-//letteralmente identico a quello di prima
 namespace mudock {
 
   template<typename queue_type>

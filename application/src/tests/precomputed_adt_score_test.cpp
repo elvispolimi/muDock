@@ -16,7 +16,6 @@
 #include <stdexcept>
 #include <string>
 
-// --- I TUOI HEADER CUSTOM ---
 #include <mudock/chem/precomputed_layer.hpp>
 #include <mudock/compute/precomputed_adt_score_kernel.hpp>
 
@@ -80,9 +79,9 @@ int main(int argc, char *argv[]) {
   
   auto q = std::make_shared<mudock::queue_cpp>(0, mudock::device_type::CPU);
   mudock::precomputed_adt_score_kernel<mudock::queue_cpp> precomp_kernel{
-                                                         1, // scores_per_ligand
-                                                         1, // batch_ligands
-                                                         num_atoms, // batch_atoms
+                                                         1, 
+                                                         1, 
+                                                         num_atoms, 
                                                          num_atoms_b.data(),
                                                          num_rotamers_b.data(),
                                                          num_nonbonds_b.data(),
@@ -108,10 +107,8 @@ int main(int argc, char *argv[]) {
                                                          scores_b.data(),
                                                          q};
 
-  // 4. Lancia il kernel
   precomp_kernel();
   
-  // 5. Verifica l'energia
   const mudock::fp_type energy = scores_b[0];
   
   if (std::abs(energy - adt_score + adt_error_score) > mudock::fp_type{0.1}) {

@@ -82,9 +82,6 @@ namespace mudock {
 
         fp_type elect_dmap_total_trilinear = 0;
         fp_type emap_total_trilinear  = 0;
-        // fp_type dmap_total_trilinear  = 0;
-        // const fp_type *electro_map = grid_maps + map_index_xyz * static_cast<int>(autodock_grid_type::ELEC);
-        // const fp_type *desolv_map  = grid_maps + map_index_xyz * static_cast<int>(autodock_grid_type::DESOLV);
 
 #pragma omp simd
         for (int index = 0; index < num_atoms; ++index) {
@@ -100,7 +97,6 @@ namespace mudock {
             elect_dmap_total_trilinear += epenalty;
             emap_total_trilinear += epenalty;
           } else {
-            // const auto &atom_charge = charge_l[index];
             const int my_bin = atom_bins_l[index];
             const fp_type *atom_map = grid_maps + map_offsets_l[index];
             const fp_type *my_quant_map = quant_maps + (my_bin * map_index_xyz);
@@ -143,9 +139,6 @@ namespace mudock {
                 trilinear_interpolation(my_quant_map + base_index, coeffs, map_index_x, map_index_xy);
             emap_total_trilinear +=
                 trilinear_interpolation(atom_map + base_index, coeffs, map_index_x, map_index_xy);
-            // dmap_total_trilinear +=
-            //     trilinear_interpolation(desolv_map + base_index, coeffs, map_index_x, map_index_xy) *
-            //     std::fabs(atom_charge);
           }
         }
 

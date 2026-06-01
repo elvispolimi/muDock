@@ -14,9 +14,9 @@ namespace mudock {
   struct autodock_quant_protein {
   
   private:
-    // La nostra mappa fusa. Le 4 dimensioni saranno: [num_bins][sz][sy][sx]
+    // fused quantized maps: [bin_index][z][y][x]
     md_vector<fp_type, 4> quantized_fused_maps;
-    // Metodo di supporto per calcolare la carica da moltiplicare
+    // helper function to calculate the center of a bin given its index
     fp_type calculate_bin_center(int bin_index) const;
 
     
@@ -24,46 +24,46 @@ namespace mudock {
 
 
   public:
-            // 16 valori -> 17 mappe con k-Means accuratezza <0.5 tempo_score = 3.301 PICCO_RAM = 417.7MB
+            // 16 values -> 17 maps 
             /*
-            inline static const std::vector<fp_type> thresholds = {
-                -0.81145, -0.69867, -0.60693, -0.44784, -0.24571, -0.07543, 0.03971, 0.11567, 0.21422, 0.32101, 0.38444, 0.42745, 0.47576, 0.53418, 0.62383, 0.77917
+            inline static constexpr std::array<fp_type, 16> thresholds = {
+                -0.81145f, -0.69867f, -0.60693f, -0.44784f, -0.24571f, -0.07543f, 0.03971f, 0.11567f, 0.21422f, 0.32101f, 0.38444f, 0.42745f, 0.47576f, 0.53418f, 0.62383f, 0.77917f
             };
             */
-            // 15 valori -> 16 mappe con K-Means accuratezza <0.5 tempo_score = 3.2133 PICCO_RAM = 400MB
+            // 15 values -> 16 maps
             /*
-            inline static const std::vector<fp_type> thresholds = {
-                -0.81145, -0.69867, -0.60693, -0.44784, -0.24571, -0.07543, 0.03971, 0.11567, 0.21422, 0.32101, 0.38444, 0.42855, 0.49415, 0.60294, 0.77467
+            inline static constexpr std::array<fp_type, 15> thresholds = {
+                -0.81145f, -0.69867f, -0.60693f, -0.44784f, -0.24571f, -0.07543f, 0.03971f, 0.11567f, 0.21422f, 0.32101f, 0.38444f, 0.42855f, 0.49415f, 0.60294f, 0.77467f
             };
             */
-            // 14 valori -> 15 mappe con K-Means accuratezza <0.5 tempo_score = 3.2003 PICCO_RAM = 394.7MB
+            // 14 values -> 15 maps 
             /*
-            inline static const std::vector<fp_type> thresholds = {
-                -0.81145, -0.69867, -0.60693, -0.44784, -0.24571, -0.07543, 0.03971, 0.11567, 0.21468, 0.33126, 0.41632, 0.49156, 0.60294, 0.77467
+            inline static constexpr std::array<fp_type, 14> thresholds = {
+                -0.81145f, -0.69867f, -0.60693f, -0.44784f, -0.24571f, -0.07543f, 0.03971f, 0.11567f, 0.21468f, 0.33126f, 0.41632f, 0.49156f, 0.60294f, 0.77467f
             };
             */
-            //13 valori -> 14 mappe con K-means accuratezza <0.5 tempo_score = 3.1989 PICCO_RAM = 383MB
+            //13 values -> 14 maps
             
-            inline static const std::vector<fp_type> thresholds = {
-                -0.81145, -0.69867, -0.60693, -0.44784, -0.24571, -0.07543, 0.03971, 0.11567, 0.21468, 0.33295, 0.43259, 0.55169, 0.75161
+            inline static constexpr std::array<fp_type, 13> thresholds = {
+                -0.81145f, -0.69867f, -0.60693f, -0.44784f, -0.24571f, -0.07543f, 0.03971f, 0.11567f, 0.21468f, 0.33295f, 0.43259f, 0.55169f, 0.75161f
             };
             
-            // 12 valori -> 13 mappe con K-means accuratezza <0.5 tempo_score = 3.2002 PICCO_RAM = 371.2MB
+            // 12 values -> 13 maps 
             /*
-            inline static const std::vector<fp_type> thresholds = {
-                -0.78353, -0.62541, -0.45223, -0.24571, -0.07543, 0.03971, 0.11567, 0.21468, 0.33295, 0.43259, 0.55169, 0.75161
+            inline static constexpr std::array<fp_type, 12> thresholds = {
+                -0.78353f, -0.62541f, -0.45223f, -0.24571f, -0.07543f, 0.03971f, 0.11567f, 0.21468f, 0.33295f, 0.43259f, 0.55169f, 0.75161f
             };
             */
-            // 11 valori -> 12 mappe con K-Means accuratezza <0.8 tempo_score = 3.1798 PICCO_RAM = 360MB STOP
+            // 11 values -> 12 maps
             /*
-            inline static const std::vector<fp_type> thresholds = {
-                -0.78353, -0.62541, -0.45223, -0.24569, -0.07442, 0.07171, 0.20985, 0.33288, 0.43259, 0.55169, 0.75161
+            inline static constexpr std::array<fp_type, 11> thresholds = {
+                -0.78353f, -0.62541f, -0.45223f, -0.24569f, -0.07442f, 0.07171f, 0.20985f, 0.33288f, 0.43259f, 0.55169f, 0.75161f
             };
             */
-            // 7 valori -> 8 mappe
+            // 7 values -> 8 maps
             /*
-            inline static const std::vector<fp_type> thresholds = {
-                -0.77754, -0.59979, -0.34481, -0.08214, 0.07318, 0.26056, 0.49312
+            inline static constexpr std::array<fp_type, 7> thresholds = {
+                -0.77754f, -0.59979f, -0.34481f, -0.08214f, 0.07318f, 0.26056f, 0.49312f
             };*/
          autodock_quant_protein(const autodock_protein* base_protein) 
     {
@@ -73,9 +73,8 @@ namespace mudock {
         
         int num_bins = static_cast<int>(thresholds.size()) + 1;
         quantized_fused_maps = md_vector<fp_type, 4>(num_bins, sz, sy, sx);
-        LIKWID_MARKER_START("Setup_Quant_Maps");
         prepare_fused_maps(base_protein);
-        LIKWID_MARKER_STOP("Setup_Quant_Maps");
+        
     }
     
     [[nodiscard]] inline const fp_type* get_raw_data() const { 
@@ -83,13 +82,13 @@ namespace mudock {
     }
   };
 
-  // Da richiamare nel file adt_score.hpp quando si setta il batch dei ligandi
-  // associa ad ogni atom_index del ligando il corrispettivo bin (l'indice) in modo da accedervi in O(1) nello score
-  inline std::vector<int> build_atom_to_bin_map(const static_molecule& ligand, const std::vector<fp_type>& thresh) {
+  /*This function will create a mapping from each ligand atom index to the corresponding bin index based on the charge thresholds.
+   This allows for O(1) access during scoring, as we can directly retrieve the bin index for each atom without performing a search.*/
+  inline std::vector<int> build_atom_to_bin_map(const static_molecule& ligand, const std::array<fp_type, 13>& thresh) {
       std::vector<int> atom_bins(ligand.num_atoms());
       for (int i = 0; i < ligand.num_atoms(); ++i) {
           fp_type q = ligand.charge(i);
-          // Ricerca binaria
+          // Binary search to find the appropriate bin for the charge q
           auto it = std::upper_bound(thresh.begin(), thresh.end(), q);
           atom_bins[i] = static_cast<int>(std::distance(thresh.begin(), it));
       }

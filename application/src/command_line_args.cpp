@@ -47,7 +47,7 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
       "observer",
       po::value(&observer_sec),
       "Optional throughput observer interval in seconds");
-    // Ho aggiunto la flag per la scelta dell'architettura, non aggiornerò l'help per ora
+    // added options for scoring mode and score-only flag
   arguments_description.add_options()(
       "mode",
       po::value(&temp_mode)->default_value(temp_mode), 

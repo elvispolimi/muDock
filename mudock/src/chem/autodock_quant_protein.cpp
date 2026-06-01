@@ -25,8 +25,6 @@ void autodock_quant_protein::prepare_fused_maps(const autodock_protein* base_pro
     
     fp_type* raw_fused_ptr = const_cast<fp_type*>(quantized_fused_maps.data());
 
-    MUDOCK_CPP_MARKER_START("Fase_Setup_Quant");
-
     const int ELEC_IDX  = static_cast<int>(autodock_grid_type::ELEC); 
     const int DSOLV_IDX = static_cast<int>(autodock_grid_type::DESOLV);
 
@@ -35,7 +33,6 @@ void autodock_quant_protein::prepare_fused_maps(const autodock_protein* base_pro
 
     for(int bin_idx = 0; bin_idx < num_bins; ++bin_idx) {
         
-        // Calcoliamo la carica rappresentativa di questo bin
         const fp_type q = calculate_bin_center(bin_idx);
         const fp_type abs_q = std::abs(q);
         
@@ -57,15 +54,14 @@ void autodock_quant_protein::prepare_fused_maps(const autodock_protein* base_pro
         }
     }
 
-    MUDOCK_CPP_MARKER_STOP("Fase_Setup_Quant");     
 }
 
-// Implementazione della funzione di supporto
+//implementation of helper function to calculate the center of a bin given its index, if the index is out of bounds it returns a value outside the thresholds range +- 0.1f
 fp_type autodock_quant_protein::calculate_bin_center(int bin_index) const {
     const auto& thresh = thresholds;
     if (bin_index == 0) return thresh[0] - 0.1f; 
     if (static_cast<std::size_t>(bin_index) >= thresh.size()) return thresh.back() + 0.1f; 
-    return (thresh[bin_index] + thresh[bin_index - 1]) / 2.0f;
+    return (thresh[bin_index] + thresh[bin_index - 1]) / 2;
 }
 
 } // namespace mudock

@@ -23,8 +23,6 @@ inline T round3dp(const T x) {
   return ((std::floor((x) * 1000.0 + 0.5)) / 1000.0);
 }
 
-// Mezza schifezza: Ricreo la logica di quantizzazione qui dentro 
-// così non dobbiamo toccare l'header autodock_quant_protein in architettura
 std::vector<mudock::fp_type> generate_test_quantized_maps(const mudock::autodock_grid& adt_grid) {
     const auto& thresh = mudock::autodock_quant_protein::thresholds;
     int num_bins = thresh.size() + 1;
@@ -38,9 +36,9 @@ std::vector<mudock::fp_type> generate_test_quantized_maps(const mudock::autodock
 
     for (int b = 0; b < num_bins; ++b) {
         mudock::fp_type charge_val;
-        if (b == 0) charge_val = thresh[0] - 0.3f;
-        else if (static_cast<size_t>(b) >= thresh.size()) charge_val = thresh.back() + 0.3f;
-        else charge_val = (thresh[b] + thresh[b-1]) / 2.0f;
+        if (b == 0) charge_val = thresh[0] - 0.1f;
+        else if (static_cast<size_t>(b) >= thresh.size()) charge_val = thresh.back() + 0.1f;
+        else charge_val = (thresh[b] + thresh[b-1]) / 2.0;
 
         for (int i = 0; i < map_flat_size; ++i) {
             quant_maps[b * map_flat_size + i] = electro_map[i] * charge_val + desolv_map[i] * std::fabs(charge_val);
@@ -133,7 +131,7 @@ int main(int argc, char *argv[]) {
   quant_kernel();
   const mudock::fp_type energy = scores_b[0];
   
-  // Tolleranza Rilassata ad 1.0
+  // Tollerance high because we are comparing a quantized score with a non-quantized one, so we expect some differences.
   mudock::info(std::format("Baseline Score: {}", adt_score - adt_error_score));
   mudock::info(std::format("Quantized Score: {}", energy));
 
