@@ -9,7 +9,6 @@
 #include <cmath>
 
 namespace mudock {
-  // Inline AdaDelta update - applies the AdaDelta update rule to all individuals
   inline void apply_adadelta_update(const int batch_ligands,
                                     const int individuals_per_ligand,
                                     gradient *__restrict__ gradients_b,
@@ -17,7 +16,9 @@ namespace mudock {
                                     int* __restrict__ num_rotamers_b,
                                     chromosome *__restrict__ adadelta_e_g2_b,
                                     chromosome *__restrict__ adadelta_e_dw2_b,
-                                    int *__restrict__ active_individuals_b) {
+                                    int *__restrict__ active_individuals_b,    
+                                    const fp_type rho,
+                                    const fp_type epsilon) {
     
     for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
       chromosome *__restrict__ population_l         = population_b + ligand_index * individuals_per_ligand;
@@ -41,23 +42,15 @@ namespace mudock {
 
         // Apply AdaDelta update for each dimension
         for (int d = 0; d < gradient_size; ++d) {
-          E_g2_i[d] = RHO * E_g2_i[d] + (1.0f - RHO) * grad[d] * grad[d];
+          E_g2_i[d] = rho * E_g2_i[d] + (1.0f - rho) * grad[d] * grad[d];
           
-          const fp_type rms_g = std::sqrt(E_g2_i[d] + EPSILON);
+          const fp_type rms_g = std::sqrt(E_g2_i[d] + epsilon);
           
-          const fp_type rms_dw = std::sqrt(E_dw2_i[d] + EPSILON);
+          const fp_type rms_dw = std::sqrt(E_dw2_i[d] + epsilon);
           
           fp_type delta_w = -(rms_dw / rms_g) * grad[d];
-
-          // TODO L understand if we should use clamping
           
-          // delta_w = std::clamp(delta_w, -MAX_STEP, MAX_STEP);
-          
-          // if (d < 3)      delta_w = std::clamp(delta_w, -MAX_STEP_POS, MAX_STEP_POS);
-          // else if (d < 6) delta_w = std::clamp(delta_w, -MAX_STEP_ROT, MAX_STEP_ROT);
-          // else            delta_w = std::clamp(delta_w, -MAX_STEP_TORS, MAX_STEP_TORS);
-          
-          E_dw2_i[d] = RHO * E_dw2_i[d] + (1.0f - RHO) * delta_w * delta_w;
+          E_dw2_i[d] = rho * E_dw2_i[d] + (1.0f - rho) * delta_w * delta_w;
 
           w[d] = w[d] + delta_w;
 
@@ -81,7 +74,9 @@ namespace mudock {
                                                 num_rotamers_b,
                                                 adadelta_e_g2_b,
                                                 adadelta_e_dw2_b,
-                                                active_individuals_b);
+                                                active_individuals_b,
+                                                rho,
+                                                epsilon);
   }
 
   // TODO L what to do with this? i moved the iterations in adadelta.hpp

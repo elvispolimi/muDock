@@ -22,7 +22,9 @@ namespace mudock {
                     chromosome *__restrict__ adadelta_e_g2_b_,
                     chromosome *__restrict__ adadelta_e_dw2_b_,
                     int *__restrict__ active_individuals_b_,
-                    std::shared_ptr<queue_type> q_)
+                    std::shared_ptr<queue_type> q_,
+                    const fp_type rho_,
+                    const fp_type epsilon_)
         : individuals_per_ligand(individuals_per_ligand_),
           batch_ligands(batch_ligands_),
           score_stage(score_stage_),
@@ -32,7 +34,9 @@ namespace mudock {
           adadelta_e_g2_b(adadelta_e_g2_b_),
           adadelta_e_dw2_b(adadelta_e_dw2_b_),
           active_individuals_b(active_individuals_b_),
-          q(q_) {}
+          q(q_),
+          rho(rho_),
+          epsilon(epsilon_) {}
 
     void operator()();
     void compute_gradients();
@@ -56,6 +60,8 @@ namespace mudock {
     chromosome *__restrict__ adadelta_e_dw2_b;
     int *__restrict__ active_individuals_b;
     std::shared_ptr<queue_type> q;
+    const fp_type rho;
+    const fp_type epsilon;
   };
 
 } // namespace mudock

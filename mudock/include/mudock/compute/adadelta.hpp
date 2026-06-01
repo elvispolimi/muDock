@@ -24,19 +24,13 @@
 #include <mudock/type_alias.hpp>
 
 namespace mudock {
-
-  #define RHO 0.8f
-  #define EPSILON 1e-2f                // TODO L use variables instead of numbers for coordinate and angle step
-  #define MAX_STEP 1e-1f
-  #define MAX_STEP_POS  0.1f
-  #define MAX_STEP_ROT  0.03f
-  #define MAX_STEP_TORS 0.05f
-
   #ifndef __CUDACC__
   // TODO check that the object type and the kernel impl are the same
   template<typename queue_type, template<typename> typename scoring_t>
   struct adadelta: public local_search<queue_type, scoring_t> {
     static constexpr const char stage_name[] = "ADADELTA";
+    static constexpr fp_type RHO     = 0.8f;
+    static constexpr fp_type EPSILON = 1e-2f;
     
     adadelta(std::shared_ptr<scratchpad<queue_type>> _scratch,
              std::shared_ptr<scoring_t<queue_type>> _score) 
@@ -118,7 +112,9 @@ namespace mudock {
                                                                   adadelta_e_g2,
                                                                   adadelta_e_dw2,
                                                                   active_individuals,
-                                                                  q);
+                                                                  q,
+                                                                  RHO,
+                                                                  EPSILON);
 
       // Initialize the scoring kernel buffers
       this->score_stage->prepare(batch); //TODO L se non sbaglio l'ho aggiunto per quando deve fare solo local search nell'eseguibile stand alone
