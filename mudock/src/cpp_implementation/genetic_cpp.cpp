@@ -119,7 +119,7 @@ namespace mudock {
           best = scores[i];
         }
       }
-      printf("Best score: %f\n", best);
+      printf("Best score: %f\n", double(best));
       // end print best score 
 
       // Elitism: preserve the best ELITE_SIZE individuals

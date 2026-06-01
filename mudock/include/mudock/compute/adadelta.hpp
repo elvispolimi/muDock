@@ -147,7 +147,7 @@ namespace mudock {
           (*this->scratch).get_queue()->synchronize();
           if(i % (this->iterations/10) == 0){ // print every 10% of the process
             this->dump_pose(int(j++));
-            printf("Iter: %ld, Score: %f\n", i, scores_b()[0]);
+            printf("Iter: %ld, Score: %f\n", i, double(scores_b()[0]));
           }
         }
 

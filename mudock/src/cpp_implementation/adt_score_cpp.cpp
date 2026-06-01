@@ -313,7 +313,6 @@ namespace mudock {
 
           if (coord[0] < minimum[0] || coord[0] > maximum[0] || coord[1] < minimum[1] ||
               coord[1] > maximum[1] || coord[2] < minimum[2] || coord[2] > maximum[2]) {
-            // TODO L including this penalty worsen some results. What should be done? How to take it into account? 
             const fp_type penalty_factor = 2 * 2 * ENERGYPENALTY;
             dE_dX[index].x() += penalty_factor * diff_x;
             dE_dX[index].y() += penalty_factor * diff_y;
