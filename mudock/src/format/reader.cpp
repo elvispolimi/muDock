@@ -4,6 +4,7 @@
 #include <cassert>
 #include <fstream>
 #include <memory>
+#include <mudock/chem/vinardo_smina_helpers.hpp>
 #include <mudock/format/ob_wrapper.hpp>
 #include <mudock/format/reader.hpp>
 #include <mudock/log.hpp>
@@ -78,7 +79,14 @@ namespace mudock {
   template<>
   static_molecule parser<supported_format::PDBQT>(const std::string_view description,
                                                   std::function<bool(OpenBabel::OBBond&)> rotor_check) {
-    return parser_impl<static_molecule, supported_format::PDBQT>(description, rotor_check);
+    // TODO: make PDBQT ligand helper construction conditional on the selected scoring function, to avoid
+    // building it if not used
+    auto mol = parser_impl<static_molecule, supported_format::PDBQT>(description, rotor_check);
+    const auto tree = parse_pdbqt_torsion_tree(description);
+    mol.pdbqt_ligand_data.mobility_matrix = build_smina_mobility_matrix(mol, tree);
+    mol.pdbqt_ligand_data.rotors = tree.rotors;
+    mol.pdbqt_ligand_data.valid = true;
+    return mol;
   };
   template<>
   dynamic_molecule parser<supported_format::PDBQT>(const std::string_view description,

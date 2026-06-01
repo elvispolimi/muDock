@@ -8,6 +8,8 @@
 #include <mudock/chem/autodock_protein.hpp>
 #include <mudock/chem/autodock_types.hpp>
 #include <mudock/utils.hpp>
+#include <sstream>
+#include <string_view>
 
 namespace mudock {
   struct pdbqt {
@@ -23,9 +25,8 @@ namespace mudock {
   template<class molecule_type>
     requires std::derived_from<molecule_type, autodock_static_layer> ||
              std::derived_from<molecule_type, autodock_dynamic_layer>
-  void apply_autodock_forcefield_pdbqt(molecule_type& molecule, const std::filesystem::path input_path) {
-    const auto desc = read_from_stream(std::ifstream(input_path));
-    std::stringstream desc_s{desc};
+  void apply_autodock_forcefield_pdbqt_description(molecule_type& molecule, const std::string_view desc) {
+    std::stringstream desc_s{std::string{desc}};
 
     [[maybe_unused]] const std::size_t num_atoms = molecule.num_atoms();
 
@@ -59,5 +60,13 @@ namespace mudock {
         ++index;
       }
     }
+  }
+
+  template<class molecule_type>
+    requires std::derived_from<molecule_type, autodock_static_layer> ||
+             std::derived_from<molecule_type, autodock_dynamic_layer>
+  void apply_autodock_forcefield_pdbqt(molecule_type& molecule, const std::filesystem::path input_path) {
+    const auto desc = read_from_stream(std::ifstream(input_path));
+    apply_autodock_forcefield_pdbqt_description(molecule, std::string_view{desc});
   }
 } // namespace mudock

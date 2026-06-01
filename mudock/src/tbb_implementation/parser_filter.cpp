@@ -1,5 +1,6 @@
 #include <mudock/tbb_implementation/parser_filter.hpp>
 #include <mudock/format/reader.hpp>
+#include <mudock/format/pdbqt.hpp>
 #include <exception>
 #include <string_view>
 
@@ -23,6 +24,13 @@ namespace mudock {
 
       try {
         auto ligand = std::make_unique<static_molecule>(mudock::parser<format, static_molecule>(mol));
+        if constexpr (format == supported_format::PDBQT) {
+          [[maybe_unused]] autodock_static_layer ligand_autodock{
+              *ligand,
+              [mol](autodock_static_layer& layer) {
+                apply_autodock_forcefield_pdbqt_description(layer, mol);
+              }};
+        }
         const bool enqueued = input_queue->enqueue(ligand);
         if (!enqueued) {
           return;
@@ -40,5 +48,6 @@ namespace mudock {
 
   template class parser_filter<supported_format::ADTMOL2>;
   template class parser_filter<supported_format::MOL2>;
+  template class parser_filter<supported_format::PDBQT>;
 
 } // namespace mudock

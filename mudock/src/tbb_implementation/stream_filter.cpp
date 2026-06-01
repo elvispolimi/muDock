@@ -91,5 +91,6 @@ namespace mudock {
 
   template class stream_filter<supported_format::ADTMOL2>;
   template class stream_filter<supported_format::MOL2>;
+  template class stream_filter<supported_format::PDBQT>;
 
 } // namespace mudock
