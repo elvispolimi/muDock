@@ -13,8 +13,10 @@
 
 int main(int argc, char** argv) {
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  //                                                                                                                    //
   //  WARNING: to ensure a stan-alone application of local search, some knobs are forced in the local_search_pipeline,  //
   //           like population_number = 1 and num_generations = 1                                                       //
+  //                                                                                                                    //
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   const auto args = parse_command_line_arguments(argc, argv);
   std::optional<mudock::byte_range> range = std::nullopt;

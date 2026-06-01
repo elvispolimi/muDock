@@ -261,45 +261,51 @@ namespace mudock {
                             gradient *__restrict__ gradients_b,
                             int *__restrict__ active_individuals_b) {
     for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
-      const int atom_stride  = ligand_index * batch_atoms;
-      const int num_atoms    = num_atoms_b[ligand_index];
-      const int num_nonbonds = num_nonbonds_b[ligand_index + 1] - num_nonbonds_b[ligand_index];
-      const int num_rotamers = num_rotamers_b[ligand_index];
-      const fp_type *__restrict__ scratch_x = x_scratch_b + atom_stride * individuals_per_ligand;
-      const fp_type *__restrict__ scratch_y = y_scratch_b + atom_stride * individuals_per_ligand;
-      const fp_type *__restrict__ scratch_z = z_scratch_b + atom_stride * individuals_per_ligand;
-      const fp_type *__restrict__ vol_l     = vols_b + atom_stride;
-      const fp_type *__restrict__ solpar_l  = solpars_b + atom_stride;
-      const fp_type *__restrict__ charge_l  = charges_b + atom_stride;
-      const int *__restrict__ map_offsets_l = map_offsets_b + atom_stride;
-      const int *__restrict__ nonbond_a1_l  = nonbond_a1_b + num_nonbonds_b[ligand_index];
-      const int *__restrict__ nonbond_a2_l  = nonbond_a2_b + num_nonbonds_b[ligand_index];
-      const fp_type *nonbond_cA_l           = nonbond_cA_b + num_nonbonds_b[ligand_index];
-      const fp_type *nonbond_cB_l           = nonbond_cB_b + num_nonbonds_b[ligand_index];
-      const int *nonbond_xB_l               = nonbond_xB_b + num_nonbonds_b[ligand_index];
-      const int* fragments = ligand_fragments_b + ligand_fragments_start_b[ligand_index];
-      const int* frag_start_indices = frag_start_indices_b + frag_indices_start_b[ligand_index];
-      const int* frag_stop_indices = frag_stop_indices_b + frag_indices_start_b[ligand_index];
-      gradient *__restrict__ gradients_l = gradients_b + ligand_index * individuals_per_ligand;
+      const int atom_stride                  = ligand_index * batch_atoms;
+      const int num_atoms                    = num_atoms_b[ligand_index];
+      const int num_nonbonds                 = num_nonbonds_b[ligand_index + 1] - num_nonbonds_b[ligand_index];
+      const int num_rotamers                 = num_rotamers_b[ligand_index];
+      const int batch_rotamers               = batch_atoms - 3; // TODO L why is this the max number of rotamers?
+      const fp_type *__restrict__ scratch_x  = x_scratch_b + atom_stride * individuals_per_ligand;
+      const fp_type *__restrict__ scratch_y  = y_scratch_b + atom_stride * individuals_per_ligand;
+      const fp_type *__restrict__ scratch_z  = z_scratch_b + atom_stride * individuals_per_ligand;
+      const fp_type *__restrict__ vol_l      = vols_b + atom_stride;
+      const fp_type *__restrict__ solpar_l   = solpars_b + atom_stride;
+      const fp_type *__restrict__ charge_l   = charges_b + atom_stride;
+      const int *__restrict__ map_offsets_l  = map_offsets_b + atom_stride;
+      const int *__restrict__ nonbond_a1_l   = nonbond_a1_b + num_nonbonds_b[ligand_index];
+      const int *__restrict__ nonbond_a2_l   = nonbond_a2_b + num_nonbonds_b[ligand_index];
+      const fp_type *nonbond_cA_l            = nonbond_cA_b + num_nonbonds_b[ligand_index];
+      const fp_type *nonbond_cB_l            = nonbond_cB_b + num_nonbonds_b[ligand_index];
+      const int *nonbond_xB_l                = nonbond_xB_b + num_nonbonds_b[ligand_index];
+      const int* fragments                   = ligand_fragments_b + ligand_fragments_start_b[ligand_index];
+      const int* frag_start_indices          = frag_start_indices_b + frag_indices_start_b[ligand_index];
+      const int* frag_stop_indices           = frag_stop_indices_b + frag_indices_start_b[ligand_index];
+      gradient *__restrict__ gradients_l     = gradients_b + ligand_index * individuals_per_ligand;
       int *__restrict__ active_individuals_l = active_individuals_b + ligand_index * individuals_per_ligand;
       
+      std::vector<point3D> dE_dX(batch_atoms);
+      std::vector<point3D> dX_dalpha(batch_atoms);
+      std::vector<point3D> dX_dbeta(batch_atoms);
+      std::vector<point3D> dX_dgamma(batch_atoms);
+      std::vector<fp_type> grad(6 + batch_rotamers);         // gradient = dE/dx, dE/dy, dE/dz, dE/dalpha, dE/dbeta, dE/dgamma, dE/d_tors_1, ..., dE/d_tors_n
+
       for (int individual_index = 0; individual_index < individuals_per_ligand; ++individual_index) {
         if (!active_individuals_l[individual_index]){
           continue;
         }
+
+        // Reinitialize to 0s all gradient components vectors
+        std::fill(dE_dX.begin(),     dE_dX.end(),     0);
+        std::fill(dX_dalpha.begin(), dX_dalpha.end(), 0);
+        std::fill(dX_dbeta.begin(),  dX_dbeta.end(),  0);
+        std::fill(dX_dgamma.begin(), dX_dgamma.end(), 0);
+        std::fill(grad.begin(),      grad.end(),      0);
+
         const fp_type *__restrict__ scratch_x_l = scratch_x + individual_index * batch_atoms;
         const fp_type *__restrict__ scratch_y_l = scratch_y + individual_index * batch_atoms;
         const fp_type *__restrict__ scratch_z_l = scratch_z + individual_index * batch_atoms;
         
-        std::vector<point3D> dE_dX(num_atoms);
-        std::vector<point3D> dX_dalpha(num_atoms);
-        std::vector<point3D> dX_dbeta(num_atoms);
-        std::vector<point3D> dX_dgamma(num_atoms);
-        std::vector<std::vector<point3D>> dX_drot(num_rotamers, std::vector<point3D>(num_atoms));
-        
-        // gradient = dE/dx, dE/dy, dE/dz, dE/dalpha, dE/dbeta, dE/dgamma, dE/d_tors_1, ..., dE/d_tors_n
-        std::vector<fp_type> grad(6 + num_rotamers, 0);
-
         const fp_type *electro_map = grid_maps + map_index_xyz * static_cast<int>(autodock_grid_type::ELEC);
         const fp_type *desolv_map  = grid_maps + map_index_xyz * static_cast<int>(autodock_grid_type::DESOLV);
 
@@ -342,9 +348,10 @@ namespace mudock {
             // Trilinear Interpolationp
             fp_type grid_values[8];
             get_grid_values(electro_map + base_index, map_index_x, map_index_xy, grid_values);
-            dE_dX[index].x() += inv_spacing * atom_charge * (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
-            dE_dX[index].y() += inv_spacing * atom_charge * (p1w * (p1u * (grid_values[2] - grid_values[0]) + p0u * (grid_values[6] - grid_values[4])) + p0w * (p1u * (grid_values[3] - grid_values[1]) + p0u * (grid_values[7] - grid_values[5])));
-            dE_dX[index].z() += inv_spacing * atom_charge * (p1v * (p1u * (grid_values[1] - grid_values[0]) + p0u * (grid_values[5] - grid_values[4])) + p0v * (p1u * (grid_values[3] - grid_values[2]) + p0u * (grid_values[7] - grid_values[6])));
+            fp_type constant_factor = inv_spacing * atom_charge;
+            dE_dX[index].x() += constant_factor * (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
+            dE_dX[index].y() += constant_factor * (p1w * (p1u * (grid_values[2] - grid_values[0]) + p0u * (grid_values[6] - grid_values[4])) + p0w * (p1u * (grid_values[3] - grid_values[1]) + p0u * (grid_values[7] - grid_values[5])));
+            dE_dX[index].z() += constant_factor * (p1v * (p1u * (grid_values[1] - grid_values[0]) + p0u * (grid_values[5] - grid_values[4])) + p0v * (p1u * (grid_values[3] - grid_values[2]) + p0u * (grid_values[7] - grid_values[6])));
 
             get_grid_values(atom_map + base_index, map_index_x, map_index_xy, grid_values);
             dE_dX[index].x() += inv_spacing * (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
@@ -352,9 +359,11 @@ namespace mudock {
             dE_dX[index].z() += inv_spacing * (p1v * (p1u * (grid_values[1] - grid_values[0]) + p0u * (grid_values[5] - grid_values[4])) + p0v * (p1u * (grid_values[3] - grid_values[2]) + p0u * (grid_values[7] - grid_values[6])));            
             
             get_grid_values(desolv_map + base_index, map_index_x, map_index_xy, grid_values);
-            dE_dX[index].x() += inv_spacing * std::fabs(atom_charge) * (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
-            dE_dX[index].y() += inv_spacing * std::fabs(atom_charge) * (p1w * (p1u * (grid_values[2] - grid_values[0]) + p0u * (grid_values[6] - grid_values[4])) + p0w * (p1u * (grid_values[3] - grid_values[1]) + p0u * (grid_values[7] - grid_values[5])));
-            dE_dX[index].z() += inv_spacing * std::fabs(atom_charge) * (p1v * (p1u * (grid_values[1] - grid_values[0]) + p0u * (grid_values[5] - grid_values[4])) + p0v * (p1u * (grid_values[3] - grid_values[2]) + p0u * (grid_values[7] - grid_values[6])));
+            const fp_type abs_charge = std::fabs(atom_charge);
+            constant_factor = inv_spacing * abs_charge;
+            dE_dX[index].x() += constant_factor * (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
+            dE_dX[index].y() += constant_factor * (p1w * (p1u * (grid_values[2] - grid_values[0]) + p0u * (grid_values[6] - grid_values[4])) + p0w * (p1u * (grid_values[3] - grid_values[1]) + p0u * (grid_values[7] - grid_values[5])));
+            dE_dX[index].z() += constant_factor * (p1v * (p1u * (grid_values[1] - grid_values[0]) + p0u * (grid_values[5] - grid_values[4])) + p0v * (p1u * (grid_values[3] - grid_values[2]) + p0u * (grid_values[7] - grid_values[6])));
 
             // Compute dX/d_rot
             // alpha -> rotation on z-axis
@@ -394,25 +403,15 @@ namespace mudock {
             const fp_type dir_z = diff_z * inv_r;
 
             // Electrostatic derivative
-            const fp_type exp_term =
-                std::exp(mehler_solmajer::lambda_B * distance);
+            const fp_type exp_term = std::exp(mehler_solmajer::lambda_B * distance);
 
-            const fp_type denom =
-                (fp_type{1} + mehler_solmajer::rk * exp_term);
+            const fp_type denom = (fp_type{1} + mehler_solmajer::rk * exp_term);
 
-            const fp_type epsilon =
-                mehler_solmajer::A +
-                mehler_solmajer::B / denom;
+            const fp_type epsilon = mehler_solmajer::A + mehler_solmajer::B / denom;
 
-            const fp_type epsilon_prime =
-                -mehler_solmajer::B *
-                mehler_solmajer::rk *
-                mehler_solmajer::lambda_B *
-                exp_term / (denom * denom);
+            const fp_type epsilon_prime = -mehler_solmajer::B * mehler_solmajer::rk * mehler_solmajer::lambda_B * exp_term / (denom * denom);
 
-            const fp_type C =
-                charge_l[a1] * charge_l[a2] *
-                ELECSCALE * autodock_parameters::coeff_estat;
+            const fp_type C = charge_l[a1] * charge_l[a2] * ELECSCALE * autodock_parameters::coeff_estat;
 
             const fp_type f = distance * epsilon;
             const fp_type f_prime = epsilon + distance * epsilon_prime;
@@ -469,6 +468,17 @@ namespace mudock {
           }
         }
 
+        // Accumulate gradient over atoms: dE/dtheta = SUM_i(dE/dX_i * dX_i/dtheta)
+        for (int index = 0; index < num_atoms; ++index){
+          grad[0] += dE_dX[index].x();
+          grad[1] += dE_dX[index].y();
+          grad[2] += dE_dX[index].z();
+
+          grad[3] += dot_product(dE_dX[index], dX_dalpha[index]);
+          grad[4] += dot_product(dE_dX[index], dX_dbeta[index]);
+          grad[5] += dot_product(dE_dX[index], dX_dgamma[index]);
+        }
+
         // Torsion derivatives
         for (int t = 0; t < num_rotamers; ++t) {
           const int* frag_mask = fragments + t * num_atoms;
@@ -482,6 +492,10 @@ namespace mudock {
           axis.z() = scratch_z_l[a2] - scratch_z_l[a1];
 
           const fp_type norm = std::sqrt(axis.x() * axis.x() + axis.y() * axis.y() + axis.z() * axis.z());
+        
+          // TODO L is this sanity check good? Potential bug
+          // if (norm < 1e-12f)
+          //   continue;
 
           const fp_type inv_norm = fp_type{1} / norm;
           axis.x() *= inv_norm;
@@ -491,37 +505,18 @@ namespace mudock {
 #pragma omp simd
           for (int i = 0; i < num_atoms; ++i) {
             if (frag_mask[i] != 0) {
-
               point3D r;
               r.x() = scratch_x_l[i] - scratch_x_l[a1];
               r.y() = scratch_y_l[i] - scratch_y_l[a1];
               r.z() = scratch_z_l[i] - scratch_z_l[a1];
-
-              dX_drot[t][i] = axis.cross(r);
+              grad[6 + t] += dot_product(dE_dX[i], axis.cross(r));
             }
           }
         }
 
-        // Accumulate gradient over atoms: dE/dtheta = SUM_i(dE/dX_i * dX_i/dtheta)
-        for (int index = 0; index < num_atoms; ++index){
-          grad[0] += dE_dX[index].x();
-          grad[1] += dE_dX[index].y();
-          grad[2] += dE_dX[index].z();
-
-          grad[3] += dot_product(dE_dX[index], dX_dalpha[index]);
-          grad[4] += dot_product(dE_dX[index], dX_dbeta[index]);
-          grad[5] += dot_product(dE_dX[index], dX_dgamma[index]);
-        }
-
-        for (int t = 0; t < num_rotamers; ++t) {
-          for (int index = 0; index < num_atoms; ++index) {
-            grad[6 + t] += dot_product(dE_dX[index], dX_drot[t][index]);
-          }
-        }
-
+        // Write gradient on the buffer
         gradient &grad_l = gradients_l[individual_index];
         for (int i = 0; i < 6 + num_rotamers; ++i) {
-          // gradients_l[individual_index * (6 + num_rotamers) + i] = grad[i];
           grad_l[i] = grad[i];
         }
         
