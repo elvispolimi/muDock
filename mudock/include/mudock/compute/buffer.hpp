@@ -1,6 +1,7 @@
 #pragma once
 
 #include <concepts>
+#include <cstdint>
 #include <cstring>
 #include <memory>
 #include <mudock/chem/elements.hpp>
@@ -32,10 +33,13 @@ namespace mudock {
     PROT_SIZE_X,
     PROT_SIZE_XY,
     PROT_SIZE_XYZ,
-    PROT_GRID_MAPS
+    PROT_GRID_MAPS,
+    PROT_X,
+    PROT_Y,
+    PROT_Z
   };
 
-  using buffer_type_list = std::tuple<fp_type, int, chromosome>;
+  using buffer_type_list = std::tuple<fp_type, int, std::uint8_t, chromosome>;
 
   template<typename T, typename... Ts>
   constexpr bool is_in_tuple_v = (std::same_as<T, Ts> || ...);
@@ -123,6 +127,18 @@ namespace mudock {
   template<>
   struct buffer_type_traits<buffer_data_type::PROT_GRID_MAPS> {
     using type = buffer_type_traits_impl<buffer_data_type::PROT_SIZE_XYZ, fp_type>::type;
+  };
+  template<>
+  struct buffer_type_traits<buffer_data_type::PROT_X> {
+    using type = buffer_type_traits_impl<buffer_data_type::PROT_X, fp_type>::type;
+  };
+  template<>
+  struct buffer_type_traits<buffer_data_type::PROT_Y> {
+    using type = buffer_type_traits_impl<buffer_data_type::PROT_Y, fp_type>::type;
+  };
+  template<>
+  struct buffer_type_traits<buffer_data_type::PROT_Z> {
+    using type = buffer_type_traits_impl<buffer_data_type::PROT_Z, fp_type>::type;
   };
 
   template<template<class...> class container_type, typename T, class queue_t, class... args>

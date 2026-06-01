@@ -19,6 +19,29 @@ function(add_adt_tests dir)
 endfunction()
 add_adt_tests("${CMAKE_SOURCE_DIR}/data")
 
+function(add_vinardo_tests dir)
+  file(
+    GLOB directories
+    LIST_DIRECTORIES true
+    ${dir}/*)
+
+  foreach(subdir ${directories})
+    if(IS_DIRECTORY ${subdir})
+      get_filename_component(subdir_name ${subdir} NAME)
+      set(reference_path ${subdir}/${subdir_name}_vinardo_smina_affinity.txt)
+      if(EXISTS ${reference_path})
+        add_test(
+          NAME test_score_vinardo_${subdir_name}
+          COMMAND
+            test_score_vinardo --receptor ${subdir}/${subdir_name}_pocket.pdbqt
+            --ligand ${subdir}/${subdir_name}_ligand.pdbqt --reference
+            ${reference_path})
+      endif()
+    endif()
+  endforeach()
+endfunction()
+add_vinardo_tests("${CMAKE_SOURCE_DIR}/data")
+
 function(add_tests dir backend device id)
   # List all subdirectories in the given directory
   file(
