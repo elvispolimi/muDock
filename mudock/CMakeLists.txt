@@ -130,7 +130,6 @@ list(
   "${source_path}/tbb_implementation/stream_filter.cpp"
   "${source_path}/tbb_implementation/parser_filter.cpp"
   "${source_path}/tbb_implementation/runtime_services.cpp"
-  "${source_path}/tbb_implementation/tbb_pipeline.cpp"
 )
 
 if(MUDOCK_ENABLE_MPI)
