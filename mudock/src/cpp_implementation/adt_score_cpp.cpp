@@ -291,6 +291,7 @@ namespace mudock {
       std::vector<fp_type> grad(6 + batch_rotamers);         // gradient = dE/dx, dE/dy, dE/dz, dE/dalpha, dE/dbeta, dE/dgamma, dE/d_tors_1, ..., dE/d_tors_n
 
       for (int individual_index = 0; individual_index < individuals_per_ligand; ++individual_index) {
+        
         if (!active_individuals_l[individual_index]){
           continue;
         }
@@ -348,10 +349,10 @@ namespace mudock {
             // Trilinear Interpolationp
             fp_type grid_values[8];
             get_grid_values(electro_map + base_index, map_index_x, map_index_xy, grid_values);
-            fp_type constant_factor = inv_spacing * atom_charge;
-            dE_dX[index].x() += constant_factor * (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
-            dE_dX[index].y() += constant_factor * (p1w * (p1u * (grid_values[2] - grid_values[0]) + p0u * (grid_values[6] - grid_values[4])) + p0w * (p1u * (grid_values[3] - grid_values[1]) + p0u * (grid_values[7] - grid_values[5])));
-            dE_dX[index].z() += constant_factor * (p1v * (p1u * (grid_values[1] - grid_values[0]) + p0u * (grid_values[5] - grid_values[4])) + p0v * (p1u * (grid_values[3] - grid_values[2]) + p0u * (grid_values[7] - grid_values[6])));
+            const fp_type constant_factor_el = inv_spacing * atom_charge;
+            dE_dX[index].x() += constant_factor_el * (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
+            dE_dX[index].y() += constant_factor_el * (p1w * (p1u * (grid_values[2] - grid_values[0]) + p0u * (grid_values[6] - grid_values[4])) + p0w * (p1u * (grid_values[3] - grid_values[1]) + p0u * (grid_values[7] - grid_values[5])));
+            dE_dX[index].z() += constant_factor_el * (p1v * (p1u * (grid_values[1] - grid_values[0]) + p0u * (grid_values[5] - grid_values[4])) + p0v * (p1u * (grid_values[3] - grid_values[2]) + p0u * (grid_values[7] - grid_values[6])));
 
             get_grid_values(atom_map + base_index, map_index_x, map_index_xy, grid_values);
             dE_dX[index].x() += inv_spacing * (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
@@ -359,11 +360,10 @@ namespace mudock {
             dE_dX[index].z() += inv_spacing * (p1v * (p1u * (grid_values[1] - grid_values[0]) + p0u * (grid_values[5] - grid_values[4])) + p0v * (p1u * (grid_values[3] - grid_values[2]) + p0u * (grid_values[7] - grid_values[6])));            
             
             get_grid_values(desolv_map + base_index, map_index_x, map_index_xy, grid_values);
-            const fp_type abs_charge = std::fabs(atom_charge);
-            constant_factor = inv_spacing * abs_charge;
-            dE_dX[index].x() += constant_factor * (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
-            dE_dX[index].y() += constant_factor * (p1w * (p1u * (grid_values[2] - grid_values[0]) + p0u * (grid_values[6] - grid_values[4])) + p0w * (p1u * (grid_values[3] - grid_values[1]) + p0u * (grid_values[7] - grid_values[5])));
-            dE_dX[index].z() += constant_factor * (p1v * (p1u * (grid_values[1] - grid_values[0]) + p0u * (grid_values[5] - grid_values[4])) + p0v * (p1u * (grid_values[3] - grid_values[2]) + p0u * (grid_values[7] - grid_values[6])));
+            const fp_type constant_factor_des = inv_spacing * std::fabs(atom_charge);
+            dE_dX[index].x() += constant_factor_des * (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
+            dE_dX[index].y() += constant_factor_des * (p1w * (p1u * (grid_values[2] - grid_values[0]) + p0u * (grid_values[6] - grid_values[4])) + p0w * (p1u * (grid_values[3] - grid_values[1]) + p0u * (grid_values[7] - grid_values[5])));
+            dE_dX[index].z() += constant_factor_des * (p1v * (p1u * (grid_values[1] - grid_values[0]) + p0u * (grid_values[5] - grid_values[4])) + p0v * (p1u * (grid_values[3] - grid_values[2]) + p0u * (grid_values[7] - grid_values[6])));
 
             // Compute dX/d_rot
             // alpha -> rotation on z-axis
@@ -492,20 +492,16 @@ namespace mudock {
           axis.z() = scratch_z_l[a2] - scratch_z_l[a1];
 
           const fp_type norm = std::sqrt(axis.x() * axis.x() + axis.y() * axis.y() + axis.z() * axis.z());
-        
-          // TODO L is this sanity check good? Potential bug
-          // if (norm < 1e-12f)
-          //   continue;
 
           const fp_type inv_norm = fp_type{1} / norm;
           axis.x() *= inv_norm;
           axis.y() *= inv_norm;
           axis.z() *= inv_norm;
 
+          point3D r;
 #pragma omp simd
           for (int i = 0; i < num_atoms; ++i) {
             if (frag_mask[i] != 0) {
-              point3D r;
               r.x() = scratch_x_l[i] - scratch_x_l[a1];
               r.y() = scratch_y_l[i] - scratch_y_l[a1];
               r.z() = scratch_z_l[i] - scratch_z_l[a1];
