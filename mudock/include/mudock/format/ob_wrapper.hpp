@@ -2,6 +2,9 @@
 
 #include <mudock/chem/autodock_parameters.hpp>
 #include <mudock/chem/autodock_types.hpp>
+#include <mudock/chem/residue_types.hpp>
+#include <mudock/chem/sybyl_atom_types.hpp>
+#include <mudock/format/ob_helper.hpp>
 #include <mudock/molecule.hpp>
 #include <openbabel/atom.h>
 #include <openbabel/bond.h>
@@ -74,16 +77,33 @@ namespace mudock {
     // TODO check charges
     int mudock_atom_index{0};
     std::unordered_map<unsigned int, std::size_t> index_translator;
+
     OpenBabel::OBTypeTable ttab;
     ttab.SetFromType("INT");
     // TODO add flags to customize this value
     ttab.SetToType("XYZ");
+
+    OpenBabel::OBTypeTable sybyl_table;
+    sybyl_table.SetFromType("INT");
+    sybyl_table.SetToType("SYB");
+
     [[maybe_unused]] unsigned long max_atom_index{0};
     for (auto atom_it = source->BeginAtoms(); atom_it < source->EndAtoms(); ++atom_it) {
-      const auto atom         = *atom_it;
-      const auto atom_id      = atom->GetId();
-      const auto atom_type    = atom->GetType();
+      const auto atom      = *atom_it;
+      const auto atom_id   = atom->GetId();
+      const auto atom_type = atom->GetType();
+      std::string ob_type  = atom->GetType();
+
       const auto atom_element = parse_element_symbol(ttab.Translate(atom_type));
+      const auto sybyl_type   = parse_sybyl_atom_type(sybyl_table.Translate(ob_type));
+
+      dest.atom_name(mudock_atom_index)  = get_ob_atom_name(atom);
+      dest.sybyl_type(mudock_atom_index) = sybyl_type;
+
+      dest.residue_id(mudock_atom_index)        = get_ob_residue_id(atom);
+      dest.residue_name(mudock_atom_index)      = get_ob_residue_name(atom);
+      dest.atom_residue_type(mudock_atom_index) = parse_residue_type(dest.residue_name(mudock_atom_index));
+
       // Get which atoms are aromatic
       dest.elements(mudock_atom_index) = atom_element;
       dest.x(mudock_atom_index)        = static_cast<fp_type>(atom->GetX());
