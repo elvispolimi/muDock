@@ -57,13 +57,13 @@ namespace mudock {
 
         const auto residue_id    = molecule.residue_id(atom_index);
         const auto& residue_name = molecule.residue_name(atom_index);
-        const auto residue_type  = to_string(molecule.atom_residue_type(atom_index));
+        const auto residue_type_name  = to_string(molecule.atom_residue_type(atom_index));
         out_s << std::setw(5) << atom_index + 1 << " " << std::setw(8) << atom_name << " " << std::setw(10)
               << std::setw(10) << std::fixed << std::setprecision(4) << molecule.x(atom_index) << " "
               << std::setw(10) << std::fixed << std::setprecision(4) << molecule.y(atom_index) << " "
               << std::setw(10) << std::fixed << std::setprecision(4) << molecule.z(atom_index) << " "
               << atom_type << " " << std::setw(5) << residue_id << " " << std::setw(8) << residue_name << " "
-              << std::setw(8) << residue_type << " " << std::setw(8)
+              << std::setw(8) << residue_type_name << " " << std::setw(8)
               << get_description(molecule.autodock_type(atom_index)).name << " " // Atom ADT
               << std::setw(10) << std::fixed << std::setprecision(4) << molecule.charge(atom_index) << " "
               << std::setw(10) << std::fixed << std::setprecision(0) << molecule.is_aromatic(atom_index)
