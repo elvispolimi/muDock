@@ -55,19 +55,17 @@ namespace mudock {
         const auto atom_type =
             sybyl_type == sybyl_atom_type::UNKNOWN ? element_symbol : to_string(sybyl_type);
 
-        const auto residue_id    = molecule.residue_id(atom_index);
-        const auto& residue_name = molecule.residue_name(atom_index);
-        const auto residue_type_name  = to_string(molecule.atom_residue_type(atom_index));
-        out_s << std::setw(5) << atom_index + 1 << " " << std::setw(8) << atom_name << " " << std::setw(10)
-              << std::setw(10) << std::fixed << std::setprecision(4) << molecule.x(atom_index) << " "
-              << std::setw(10) << std::fixed << std::setprecision(4) << molecule.y(atom_index) << " "
-              << std::setw(10) << std::fixed << std::setprecision(4) << molecule.z(atom_index) << " "
-              << atom_type << " " << std::setw(5) << residue_id << " " << std::setw(8) << residue_name << " "
-              << std::setw(8) << residue_type_name << " " << std::setw(8)
-              << get_description(molecule.autodock_type(atom_index)).name << " " // Atom ADT
-              << std::setw(10) << std::fixed << std::setprecision(4) << molecule.charge(atom_index) << " "
-              << std::setw(10) << std::fixed << std::setprecision(0) << molecule.is_aromatic(atom_index)
-              << " " << std::endl;
+        const auto residue_id        = molecule.residue_id(atom_index);
+        const auto& residue_name     = molecule.residue_name(atom_index);
+        const auto residue_type_name = to_string(molecule.atom_residue_type(atom_index));
+        out_s << std::setw(5) << atom_index + 1 << " " << std::setw(8) << atom_name << " " << std::fixed
+              << std::setprecision(4) << std::setw(10) << molecule.x(atom_index) << " " << std::setw(10)
+              << molecule.y(atom_index) << " " << std::setw(10) << molecule.z(atom_index) << " "
+              << std::setw(8) << mudock::to_string(molecule.sybyl_type(atom_index)) << " " << std::setw(5)
+              << molecule.residue_id(atom_index) << " " << std::setw(8) << molecule.residue_name(atom_index)
+              << " " << std::setw(8) << get_description(molecule.autodock_type(atom_index)).name << " "
+              << std::setw(10) << molecule.charge(atom_index) << " " << std::setw(10)
+              << static_cast<int>(molecule.is_aromatic(atom_index)) << std::endl;
       }
 
       // Bonds
