@@ -4,17 +4,15 @@
 #include <memory>
 #include <mudock/compute/queue.hpp>
 #include <mudock/type_alias.hpp>
-  
-#include <iostream> 
 
+#include <iostream> 
 namespace mudock {
-  // TODO check maybe the kernel can be fused togheter with main adt score
-  // May become an issue to keep separate the TU and the CUDA/etc dependencies
+
   template<typename queue_type>
     requires std::derived_from<queue_type, queue>
-  struct adt_score_kernel {
-    static constexpr char adt_region_name[] = "adt_score_kernel";
-    adt_score_kernel(const int scores_per_ligand_,
+  struct precomputed_adt_score_kernel {
+    static constexpr char adt_region_name[] = "precomputed_adt_score_kernel";
+    precomputed_adt_score_kernel(const int scores_per_ligand_,
                      const int batch_ligands_,
                      const int batch_atoms_,
                      const int *__restrict__ num_atoms_b_,
@@ -32,7 +30,7 @@ namespace mudock {
                      const fp_type *__restrict__ nonbond_cA_b_,
                      const fp_type *__restrict__ nonbond_cB_b_,
                      const int *__restrict__ nonbond_xB_b_,
-                     const fp_type *__restrict__ grid_maps_,
+                     const fp_type *__restrict__ fused_maps_,
                      const fp_type *__restrict__ minimum_,
                      const fp_type *__restrict__ maximum_,
                      const fp_type *__restrict__ center_,
@@ -59,7 +57,7 @@ namespace mudock {
           nonbond_cA_b(nonbond_cA_b_),
           nonbond_cB_b(nonbond_cB_b_),
           nonbond_xB_b(nonbond_xB_b_),
-          grid_maps(grid_maps_),
+          fused_maps(fused_maps_),
           minimum(minimum_),
           maximum(maximum_),
           center(center_),
@@ -71,12 +69,12 @@ namespace mudock {
 
     void operator()();
 
-    adt_score_kernel(const adt_score_kernel &)            = default;
-    adt_score_kernel(adt_score_kernel &&)                 = default;
-    adt_score_kernel &operator=(const adt_score_kernel &) = delete;
-    adt_score_kernel &operator=(adt_score_kernel &&)      = delete;
+    precomputed_adt_score_kernel(const precomputed_adt_score_kernel &)            = default;
+    precomputed_adt_score_kernel(precomputed_adt_score_kernel &&)                 = default;
+    precomputed_adt_score_kernel &operator=(const precomputed_adt_score_kernel &) = delete;
+    precomputed_adt_score_kernel &operator=(precomputed_adt_score_kernel &&)      = delete;
 
-    ~adt_score_kernel() = default;
+    ~precomputed_adt_score_kernel() = default;
 
   private:
     const int scores_per_ligand;
@@ -97,7 +95,7 @@ namespace mudock {
     const fp_type *__restrict__ nonbond_cA_b;
     const fp_type *__restrict__ nonbond_cB_b;
     const int *__restrict__ nonbond_xB_b;
-    const fp_type *__restrict__ grid_maps;
+    const fp_type *__restrict__ fused_maps; 
     const fp_type *__restrict__ minimum;
     const fp_type *__restrict__ maximum;
     const fp_type *__restrict__ center;

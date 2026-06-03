@@ -1,19 +1,18 @@
 #include <cstring>
 #include <mudock/chem/autodock_ligand.hpp>
 #include <mudock/chem/mehler_solmajer.hpp>
-#include <mudock/cpp_implementation/adt_score_cpp.hpp>
-
+#include <mudock/cpp_implementation/adt_quant_score_cpp.hpp>
+  
 #include <iostream>
 
 #define FLATTENED_2D(x, y, index_x)              ((y) * index_x + (x))
 #define FLATTENED_3D(x, y, z, index_x, index_xy) (index_xy * (z) + (y) * index_x + (x))
 
 namespace mudock {
-  namespace {
-    fp_type trilinear_interpolation(const fp_type *__restrict__ map,
-                                    const fp_type *__restrict__ coeffs,
-                                    const int &map_index_x,
-                                    const int &map_index_xy) {
+  inline fp_type trilinear_interpolation(const fp_type *__restrict__ map,
+                                         const fp_type *__restrict__ coeffs,
+                                         const int &map_index_x,
+                                         const int &map_index_xy) {
     fp_type value{0};
 
     value = coeffs[0] * map[0] + value;
@@ -26,64 +25,63 @@ namespace mudock {
     value = coeffs[7] * map[1 + map_index_x + map_index_xy] + value;
 
     return value;
-    }
+  }
 
-    void calc_energy(const int batch_atoms,
-                     const int batch_ligands,
-                     const int scores_per_ligand,
-                     const fp_type *__restrict__ x_scratch_b,
-                     const fp_type *__restrict__ y_scratch_b,
-                     const fp_type *__restrict__ z_scratch_b,
-                     const fp_type *__restrict__ vols_b,
-                     const fp_type *__restrict__ solpars_b,
-                     const fp_type *__restrict__ charges_b,
-                     const int *__restrict__ num_atoms_b,
-                     const int *__restrict__ num_rotamers_b,
-                     const int *__restrict__ num_nonbonds_b,
-                     const int *__restrict__ nonbond_a1_b,
-                     const int *__restrict__ nonbond_a2_b,
-                     const fp_type *__restrict__ nonbond_cA_b,
-                     const fp_type *__restrict__ nonbond_cB_b,
-                     const int *__restrict__ nonbond_xB_b,
-                     const fp_type *__restrict__ grid_maps,
-                     const fp_type *__restrict__ minimum,
-                     const fp_type *__restrict__ maximum,
-                     const fp_type *__restrict__ center,
-                     const int *__restrict__ map_offsets_b,
-                     const int map_index_x,
-                     const int map_index_xy,
-                     const int map_index_xyz,
-                     fp_type *__restrict__ scores_b) {
+  inline void calc_energy(const int batch_atoms,
+                          const int batch_ligands,
+                          const int scores_per_ligand,
+                          const fp_type *__restrict__ x_scratch_b,
+                          const fp_type *__restrict__ y_scratch_b,
+                          const fp_type *__restrict__ z_scratch_b,
+                          const fp_type *__restrict__ vols_b,
+                          const fp_type *__restrict__ solpars_b,
+                          const fp_type *__restrict__ charges_b,
+                          const int *__restrict__ num_atoms_b,
+                          const int *__restrict__ num_rotamers_b,
+                          const int *__restrict__ num_nonbonds_b,
+                          const int *__restrict__ nonbond_a1_b,
+                          const int *__restrict__ nonbond_a2_b,
+                          const fp_type *__restrict__ nonbond_cA_b,
+                          const fp_type *__restrict__ nonbond_cB_b,
+                          const int *__restrict__ nonbond_xB_b,
+                          const fp_type *__restrict__ grid_maps,
+                          const fp_type *__restrict__ quant_maps,
+                          const int *__restrict__ atom_bins_b,
+                          const fp_type *__restrict__ minimum,
+                          const fp_type *__restrict__ maximum,
+                          const fp_type *__restrict__ center,
+                          const int *__restrict__ map_offsets_b,
+                          const int map_index_x,
+                          const int map_index_xy,
+                          const int map_index_xyz,
+                          fp_type *__restrict__ scores_b) {
     for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
       const int atom_stride  = ligand_index * batch_atoms;
       const int num_atoms    = num_atoms_b[ligand_index];
       const int num_nonbonds = num_nonbonds_b[ligand_index + 1] - num_nonbonds_b[ligand_index];
       const int num_rotamers = num_rotamers_b[ligand_index];
-
       const fp_type *__restrict__ scratch_x = x_scratch_b + atom_stride * scores_per_ligand;
       const fp_type *__restrict__ scratch_y = y_scratch_b + atom_stride * scores_per_ligand;
       const fp_type *__restrict__ scratch_z = z_scratch_b + atom_stride * scores_per_ligand;
       const fp_type *__restrict__ vol_l     = vols_b + atom_stride;
       const fp_type *__restrict__ solpar_l  = solpars_b + atom_stride;
       const fp_type *__restrict__ charge_l  = charges_b + atom_stride;
+      const int *__restrict__ atom_bins_l = atom_bins_b + atom_stride;
       const int *__restrict__ map_offsets_l = map_offsets_b + atom_stride;
       const int *__restrict__ nonbond_a1_l  = nonbond_a1_b + num_nonbonds_b[ligand_index];
       const int *__restrict__ nonbond_a2_l  = nonbond_a2_b + num_nonbonds_b[ligand_index];
       const fp_type *nonbond_cA_l           = nonbond_cA_b + num_nonbonds_b[ligand_index];
       const fp_type *nonbond_cB_l           = nonbond_cB_b + num_nonbonds_b[ligand_index];
       const int *nonbond_xB_l               = nonbond_xB_b + num_nonbonds_b[ligand_index];
-
+      
       fp_type *__restrict__ scores_l = scores_b + ligand_index * scores_per_ligand;
       for (int scores_index = 0; scores_index < scores_per_ligand; ++scores_index) {
         const fp_type *__restrict__ scratch_x_l = scratch_x + scores_index * batch_atoms;
         const fp_type *__restrict__ scratch_y_l = scratch_y + scores_index * batch_atoms;
         const fp_type *__restrict__ scratch_z_l = scratch_z + scores_index * batch_atoms;
 
-        fp_type elect_total_trilinear = 0;
+        fp_type elect_dmap_total_trilinear = 0;
         fp_type emap_total_trilinear  = 0;
-        fp_type dmap_total_trilinear  = 0;
-        const fp_type *electro_map = grid_maps + map_index_xyz * static_cast<int>(autodock_grid_type::ELEC);
-        const fp_type *desolv_map  = grid_maps + map_index_xyz * static_cast<int>(autodock_grid_type::DESOLV);
 
 #pragma omp simd
         for (int index = 0; index < num_atoms; ++index) {
@@ -96,11 +94,12 @@ namespace mudock {
             const auto diff_z      = coord[2] - center[2];
             const fp_type dist     = diff_x * diff_x + diff_y * diff_y + diff_z * diff_z;
             const fp_type epenalty = dist * ENERGYPENALTY;
-            elect_total_trilinear += epenalty;
+            elect_dmap_total_trilinear += epenalty;
             emap_total_trilinear += epenalty;
           } else {
-            const auto &atom_charge = charge_l[index];
+            const int my_bin = atom_bins_l[index];
             const fp_type *atom_map = grid_maps + map_offsets_l[index];
+            const fp_type *my_quant_map = quant_maps + (my_bin * map_index_xyz);
 
             coord[0] = (coord[0] - minimum[0]) * inv_spacing;
             coord[1] = (coord[1] - minimum[1]) * inv_spacing;
@@ -136,14 +135,10 @@ namespace mudock {
             const int base_index = FLATTENED_3D(u0, v0, w0, map_index_x, map_index_xy);
             
             // Trilinear Interpolationp
-            elect_total_trilinear +=
-                trilinear_interpolation(electro_map + base_index, coeffs, map_index_x, map_index_xy) *
-                atom_charge;
+            elect_dmap_total_trilinear +=
+                trilinear_interpolation(my_quant_map + base_index, coeffs, map_index_x, map_index_xy);
             emap_total_trilinear +=
                 trilinear_interpolation(atom_map + base_index, coeffs, map_index_x, map_index_xy);
-            dmap_total_trilinear +=
-                trilinear_interpolation(desolv_map + base_index, coeffs, map_index_x, map_index_xy) *
-                std::fabs(atom_charge);
           }
         }
 
@@ -202,16 +197,15 @@ namespace mudock {
         }
         const fp_type tors_free_energy = static_cast<fp_type>(num_rotamers) * autodock_parameters::coeff_tors;
 
-        const fp_type total_trilinear = emap_total_trilinear + elect_total_trilinear + dmap_total_trilinear;
+        const fp_type total_trilinear = emap_total_trilinear + elect_dmap_total_trilinear;
         const fp_type total_eintcal   = emap_total_eintcal + elect_total_eintcal + dmap_total_eintcal;
         scores_l[scores_index]        = total_trilinear + total_eintcal + tors_free_energy;
       }
     }
-    }
-  } // namespace
+  };
 
   template<>
-  void adt_score_kernel<queue_cpp>::operator()() {
+  void adt_quant_score_kernel<queue_cpp>::operator()() {
     q->invoke_kernel<this->adt_region_name>(calc_energy,
                                             batch_atoms,
                                             batch_ligands,
@@ -231,6 +225,8 @@ namespace mudock {
                                             nonbond_cB_b,
                                             nonbond_xB_b,
                                             grid_maps,
+                                            quant_maps,
+                                            atom_bins_b,
                                             minimum,
                                             maximum,
                                             center,
