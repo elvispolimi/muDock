@@ -50,15 +50,19 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
   knobs_description.add_options()(
       "population",
       po::value(&args.knobs.population_number)->default_value(args.knobs.population_number),
-      "Number of individual(s) in the GA population");
+      "Number of individual(s) in the GA (or LGA) population");
   knobs_description.add_options()(
       "generations",
       po::value(&args.knobs.num_generations)->default_value(args.knobs.num_generations),
-      "Number of generations that GA simulates");
+      "Number of generations that GA (or LGA) simulates");
+  knobs_description.add_options()(
+      "elite",
+      po::value(&args.knobs.elite_size)->default_value(args.knobs.elite_size),
+      "Number of best individuals that GA (or LGA) keeps as elite part of population");
   knobs_description.add_options()(
       "tournament_len",
       po::value(&args.knobs.tournament_length)->default_value(args.knobs.tournament_length),
-      "Number of classes to select a parent in GA");
+      "Number of classes to select a parent in GA (or LGA)");
   knobs_description.add_options()(
       "lsit",
       po::value(&args.knobs.lsit)->default_value(args.knobs.lsit),
@@ -66,7 +70,7 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
   knobs_description.add_options()(
       "mutation",
       po::value(&args.knobs.mutation_prob)->default_value(args.knobs.mutation_prob),
-      "Probability of a mutation to happen during GA");
+      "Probability of a mutation to happen during GA (or LGA)");
   knobs_description.add_options()("seed", po::value(&seed), "Seed for random values generators");
   knobs_description.add_options()(
       "tokens",

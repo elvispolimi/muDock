@@ -31,6 +31,7 @@ namespace mudock {
     lamarckian_genetic_kernel(const int batch_ligands_,
                               const int population_number_,
                               const int num_generations_,
+                              const int elite_size_,
                               const int tournament_length_,
                               const fp_type mutation_prob_,
                               const size_t seed_,
@@ -44,6 +45,7 @@ namespace mudock {
         : genetic_kernel<queue_type>(batch_ligands_,
                                      population_number_,
                                      num_generations_,
+                                     elite_size_,
                                      tournament_length_,
                                      mutation_prob_,
                                      seed_,
@@ -83,6 +85,7 @@ namespace mudock {
       const knobs& configuration  = (*this->scratch).configuration;
       this->batch_ligands         = batch.num_ligands;
       this->num_generations       = static_cast<int>(configuration.num_generations);
+      this->elite_size            = static_cast<int>(configuration.elite_size);
       const int population_number = static_cast<int>(configuration.population_number);
       auto q                      = (*this->scratch).get_queue();
 
@@ -112,6 +115,7 @@ namespace mudock {
       this->lamarckian_kernel = std::make_unique<lamarckian_genetic_kernel<queue_t>>(this->batch_ligands,
                                                                                     population_number,
                                                                                     configuration.num_generations,
+                                                                                    configuration.elite_size,
                                                                                     configuration.tournament_length,
                                                                                     configuration.mutation_prob,
                                                                                     seed,

@@ -13,6 +13,7 @@ namespace mudock {
     bool genetic_convergence                  = true; // TODO L adapt it to genetic
     std::size_t population_number             = 100;
     std::size_t num_generations               = 1000;
+    std::size_t elite_size                    = 3;
     std::size_t tournament_length             = 10;
     fp_type mutation_prob                     = static_cast<fp_type>(0.01);
     std::optional<std::size_t> seed           = std::optional<std::size_t>{};
