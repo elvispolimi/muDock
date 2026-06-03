@@ -43,10 +43,6 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
   arguments_description.add_options()("score",
                                       po::value(&score_name)->default_value(score_name),
                                       "Scoring function to apply: adt");
-  arguments_description.add_options()(
-      "observer",
-      po::value(&observer_sec),
-      "Optional throughput observer interval in seconds");
     // added options for scoring mode and score-only flag
   arguments_description.add_options()(
       "mode",

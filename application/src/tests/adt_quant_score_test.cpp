@@ -136,7 +136,7 @@ int main(int argc, char *argv[]) {
   mudock::info(std::format("Quantized Score: {}", energy));
 
  
-  if (std::abs(energy - (adt_score - adt_error_score)) > mudock::fp_type{1.0}) { 
+  if (std::abs(energy - (adt_score - adt_error_score)) > static_cast<mudock::fp_type>(1.0)) { 
       mudock::error(std::format("Difference between scores of {} is too high ({} vs {})",
                                 dpf_path.string(),
                                 adt_score - adt_error_score,

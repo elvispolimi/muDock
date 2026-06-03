@@ -60,13 +60,13 @@ int main(int argc, char *argv[]) {
 
   const auto num_atoms    = ligand.num_atoms();
   const auto num_rotamers = ligand.num_rotamers();
-  adt_ligand.update_offsets(adt_grid.get_map_flat_size());
+  adt_ligand.update_offsets(static_cast<int>(adt_grid.get_map_flat_size()));
 
   mudock::info("Computing fused map for custom kernel...");
 
-  const int sx = adt_grid.get_size_x();
-  const int sy = adt_grid.get_size_xy() / sx;
-  const int sz = adt_grid.get_size_xyz() / adt_grid.get_size_xy();
+  const int sx = static_cast<int>(adt_grid.get_size_x());
+  const int sy = static_cast<int>(adt_grid.get_size_xy() / sx);
+  const int sz = static_cast<int>(adt_grid.get_size_xyz() / adt_grid.get_size_xy());
   
   mudock::precomputed_protein my_fused_prot(adt_grid.get_maps_pointer(), sx, sy, sz,adt_ligand, ligand);
   const mudock::fp_type* fused_maps_b = my_fused_prot.get_raw_data();
@@ -111,7 +111,7 @@ int main(int argc, char *argv[]) {
   
   const mudock::fp_type energy = scores_b[0];
   
-  if (std::abs(energy - adt_score + adt_error_score) > mudock::fp_type{0.1}) {
+  if (std::abs(energy - adt_score + adt_error_score) > static_cast<mudock::fp_type>(0.1)) {
       mudock::error(std::format("Difference between scores of {} ({} vs {})",
                                 dpf_path.string(),
                                 adt_score - adt_error_score,
