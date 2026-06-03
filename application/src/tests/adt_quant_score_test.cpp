@@ -26,7 +26,7 @@ inline T round3dp(const T x) {
 std::vector<mudock::fp_type> generate_test_quantized_maps(const mudock::autodock_grid& adt_grid) {
     const auto& thresh = mudock::autodock_quant_protein::thresholds;
     int num_bins = thresh.size() + 1;
-    int map_flat_size = adt_grid.get_size_xyz();
+    size_t map_flat_size = adt_grid.get_size_xyz();
     
     std::vector<mudock::fp_type> quant_maps(num_bins * map_flat_size, 0.0);
     const mudock::fp_type* original_maps = adt_grid.get_maps_pointer();
@@ -38,9 +38,9 @@ std::vector<mudock::fp_type> generate_test_quantized_maps(const mudock::autodock
         mudock::fp_type charge_val;
         if (b == 0) charge_val = thresh[0] - 0.1f;
         else if (static_cast<size_t>(b) >= thresh.size()) charge_val = thresh.back() + 0.1f;
-        else charge_val = (thresh[b] + thresh[b-1]) / 2.0;
+        else charge_val = (thresh[b] + thresh[b-1]) / 2;
 
-        for (int i = 0; i < map_flat_size; ++i) {
+        for (size_t i = 0; i < map_flat_size; ++i) {
             quant_maps[b * map_flat_size + i] = electro_map[i] * charge_val + desolv_map[i] * std::fabs(charge_val);
         }
     }
@@ -81,13 +81,13 @@ int main(int argc, char *argv[]) {
 
   const auto num_atoms    = ligand.num_atoms();
   const auto num_rotamers = ligand.num_rotamers();
-  adt_ligand.update_offsets(adt_grid.get_map_flat_size());
+  adt_ligand.update_offsets(static_cast<int>(adt_grid.get_map_flat_size()));
 
   mudock::info("Computing quantized FSR maps for custom kernel...");
   
   std::vector<mudock::fp_type> my_quant_maps = generate_test_quantized_maps(adt_grid);
   
-  const auto& thresholds = mudock::autodock_quant_protein::thresholds();
+  const auto& thresholds = mudock::autodock_quant_protein::thresholds;
   std::vector<int> atom_bins_b = mudock::build_atom_to_bin_map(ligand, thresholds);
 
   mudock::info("Computing energy ...");
