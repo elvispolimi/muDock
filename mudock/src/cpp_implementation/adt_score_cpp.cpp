@@ -41,9 +41,7 @@ namespace mudock {
   }
 
   inline fp_type dot_product(const point3D& u, const point3D& v){
-    fp_type result;
-    result = u.x() * v.x() + u.y() * v.y() + u.z() * v.z();
-    return result;
+    return u.x() * v.x() + u.y() * v.y() + u.z() * v.z();
   }
 
   void calc_energy(const int batch_atoms,
@@ -116,7 +114,6 @@ namespace mudock {
             const fp_type epenalty = dist * ENERGYPENALTY;
             elect_total_trilinear += epenalty;
             emap_total_trilinear += epenalty;
-            // printf("p");
           } else {
             const auto &atom_charge = charge_l[index];
             const fp_type *atom_map = grid_maps + map_offsets_l[index];

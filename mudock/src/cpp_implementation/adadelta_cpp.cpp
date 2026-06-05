@@ -42,7 +42,7 @@ namespace mudock {
 
         // Apply AdaDelta update for each dimension
         for (int d = 0; d < gradient_size; ++d) {
-          E_g2_i[d] = rho * E_g2_i[d] + (1.0f - rho) * grad[d] * grad[d];
+          E_g2_i[d] = rho * E_g2_i[d] + (fp_type{1} - rho) * grad[d] * grad[d];
           
           const fp_type rms_g = std::sqrt(E_g2_i[d] + epsilon);
           
@@ -50,7 +50,7 @@ namespace mudock {
           
           fp_type delta_w = -(rms_dw / rms_g) * grad[d];
           
-          E_dw2_i[d] = rho * E_dw2_i[d] + (1.0f - rho) * delta_w * delta_w;
+          E_dw2_i[d] = rho * E_dw2_i[d] + (fp_type{1} - rho) * delta_w * delta_w;
 
           w[d] = w[d] + delta_w;
 

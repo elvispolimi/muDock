@@ -98,7 +98,7 @@ int main(int argc, char** argv) {
 
   mudock::fp_type ls_rate = args.knobs.lsrate;
   if (args.knobs.use_local_search && ls_rate > 0){
-    if (ls_rate < 0.0f || ls_rate > 100.0f) {
+    if (ls_rate < mudock::fp_type{0} || ls_rate > mudock::fp_type{100}) {
       throw std::out_of_range("ls_rate must be between 0 and 100");
     }
     mudock::lga_adt_adadelta_pipeline pipe{protein};
