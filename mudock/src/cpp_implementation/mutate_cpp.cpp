@@ -59,7 +59,7 @@ namespace mudock {
     const auto m21 = sx * cy;
     const auto m22 = cx * cy;
 
-// apply the rotation matrix and compute derivatives
+// apply the rotation matrix
 #pragma omp simd
     for (int i = 0; i < num_atoms; ++i) {
       const auto translated_x = x[i] - c.x(), translated_y = y[i] - c.y(), translated_z = z[i] - c.z();

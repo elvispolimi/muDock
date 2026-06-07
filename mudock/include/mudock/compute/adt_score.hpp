@@ -256,6 +256,7 @@ namespace mudock {
       const fp_type *x_scratch_b = (*this->scratch).template get<buffer_data_type::X_SCRATCH>().dev_pointer();
       const fp_type *y_scratch_b = (*this->scratch).template get<buffer_data_type::Y_SCRATCH>().dev_pointer();
       const fp_type *z_scratch_b = (*this->scratch).template get<buffer_data_type::Z_SCRATCH>().dev_pointer();
+      const chromosome *chromosomes_b = (*this->scratch).template get<buffer_data_type::CHROMOSOMES>().dev_pointer();
 
       const fp_type *vols_b       = vols.dev_pointer();
       const fp_type *solpars_b    = solpars.dev_pointer();
@@ -335,6 +336,7 @@ namespace mudock {
                                                               x_scratch_b,
                                                               y_scratch_b,
                                                               z_scratch_b,
+                                                              chromosomes_b,
                                                               ligand_fragments_b,
                                                               ligand_fragments_start_b,
                                                               frag_indices_start_b,

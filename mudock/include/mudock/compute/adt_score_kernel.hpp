@@ -120,6 +120,7 @@ namespace mudock {
                         const fp_type *__restrict__ x_scratch_b_,
                         const fp_type *__restrict__ y_scratch_b_,
                         const fp_type *__restrict__ z_scratch_b_,
+                        const chromosome* __restrict__ chromosomes_b_,
                         const int* __restrict__ ligand_fragments_b_,
                         const int* __restrict__ ligand_fragments_start_b_,
                         const int* __restrict__ frag_indices_start_b_,
@@ -153,6 +154,7 @@ namespace mudock {
           x_scratch_b(x_scratch_b_),
           y_scratch_b(y_scratch_b_),
           z_scratch_b(z_scratch_b_),
+          chromosomes_b(chromosomes_b_),
           ligand_fragments_b(ligand_fragments_b_),
           ligand_fragments_start_b(ligand_fragments_start_b_),
           frag_indices_start_b(frag_indices_start_b_),
@@ -197,6 +199,7 @@ namespace mudock {
     const fp_type *__restrict__ x_scratch_b;
     const fp_type *__restrict__ y_scratch_b;
     const fp_type *__restrict__ z_scratch_b;
+    const chromosome* __restrict__ chromosomes_b;
     const int* __restrict__ ligand_fragments_b;
     const int* __restrict__ ligand_fragments_start_b;
     const int* __restrict__ frag_indices_start_b;

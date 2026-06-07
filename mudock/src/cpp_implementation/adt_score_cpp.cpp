@@ -1,6 +1,7 @@
 #include <cstring>
 #include <mudock/chem/autodock_ligand.hpp>
 #include <mudock/chem/mehler_solmajer.hpp>
+#include <mudock/grid/pi.hpp>
 #include <mudock/cpp_implementation/adt_score_cpp.hpp>
 
 #define FLATTENED_2D(x, y, index_x)              ((y) * index_x + (x))
@@ -38,10 +39,6 @@ namespace mudock {
     out_values[5] = map[1 + map_index_xy];
     out_values[6] = map[1 + map_index_x];
     out_values[7] = map[1 + map_index_x + map_index_xy];
-  }
-
-  inline fp_type dot_product(const point3D& u, const point3D& v){
-    return u.x() * v.x() + u.y() * v.y() + u.z() * v.z();
   }
 
   void calc_energy(const int batch_atoms,
@@ -231,6 +228,7 @@ namespace mudock {
                             const fp_type *__restrict__ x_scratch_b,
                             const fp_type *__restrict__ y_scratch_b,
                             const fp_type *__restrict__ z_scratch_b,
+                            const chromosome* __restrict__ chromosomes_b,
                             const int* __restrict__ ligand_fragments_b,
                             const int* __restrict__ ligand_fragments_start_b,
                             const int* __restrict__ frag_indices_start_b,
@@ -266,6 +264,7 @@ namespace mudock {
       const fp_type *__restrict__ scratch_x  = x_scratch_b + atom_stride * individuals_per_ligand;
       const fp_type *__restrict__ scratch_y  = y_scratch_b + atom_stride * individuals_per_ligand;
       const fp_type *__restrict__ scratch_z  = z_scratch_b + atom_stride * individuals_per_ligand;
+      const chromosome* __restrict__ ligand_chromosomes = chromosomes_b + ligand_index * individuals_per_ligand;
       const fp_type *__restrict__ vol_l      = vols_b + atom_stride;
       const fp_type *__restrict__ solpar_l   = solpars_b + atom_stride;
       const fp_type *__restrict__ charge_l   = charges_b + atom_stride;
@@ -282,9 +281,6 @@ namespace mudock {
       int *__restrict__ active_individuals_l = active_individuals_b + ligand_index * individuals_per_ligand;
       
       std::vector<point3D> dE_dX(batch_atoms);
-      std::vector<point3D> dX_dalpha(batch_atoms);
-      std::vector<point3D> dX_dbeta(batch_atoms);
-      std::vector<point3D> dX_dgamma(batch_atoms);
       std::vector<fp_type> grad(6 + batch_rotamers);         // gradient = dE/dx, dE/dy, dE/dz, dE/dalpha, dE/dbeta, dE/dgamma, dE/d_tors_1, ..., dE/d_tors_n
 
       for (int individual_index = 0; individual_index < individuals_per_ligand; ++individual_index) {
@@ -294,11 +290,8 @@ namespace mudock {
         }
 
         // Reinitialize to 0s all gradient components vectors
-        std::fill(dE_dX.begin(),     dE_dX.end(),     0);
-        std::fill(dX_dalpha.begin(), dX_dalpha.end(), 0);
-        std::fill(dX_dbeta.begin(),  dX_dbeta.end(),  0);
-        std::fill(dX_dgamma.begin(), dX_dgamma.end(), 0);
-        std::fill(grad.begin(),      grad.end(),      0);
+        std::fill(dE_dX.begin(), dE_dX.end(), 0);
+        std::fill(grad.begin(),  grad.end(),  0);
 
         const fp_type *__restrict__ scratch_x_l = scratch_x + individual_index * batch_atoms;
         const fp_type *__restrict__ scratch_y_l = scratch_y + individual_index * batch_atoms;
@@ -311,9 +304,9 @@ namespace mudock {
         for (int index = 0; index < num_atoms; ++index) {
           fp_type coord[3]{scratch_x_l[index], scratch_y_l[index], scratch_z_l[index]};
 
-          const auto diff_x      = coord[0] - center[0];
-          const auto diff_y      = coord[1] - center[1];
-          const auto diff_z      = coord[2] - center[2];
+          const auto diff_x = coord[0] - center[0];
+          const auto diff_y = coord[1] - center[1];
+          const auto diff_z = coord[2] - center[2];
 
           if (coord[0] < minimum[0] || coord[0] > maximum[0] || coord[1] < minimum[1] ||
               coord[1] > maximum[1] || coord[2] < minimum[2] || coord[2] > maximum[2]) {
@@ -362,22 +355,9 @@ namespace mudock {
             dE_dX[index].y() += constant_factor_des * (p1w * (p1u * (grid_values[2] - grid_values[0]) + p0u * (grid_values[6] - grid_values[4])) + p0w * (p1u * (grid_values[3] - grid_values[1]) + p0u * (grid_values[7] - grid_values[5])));
             dE_dX[index].z() += constant_factor_des * (p1v * (p1u * (grid_values[1] - grid_values[0]) + p0u * (grid_values[5] - grid_values[4])) + p0v * (p1u * (grid_values[3] - grid_values[2]) + p0u * (grid_values[7] - grid_values[6])));
 
-            // Compute dX/d_rot
-            // alpha -> rotation on z-axis
-            // Rotational derivatives computed using infinitesimal generators (SO(3)).
-            // This is an approximation of Euler-angle derivatives assuming small updates.
-            // Forward model uses Rz*Ry*Rx, but for local search this approximation should be sufficient.
-            const point3D x_i = point3D{diff_x, diff_y, diff_z};
-
-            const point3D z_axis = point3D{fp_type{0}, fp_type{0}, fp_type{1}};
-            const point3D y_axis = point3D{fp_type{0}, fp_type{1}, fp_type{0}};
-            const point3D x_axis = point3D{fp_type{1}, fp_type{0}, fp_type{0}};
-
-            dX_dalpha[index] = z_axis.cross(x_i);
-            dX_dbeta[index]  = y_axis.cross(x_i);
-            dX_dgamma[index] = x_axis.cross(x_i);
-
+            
           }
+
         }
 
         if (num_rotamers > 0) {
@@ -465,15 +445,61 @@ namespace mudock {
           }
         }
 
-        // Accumulate gradient over atoms: dE/dtheta = SUM_i(dE/dX_i * dX_i/dtheta)
-        for (int index = 0; index < num_atoms; ++index){
+        point3D ligand_COM{fp_type{0}};
+        for (int i = 0; i < num_atoms; ++i) {
+          ligand_COM.x() += scratch_x_l[i];
+          ligand_COM.y() += scratch_y_l[i];
+          ligand_COM.z() += scratch_z_l[i];
+        }
+        ligand_COM.x() /= static_cast<fp_type>(num_atoms);
+        ligand_COM.y() /= static_cast<fp_type>(num_atoms);
+        ligand_COM.z() /= static_cast<fp_type>(num_atoms);
+
+        point3D tau{fp_type{0}};
+        for (int i = 0; i < num_atoms; ++i) {
+          point3D r;
+          r.x() = scratch_x_l[i] - ligand_COM.x();
+          r.y() = scratch_y_l[i] - ligand_COM.y();
+          r.z() = scratch_z_l[i] - ligand_COM.z();
+          const point3D torque = r.cross(dE_dX[i]);
+          tau.x() += torque.x();
+          tau.y() += torque.y();
+          tau.z() += torque.z();
+        }
+
+        const chromosome &chrom = ligand_chromosomes[individual_index];
+        const fp_type rad_alpha = deg_to_rad(chrom[3]);
+        const fp_type rad_beta = deg_to_rad(chrom[4]);
+        const fp_type rad_gamma = deg_to_rad(chrom[5]);
+
+        const fp_type sin_beta = std::sin(rad_beta);
+        const fp_type cos_beta = std::cos(rad_beta);
+        const fp_type sin_gamma = std::sin(rad_gamma);
+        const fp_type cos_gamma = std::cos(rad_gamma);
+
+        point3D u_gamma;
+        u_gamma.x() = fp_type{0};
+        u_gamma.y() = fp_type{0};
+        u_gamma.z() = fp_type{1};
+
+        point3D u_beta;
+        u_beta.x() = -sin_gamma;
+        u_beta.y() = cos_gamma;
+        u_beta.z() = fp_type{0};
+
+        point3D u_alpha;
+        u_alpha.x() = cos_beta * cos_gamma;
+        u_alpha.y() = cos_beta * sin_gamma;
+        u_alpha.z() = -sin_beta;
+
+        grad[3] = tau.inner_product(u_alpha);
+        grad[4] = tau.inner_product(u_beta);
+        grad[5] = tau.inner_product(u_gamma);
+
+        for (int index = 0; index < num_atoms; ++index) {
           grad[0] += dE_dX[index].x();
           grad[1] += dE_dX[index].y();
           grad[2] += dE_dX[index].z();
-
-          grad[3] += dot_product(dE_dX[index], dX_dalpha[index]);
-          grad[4] += dot_product(dE_dX[index], dX_dbeta[index]);
-          grad[5] += dot_product(dE_dX[index], dX_dgamma[index]);
         }
 
         // Torsion derivatives
@@ -502,7 +528,7 @@ namespace mudock {
               r.x() = scratch_x_l[i] - scratch_x_l[a1];
               r.y() = scratch_y_l[i] - scratch_y_l[a1];
               r.z() = scratch_z_l[i] - scratch_z_l[a1];
-              grad[6 + t] += dot_product(dE_dX[i], axis.cross(r));
+              grad[6 + t] += dE_dX[i].inner_product(axis.cross(r));
             }
           }
         }
@@ -558,6 +584,7 @@ namespace mudock {
                                             x_scratch_b,
                                             y_scratch_b,
                                             z_scratch_b,
+                                            chromosomes_b,
                                             ligand_fragments_b,
                                             ligand_fragments_start_b,
                                             frag_indices_start_b,
