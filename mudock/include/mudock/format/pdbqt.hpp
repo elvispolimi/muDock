@@ -1,12 +1,12 @@
 #pragma once
 
+#include <cassert>
 #include <filesystem>
 #include <fstream>
 #include <mudock/chem/autodock_layer.hpp>
-#include <mudock/chem/autodock_ligand.hpp>
 #include <mudock/chem/autodock_parameters.hpp>
-#include <mudock/chem/autodock_protein.hpp>
 #include <mudock/chem/autodock_types.hpp>
+#include <sstream>
 #include <mudock/utils.hpp>
 
 namespace mudock {

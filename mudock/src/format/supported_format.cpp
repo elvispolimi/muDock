@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <stdexcept>
 #include <mudock/format/format_id.hpp>
 
 namespace mudock {

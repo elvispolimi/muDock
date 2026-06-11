@@ -8,7 +8,6 @@
 #include <mudock/format/supported_format.hpp>
 #include <mudock/molecule.hpp>
 #include <mudock/mudock.hpp>
-#include <iostream>
 #include <string_view>
 
 namespace mudock {
@@ -49,8 +48,7 @@ namespace mudock {
           if (!enqueued) {
             return;
           }
-        } catch (const std::exception& e) {
-          std::cerr << "Error while processing compound: " << e.what() << '\n';
+        } catch (const std::exception&) {
           if (skipped_ligands != nullptr) {
             skipped_ligands->fetch_add(1, std::memory_order_relaxed);
           }

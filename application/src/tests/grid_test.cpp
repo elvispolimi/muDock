@@ -64,9 +64,9 @@ int main(int argc, char* argv[]) {
       const auto reference_grid_map = adt_protein.get_atom_map(map_type);
       const auto autogrid_map       = protein_autogrid.get_atom_map(map_type);
 
-      for (std::size_t k = 0; k < std::min(reference_grid_map.template size<2>(), autogrid_map.template size<2>()); ++k)
-        for (std::size_t j = 0; j < std::min(reference_grid_map.template size<1>(), autogrid_map.template size<1>()); ++j)
-          for (std::size_t i = 0; i < std::min(reference_grid_map.template size<0>(), autogrid_map.template size<0>()); ++i) {
+      for (std::size_t k = 0; k < std::min(reference_grid_map.size<2>(), autogrid_map.size<2>()); ++k)
+        for (std::size_t j = 0; j < std::min(reference_grid_map.size<1>(), autogrid_map.size<1>()); ++j)
+          for (std::size_t i = 0; i < std::min(reference_grid_map.size<0>(), autogrid_map.size<0>()); ++i) {
             const auto reference_round = static_cast<float>(round3dp(reference_grid_map.get(i, j, k)));
             const auto autogrid_round  = static_cast<float>(autogrid_map.get(i, j, k));
             const auto max_absolute = std::max(std::fabs(reference_round), std::fabs(autogrid_round)) / 100;
