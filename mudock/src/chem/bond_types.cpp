@@ -23,6 +23,6 @@ namespace mudock {
     if (element_it != std::end(BOND_DICTIONARY))
       return element_it->value;
     else
-      throw std::runtime_error("Missing autodock type");
+      throw std::runtime_error("Missing bond type");
   }
 } // namespace mudock
