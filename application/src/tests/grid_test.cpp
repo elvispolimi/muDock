@@ -69,13 +69,13 @@ int main(int argc, char* argv[]) {
       const auto reference_grid_map = adt_protein.get_atom_map(map_type);
       const auto autogrid_map       = protein_autogrid.get_atom_map(map_type);
 
-      for (size_t k = 0; k < std::min(reference_grid_map.z(), autogrid_map.z()); ++k)
-        for (size_t j = 0; j < std::min(reference_grid_map.y(), autogrid_map.y()); ++j)
-          for (size_t i = 0; i < std::min(reference_grid_map.x(), autogrid_map.x()); ++i) {
+      for (std::size_t k = 0; k < std::min(reference_grid_map.template size<2>(), autogrid_map.template size<2>()); ++k)
+        for (std::size_t j = 0; j < std::min(reference_grid_map.template size<1>(), autogrid_map.template size<1>()); ++j)
+          for (std::size_t i = 0; i < std::min(reference_grid_map.template size<0>(), autogrid_map.template size<0>()); ++i) {
             const auto reference_round = static_cast<float>(round3dp(reference_grid_map.get(i, j, k)));
             const auto autogrid_round  = static_cast<float>(autogrid_map.get(i, j, k));
             const auto max_absolute = std::max(std::fabs(reference_round), std::fabs(autogrid_round)) / 100;
-            const auto delta        = std::clamp(max_absolute, float{0.01}, float{1});
+            const auto delta        = std::clamp(max_absolute, 0.01f, 1.0f);
             if (std::fabs(reference_round - autogrid_round) > delta) {
               mudock::error(std::format(
                   "Difference betweem maps {} at ({},{},{}): muDock {} autogrid {} with an error threshold of {}",
