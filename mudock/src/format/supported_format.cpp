@@ -1,5 +1,5 @@
 #include <algorithm>
-#include <mudock/format/supported_format.hpp>
+#include <mudock/format/format_id.hpp>
 
 namespace mudock {
   supported_format parse_supported_format(const std::string_view extension) {
