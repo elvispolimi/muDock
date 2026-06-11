@@ -98,7 +98,7 @@ namespace mudock {
             emap_total_trilinear += epenalty;
           } else {
             const auto &atom_charge = charge_l[index];
-            const fp_type *atom_map = grid_maps + map_offsets_l[index];
+            const fp_type *atom_map = grid_maps + map_offsets_l[index] * map_index_xyz;
 
             coord[0] = (coord[0] - minimum[0]) * inv_spacing;
             coord[1] = (coord[1] - minimum[1]) * inv_spacing;
