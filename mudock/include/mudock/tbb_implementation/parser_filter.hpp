@@ -50,7 +50,9 @@ namespace mudock {
             return;
           }
         } catch (const std::exception& e) {
-          std::cerr << "Error while processing compound: " << e.what() << '\n';
+          if (mudock::is_debug()) {
+            mudock::warning("Error while processing compound: ", e.what());
+          }
           if (skipped_ligands != nullptr) {
             skipped_ligands->fetch_add(1, std::memory_order_relaxed);
           }
