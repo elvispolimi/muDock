@@ -8,7 +8,6 @@
 #include <mudock/chem/autodock_protein.hpp>
 #include <mudock/compute/adt_score.hpp>
 #include <mudock/format/ob_wrapper.hpp>
-#include <mudock/format/pdbqt.hpp>
 #include <mudock/format/reader.hpp>
 #include <mudock/log.hpp>
 #include <mudock/mudock.hpp>
@@ -43,14 +42,11 @@ int main(int argc, char *argv[]) {
   mudock::autodock_grid adt_grid = load_autogrid_map_dpf(dpf_path);
 
   const auto ligand_path = get_ligand_path(dpf_path);
-  mudock::static_molecule ligand =
-      mudock::parser<mudock::static_molecule>(ligand_path, &mudock::pdbqt_rotate_check);
-
-  auto f =
-      std::function<void(mudock::autodock_static_layer &)>{[ligand_path](mudock::autodock_static_layer &l) {
-        mudock::apply_autodock_forcefield_pdbqt(l, ligand_path);
-      }};
-  mudock::autodock_ligand adt_ligand{ligand, f};
+  const auto ligand_format = mudock::parse_supported_format(std::filesystem::path{ligand_path});
+  const auto rotate_check  = ligand_format == mudock::supported_format::PDBQT ? &mudock::pdbqt_rotate_check
+                                                                               : &mudock::ob_rotate_check;
+  mudock::static_molecule ligand = mudock::parser<mudock::static_molecule>(ligand_path, rotate_check);
+  mudock::autodock_ligand adt_ligand{ligand};
   const auto adt_score       = load_autodock_score(dpf_path);
   const auto adt_error_score = load_autodock_error_score(dpf_path);
 
