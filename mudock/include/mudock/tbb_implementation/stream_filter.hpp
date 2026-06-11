@@ -1,10 +1,12 @@
 #pragma once
 
+#include <algorithm>
 #include <atomic>
 #include <istream>
 #include <limits>
 #include <mudock/format/supported_format.hpp>
 #include <string>
+#include <string_view>
 #include <oneapi/tbb/parallel_pipeline.h>
 
 namespace mudock {
