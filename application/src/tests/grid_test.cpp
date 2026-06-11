@@ -8,7 +8,6 @@
 #include <mudock/chem/autodock_protein.hpp>
 #include <mudock/cpp_implementation/queue_cpp.hpp>
 #include <mudock/format.hpp>
-#include <mudock/format/pdbqt.hpp>
 #include <mudock/format/reader.hpp>
 #include <mudock/log.hpp>
 #include <mudock/mudock.hpp>
@@ -56,11 +55,7 @@ int main(int argc, char* argv[]) {
     po::notify(vm);
 
     mudock::dynamic_molecule protein = mudock::parser<mudock::dynamic_molecule>(pdbqt_path);
-    auto f =
-        std::function<void(mudock::autodock_dynamic_layer&)>{[pdbqt_path](mudock::autodock_dynamic_layer& l) {
-          mudock::apply_autodock_forcefield_pdbqt(l, pdbqt_path);
-        }};
-    mudock::autodock_protein adt_protein{protein, f};
+    mudock::autodock_protein adt_protein{protein};
 
     mudock::autodock_grid protein_autogrid = load_autogrid_map_fld(fld_path);
 
