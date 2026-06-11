@@ -30,12 +30,16 @@ function(add_tests dir backend device id)
   foreach(subdir ${directories})
     if(IS_DIRECTORY ${subdir}) # Make sure it's a directory
       get_filename_component(subdir_name ${subdir} NAME) # Get the directory
+      set(ligand_path "${subdir}/${subdir_name}_ligand.mol2")
+      if(EXISTS "${subdir}/${subdir_name}_ligand.adtmol2")
+        set(ligand_path "${subdir}/${subdir_name}_ligand.adtmol2")
+      endif()
       # Define the test executable for the subdirectory (e.g., test_subfolder)
       add_test(
         NAME test_score_adt_impl_${backend}_${subdir_name}
         COMMAND
           test_score_adt_impl -p ${subdir}/${subdir_name}_protein.pdb -l
-          ${subdir}/${subdir_name}_ligand.mol2 --use ${backend}:${device}:${id})
+          ${ligand_path} --use ${backend}:${device}:${id})
     endif()
   endforeach()
 endfunction()
