@@ -30,14 +30,19 @@ namespace {
                                format,
                                [&]<typename pipeline_t>(const auto, const auto) {
                                  pipeline_t pipe{protein};
-                                 mudock::run_tbb_pipeline<mudock::supported_format::ADTMOL2>(
-                                     in,
-                                     args.device_confs,
-                                     args.knobs,
-                                     pipe,
-                                     range_end,
-                                     args.time_limit_sec,
-                                     args.observer);
+                                 constexpr_switch<0, mudock::get_num_supported_format(), 1>(
+                                     [&](const auto format_index) {
+                                       constexpr auto selected_format =
+                                           static_cast<mudock::supported_format>(decltype(format_index)::value);
+                                       mudock::run_tbb_pipeline<selected_format>(in,
+                                                                                 args.device_confs,
+                                                                                 args.knobs,
+                                                                                 pipe,
+                                                                                 range_end,
+                                                                                 args.time_limit_sec,
+                                                                                 args.observer);
+                                     },
+                                     format);
                                });
 
     return EXIT_SUCCESS;
@@ -70,8 +75,13 @@ int main(int argc, char** argv) {
     }
   }
 
-  range =
-      mudock::distribute_aligned_ranges<mudock::supported_format::ADTMOL2>(args.ligand_path, *rank, nranks);
+  constexpr_switch<0, mudock::get_num_supported_format(), 1>(
+      [&](const auto format_index) {
+        constexpr auto selected_format =
+            static_cast<mudock::supported_format>(decltype(format_index)::value);
+        range = mudock::distribute_aligned_ranges<selected_format>(args.ligand_path, *rank, nranks);
+      },
+      in_format);
   mudock::info("rank ", *rank, ": [", range->begin, ", ", range->end, "]\n");
 #endif
 

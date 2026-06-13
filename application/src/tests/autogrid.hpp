@@ -68,7 +68,8 @@ static inline mudock::autodock_grid load_autogrid_map_fld(const std::string& fld
   mudock::point3D min, max;
   std::array<std::filesystem::path, mudock::num_autodock_grids()> grids_filepath;
   int label{0};
-  std::array<mudock::autodock_grid_type, mudock::num_autodock_ff_grids()> variables;
+  // FLD labels include affinity maps plus electrostatics and desolvation.
+  std::array<mudock::autodock_grid_type, mudock::num_autodock_grids()> variables;
   const auto fld_desc = read_from_stream(std::ifstream(fld_path));
   const std::filesystem::path fld_fs_path{fld_path};
   std::stringstream fld_desc_s{fld_desc};
