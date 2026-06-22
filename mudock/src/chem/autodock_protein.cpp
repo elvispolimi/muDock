@@ -258,9 +258,14 @@ namespace mudock {
       return std::ceil((p + (grid_spacing + cutoff_distance)) * inv_spacing) / inv_spacing;
     });
 
-    // find out the geometries of HBonds from the protein
-    const auto [vector1, vector2, exp, disorder] =
+    // const auto [vector1, vector2, exp, disorder] =
+    //     compute_hbon_geometries(x, y, z, this->get_base_molecule().get_num_hbond(), get_elements(), graph);
+    const auto geometries =
         compute_hbon_geometries(x, y, z, this->get_base_molecule().get_num_hbond(), get_elements(), graph);
+    const auto& vector1  = geometries.vector1;
+    const auto& vector2  = geometries.vector2;
+    const auto& exp      = geometries.exp;
+    const auto& disorder = geometries.disorder;
 
     // declare the maps that will describe the protein
     adt_grid = {min, max, resolution};
