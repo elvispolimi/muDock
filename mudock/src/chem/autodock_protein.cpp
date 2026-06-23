@@ -258,8 +258,6 @@ namespace mudock {
       return std::ceil((p + (grid_spacing + cutoff_distance)) * inv_spacing) / inv_spacing;
     });
 
-    // const auto [vector1, vector2, exp, disorder] =
-    //     compute_hbon_geometries(x, y, z, this->get_base_molecule().get_num_hbond(), get_elements(), graph);
     const auto geometries =
         compute_hbon_geometries(x, y, z, this->get_base_molecule().get_num_hbond(), get_elements(), graph);
     const auto& vector1  = geometries.vector1;
