@@ -60,7 +60,7 @@ namespace mudock {
                                     const fp_type* __restrict__ nonbond_cB_b,
                                     const int* __restrict__ nonbond_xB_b,
                                     const fp_type* minimum,
-                                    const fp_type* maxgetimum,
+                                    const fp_type* maximum,
                                     const fp_type* center,
                                     const int map_index_x,
                                     const int map_index_xy,
