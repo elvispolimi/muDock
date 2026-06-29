@@ -1,24 +1,25 @@
 #include <mudock/type_alias.hpp>
-#include <mudock/cpp_implementation/chromosome.hpp>
 #include <mudock/chem/grid_const.hpp>
 #include <mudock/molecule/constraints.hpp>
-#include <mudock/cpp_implementation/queue_cpp.hpp>
+#include <mudock/cuda_implementation/queue_cuda.cuh>
 #include <mudock/compute/adadelta_kernel.hpp>
 #include <mudock/compute/adadelta.hpp>
-#include <mudock/cpp_implementation/adadelta_cpp.hpp>
+#include <mudock/compute/reorder_buffer.hpp>
+#include <mudock/cuda_implementation/adadelta_cuda.cuh>
 #include <cmath>
 
 namespace mudock {
+  template<int MAX_ATOMS>
   __global__ void apply_adadelta_update_gpu(const int batch_ligands,
-                                    const int individuals_per_ligand,
-                                    gradient *__restrict__ gradients_b,
-                                    chromosome *__restrict__ population_b,
-                                    int* __restrict__ num_rotamers_b,
-                                    chromosome *__restrict__ adadelta_e_g2_b,
-                                    chromosome *__restrict__ adadelta_e_dw2_b,
-                                    int *__restrict__ active_individuals_b,    
-                                    const fp_type rho,
-                                    const fp_type epsilon) {
+                                            const int individuals_per_ligand,
+                                            gradient *__restrict__ gradients_b,
+                                            chromosome *__restrict__ population_b,
+                                            int* __restrict__ num_rotamers_b,
+                                            chromosome *__restrict__ adadelta_e_g2_b,
+                                            chromosome *__restrict__ adadelta_e_dw2_b,
+                                            int *__restrict__ active_individuals_b,    
+                                            const fp_type rho,
+                                            const fp_type epsilon) {
 
     const int ligand_id        = blockIdx.x;
     const int local_thread_id  = threadIdx.x;
@@ -34,7 +35,7 @@ namespace mudock {
     const int num_rotamers = num_rotamers_b[ligand_id];
     const int gradient_size = 6 + num_rotamers;
     
-    for (int individual_index = threadIdx.x; individual_index < individuals_per_ligand; individual_index += blockDim.x) {
+    for (int individual_index = local_thread_id; individual_index < individuals_per_ligand; individual_index += blockDim.x) {
       if (!active_individuals_l[individual_index]){
         continue;
       }
@@ -78,7 +79,13 @@ namespace mudock {
                     (void*) &active_individuals_b,
                     (void*) &rho,
                     (void*) &epsilon};
-    q->launch_kernel((void*) apply_adadelta_update_gpu, args, batch_ligands, BLOCK_SIZE);
+    constexpr_switch_bucket<0, reorder_buffer<static_molecule>::get_num_atom_clusters(), 1>(
+      [&](const auto atom_index) {
+        const auto max_atoms = reorder_buffer<static_molecule>::atoms_clusters[atom_index];
+        q->launch_kernel((void*) apply_adadelta_update_gpu<max_atoms>, args, batch_ligands, BLOCK_SIZE);
+      },
+      batch_atoms,
+      reorder_buffer<static_molecule>::atoms_clusters.data());
 
   }
 

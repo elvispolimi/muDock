@@ -43,6 +43,7 @@ namespace mudock {
       this->ligand_template = *batch.molecules[0];
 
       batch_ligands = batch.num_ligands;
+      batch_atoms   = batch.batch_max_atoms;
       const int individuals_per_ligand = std::max(1, static_cast<int>((*this->scratch).configuration.population_number));
       
       auto &gradient_b = (*this->scratch).template get<buffer_data_type::GRADIENTS>();
@@ -105,6 +106,7 @@ namespace mudock {
 
       ls_ad_kernel = std::make_unique<adadelta_kernel<queue_type>>(individuals_per_ligand,
                                                                   batch_ligands,
+                                                                  batch_atoms,
                                                                   this->score_stage,
                                                                   gradients_b,
                                                                   population_b,
@@ -200,6 +202,7 @@ namespace mudock {
 
   private:
     int batch_ligands;
+    int batch_atoms;
 
     std::unique_ptr<adadelta_kernel<queue_type>> ls_ad_kernel;
     geometric<queue_type> geom_trans;
