@@ -44,9 +44,20 @@ namespace mudock {
   template<typename T, typename... Ts>
   constexpr bool is_in_tuple_v = (std::same_as<T, Ts> || ...);
 
-  template<typename T>
-  concept buffer_type_allowed =
-      []<typename... Ts>(std::tuple<Ts...>*) { return is_in_tuple_v<T, Ts...>; }((buffer_type_list*) nullptr);
+  // template<typename T>
+  // concept buffer_type_allowed =
+  //     []<typename... Ts>(std::tuple<Ts...>*) { return is_in_tuple_v<T, Ts...>; }((buffer_type_list*) nullptr);
+
+// Helper trait to check if T is in a std::tuple
+template <typename T, typename Tuple>
+struct is_in_buffer_list;
+
+template <typename T, typename... Ts>
+struct is_in_buffer_list<T, std::tuple<Ts...>> : std::disjunction<std::is_same<T, Ts>...> {};
+
+// Refactored concept that nvcc can digest
+template <typename T>
+concept buffer_type_allowed = is_in_buffer_list<T, buffer_type_list>::value;
 
   template<buffer_data_type buff_t, class T>
     requires buffer_type_allowed<T>
@@ -130,7 +141,7 @@ namespace mudock {
   };
   template<>
   struct buffer_type_traits<buffer_data_type::PROT_GRID_MAPS> {
-    using type = buffer_type_traits_impl<buffer_data_type::PROT_SIZE_XYZ, fp_type>::type;
+    using type = buffer_type_traits_impl<buffer_data_type::PROT_GRID_MAPS, fp_type>::type;
   };
   template<>
   struct buffer_type_traits<buffer_data_type::ADADELTA_E_G2> {
