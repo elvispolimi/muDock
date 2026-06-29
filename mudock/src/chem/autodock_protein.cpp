@@ -263,7 +263,6 @@ namespace mudock {
     const auto& vector1  = geometries.vector1;
     const auto& vector2  = geometries.vector2;
     const auto& exp      = geometries.exp;
-    const auto& disorder = geometries.disorder;
 
     // declare the maps that will describe the protein
     adt_grid = {min, max, resolution};

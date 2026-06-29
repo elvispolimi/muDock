@@ -134,6 +134,16 @@ list(
   "${source_path}/tbb_implementation/runtime_services.cpp"
 )
 
+set(mudock_precompute_opt_sources
+    "${source_path}/chem/autodock_protein.cpp")
+
+if(OVERRIDE_PRECOMPUTE_OPT)
+  foreach(precompute_source IN LISTS mudock_precompute_opt_sources)
+    set_source_files_properties("${precompute_source}"
+                                PROPERTIES COMPILE_OPTIONS "-O2")
+  endforeach()
+endif()
+
 if(MUDOCK_ENABLE_MPI)
   list(
     APPEND

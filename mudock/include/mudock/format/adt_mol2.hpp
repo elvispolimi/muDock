@@ -10,6 +10,7 @@
 #include <mudock/molecule.hpp>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace mudock {
   struct adt_mol2_tokens {
@@ -50,14 +51,6 @@ namespace mudock {
         const auto atom_name = stored_atom_name.empty() ? std::string_view{generated_atom_name}
                                                         : std::string_view{stored_atom_name};
 
-        const auto sybyl_type = molecule.sybyl_type(atom_index);
-
-        const auto atom_type =
-            sybyl_type == sybyl_atom_type::UNKNOWN ? element_symbol : to_string(sybyl_type);
-
-        const auto residue_id        = molecule.residue_id(atom_index);
-        const auto& residue_name     = molecule.residue_name(atom_index);
-        const auto residue_type_name = to_string(molecule.atom_residue_type(atom_index));
         out_s << std::setw(5) << atom_index + 1 << " " << std::setw(8) << atom_name << " " << std::fixed
               << std::setprecision(4) << std::setw(10) << molecule.x(atom_index) << " " << std::setw(10)
               << molecule.y(atom_index) << " " << std::setw(10) << molecule.z(atom_index) << " "
@@ -148,29 +141,18 @@ namespace mudock {
 
               std::istringstream stream(line);
 
-              int atom_id    = 0;
-              int residue_id = 0;
+              std::vector<std::string> tokens;
+              for (std::string token; stream >> token;) {
+                tokens.push_back(token);
+              }
 
-              fp_type x      = 0;
-              fp_type y      = 0;
-              fp_type z      = 0;
-              fp_type charge = 0;
-
-              bool is_aromatic = false;
-
-              std::string atom_name;
-              std::string element;
-              std::string adt;
-              std::string residue_name;
-              std::string sybyl_type;
-              std::string residue_type_name;
-
-              stream >> atom_id >> atom_name >> x >> y >> z >> sybyl_type >> residue_id >> residue_name >>
-                  residue_type_name >> adt >> charge >> is_aromatic;
-
-              if (!stream) {
+              // Fixed ADTMOL2 atom layout emitted by writer:
+              // atom_id atom_name x y z sybyl_type residue_id residue_name adt charge is_aromatic
+              if (tokens.size() != 11) {
                 throw std::runtime_error("Invalid ADT-MOL2 atom record: " + line);
               }
+
+              const auto atom_id = std::stoi(tokens[0]);
 
               // Optional sanity check: atom IDs in the file should normally be 1-based.
               if (atom_id != atom_index + 1) {
@@ -178,6 +160,17 @@ namespace mudock {
                                          std::to_string(atom_id) + ", expected " +
                                          std::to_string(atom_index + 1));
               }
+
+              const auto& atom_name   = tokens[1];
+              const auto x            = static_cast<fp_type>(std::stod(tokens[2]));
+              const auto y            = static_cast<fp_type>(std::stod(tokens[3]));
+              const auto z            = static_cast<fp_type>(std::stod(tokens[4]));
+              const auto& sybyl_type  = tokens[5];
+              const auto residue_id   = std::stoi(tokens[6]);
+              const auto& residue_name = tokens[7];
+              const auto& adt         = tokens[8];
+              const auto charge       = static_cast<fp_type>(std::stod(tokens[9]));
+              const bool is_aromatic  = std::stoi(tokens[10]) != 0;
 
               molecule.x(atom_index) = x;
               molecule.y(atom_index) = y;
@@ -187,9 +180,9 @@ namespace mudock {
               molecule.elements(atom_index)      = get_element(parsed_sybyl_type);
               molecule.autodock_type(atom_index) = parse_autodock_type(adt);
 
-              molecule.residue_id(atom_index)        = residue_id;
-              molecule.residue_name(atom_index)      = residue_name;
-              molecule.atom_residue_type(atom_index) = parse_residue_type(residue_type_name);
+              molecule.residue_id(atom_index)   = residue_id;
+              molecule.residue_name(atom_index) = residue_name;
+              molecule.atom_residue_type(atom_index) = parse_residue_type(residue_name);
 
               molecule.atom_name(atom_index)  = atom_name;
               molecule.sybyl_type(atom_index) = parsed_sybyl_type;
