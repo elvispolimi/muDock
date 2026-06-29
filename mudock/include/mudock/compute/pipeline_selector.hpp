@@ -1,6 +1,5 @@
 #pragma once
 
-#include "mudock/format/format_id.hpp"
 #include "mudock/format/supported_format.hpp"
 #include "mudock/utils.hpp"
 

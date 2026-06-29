@@ -10,6 +10,8 @@
 #include <mudock/molecule.hpp>
 #include <string>
 #include <string_view>
+#include <sstream>
+#include <stdexcept>
 #include <vector>
 
 namespace mudock {
@@ -142,8 +144,9 @@ namespace mudock {
               std::istringstream stream(line);
 
               std::vector<std::string> tokens;
+              tokens.reserve(12);
               for (std::string token; stream >> token;) {
-                tokens.push_back(token);
+                tokens.push_back(std::move(token));
               }
 
               // Fixed ADTMOL2 atom layout emitted by writer:
