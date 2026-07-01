@@ -3,9 +3,11 @@
 #include <mudock/molecule/constraints.hpp>
 #include <mudock/cuda_implementation/queue_cuda.cuh>
 #include <mudock/compute/adadelta_kernel.hpp>
-#include <mudock/compute/adadelta.hpp>
 #include <mudock/compute/reorder_buffer.hpp>
 #include <mudock/cuda_implementation/adadelta_cuda.cuh>
+#include <mudock/cpp_implementation/chromosome.hpp>
+#include <mudock/molecule.hpp>
+#include <mudock/utils.hpp>
 #include <cmath>
 
 namespace mudock {
@@ -62,13 +64,9 @@ namespace mudock {
 
   }
 
-  template<>
-  void adadelta_kernel<queue_cuda>::compute_gradients(){
-    (this->score_stage).get()->compute_gradient();
-  }
   
   template<>
-  void adadelta_kernel<queue_cuda>::apply_adadelta() {
+  void adadelta_kernel<queue_cuda>::operator()() {
     void* args[] = {(void*) &batch_ligands,
                     (void*) &individuals_per_ligand,
                     (void*) &gradients_b,

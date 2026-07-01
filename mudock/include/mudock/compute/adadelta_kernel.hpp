@@ -3,8 +3,9 @@
 #include <concepts>
 #include <memory>
 #include <mudock/compute/queue.hpp>
-#include <mudock/compute/scoring.hpp>
 #include <mudock/type_alias.hpp>
+#include <mudock/cpp_implementation/chromosome.hpp>
+
 
 namespace mudock {
   
@@ -16,7 +17,6 @@ namespace mudock {
     adadelta_kernel(const int individuals_per_ligand_,
                     const int batch_ligands_,
                     const int batch_atoms_,
-                    std::shared_ptr<differentiable_scoring<queue_type>> score_stage_,
                     gradient *__restrict__ gradients_b_,
                     chromosome *__restrict__ population_b_,
                     int *__restrict__ num_rotamers_b_,
@@ -29,7 +29,6 @@ namespace mudock {
         : individuals_per_ligand(individuals_per_ligand_),
           batch_ligands(batch_ligands_),
           batch_atoms(batch_atoms_),
-          score_stage(score_stage_),
           gradients_b(gradients_b_),
           population_b(population_b_),
           num_rotamers_b(num_rotamers_b_),
@@ -41,8 +40,6 @@ namespace mudock {
           epsilon(epsilon_) {}
 
     void operator()();
-    void compute_gradients();
-    void apply_adadelta();
 
     adadelta_kernel(const adadelta_kernel &)            = default;
     adadelta_kernel(adadelta_kernel &&)                 = default;
@@ -55,7 +52,6 @@ namespace mudock {
     const int individuals_per_ligand;
     const int batch_ligands;
     const int batch_atoms;
-    std::shared_ptr<differentiable_scoring<queue_type>> score_stage;
     gradient *__restrict__ gradients_b;
     chromosome* population_b;
     int *__restrict__ num_rotamers_b;
