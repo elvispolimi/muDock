@@ -235,6 +235,11 @@ namespace mudock {
             molecule.z(atom_index)           = z;
             molecule.charge(atom_index)      = charge;
             molecule.is_aromatic(atom_index) = detail::is_mol2_aromatic_atom(atom_type) ? 1 : 0;
+            molecule.atom_name(atom_index)   = atom_name;
+            molecule.sybyl_type(atom_index)  = parse_sybyl_atom_type(atom_type);
+            molecule.residue_id(atom_index)   = subst_id;
+            molecule.residue_name(atom_index) = subst_name;
+            molecule.atom_residue_type(atom_index) = parse_residue_type(subst_name);
             molecule.elements(atom_index) =
                 parse_element_symbol(detail::mol2_element_token(atom_type, atom_name));
             ++atom_index;
