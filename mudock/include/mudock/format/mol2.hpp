@@ -215,34 +215,54 @@ namespace mudock {
             if (atom_index >= expected_atoms) {
               throw std::runtime_error("MOL2 atom section exceeds declared atom count");
             }
-            std::istringstream stream(line);
-            int atom_id = 0;
-            std::string atom_name;
-            fp_type x = 0, y = 0, z = 0;
-            std::string atom_type;
-            int subst_id = 0;
-            std::string subst_name;
-            fp_type charge = 0;
+            try {
+              std::istringstream stream(line);
+              std::vector<std::string> tokens;
+              for (std::string token; stream >> token;) {
+                tokens.push_back(std::move(token));
+              }
 
-            stream >> atom_id >> atom_name >> x >> y >> z >> atom_type;
-            if (!stream) {
-              throw std::runtime_error("Invalid MOL2 atom record");
+              if (tokens.size() < 6) {
+                throw std::runtime_error("Invalid MOL2 atom record: too few fields");
+              }
+
+              const int atom_id = std::stoi(tokens[0]);
+              if (atom_id != atom_index + 1) {
+                throw std::runtime_error("Invalid MOL2 atom record: unexpected atom id " +
+                                         std::to_string(atom_id) + ", expected " +
+                                         std::to_string(atom_index + 1));
+              }
+
+              const auto& atom_name  = tokens[1];
+              const fp_type x        = static_cast<fp_type>(std::stod(tokens[2]));
+              const fp_type y        = static_cast<fp_type>(std::stod(tokens[3]));
+              const fp_type z        = static_cast<fp_type>(std::stod(tokens[4]));
+              const auto& atom_type  = tokens[5];
+
+              molecule.x(atom_index)           = x;
+              molecule.y(atom_index)           = y;
+              molecule.z(atom_index)           = z;
+              molecule.is_aromatic(atom_index) = detail::is_mol2_aromatic_atom(atom_type) ? 1 : 0;
+              molecule.atom_name(atom_index)   = atom_name;
+              molecule.sybyl_type(atom_index)  = parse_sybyl_atom_type(atom_type);
+              molecule.elements(atom_index) =
+                  parse_element_symbol(detail::mol2_element_token(atom_type, atom_name));
+
+              if (tokens.size() >= 7) {
+                molecule.residue_id(atom_index) = std::stoi(tokens[6]);
+              }
+              if (tokens.size() >= 8) {
+                molecule.residue_name(atom_index)      = tokens[7];
+                molecule.atom_residue_type(atom_index) = parse_residue_type(tokens[7]);
+              }
+              if (tokens.size() >= 9) {
+                molecule.charge(atom_index) = static_cast<fp_type>(std::stod(tokens[8]));
+              }
+
+              ++atom_index;
+            } catch (const std::exception& e) {
+              throw std::runtime_error("Invalid MOL2 atom record: " + line + " (" + e.what() + ")");
             }
-            stream >> subst_id >> subst_name >> charge;
-
-            molecule.x(atom_index)           = x;
-            molecule.y(atom_index)           = y;
-            molecule.z(atom_index)           = z;
-            molecule.charge(atom_index)      = charge;
-            molecule.is_aromatic(atom_index) = detail::is_mol2_aromatic_atom(atom_type) ? 1 : 0;
-            molecule.atom_name(atom_index)   = atom_name;
-            molecule.sybyl_type(atom_index)  = parse_sybyl_atom_type(atom_type);
-            molecule.residue_id(atom_index)   = subst_id;
-            molecule.residue_name(atom_index) = subst_name;
-            molecule.atom_residue_type(atom_index) = parse_residue_type(subst_name);
-            molecule.elements(atom_index) =
-                parse_element_symbol(detail::mol2_element_token(atom_type, atom_name));
-            ++atom_index;
             break;
           }
           case state::BOND: {
