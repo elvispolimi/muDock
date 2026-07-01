@@ -4,6 +4,7 @@
 #include <cassert>
 #include <fstream>
 #include <memory>
+#include <mudock/format/mol2.hpp>
 #include <mudock/format/ob_wrapper.hpp>
 #include <mudock/format/reader.hpp>
 #include <mudock/log.hpp>
@@ -94,17 +95,25 @@ namespace mudock {
   template<>
   static_molecule parser<supported_format::MOL2>(const std::string_view description,
                                                  std::function<bool(OpenBabel::OBBond&)>) {
-    return parser_impl<static_molecule, supported_format::MOL2>(description, ob_rotate_check);
+    static_molecule mol;
+    mol2::parse(mol, description);
+    return mol;
   };
   template<>
   dynamic_molecule parser<supported_format::MOL2>(const std::string_view description,
                                                   std::function<bool(OpenBabel::OBBond&)>) {
-    return parser_impl<dynamic_molecule, supported_format::MOL2>(description, ob_rotate_check);
+    dynamic_molecule mol;
+    mol2::parse(mol, description);
+    return mol;
   };
   template<>
   ob_mol_wrapper parser<supported_format::MOL2>(const std::string_view description,
                                                 std::function<bool(OpenBabel::OBBond&)>) {
-    return ob_parser<supported_format::MOL2>(description);
+    dynamic_molecule mol;
+    mol2::parse(mol, description);
+    ob_mol_wrapper ob_mol = std::make_unique<OpenBabel::OBMol>();
+    convert(ob_mol, mol);
+    return ob_mol;
   }
   // PDBQT
   template<>
