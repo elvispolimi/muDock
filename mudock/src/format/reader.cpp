@@ -92,6 +92,10 @@ namespace mudock {
     return ob_parser<supported_format::PDBQT>(description);
   }
   // MOL2
+  // NOTE:
+  // - static_molecule / dynamic_molecule use the native MOL2 parser so we preserve the raw MOL2 atom typing.
+  // - ob_mol_wrapper intentionally stays on the OpenBabel MOL2 reader because callers expect an OBMol that
+  //   behaves like OpenBabel's own MOL2 parse, not a round-tripped approximation.
   template<>
   static_molecule parser<supported_format::MOL2>(const std::string_view description,
                                                  std::function<bool(OpenBabel::OBBond&)>) {
