@@ -13,7 +13,6 @@ namespace mudock {
     requires std::derived_from<queue_type, queue>
   struct adadelta_kernel {
     static constexpr char adadelta_region_name[] = "adadelta_kernel";
-    static constexpr char gradient_region_name[] = "adadelta_gradient_kernel";
     adadelta_kernel(const int individuals_per_ligand_,
                     const int batch_ligands_,
                     const int batch_atoms_,

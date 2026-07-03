@@ -8,6 +8,7 @@
 #include <mudock/cpp_implementation/chromosome.hpp>
 #include <mudock/molecule.hpp>
 #include <mudock/utils.hpp>
+#include <mudock/cuda_implementation/cuda_utils.cuh>
 #include <cmath>
 
 namespace mudock {
@@ -85,6 +86,29 @@ namespace mudock {
       batch_atoms,
       reorder_buffer<static_molecule>::atoms_clusters.data());
 
+  }
+
+  template<int MAX_ATOMS>
+  batch_multiple get_adadelta_batch(const int device_id) {
+    return get_kernel_batch_multiple_cuda<apply_adadelta_update_gpu<MAX_ATOMS>>(device_id,
+                                                                  BLOCK_SIZE,
+                                                                  0,
+                                                                  "adadelta::apply_adadelta_update_gpu");
+  }
+
+  template<>
+  batch_multiple get_adadelta_batch_multiple<queue_cuda>(const int atoms, std::shared_ptr<queue_cuda> q_b) {
+    batch_multiple bucket_multiple{};
+    const int device_id = q_b->get_id();
+    constexpr_for<0, reorder_buffer<static_molecule>::get_num_atom_clusters(), 1>([&](const auto atom_index) {
+      const auto n_atoms = reorder_buffer<static_molecule>::atoms_clusters[atom_index];
+      if (atoms == n_atoms)
+        bucket_multiple = get_adadelta_batch<n_atoms>(device_id);
+    });
+    if (bucket_multiple.total_multiple() <= 0)
+      throw std::runtime_error(
+          "Compilation error: there is a bucket of atoms number which it is not handled.");
+    return normalize_batch_multiple(bucket_multiple);
   }
 
 } // namespace mudock

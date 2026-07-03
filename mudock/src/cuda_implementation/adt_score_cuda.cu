@@ -77,6 +77,20 @@ namespace mudock {
     out[2] = a[0]*b[1] - a[1]*b[0];
   }
 
+  __device__ __forceinline__ void get_grid_values(const fp_type *__restrict__ map,
+                                                  const int &map_index_x,
+                                                  const int &map_index_xy,
+                                                  fp_type *__restrict__ out_values) {
+    out_values[0] = map[0];
+    out_values[1] = map[map_index_xy];
+    out_values[2] = map[map_index_x];
+    out_values[3] = map[map_index_x + map_index_xy];
+    out_values[4] = map[1];
+    out_values[5] = map[1 + map_index_xy];
+    out_values[6] = map[1 + map_index_x];
+    out_values[7] = map[1 + map_index_x + map_index_xy];
+  }
+
   __device__ __forceinline__ fp_type trilinear_interpolation_cuda(const fp_type* __restrict__ map,
                                                                   const fp_type* __restrict__ coeffs,
                                                                   const int& map_index_x,
@@ -283,54 +297,38 @@ namespace mudock {
     }
   }
 
-  __device__ __forceinline__ void get_grid_values(const fp_type *__restrict__ map,
-                                                  const int &map_index_x,
-                                                  const int &map_index_xy,
-                                                  fp_type *__restrict__ out_values) {
-    out_values[0] = map[0];
-    out_values[1] = map[map_index_xy];
-    out_values[2] = map[map_index_x];
-    out_values[3] = map[map_index_x + map_index_xy];
-    out_values[4] = map[1];
-    out_values[5] = map[1 + map_index_xy];
-    out_values[6] = map[1 + map_index_x];
-    out_values[7] = map[1 + map_index_x + map_index_xy];
-  }
 
 template<int MAX_ATOMS>
 __global__ void calc_gradient(const int batch_atoms,
-                             const int batch_ligands,
-                             const int individuals_per_ligand,
-                             const fp_type *__restrict__ x_scratch_b,
-                             const fp_type *__restrict__ y_scratch_b,
-                             const fp_type *__restrict__ z_scratch_b,
-                             const chromosome* __restrict__ chromosomes_b,
-                             const int* __restrict__ ligand_fragments_b,
-                             const int* __restrict__ ligand_fragments_start_b,
-                             const int* __restrict__ frag_indices_start_b,
-                             const int* __restrict__ frag_start_indices_b,
-                             const int* __restrict__ frag_stop_indices_b,
-                             const fp_type *__restrict__ vols_b,
-                             const fp_type *__restrict__ solpars_b,
-                             const fp_type *__restrict__ charges_b,
-                             const int *__restrict__ num_atoms_b,
-                             const int *__restrict__ num_rotamers_b,
-                             const int *__restrict__ num_nonbonds_b,
-                             const int *__restrict__ nonbond_a1_b,
-                             const int *__restrict__ nonbond_a2_b,
-                             const fp_type *__restrict__ nonbond_cA_b,
-                             const fp_type *__restrict__ nonbond_cB_b,
-                             const int *__restrict__ nonbond_xB_b,
-                             const fp_type *__restrict__ grid_maps,
-                             const fp_type *__restrict__ minimum,
-                             const fp_type *__restrict__ maximum,
-                             const fp_type *__restrict__ center,
-                             const int *__restrict__ map_offsets_b,
-                             const int map_index_x,
-                             const int map_index_xy,
-                             const int map_index_xyz,
-                             gradient *__restrict__ gradients_b,
-                             int *__restrict__ active_individuals_b) {
+                              const int batch_ligands,
+                              const int individuals_per_ligand,
+                              const fp_type *__restrict__ x_scratch_b,
+                              const fp_type *__restrict__ y_scratch_b,
+                              const fp_type *__restrict__ z_scratch_b,
+                              const chromosome* __restrict__ chromosomes_b,
+                              const int* __restrict__ ligand_fragments_b,
+                              const int* __restrict__ ligand_fragments_start_b,
+                              const int* __restrict__ frag_indices_start_b,
+                              const int* __restrict__ frag_start_indices_b,
+                              const int* __restrict__ frag_stop_indices_b,
+                              const fp_type *__restrict__ vols_b,
+                              const fp_type *__restrict__ solpars_b,
+                              const fp_type *__restrict__ charges_b,
+                              const int *__restrict__ num_atoms_b,
+                              const int *__restrict__ num_rotamers_b,
+                              const int *__restrict__ num_nonbonds_b,
+                              const int *__restrict__ nonbond_a1_b,
+                              const int *__restrict__ nonbond_a2_b,
+                              const fp_type *__restrict__ nonbond_cA_b,
+                              const fp_type *__restrict__ nonbond_cB_b,
+                              const int *__restrict__ nonbond_xB_b,
+                              const fp_type *__restrict__ grid_maps,
+                              const int *__restrict__ map_offsets_b,
+                              const int map_index_x,
+                              const int map_index_xy,
+                              const int map_index_xyz,
+                              gradient *__restrict__ gradients_b,
+                              int *__restrict__ active_individuals_b) {
 
     const int ligand_id       = blockIdx.x;
     assert(blockDim.x == BLOCK_SIZE && warpSize == BLOCK_SIZE &&
@@ -360,8 +358,10 @@ __global__ void calc_gradient(const int batch_atoms,
     gradient *__restrict__ gradients_l     = gradients_b + ligand_id * individuals_per_ligand;
     int *__restrict__ active_individuals_l = active_individuals_b + ligand_id * individuals_per_ligand;
     
-    std::vector<fp_type> dE_dX(3 * batch_atoms);
-    std::vector<fp_type> grad(6 + batch_rotamers);         // gradient = dE/dx, dE/dy, dE/dz, dE/dalpha, dE/dbeta, dE/dgamma, dE/d_tors_1, ..., dE/d_tors_n
+
+    // TODO L very Important: fix this magic number with actual values
+    fp_type dE_dX[3 * MAX_ATOMS];
+    fp_type grad[6 + MAX_ATOMS];    // gradient = dE/dx, dE/dy, dE/dz, dE/dalpha, dE/dbeta, dE/dgamma, dE/d_tors_1, ..., dE/d_tors_n
 
     // TODO L now each block compute a ligand and each thread in the block compute a set of individuals, strided by blockDim
     // and no parallelization of atoms. Make some tests and see if it is better to divide like in calc_energy, where all threads
@@ -373,8 +373,8 @@ __global__ void calc_gradient(const int batch_atoms,
       }
 
       // Reinitialize to 0s all gradient components vectors
-      std::fill(dE_dX.begin(), dE_dX.end(), 0);
-      std::fill(grad.begin(),  grad.end(),  0);
+      for (int i = 0; i < 3 * batch_atoms; ++i) dE_dX[i] = 0;
+      for (int i = 0; i < 6 + batch_rotamers; ++i) grad[i] = 0;
 
       const fp_type *__restrict__ scratch_x_l = scratch_x + individual_index * batch_atoms;
       const fp_type *__restrict__ scratch_y_l = scratch_y + individual_index * batch_atoms;
@@ -386,23 +386,24 @@ __global__ void calc_gradient(const int batch_atoms,
       for (int index = 0; index < num_atoms; ++index) {
         fp_type coord[3]{scratch_x_l[index], scratch_y_l[index], scratch_z_l[index]};
 
-        const auto diff_x = coord[0] - center[0];
-        const auto diff_y = coord[1] - center[1];
-        const auto diff_z = coord[2] - center[2];
-
-        if (coord[0] < minimum[0] || coord[0] > maximum[0] || coord[1] < minimum[1] ||
-            coord[1] > maximum[1] || coord[2] < minimum[2] || coord[2] > maximum[2]) {
+        
+        if (coord[0] < map_min_const[0] || coord[0] > map_max_const[0] || coord[1] < map_min_const[1] ||
+          coord[1] > map_max_const[1] || coord[2] < map_min_const[2] || coord[2] > map_max_const[2]) {
+          const auto diff_x = coord[0] - map_center_const[0];
+          const auto diff_y = coord[1] - map_center_const[1];
+          const auto diff_z = coord[2] - map_center_const[2];
           const fp_type penalty_factor = 2 * 2 * ENERGYPENALTY;
-          dE_dX[index] += penalty_factor * diff_x;
-          dE_dX[index + 1] += penalty_factor * diff_y;
-          dE_dX[index + 2] += penalty_factor * diff_z;
+
+          dE_dX[3*index] += penalty_factor * diff_x;
+          dE_dX[3*index + 1] += penalty_factor * diff_y;
+          dE_dX[3*index + 2] += penalty_factor * diff_z;
         } else {
           const auto &atom_charge = charge_l[index];
           const fp_type *atom_map = grid_maps + map_offsets_l[index];
 
-          coord[0] = (coord[0] - minimum[0]) * inv_spacing;
-          coord[1] = (coord[1] - minimum[1]) * inv_spacing;
-          coord[2] = (coord[2] - minimum[2]) * inv_spacing;
+          coord[0] = (coord[0] - map_min_const[0]) * inv_spacing;
+          coord[1] = (coord[1] - map_min_const[1]) * inv_spacing;
+          coord[2] = (coord[2] - map_min_const[2]) * inv_spacing;
 
           const int u0      = static_cast<int>(coord[0]);
           const fp_type p0u = coord[0] - static_cast<fp_type>(u0);
@@ -422,20 +423,20 @@ __global__ void calc_gradient(const int batch_atoms,
           fp_type grid_values[8];
           get_grid_values(electro_map + base_index, map_index_x, map_index_xy, grid_values);
           const fp_type constant_factor_el = inv_spacing * atom_charge;
-          dE_dX[index] += constant_factor_el * (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
-          dE_dX[index + 1] += constant_factor_el * (p1w * (p1u * (grid_values[2] - grid_values[0]) + p0u * (grid_values[6] - grid_values[4])) + p0w * (p1u * (grid_values[3] - grid_values[1]) + p0u * (grid_values[7] - grid_values[5])));
-          dE_dX[index + 2] += constant_factor_el * (p1v * (p1u * (grid_values[1] - grid_values[0]) + p0u * (grid_values[5] - grid_values[4])) + p0v * (p1u * (grid_values[3] - grid_values[2]) + p0u * (grid_values[7] - grid_values[6])));
+          dE_dX[3*index] += constant_factor_el * (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
+          dE_dX[3*index + 1] += constant_factor_el * (p1w * (p1u * (grid_values[2] - grid_values[0]) + p0u * (grid_values[6] - grid_values[4])) + p0w * (p1u * (grid_values[3] - grid_values[1]) + p0u * (grid_values[7] - grid_values[5])));
+          dE_dX[3*index + 2] += constant_factor_el * (p1v * (p1u * (grid_values[1] - grid_values[0]) + p0u * (grid_values[5] - grid_values[4])) + p0v * (p1u * (grid_values[3] - grid_values[2]) + p0u * (grid_values[7] - grid_values[6])));
 
           get_grid_values(atom_map + base_index, map_index_x, map_index_xy, grid_values);
-          dE_dX[index] += inv_spacing * (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
-          dE_dX[index + 1] += inv_spacing * (p1w * (p1u * (grid_values[2] - grid_values[0]) + p0u * (grid_values[6] - grid_values[4])) + p0w * (p1u * (grid_values[3] - grid_values[1]) + p0u * (grid_values[7] - grid_values[5])));
-          dE_dX[index + 2] += inv_spacing * (p1v * (p1u * (grid_values[1] - grid_values[0]) + p0u * (grid_values[5] - grid_values[4])) + p0v * (p1u * (grid_values[3] - grid_values[2]) + p0u * (grid_values[7] - grid_values[6])));            
+          dE_dX[3*index] += inv_spacing * (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
+          dE_dX[3*index + 1] += inv_spacing * (p1w * (p1u * (grid_values[2] - grid_values[0]) + p0u * (grid_values[6] - grid_values[4])) + p0w * (p1u * (grid_values[3] - grid_values[1]) + p0u * (grid_values[7] - grid_values[5])));
+          dE_dX[3*index + 2] += inv_spacing * (p1v * (p1u * (grid_values[1] - grid_values[0]) + p0u * (grid_values[5] - grid_values[4])) + p0v * (p1u * (grid_values[3] - grid_values[2]) + p0u * (grid_values[7] - grid_values[6])));            
           
           get_grid_values(desolv_map + base_index, map_index_x, map_index_xy, grid_values);
           const fp_type constant_factor_des = inv_spacing * std::fabs(atom_charge);
-          dE_dX[index] += constant_factor_des * (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
-          dE_dX[index + 1] += constant_factor_des * (p1w * (p1u * (grid_values[2] - grid_values[0]) + p0u * (grid_values[6] - grid_values[4])) + p0w * (p1u * (grid_values[3] - grid_values[1]) + p0u * (grid_values[7] - grid_values[5])));
-          dE_dX[index + 2] += constant_factor_des * (p1v * (p1u * (grid_values[1] - grid_values[0]) + p0u * (grid_values[5] - grid_values[4])) + p0v * (p1u * (grid_values[3] - grid_values[2]) + p0u * (grid_values[7] - grid_values[6])));
+          dE_dX[3*index] += constant_factor_des * (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
+          dE_dX[3*index + 1] += constant_factor_des * (p1w * (p1u * (grid_values[2] - grid_values[0]) + p0u * (grid_values[6] - grid_values[4])) + p0w * (p1u * (grid_values[3] - grid_values[1]) + p0u * (grid_values[7] - grid_values[5])));
+          dE_dX[3*index + 2] += constant_factor_des * (p1v * (p1u * (grid_values[1] - grid_values[0]) + p0u * (grid_values[5] - grid_values[4])) + p0v * (p1u * (grid_values[3] - grid_values[2]) + p0u * (grid_values[7] - grid_values[6])));
 
           
         }
@@ -515,13 +516,13 @@ __global__ void calc_gradient(const int batch_atoms,
           const fp_type gy = dE_dr * dir_y;
           const fp_type gz = dE_dr * dir_z;
 
-          dE_dX[a1] += gx;
-          dE_dX[a1 + 1] += gy;
-          dE_dX[a1 + 2] += gz;
+          dE_dX[3*a1] += gx;
+          dE_dX[3*a1 + 1] += gy;
+          dE_dX[3*a1 + 2] += gz;
 
-          dE_dX[a2] -= gx;
-          dE_dX[a2 + 1] -= gy;
-          dE_dX[a2 + 2] -= gz;
+          dE_dX[3*a2] -= gx;
+          dE_dX[3*a2 + 1] -= gy;
+          dE_dX[3*a2 + 2] -= gz;
 
         }
       }
@@ -578,9 +579,9 @@ __global__ void calc_gradient(const int batch_atoms,
       grad[5] = dot3(tau, u_gamma);
 
       for (int index = 0; index < num_atoms; ++index) {
-        grad[0] += dE_dX[index];
-        grad[1] += dE_dX[index + 1];
-        grad[2] += dE_dX[index + 2];
+        grad[0] += dE_dX[3*index];
+        grad[1] += dE_dX[3*index + 1];
+        grad[2] += dE_dX[3*index + 2];
       }
 
       // Torsion derivatives
@@ -661,10 +662,11 @@ __global__ void calc_gradient(const int batch_atoms,
 
   }; // namespace mudock
 
-template<>
+  template<>
   void adt_gradient_kernel<queue_cuda>::operator()() {
     const int dev_id = q->get_id();
-    init_device(dev_id, minimum, maximum, center, map_index_xyz, grid_maps);
+    // init_device(dev_id, minimum, maximum, center, map_index_xyz, grid_maps);
+    
     void* args[] = {(void*) &batch_atoms,
                     (void*) &batch_ligands,
                     (void*) &scores_per_ligand,
@@ -688,10 +690,7 @@ template<>
                     (void*) &nonbond_cA_b,
                     (void*) &nonbond_cB_b,
                     (void*) &nonbond_xB_b,
-                    (void*) &grid_maps,
-                    (void*) &minimum,
-                    (void*) &maximum,
-                    (void*) &center,
+                    (void*) &(*cuda_texture_memory.v[dev_id].data).tex_dev,
                     (void*) &map_offsets_b,
                     (void*) &map_index_x,
                     (void*) &map_index_xy,
