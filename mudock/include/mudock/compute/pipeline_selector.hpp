@@ -42,8 +42,7 @@ namespace mudock {
   template<>
   struct scoring_function_format<scoring_function::ADT>
       : scoring_function_format_base<scoring_function_format<scoring_function::ADT>> {
-    inline static constexpr std::array formats{supported_format::ADTMOL2, supported_format::PDBQT};
-    inline static constexpr std::array formats{supported_format::MOL2, supported_format::ADTMOL2};
+    inline static constexpr std::array formats{supported_format::ADTMOL2, supported_format::PDBQT, supported_format::MOL2};
   };
 
   template<typename callback_t>
