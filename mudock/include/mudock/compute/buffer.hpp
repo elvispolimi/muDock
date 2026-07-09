@@ -130,7 +130,7 @@ namespace mudock {
   };
   template<>
   struct buffer_type_traits<buffer_data_type::PROT_GRID_MAPS> {
-    using type = buffer_type_traits_impl<buffer_data_type::PROT_SIZE_XYZ, fp_type>::type;
+    using type = buffer_type_traits_impl<buffer_data_type::PROT_GRID_MAPS, fp_type>::type;
   };
   template<>
   struct buffer_type_traits<buffer_data_type::ADADELTA_E_G2> {

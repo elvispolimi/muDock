@@ -59,13 +59,9 @@ namespace mudock {
     }
   }
 
-  template<>
-  void adadelta_kernel<queue_cpp>::compute_gradients(){
-    (this->score_stage).get()->compute_gradient();
-  }
   
   template<>
-  void adadelta_kernel<queue_cpp>::apply_adadelta() {
+  void adadelta_kernel<queue_cpp>::operator()() {
     q->invoke_kernel<this->adadelta_region_name>(apply_adadelta_update,
                                                 batch_ligands,
                                                 individuals_per_ligand,
@@ -79,9 +75,4 @@ namespace mudock {
                                                 epsilon);
   }
 
-  // TODO L what to do with this? i moved the iterations in adadelta.hpp
-  // template<>
-  // void adadelta_kernel<queue_cpp>::operator()() {
-  //
-  // }
 } // namespace mudock

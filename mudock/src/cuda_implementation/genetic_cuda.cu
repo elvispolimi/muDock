@@ -116,6 +116,19 @@ namespace mudock {
     curandState l_state                         = (state[global_thread_id]);
     const fp_type* __restrict__ scores          = ligand_scores + chromosome_number * ligand_id;
 
+    // TODO L remove this print
+    // print best score
+    if (blockIdx.x == 0 && threadIdx.x == 0) {
+      fp_type best = scores[0];
+      for(int i = 0; i < chromosome_number; ++i){
+        if (scores[i] < best){
+          best = scores[i];
+        }
+      }
+      printf("Best score: %f\n", double(best));
+      // end print best score 
+    }
+
     // Generate the new population
     for (int chromosome_index = local_thread_id; chromosome_index < chromosome_number;
          chromosome_index += thread_per_block) {

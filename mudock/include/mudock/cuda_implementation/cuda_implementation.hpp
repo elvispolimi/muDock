@@ -3,6 +3,7 @@
 #if defined(MUDOCK_USE_CUDA)
   #include <mudock/cuda_implementation/adt_score_cuda.cuh>
   #include <mudock/cuda_implementation/genetic_cuda.cuh>
+  #include <mudock/cuda_implementation/adadelta_cuda.cuh>
   #include <mudock/cuda_implementation/geom_transform_cuda.cuh>
   #include <mudock/cuda_implementation/queue_cuda.cuh>
 #endif

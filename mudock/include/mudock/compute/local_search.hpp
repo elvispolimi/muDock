@@ -4,6 +4,7 @@
 #include <mudock/molecule.hpp>
 #include <mudock/compute/stage.hpp>
 #include <mudock/compute/scratchpad.hpp>
+#include <mudock/compute/scoring.hpp>
 #include <mudock/cpp_implementation/chromosome.hpp>
 #include <mudock/format/writer.hpp>
 

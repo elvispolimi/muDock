@@ -2,11 +2,7 @@
 
 #include <cstddef>
 #include <cstring>
-#include <filesystem>
-#include <fstream>
 #include <random>
-#include <functional>
-#include <optional>
 #include <mudock/batch.hpp>
 #include <mudock/chem/autodock_grid_types.hpp>
 #include <mudock/chem/autodock_ligand.hpp>
@@ -14,8 +10,8 @@
 #include <mudock/compute/batch_multiple.hpp>
 #include <mudock/compute/adadelta_kernel.hpp>
 #include <mudock/compute/geometric_transform.hpp>
-#include <mudock/compute/local_search.hpp>
-#ifndef __CUDACC__
+#if !defined(__CUDACC__) && !defined(__HIPCC__)
+  #include <mudock/compute/local_search.hpp>
   #include <mudock/compute/buffer_utils.hpp>
   #include <mudock/compute/scoring.hpp>
   #include <mudock/compute/scratchpad.hpp>
@@ -24,7 +20,13 @@
 #include <mudock/type_alias.hpp>
 
 namespace mudock {
-  #ifndef __CUDACC__
+
+  template<typename queue_type>
+  batch_multiple get_adadelta_batch_multiple(const int, std::shared_ptr<queue_type>) {
+    return {};
+  }
+
+#if !defined(__CUDACC__) && !defined(__HIPCC__)
   // TODO check that the object type and the kernel impl are the same
   template<typename queue_type, template<typename> typename scoring_t>
   struct adadelta: public local_search<queue_type, scoring_t> {
@@ -43,6 +45,7 @@ namespace mudock {
       this->ligand_template = *batch.molecules[0];
 
       batch_ligands = batch.num_ligands;
+      batch_atoms   = batch.batch_max_atoms;
       const int individuals_per_ligand = std::max(1, static_cast<int>((*this->scratch).configuration.population_number));
       
       auto &gradient_b = (*this->scratch).template get<buffer_data_type::GRADIENTS>();
@@ -84,17 +87,17 @@ namespace mudock {
       std::vector<int> active_init(gradient_count);
       
       std::mt19937 rng((*this->scratch).configuration.seed.value_or(std::random_device{}()));
-      std::bernoulli_distribution dist(static_cast<double>((*this->scratch).configuration.lsrate / 100));
+      std::bernoulli_distribution dist(static_cast<double>((*this->scratch).configuration.lsrate / 100.0));
 
       for (size_t i = 0; i < gradient_count; ++i) {
         active_init[i] = dist(rng);
       }
 // TODO L IMPORTANT magari devo fare copyhost2device di active individuals??? come in adt_score.hpp
       // Copy to device/managed buffer
-      std::memcpy(
-          active_individuals_b.dev_pointer(),
-          active_init.data(),
-          gradient_count * sizeof(int));
+      std::memcpy((void *) active_individuals_b(),
+                  active_init.data(),
+                  gradient_count * sizeof(int));
+      active_individuals_b.copy_host2device();
 
       int* __restrict__ num_rotamers_p = num_rotamers_b.dev_pointer();
       chromosome *adadelta_e_g2        = adadelta_e_g2_b.dev_pointer();
@@ -103,9 +106,9 @@ namespace mudock {
 
       auto q = (*this->scratch).get_queue();
 
-      ls_ad_kernel = std::make_unique<adadelta_kernel<queue_type>>(individuals_per_ligand,
+      adadelta_krnl = std::make_unique<adadelta_kernel<queue_type>>(individuals_per_ligand,
                                                                   batch_ligands,
-                                                                  this->score_stage,
+                                                                  batch_atoms,
                                                                   gradients_b,
                                                                   population_b,
                                                                   num_rotamers_p,
@@ -125,7 +128,7 @@ namespace mudock {
       assert(
           (((*this->scratch).template get<buffer_data_type::GRADIENTS>().num_elements() % batch_ligands) == 0) &&
           "Number of gradients is not a multiple of ligands in the batch");
-      assert(ls_ad_kernel && "Adadelta local search kernel method not yet prepared");
+      assert(adadelta_krnl && "Adadelta local search kernel method not yet prepared");
 
       auto &scores_b = (*this->scratch).template get<buffer_data_type::SCORES>();
 
@@ -151,8 +154,9 @@ namespace mudock {
           }
         }
 
-        ls_ad_kernel->compute_gradients();
-        ls_ad_kernel->apply_adadelta();
+        // Fundamental part: compute gradient + adadelta update
+        (this->score_stage).get()->compute_gradient();
+        (*adadelta_krnl)();
       }
 
       if (only_local_search) {
@@ -161,7 +165,12 @@ namespace mudock {
       }
     }
 
-    static int get_ligand_mem(const int max_atoms, const knobs conf) {
+    // TODO L Important: this was copied from genetic.hpp code, but not sure if it must be adapted 
+    static std::size_t get_shared_ligand_mem(const int max_atoms, const knobs conf) {
+      return 0;
+    }
+
+    static std::size_t get_private_ligand_mem(const int max_atoms, const knobs conf) {
       std::size_t mem{0};
       const int individuals_per_ligand = std::max(1, static_cast<int>(conf.population_number));
 
@@ -173,7 +182,12 @@ namespace mudock {
       mem += sizeof(chromosome) * individuals_per_ligand; // E[g^2]
       mem += sizeof(chromosome) * individuals_per_ligand; // E[delta_w^2]
       mem += sizeof(int)        * individuals_per_ligand; // active flag
-      return static_cast<int>(mem);
+      return mem;
+    }
+
+    static int get_ligand_mem(const int max_atoms, const knobs conf) {
+      return static_cast<int>(get_shared_ligand_mem(max_atoms, conf) +
+                              get_private_ligand_mem(max_atoms, conf));
     }
 
     static batch_multiple get_batch_size(const int atoms,
@@ -182,7 +196,7 @@ namespace mudock {
                                          const size_t max_bucket_size) {
       (void) conf;
       const auto plain_multiple_info =
-          normalize_batch_multiple(get_adt_score_batch_multiple<queue_type>(atoms, q));
+          normalize_batch_multiple(get_adadelta_batch_multiple<queue_type>(atoms, q));
       mudock::stage_bucket_trace("ADADELTA stage plain multiple for ",
                                  atoms,
                                  " atoms -> total=",
@@ -200,10 +214,10 @@ namespace mudock {
 
   private:
     int batch_ligands;
+    int batch_atoms;
 
-    std::unique_ptr<adadelta_kernel<queue_type>> ls_ad_kernel;
+    std::unique_ptr<adadelta_kernel<queue_type>> adadelta_krnl;
     geometric<queue_type> geom_trans;
-    std::function<void()> coordinate_update;
 
     // TODO L: Implement teardown
     void teardown_impl(batch<static_molecule> &batch) override {

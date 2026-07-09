@@ -468,7 +468,6 @@ namespace mudock {
         }
 
         const chromosome &chrom = ligand_chromosomes[individual_index];
-        const fp_type rad_alpha = deg_to_rad(chrom[3]);
         const fp_type rad_beta = deg_to_rad(chrom[4]);
         const fp_type rad_gamma = deg_to_rad(chrom[5]);
 
