@@ -329,6 +329,8 @@ __global__ void calc_gradient(const int batch_atoms,
                               const int map_index_xyz,
                               gradient *__restrict__ gradients_b,
                               int *__restrict__ active_individuals_b) {
+    const fp_type *electro_map = grid_maps + map_index_xyz * static_cast<int>(autodock_grid_type::ELEC);
+    const fp_type *desolv_map  = grid_maps + map_index_xyz * static_cast<int>(autodock_grid_type::DESOLV);
 
     const int ligand_id       = blockIdx.x;
     assert(blockDim.x == BLOCK_SIZE && warpSize == BLOCK_SIZE &&
@@ -379,14 +381,10 @@ __global__ void calc_gradient(const int batch_atoms,
       const fp_type *__restrict__ scratch_x_l = scratch_x + individual_index * batch_atoms;
       const fp_type *__restrict__ scratch_y_l = scratch_y + individual_index * batch_atoms;
       const fp_type *__restrict__ scratch_z_l = scratch_z + individual_index * batch_atoms;
-      
-      const fp_type *electro_map = grid_maps + map_index_xyz * static_cast<int>(autodock_grid_type::ELEC);
-      const fp_type *desolv_map  = grid_maps + map_index_xyz * static_cast<int>(autodock_grid_type::DESOLV);
 
       for (int index = 0; index < num_atoms; ++index) {
         fp_type coord[3]{scratch_x_l[index], scratch_y_l[index], scratch_z_l[index]};
 
-        
         if (coord[0] < map_min_const[0] || coord[0] > map_max_const[0] || coord[1] < map_min_const[1] ||
           coord[1] > map_max_const[1] || coord[2] < map_min_const[2] || coord[2] > map_max_const[2]) {
           const auto diff_x = coord[0] - map_center_const[0];
@@ -394,7 +392,7 @@ __global__ void calc_gradient(const int batch_atoms,
           const auto diff_z = coord[2] - map_center_const[2];
           const fp_type penalty_factor = 2 * 2 * ENERGYPENALTY;
 
-          dE_dX[3*index] += penalty_factor * diff_x;
+          dE_dX[3*index]     += penalty_factor * diff_x;
           dE_dX[3*index + 1] += penalty_factor * diff_y;
           dE_dX[3*index + 2] += penalty_factor * diff_z;
         } else {
@@ -423,26 +421,23 @@ __global__ void calc_gradient(const int batch_atoms,
           fp_type grid_values[8];
           get_grid_values(electro_map + base_index, map_index_x, map_index_xy, grid_values);
           const fp_type constant_factor_el = inv_spacing * atom_charge;
-          dE_dX[3*index] += constant_factor_el * (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
+          dE_dX[3*index]     += constant_factor_el * (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
           dE_dX[3*index + 1] += constant_factor_el * (p1w * (p1u * (grid_values[2] - grid_values[0]) + p0u * (grid_values[6] - grid_values[4])) + p0w * (p1u * (grid_values[3] - grid_values[1]) + p0u * (grid_values[7] - grid_values[5])));
           dE_dX[3*index + 2] += constant_factor_el * (p1v * (p1u * (grid_values[1] - grid_values[0]) + p0u * (grid_values[5] - grid_values[4])) + p0v * (p1u * (grid_values[3] - grid_values[2]) + p0u * (grid_values[7] - grid_values[6])));
 
           get_grid_values(atom_map + base_index, map_index_x, map_index_xy, grid_values);
-          dE_dX[3*index] += inv_spacing * (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
+          dE_dX[3*index]     += inv_spacing * (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
           dE_dX[3*index + 1] += inv_spacing * (p1w * (p1u * (grid_values[2] - grid_values[0]) + p0u * (grid_values[6] - grid_values[4])) + p0w * (p1u * (grid_values[3] - grid_values[1]) + p0u * (grid_values[7] - grid_values[5])));
           dE_dX[3*index + 2] += inv_spacing * (p1v * (p1u * (grid_values[1] - grid_values[0]) + p0u * (grid_values[5] - grid_values[4])) + p0v * (p1u * (grid_values[3] - grid_values[2]) + p0u * (grid_values[7] - grid_values[6])));            
           
           get_grid_values(desolv_map + base_index, map_index_x, map_index_xy, grid_values);
           const fp_type constant_factor_des = inv_spacing * std::fabs(atom_charge);
-          dE_dX[3*index] += constant_factor_des * (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
+          dE_dX[3*index]     += constant_factor_des * (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
           dE_dX[3*index + 1] += constant_factor_des * (p1w * (p1u * (grid_values[2] - grid_values[0]) + p0u * (grid_values[6] - grid_values[4])) + p0w * (p1u * (grid_values[3] - grid_values[1]) + p0u * (grid_values[7] - grid_values[5])));
           dE_dX[3*index + 2] += constant_factor_des * (p1v * (p1u * (grid_values[1] - grid_values[0]) + p0u * (grid_values[5] - grid_values[4])) + p0v * (p1u * (grid_values[3] - grid_values[2]) + p0u * (grid_values[7] - grid_values[6])));
-
-          
         }
-
       }
-
+      
       if (num_rotamers > 0) {
         for (int i = 0; i < num_nonbonds; ++i) {
           const int &a1 = nonbond_a1_l[i];
@@ -479,10 +474,10 @@ __global__ void calc_gradient(const int batch_atoms,
 
           // Calcuare desolv
           const fp_type nb_desolv = (vol_l[a2] * (solpar_l[a1] + qsolpar * std::fabs(charge_l[a1])) +
-                                     vol_l[a1] * (solpar_l[a2] + qsolpar * std::fabs(charge_l[a2])));
+                                    vol_l[a1] * (solpar_l[a2] + qsolpar * std::fabs(charge_l[a2])));
 
           const fp_type e_desolv = autodock_parameters::coeff_desolv *
-                                   std::exp(fp_type{-0.5} / (sigma_square) *distance_two_clamp) * nb_desolv;
+                                  std::exp(fp_type{-0.5} / (sigma_square) *distance_two_clamp) * nb_desolv;
 
           // Desolvation derivative
           const fp_type dE_dr_desolv = (-distance / sigma_square) * e_desolv;
@@ -526,6 +521,7 @@ __global__ void calc_gradient(const int batch_atoms,
 
         }
       }
+
 
       fp_type ligand_COM[3] = {0};
       for (int i = 0; i < num_atoms; ++i) {
@@ -620,8 +616,7 @@ __global__ void calc_gradient(const int batch_atoms,
       gradient &grad_l = gradients_l[individual_index];
       for (int i = 0; i < 6 + num_rotamers; ++i) {
         grad_l[i] = grad[i];
-      }
-      
+      } 
     }
   };
 
