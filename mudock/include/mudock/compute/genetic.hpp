@@ -35,7 +35,6 @@ namespace mudock {
     genetic_kernel(const int batch_ligands_,
                    const int population_number_,
                    const int num_generations_,
-                   const int elite_size_,
                    const int tournament_length_,
                    const fp_type mutation_prob_,
                    const size_t seed_,
@@ -49,7 +48,6 @@ namespace mudock {
         : batch_ligands(batch_ligands_),
           population_number(population_number_),
           num_generations(num_generations_),
-          elite_size(elite_size_),
           tournament_length(tournament_length_),
           mutation_prob(mutation_prob_),
           population(population_),
@@ -74,7 +72,6 @@ namespace mudock {
     int batch_ligands;
     int population_number;
     int num_generations;
-    int elite_size;
     int tournament_length;
     fp_type mutation_prob;
     chromosome* __restrict__ population;
@@ -106,7 +103,6 @@ namespace mudock {
       const knobs& configuration  = (*this->scratch).configuration;
       batch_ligands               = batch.num_ligands;
       num_generations             = static_cast<int>(configuration.num_generations);
-      elite_size                  = static_cast<int>(configuration.elite_size);
       const int population_number = static_cast<int>(configuration.population_number);
       auto q                      = (*this->scratch).get_queue();
 
@@ -136,7 +132,6 @@ namespace mudock {
       kernel = std::make_unique<genetic_kernel<queue_t>>(batch_ligands,
                                                          population_number,
                                                          configuration.num_generations,
-                                                         configuration.elite_size,
                                                          configuration.tournament_length,
                                                          configuration.mutation_prob,
                                                          seed,
@@ -300,7 +295,6 @@ namespace mudock {
 
     int batch_ligands;
     int num_generations;
-    int elite_size;
     buffer_vector<chromosome, queue_t> next_population;
     buffer_vector<chromosome, queue_t> best_chromosomes;
     buffer_vector<fp_type, queue_t> best_scores;

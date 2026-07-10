@@ -16,11 +16,15 @@ int main(int argc, char* argv[]) {
   namespace po                      = boost::program_options;
   std::filesystem::path input_file  = std::filesystem::path{""};
   std::filesystem::path output_file = std::filesystem::path{""};
+  bool print_error_messages         = false;
 
   po::options_description arguments_description("Argument descriptions");
   arguments_description.add_options()("help,h", "print this help message");
   arguments_description.add_options()("input,i", po::value(&input_file), "Path to the input file");
   arguments_description.add_options()("output,o", po::value(&output_file), "Path to the output file");
+  arguments_description.add_options()("print-errors",
+                                      po::bool_switch(&print_error_messages),
+                                      "Print per-compound parse/write errors");
 
   po::variables_map vm;
   po::store(po::command_line_parser(argc, argv).options(arguments_description).run(), vm);
@@ -62,14 +66,24 @@ int main(int argc, char* argv[]) {
               { std::ofstream ofs(output_file, std::ios::trunc); }
               std::ofstream ofs(output_file, std::ios::out | std::ios::app);
 
+              std::size_t compound_index = 0;
               for (const auto& description: ligands_description) {
                 try {
                   mudock::writer<out_format, mudock::dynamic_molecule>(
                       mudock::parser<in_format, mudock::dynamic_molecule>(description),
                       ofs);
+                } catch (const std::exception& e) {
+                  ++skipped_compounds;
+                  if (print_error_messages) {
+                    std::cerr << "Error while processing compound " << compound_index << ": " << e.what() << '\n';
+                  }
                 } catch (...) {
                   ++skipped_compounds;
+                  if (print_error_messages) {
+                    std::cerr << "Unknown error while processing compound " << compound_index << '\n';
+                  }
                 }
+                ++compound_index;
               }
             },
             out_file_format);

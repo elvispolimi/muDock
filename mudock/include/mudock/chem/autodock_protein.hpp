@@ -3,6 +3,7 @@
 #include <mudock/chem/autodock_grid_types.hpp>
 #include <mudock/chem/autodock_layer.hpp>
 #include <mudock/chem/autodock_parameters.hpp>
+#include <mudock/chem/pdbqt_forcefield_override.hpp>
 #include <mudock/chem/autodock_types.hpp>
 #include <mudock/chem/grid_const.hpp>
 #include <mudock/grid.hpp>
@@ -275,10 +276,12 @@ namespace mudock {
                      dynamic_molecule& _molecule,
                      std::function<void(dynamic_molecule&)> f = {})
         : autodock_dynamic_layer(_molecule, f), adt_grid(min, max, resolution) {
+      check_source_path_pdbqt_forcefield_override(*this, _molecule);
       autodock_protein::prepare();
     };
     autodock_protein(dynamic_molecule& _molecule, std::function<void(dynamic_molecule&)> f = {})
         : autodock_dynamic_layer(_molecule, f) {
+      check_source_path_pdbqt_forcefield_override(*this, _molecule);
       autodock_protein::prepare();
     };
     autodock_protein(dynamic_molecule& _molecule, std::function<void(autodock_dynamic_layer&)> f)

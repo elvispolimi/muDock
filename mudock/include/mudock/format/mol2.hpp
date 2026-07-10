@@ -29,17 +29,17 @@ namespace mudock {
       return value.substr(begin, end - begin + 1);
     }
 
-    inline std::string mol2_element_token(const std::string_view atom_type, const std::string_view atom_name) {
+    inline std::string mol2_element_token(const std::string_view atom_type,
+                                          const std::string_view atom_name) {
       auto normalize = [](std::string token) {
-        token = trim_copy(std::move(token));
+        token                = trim_copy(std::move(token));
         const auto dot_index = token.find('.');
         if (dot_index != std::string::npos) {
           token.resize(dot_index);
         }
-        token.erase(std::remove_if(token.begin(), token.end(), [](unsigned char c) {
-                      return !std::isalpha(c);
-                    }),
-                    token.end());
+        token.erase(
+            std::remove_if(token.begin(), token.end(), [](unsigned char c) { return !std::isalpha(c); }),
+            token.end());
         if (token.empty()) {
           return token;
         }
@@ -120,14 +120,27 @@ namespace mudock {
       // Atoms
       out_s << "@<TRIPOS>ATOM" << std::endl;
       for (int atom_index = 0; atom_index < molecule.num_atoms(); ++atom_index) {
-        out_s << std::setw(5) << atom_index + 1 << " "                                        // Atom ID
-              << std::setw(8) << get_description(molecule.elements(atom_index)).symbol << " " // Atom name
-              << std::setw(10) << std::fixed << std::setprecision(4) << molecule.x(atom_index) << " "
-              << std::setw(10) << std::fixed << std::setprecision(4) << molecule.y(atom_index) << " "
-              << std::setw(10) << std::fixed << std::setprecision(4) << molecule.z(atom_index) << " "
-              << std::setw(8) << get_description(molecule.elements(atom_index)).symbol << " " // Atom type
-              << std::setw(5) << 1 << " "
-              << std::setw(8) << "LIG" << " "
+        const auto element_symbol = std::string_view{get_description(molecule.elements(atom_index)).symbol};
+
+        const std::string generated_atom_name = std::string(element_symbol) + std::to_string(atom_index + 1);
+
+        const auto& stored_atom_name = molecule.atom_name(atom_index);
+
+        const auto atom_name = stored_atom_name.empty() ? std::string_view{generated_atom_name}
+                                                        : std::string_view{stored_atom_name};
+
+        const auto sybyl_type = molecule.sybyl_type(atom_index);
+
+        const auto atom_type =
+            sybyl_type == sybyl_atom_type::UNKNOWN ? element_symbol : to_string(sybyl_type);
+
+        const auto residue_id    = molecule.residue_id(atom_index);
+        const auto& residue_name = molecule.residue_name(atom_index);
+        out_s << std::setw(5) << atom_index + 1 << " " << std::setw(8) << atom_name << " " << std::setw(10)
+              << std::fixed << std::setprecision(4) << molecule.x(atom_index) << " " << std::setw(10)
+              << std::fixed << std::setprecision(4) << molecule.y(atom_index) << " " << std::setw(10)
+              << std::fixed << std::setprecision(4) << molecule.z(atom_index) << " " << std::setw(8)
+              << atom_type << " " << std::setw(5) << residue_id << " " << std::setw(8) << residue_name << " "
               << std::setw(10) << std::fixed << std::setprecision(4) << molecule.charge(atom_index)
               << std::endl;
       }
@@ -136,8 +149,9 @@ namespace mudock {
       out_s << "@<TRIPOS>BOND" << std::endl;
       for (int bond_index = 0; bond_index < molecule.num_bonds(); ++bond_index) {
         const auto bond = molecule.bonds(bond_index);
-        out_s << std::setw(5) << bond_index + 1 << " " << std::setw(5) << bond.source + 1 << " " << std::setw(5)
-              << bond.dest + 1 << " " << std::setw(2) << detail::print_mol2_bond_type(bond.type) << std::endl;
+        out_s << std::setw(5) << bond_index + 1 << " " << std::setw(5) << bond.source + 1 << " "
+              << std::setw(5) << bond.dest + 1 << " " << std::setw(2)
+              << detail::print_mol2_bond_type(bond.type) << std::endl;
       }
       out_s << std::endl;
     }
@@ -145,6 +159,9 @@ namespace mudock {
     template<class molecule_type>
       requires is_molecule<molecule_type>
     static void parse(molecule_type& molecule, const std::string_view description) {
+      // NOTE:
+      // This is the native MOL2 path used for internal molecules. It preserves the raw MOL2 atom typing and
+      // computes can_rotate with a local heuristic instead of forwarding OpenBabel rotor callbacks.
       enum class state { NONE, MOLECULE, ATOM, BOND };
 
       state current_state = state::NONE;
@@ -201,30 +218,54 @@ namespace mudock {
             if (atom_index >= expected_atoms) {
               throw std::runtime_error("MOL2 atom section exceeds declared atom count");
             }
-            std::istringstream stream(line);
-            int atom_id = 0;
-            std::string atom_name;
-            fp_type x = 0, y = 0, z = 0;
-            std::string atom_type;
-            int subst_id = 0;
-            std::string subst_name;
-            fp_type charge = 0;
+            try {
+              std::istringstream stream(line);
+              std::vector<std::string> tokens;
+              for (std::string token; stream >> token;) {
+                tokens.push_back(std::move(token));
+              }
 
-            stream >> atom_id >> atom_name >> x >> y >> z >> atom_type;
-            if (!stream) {
-              throw std::runtime_error("Invalid MOL2 atom record");
+              if (tokens.size() < 6) {
+                throw std::runtime_error("Invalid MOL2 atom record: too few fields");
+              }
+
+              const int atom_id = std::stoi(tokens[0]);
+              if (atom_id != atom_index + 1) {
+                throw std::runtime_error("Invalid MOL2 atom record: unexpected atom id " +
+                                         std::to_string(atom_id) + ", expected " +
+                                         std::to_string(atom_index + 1));
+              }
+
+              const auto& atom_name  = tokens[1];
+              const fp_type x        = static_cast<fp_type>(std::stod(tokens[2]));
+              const fp_type y        = static_cast<fp_type>(std::stod(tokens[3]));
+              const fp_type z        = static_cast<fp_type>(std::stod(tokens[4]));
+              const auto& atom_type  = tokens[5];
+
+              molecule.x(atom_index)           = x;
+              molecule.y(atom_index)           = y;
+              molecule.z(atom_index)           = z;
+              molecule.is_aromatic(atom_index) = detail::is_mol2_aromatic_atom(atom_type) ? 1 : 0;
+              molecule.atom_name(atom_index)   = atom_name;
+              molecule.sybyl_type(atom_index)  = parse_sybyl_atom_type(atom_type);
+              molecule.elements(atom_index) =
+                  parse_element_symbol(detail::mol2_element_token(atom_type, atom_name));
+
+              if (tokens.size() >= 7) {
+                molecule.residue_id(atom_index) = std::stoi(tokens[6]);
+              }
+              if (tokens.size() >= 8) {
+                molecule.residue_name(atom_index)      = tokens[7];
+                molecule.atom_residue_type(atom_index) = parse_residue_type(tokens[7]);
+              }
+              if (tokens.size() >= 9) {
+                molecule.charge(atom_index) = static_cast<fp_type>(std::stod(tokens[8]));
+              }
+
+              ++atom_index;
+            } catch (const std::exception& e) {
+              throw std::runtime_error("Invalid MOL2 atom record: " + line + " (" + e.what() + ")");
             }
-            stream >> subst_id >> subst_name >> charge;
-
-            molecule.x(atom_index)      = x;
-            molecule.y(atom_index)      = y;
-            molecule.z(atom_index)      = z;
-            molecule.charge(atom_index) = charge;
-            molecule.is_aromatic(atom_index) =
-                detail::is_mol2_aromatic_atom(atom_type) ? 1 : 0;
-            molecule.elements(atom_index) =
-                parse_element_symbol(detail::mol2_element_token(atom_type, atom_name));
-            ++atom_index;
             break;
           }
           case state::BOND: {
@@ -233,8 +274,8 @@ namespace mudock {
             }
             std::istringstream stream(line);
             int bond_id = 0;
-            int atom_1 = 0;
-            int atom_2 = 0;
+            int atom_1  = 0;
+            int atom_2  = 0;
             std::string bond_type_token;
 
             stream >> bond_id >> atom_1 >> atom_2 >> bond_type_token;
@@ -242,8 +283,8 @@ namespace mudock {
               throw std::runtime_error("Invalid MOL2 bond record");
             }
 
-            molecule.bonds(bond_index) =
-                {atom_1 - 1, atom_2 - 1, detail::parse_mol2_bond_type(bond_type_token), false};
+            molecule.bonds(
+                bond_index) = {atom_1 - 1, atom_2 - 1, detail::parse_mol2_bond_type(bond_type_token), false};
             ++bond_index;
             break;
           }
@@ -264,7 +305,7 @@ namespace mudock {
         ++degrees[static_cast<std::size_t>(bond.dest)];
       }
       for (int i = 0; i < molecule.num_bonds(); ++i) {
-        auto& bond = molecule.bonds(i);
+        auto& bond      = molecule.bonds(i);
         bond.can_rotate = (bond.type == bond_type::SINGLE) &&
                           (degrees[static_cast<std::size_t>(bond.source)] > 1) &&
                           (degrees[static_cast<std::size_t>(bond.dest)] > 1);

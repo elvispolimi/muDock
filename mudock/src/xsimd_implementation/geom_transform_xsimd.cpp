@@ -67,23 +67,23 @@ namespace mudock {
 
   template<>
   void geom_kernel<queue_xsimd>::operator()() {
-    q->invoke_kernel<this->geom_region_name>(geom_transform,
-                                             batch_ligands,
-                                             batch_atoms,
-                                             chromsomes_per_ligand,
-                                             chromosomes_b,
-                                             num_atoms_b,
-                                             num_rotamers_b,
-                                             x_coords_b,
-                                             y_coords_b,
-                                             z_coords_b,
-                                             x_scratch_b,
-                                             y_scratch_b,
-                                             z_scratch_b,
-                                             ligand_fragments_b,
-                                             ligand_fragments_start_b,
-                                             frag_indices_start_b,
-                                             frag_start_indices_b,
-                                             frag_stop_indices_b);
+    q->invoke_kernel<geom_region_name>(geom_transform,
+                                       batch_ligands,
+                                       batch_atoms,
+                                       chromsomes_per_ligand,
+                                       chromosomes_b,
+                                       num_atoms_b,
+                                       num_rotamers_b,
+                                       x_coords_b,
+                                       y_coords_b,
+                                       z_coords_b,
+                                       x_scratch_b,
+                                       y_scratch_b,
+                                       z_scratch_b,
+                                       ligand_fragments_b,
+                                       ligand_fragments_start_b,
+                                       frag_indices_start_b,
+                                       frag_start_indices_b,
+                                       frag_stop_indices_b);
   }
 } // namespace mudock

@@ -14,6 +14,8 @@ list(
   "${header_path}/${header_prefix}/chem/autodock_layer.hpp"
   "${header_path}/${header_prefix}/chem/autodock_ligand.hpp"
   "${header_path}/${header_prefix}/chem/autodock_parameters.hpp"
+  "${header_path}/${header_prefix}/chem/sybyl_atom_types.hpp"
+  "${header_path}/${header_prefix}/chem/residue_types.hpp"
   "${header_path}/${header_prefix}/chem/autodock_protein.hpp"
   "${header_path}/${header_prefix}/chem/autodock_types.hpp"
   "${header_path}/${header_prefix}/chem/bond_types.hpp"
@@ -40,6 +42,8 @@ list(
   "${header_path}/${header_prefix}/compute/docking.hpp"
   "${header_path}/${header_prefix}/compute/genetic.hpp"
   "${header_path}/${header_prefix}/compute/transform.hpp"
+  "${header_path}/${header_prefix}/compute/algorithm.hpp"
+  "${header_path}/${header_prefix}/compute/pipeline_selector.hpp"
   "${header_path}/${header_prefix}/compute/geometric_transform.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/chromosome.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/vectorization.hpp"
@@ -103,11 +107,14 @@ list(
   "${source_path}/chem/autodock_babel_types.cpp"
   "${source_path}/chem/autodock_protein.cpp"
   "${source_path}/chem/autodock_ligand.cpp"
+  "${source_path}/chem/sybyl_atom_types.cpp"
+  "${source_path}/chem/residue_types.cpp"
   "${source_path}/chem/autodock_types.cpp"
   "${source_path}/chem/bond_types.cpp"
   "${source_path}/chem/autodock_grid_types.cpp"
   "${source_path}/chem/elements.cpp"
   "${source_path}/compute/parse_ids.cpp"
+  "${source_path}/compute/algorithm.cpp"
   "${source_path}/format/dot.cpp"
   "${source_path}/format/mol2.cpp"
   "${source_path}/format/adt_mol2.cpp"
@@ -126,11 +133,18 @@ list(
   "${source_path}/cpp_implementation/adt_score_cpp.cpp"
   "${source_path}/cpp_implementation/genetic_cpp.cpp"
   "${source_path}/cpp_implementation/adadelta_cpp.cpp"
-  "${source_path}/tbb_implementation/stream_filter.cpp"
-  "${source_path}/tbb_implementation/parser_filter.cpp"
   "${source_path}/tbb_implementation/runtime_services.cpp"
-  "${source_path}/tbb_implementation/tbb_pipeline.cpp"
 )
+
+set(mudock_precompute_opt_sources
+    "${source_path}/chem/autodock_protein.cpp")
+
+if(OVERRIDE_PRECOMPUTE_OPT)
+  foreach(precompute_source IN LISTS mudock_precompute_opt_sources)
+    set_source_files_properties("${precompute_source}"
+                                PROPERTIES COMPILE_OPTIONS "-O2")
+  endforeach()
+endif()
 
 if(MUDOCK_ENABLE_MPI)
   list(
@@ -141,7 +155,7 @@ if(MUDOCK_ENABLE_MPI)
     "${header_path}/${header_prefix}/mpi_implementation/distributed_ranges.hpp"
     "${header_path}/${header_prefix}/mpi_implementation/utilities.hpp"
     )
-endif()    
+endif()
 
 if(MUDOCK_ENABLE_GH)
   list(APPEND source_files

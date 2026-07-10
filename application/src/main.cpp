@@ -4,24 +4,56 @@
 #include <fstream>
 #include <limits>
 #include <memory>
-#include <optional>
-
+#include <mudock/compute/pipeline_selector.hpp>
+#include <mudock/format/supported_format.hpp>
 #include <mudock/molecule.hpp>
-#include <mudock/mudock.hpp>
 #include <mudock/mpi_implementation/byte_range.hpp>
+#include <mudock/mudock.hpp>
 #include <mudock/tbb_implementation/tbb_pipeline.hpp>
+#include <optional>
 
 #ifdef MUDOCK_USE_MPI
   #include <mpi.h>
-
   #include <mudock/mpi_implementation/distributed_ranges.hpp>
 #endif
 
+namespace {
+  int run_selected_pipeline(std::istream& in,
+                            const mudock::supported_format format,
+                            const command_line_arguments& args,
+                            std::shared_ptr<mudock::dynamic_molecule> protein,
+                            const std::uint64_t range_end) {
+    mudock::info("Pipeline selection: search=", to_string(args.search), ", score=", to_string(args.scoring));
+
+    dispatch_selected_pipeline(args.search,
+                               args.scoring,
+                               format,
+                               [&]<typename pipeline_t>(const auto, const auto) {
+                                 pipeline_t pipe{protein};
+                                 constexpr_switch<0, mudock::get_num_supported_format(), 1>(
+                                     [&](const auto format_index) {
+                                       constexpr auto selected_format =
+                                           static_cast<mudock::supported_format>(decltype(format_index)::value);
+                                       mudock::run_tbb_pipeline<selected_format>(in,
+                                                                                 args.device_confs,
+                                                                                 args.knobs,
+                                                                                 pipe,
+                                                                                 range_end,
+                                                                                 args.time_limit_sec,
+                                                                                 args.observer);
+                                     },
+                                     format);
+                               });
+
+    return EXIT_SUCCESS;
+  }
+} // namespace
+
 int main(int argc, char** argv) {
-  const auto args = parse_command_line_arguments(argc, argv);
+  const auto args                         = parse_command_line_arguments(argc, argv);
   std::optional<mudock::byte_range> range = std::nullopt;
   std::optional<int> rank                 = std::nullopt;
-  const auto in_format                      = mudock::parse_supported_format(args.ligand_path);
+  const auto in_format                    = mudock::parse_supported_format(args.ligand_path);
 
 #ifdef MUDOCK_USE_MPI
   MPI_Init(&argc, &argv);
@@ -43,20 +75,14 @@ int main(int argc, char** argv) {
     }
   }
 
-  if (in_format != mudock::supported_format::ADTMOL2) {
-    if (*rank == 0) {
-      mudock::error("MPI implementation currently supports only ADTMOL2 input format.");
-    }
-    MPI_Abort(MPI_COMM_WORLD, 3);
-  }
-
-  range = mudock::distribute_aligned_ranges<mudock::supported_format::ADTMOL2>(args.ligand_path, *rank, nranks);
+  constexpr_switch<0, mudock::get_num_supported_format(), 1>(
+      [&](const auto format_index) {
+        constexpr auto selected_format =
+            static_cast<mudock::supported_format>(decltype(format_index)::value);
+        range = mudock::distribute_aligned_ranges<selected_format>(args.ligand_path, *rank, nranks);
+      },
+      in_format);
   mudock::info("rank ", *rank, ": [", range->begin, ", ", range->end, "]\n");
-#else
-  if (in_format != mudock::supported_format::ADTMOL2) {
-    mudock::error("Stream implementation currently supports only ADTMOL2 input format.");
-    return 1;
-  }
 #endif
 
   MUDOCK_MARKER_INIT;
@@ -95,26 +121,15 @@ int main(int argc, char** argv) {
 
   in.seekg(static_cast<std::streamoff>(effective_range.begin), std::ios::beg);
 
-
-  mudock::fp_type ls_rate = args.knobs.lsrate;
-  if (args.knobs.use_local_search && ls_rate > 0){
-    if (ls_rate < mudock::fp_type{0} || ls_rate > mudock::fp_type{100}) {
-      throw std::out_of_range("ls_rate must be between 0 and 100");
-    }
-    mudock::lga_adt_adadelta_pipeline pipe{protein};
-    mudock::run_tbb_pipeline<mudock::supported_format::ADTMOL2>(
-      in, args.device_confs, args.knobs, pipe, effective_range.end, args.time_limit_sec, args.observer);
-  } else {
-    mudock::genetic_adt_pipeline pipe{protein};
-    mudock::run_tbb_pipeline<mudock::supported_format::ADTMOL2>(
-      in, args.device_confs, args.knobs, pipe, effective_range.end, args.time_limit_sec, args.observer);
-  }
+  const int status = run_selected_pipeline(in, in_format, args, std::move(protein), effective_range.end);
   MUDOCK_MARKER_CLOSE;
-  mudock::info("All Done!");
+  if (status == EXIT_SUCCESS) {
+    mudock::info("All Done!");
+  }
 
 #ifdef MUDOCK_USE_MPI
   MPI_Finalize();
 #endif
 
-  return EXIT_SUCCESS;
+  return status;
 }

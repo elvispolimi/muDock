@@ -1,6 +1,7 @@
 #pragma once
 
 #include <mudock/compute/adt_score.hpp>
+#include <mudock/compute/algorithm.hpp>
 #include <mudock/compute/buffer.hpp>
 #include <mudock/compute/buffer_utils.hpp>
 #include <mudock/compute/devices_memory.hpp>
@@ -11,6 +12,7 @@
 #include <mudock/compute/object.hpp>
 #include <mudock/compute/parse_ids.hpp>
 #include <mudock/compute/pipeline.hpp>
+#include <mudock/compute/pipeline_selector.hpp>
 #include <mudock/compute/queue.hpp>
 #include <mudock/compute/reorder_buffer.hpp>
 #include <mudock/compute/safe_stack.hpp>

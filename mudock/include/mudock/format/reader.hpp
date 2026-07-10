@@ -69,6 +69,7 @@ namespace mudock {
           mol               = parser<format, molecule_type>(description, check_rotor_bond);
         },
         in_format);
+    mol.properties.assign(property_type::SOURCE_PATH, file_path.string());
     return mol;
     // TODO
     // mudock::error("The provided path " + file_path.string() + " extension is not yet supported");

@@ -138,6 +138,7 @@ namespace mudock {
         solpar(index)        = ff_entry.solpar;
         Rij_hb(index)        = ff_entry.Rij_hb;
         epsij_hb(index)      = ff_entry.epsij_hb * autodock_parameters::coeff_hbond;
+        this->get_base_molecule().num_hbond(index) = ff_entry.hbond;
       }
     }
   };

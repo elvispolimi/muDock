@@ -87,7 +87,7 @@ namespace mudock {
       std::vector<int> active_init(gradient_count);
       
       std::mt19937 rng((*this->scratch).configuration.seed.value_or(std::random_device{}()));
-      std::bernoulli_distribution dist(static_cast<double>((*this->scratch).configuration.lsrate / 100.0));
+      std::bernoulli_distribution dist(static_cast<double>((*this->scratch).configuration.lsrate / fp_type{100}));
 
       for (size_t i = 0; i < gradient_count; ++i) {
         active_init[i] = dist(rng);

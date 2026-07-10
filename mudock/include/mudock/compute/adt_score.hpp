@@ -193,7 +193,7 @@ namespace mudock {
         std::memcpy((void *) (charges() + stride_atoms), ligand.charge(), num_atoms * sizeof(fp_type));
 
         std::memcpy((void *) (map_offsets() + stride_atoms),
-                    adt_ligand.atom_map_index(),
+                    adt_ligand.atom_map_offsets(),
                     num_atoms * sizeof(int));
       }
 

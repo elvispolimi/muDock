@@ -6,6 +6,8 @@
 #include <mudock/chem/autodock_types.hpp>
 #include <mudock/chem/elements.hpp>
 #include <mudock/chem/grid_const.hpp>
+#include <mudock/chem/residue_types.hpp>
+#include <mudock/chem/sybyl_atom_types.hpp>
 #include <mudock/grid/point3D.hpp>
 #include <mudock/molecule/bond.hpp>
 #include <mudock/molecule/constraints.hpp>
@@ -17,6 +19,8 @@
 #include <span>
 
 namespace mudock {
+  static constexpr std::string_view DEFAULT_RESIDUE_NAME = "LIG";
+  static constexpr int DEFAULT_RESIDUE_ID                = 1;
 
   // this is the generic definition of a molecule, that depends on the used type of storage
   template<class container_aliases>
@@ -40,6 +44,12 @@ namespace mudock {
     // the intra-molecular connections
     bonds_array_type<bond> bond_descriptions;
     int bonds_size = int{0};
+
+    atoms_array_type<std::string> atom_names;
+    atoms_array_type<sybyl_atom_type> atom_sybyl_types;
+    atoms_array_type<int> residue_ids;
+    atoms_array_type<std::string> residue_names;
+    atoms_array_type<residue_type> atom_residue_types;
 
     atoms_array_type<autodock_ff> atom_autodock_type;
     atoms_array_type<int> atom_is_aromatic;
@@ -138,6 +148,28 @@ namespace mudock {
     [[nodiscard]] inline const auto& z(const int index) const { return z_coordinates[index]; }
     [[nodiscard]] inline const auto& charge(const int index) const { return atom_charge[index]; }
     [[nodiscard]] inline const auto& num_hbond(const int index) const { return atom_num_hbond[index]; }
+
+    [[nodiscard]] inline auto& atom_name(const int index) { return atom_names[index]; }
+
+    [[nodiscard]] inline const auto& atom_name(const int index) const { return atom_names[index]; }
+
+    [[nodiscard]] inline auto& sybyl_type(const int index) { return atom_sybyl_types[index]; }
+
+    [[nodiscard]] inline const auto& sybyl_type(const int index) const { return atom_sybyl_types[index]; }
+
+    [[nodiscard]] inline auto& residue_id(const int index) { return residue_ids[index]; }
+
+    [[nodiscard]] inline const auto& residue_id(const int index) const { return residue_ids[index]; }
+
+    [[nodiscard]] inline auto& residue_name(const int index) { return residue_names[index]; }
+
+    [[nodiscard]] inline const auto& residue_name(const int index) const { return residue_names[index]; }
+
+    [[nodiscard]] inline auto& atom_residue_type(const int index) { return atom_residue_types[index]; }
+
+    [[nodiscard]] inline const auto& atom_residue_type(const int index) const {
+      return atom_residue_types[index];
+    }
   };
 
   //===------------------------------------------------------------------------------------------------------
@@ -172,6 +204,19 @@ namespace mudock {
     mudock::resize(atom_is_aromatic, n_atoms);
     mudock::resize(atom_charge, n_atoms);
     mudock::resize(atom_num_hbond, n_atoms);
+    mudock::resize(atom_names, n_atoms);
+    mudock::resize(atom_sybyl_types, n_atoms);
+
+    mudock::resize(residue_ids, n_atoms);
+    mudock::resize(residue_names, n_atoms);
+    mudock::resize(atom_residue_types, n_atoms);
+
+    std::fill(std::begin(atom_sybyl_types), std::begin(atom_sybyl_types) + n_atoms, sybyl_atom_type::UNKNOWN);
+
+    std::fill(std::begin(residue_ids), std::begin(residue_ids) + n_atoms, DEFAULT_RESIDUE_ID);
+    std::fill(std::begin(residue_names), std::begin(residue_names) + n_atoms, DEFAULT_RESIDUE_NAME);
+
+    std::fill(std::begin(atom_residue_types), std::begin(atom_residue_types) + n_atoms, residue_type::LIG);
     atoms_size = n_atoms;
     bonds_size = n_bonds;
   }
@@ -188,6 +233,12 @@ namespace mudock {
     mudock::resize(atom_is_aromatic, index);
     mudock::resize(atom_charge, index);
     mudock::resize(atom_num_hbond, index);
+    mudock::remove_atom(atom_names, index);
+    mudock::remove_atom(atom_sybyl_types, index);
+
+    mudock::remove_atom(residue_ids, index);
+    mudock::remove_atom(residue_names, index);
+    mudock::remove_atom(atom_residue_types, index);
     atoms_size--;
 
     // now we need to update the bonds as well
