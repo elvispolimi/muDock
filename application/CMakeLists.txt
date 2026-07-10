@@ -53,6 +53,16 @@ if(MUDOCK_ENABLE_MPI)
   target_link_libraries("${CMAKE_PROJECT_NAME}" PRIVATE MPI::MPI_CXX)
 endif()
 
+add_executable_mudock("muDock-tbb"
+                      "${header_files}"
+                      "${header_path}/command_line_args.cpp"
+                      "${source_path}/tbb_main.cpp")
+mudock_configure_application_target("muDock-tbb" "${header_path}")
+mudock_link_application_target("muDock-tbb")
+if(MUDOCK_ENABLE_MPI)
+  target_link_libraries("muDock-tbb" PRIVATE MPI::MPI_CXX)
+endif()
+
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/src/bench" bench)
 if(MUDOCK_ENABLE_TEST)
   add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/src/tests" tests)
