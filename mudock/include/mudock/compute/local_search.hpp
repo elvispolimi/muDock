@@ -27,6 +27,7 @@ namespace mudock {
   protected:
     std::shared_ptr<scoring_t<queue_t>> score_stage;
     size_t iterations;
+    bool standalone_local_search{false};
     std::optional<static_molecule> ligand_template;
     
 

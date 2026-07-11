@@ -92,8 +92,7 @@ namespace mudock {
       for (size_t i = 0; i < gradient_count; ++i) {
         active_init[i] = dist(rng);
       }
-// TODO L IMPORTANT magari devo fare copyhost2device di active individuals??? come in adt_score.hpp
-      // Copy to device/managed buffer
+
       std::memcpy((void *) active_individuals_b(),
                   active_init.data(),
                   gradient_count * sizeof(int));
@@ -119,6 +118,9 @@ namespace mudock {
                                                                   RHO,
                                                                   EPSILON);
 
+      this->standalone_local_search = ((*this->scratch).configuration.population_number == 1) &&
+                                ((*this->scratch).configuration.num_generations == 1);
+      
       // Initialize the scoring kernel buffers
       this->score_stage->prepare(batch); //TODO L se non sbaglio l'ho aggiunto per quando deve fare solo local search nell'eseguibile stand alone
       geom_trans.prepare(batch);
@@ -130,38 +132,10 @@ namespace mudock {
           "Number of gradients is not a multiple of ligands in the batch");
       assert(adadelta_krnl && "Adadelta local search kernel method not yet prepared");
 
-      auto &scores_b = (*this->scratch).template get<buffer_data_type::SCORES>();
-
-      // TODO L try to move the reset of actives here which is more elegant, for now it is in adadelta cpp
-
-      const bool only_local_search =
-          ((*this->scratch).configuration.population_number == 1) &&
-          ((*this->scratch).configuration.num_generations == 1);
-
-      int j = 1;
-      for (std::size_t i = 0; i < this->iterations; ++i) {
-        geom_trans();
-        
-        if (only_local_search) {
-          (*this->score_stage)();
-
-          // copy scores back to host and print best score (first element)
-          scores_b.copy_device2host();
-          (*this->scratch).get_queue()->synchronize();
-          if(i % (this->iterations/10) == 0){ // print every 10% of the process
-            this->dump_pose(int(j++));
-            printf("Iter: %ld, Score: %f\n", i, double(scores_b()[0]));
-          }
-        }
-
-        // Fundamental part: compute gradient + adadelta update
-        (this->score_stage).get()->compute_gradient();
-        (*adadelta_krnl)();
-      }
-
-      if (only_local_search) {
-        geom_trans();
-        (*this->score_stage)();
+      if (this->standalone_local_search) {
+        run_standalone();
+      } else {
+        run_as_lga_step();
       }
     }
 
@@ -213,11 +187,43 @@ namespace mudock {
     }
 
   private:
-    int batch_ligands;
-    int batch_atoms;
-
+    int  batch_ligands;
+    int  batch_atoms;
     std::unique_ptr<adadelta_kernel<queue_type>> adadelta_krnl;
     geometric<queue_type> geom_trans;
+
+    void run_as_lga_step() {
+      for (std::size_t i = 0; i < this->iterations; ++i) {
+        geom_trans();
+        (this->score_stage).get()->compute_gradient();
+        (*adadelta_krnl)();
+      }
+    }
+
+    void run_standalone() {
+      auto &scores_b = (*this->scratch).template get<buffer_data_type::SCORES>();
+      const std::size_t dump_every = std::max<std::size_t>(1, this->iterations / 10);
+      int dump_index = 1;
+
+      for (std::size_t i = 0; i < this->iterations; ++i) {
+        geom_trans();
+        (*this->score_stage)();
+
+        scores_b.copy_device2host();
+        (*this->scratch).get_queue()->synchronize();
+
+        if (i % dump_every == 0) {
+          this->dump_pose(dump_index++);
+          printf("Iter: %ld, Score: %f\n", i, double(scores_b()[0]));
+        }
+
+        (this->score_stage).get()->compute_gradient();
+        (*adadelta_krnl)();
+      }
+
+      geom_trans();
+      (*this->score_stage)();
+    }
 
     // TODO L: Implement teardown
     void teardown_impl(batch<static_molecule> &batch) override {
