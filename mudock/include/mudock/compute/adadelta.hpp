@@ -1,7 +1,9 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdlib>
 #include <cstring>
+#include <fstream>
 #include <random>
 #include <mudock/batch.hpp>
 #include <mudock/chem/autodock_grid_types.hpp>
@@ -21,6 +23,7 @@
 
 namespace mudock {
 
+  // TODO L Important implement this
   template<typename queue_type>
   batch_multiple get_adadelta_batch_multiple(const int, std::shared_ptr<queue_type>) {
     return {};
@@ -205,16 +208,33 @@ namespace mudock {
       const std::size_t dump_every = std::max<std::size_t>(1, this->iterations / 10);
       int dump_index = 1;
 
-      for (std::size_t i = 0; i < this->iterations; ++i) {
+      const std::string score_log_path = "adadelta_scores.csv";
+      const bool file_already_exists =
+          std::filesystem::exists(score_log_path) && std::filesystem::file_size(score_log_path) > 0;
+ 
+      std::ofstream score_log(score_log_path, std::ios::app);
+      if (!file_already_exists) {
+        score_log << "iteration,ligand,score\n";
+      }
+
+      const std::string ligand_name = this->ligand_template ? this->ligand_template->properties.get(property_type::NAME) : std::string{"unknown"};
+
+      const auto log_scores = [&](std::size_t iter) {
+          score_log << iter << "," << ligand_name << "," << double(scores_b()[0]) << "\n";
+      };
+
+      for (std::size_t iter = 0; iter < this->iterations; ++iter) {
         geom_trans();
         (*this->score_stage)();
 
         scores_b.copy_device2host();
         (*this->scratch).get_queue()->synchronize();
 
-        if (i % dump_every == 0) {
+        log_scores(iter);
+
+        if (iter % dump_every == 0) {
           this->dump_pose(dump_index++);
-          printf("Iter: %ld, Score: %f\n", i, double(scores_b()[0]));
+          printf("Iter: %ld, Score: %f\n", iter, double(scores_b()[0]));
         }
 
         (this->score_stage).get()->compute_gradient();
@@ -223,6 +243,11 @@ namespace mudock {
 
       geom_trans();
       (*this->score_stage)();
+
+      scores_b.copy_device2host();
+      (*this->scratch).get_queue()->synchronize();
+      log_scores(this->iterations);
+      score_log.close();
     }
 
     // TODO L: Implement teardown
