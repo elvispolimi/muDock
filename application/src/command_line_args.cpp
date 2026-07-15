@@ -16,6 +16,7 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
   std::size_t seed{};
   double time_limit_sec{};
   double observer_sec{};
+  bool parser_debug = false;
   std::string search_name = std::string{to_string(args.search)};
   std::string score_name  = std::string{to_string(args.scoring)};
   arguments_description.add_options()("help,h", "print this help message");
@@ -36,6 +37,9 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
   arguments_description.add_options()("observer",
                                       po::value(&observer_sec),
                                       "Optional throughput observer interval in seconds");
+  arguments_description.add_options()("parser_debug",
+                                      po::bool_switch(&parser_debug),
+                                      "Print the parse exception for each skipped ligand");
   arguments_description.add_options()("search",
                                       po::value(&search_name)->default_value(search_name),
                                       "Search algorithm to apply: none|genetic");
@@ -95,6 +99,8 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
     std::cout << "Pipeline selection:" << std::endl
               << "  --search none --score adt      adt scoring only" << std::endl
               << "  --search genetic --score adt   genetic + adt" << std::endl;
+    std::cout << "  --parser_debug                  print the parser error for each skipped ligand"
+              << std::endl;
     std::cout << std::endl;
     std::cout << "The use flag accepts one or more configurations that describe which implementation"
               << std::endl
@@ -124,6 +130,7 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
   if (vm.count("observer")) {
     args.observer = std::optional<double>{observer_sec};
   }
+  args.parser_debug = parser_debug;
   args.search  = mudock::parse_search_algorithm(search_name);
   args.scoring = mudock::parse_scoring_function(score_name);
   return args;
