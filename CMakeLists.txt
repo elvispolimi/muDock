@@ -476,9 +476,9 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # ##############################################################################
 
 # Third-party libraries that must be manually installed
-find_package(Boost QUIET CONFIG COMPONENTS program_options graph fiber)
+find_package(Boost QUIET CONFIG COMPONENTS program_options graph)
 if(NOT Boost_FOUND)
-  find_package(Boost REQUIRED COMPONENTS program_options graph fiber)
+  find_package(Boost REQUIRED COMPONENTS program_options graph)
 endif()
 find_package(OpenBabel3 REQUIRED)
 set(CMAKE_ENABLE_EXPORTS ON)
