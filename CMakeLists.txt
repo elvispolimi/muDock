@@ -480,6 +480,7 @@ find_package(Boost QUIET CONFIG COMPONENTS program_options graph)
 if(NOT Boost_FOUND)
   find_package(Boost REQUIRED COMPONENTS program_options graph)
 endif()
+find_package(Eigen3 REQUIRED NO_MODULE) # pre-req of OpenBabel
 find_package(OpenBabel3 REQUIRED)
 set(CMAKE_ENABLE_EXPORTS ON)
 
