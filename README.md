@@ -23,7 +23,7 @@ The pipeline is intentionally split into clean stages (input parsing, scoring, s
 Required:
 - CMake 3.25+
 - A C++20-capable compiler (GCC/Clang/IntelLLVM)
-- Boost (components: `program_options`, `graph`, `context`; `fiber` is also used when SYCL is enabled)
+- Boost (components: `program_options`, `graph`, `context`)
 - oneTBB
 - OpenBabel3
 
