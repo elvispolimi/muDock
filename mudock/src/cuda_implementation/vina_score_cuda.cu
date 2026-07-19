@@ -1,3 +1,4 @@
+#include "mudock/cuda_implementation/queue_cuda.cuh"
 #include <cstdio>
 #include <mudock/compute/devices_memory.hpp>
 #include <mudock/compute/vina_score_kernel.hpp>
@@ -17,20 +18,11 @@
 /// Score inter -15.313681, Score intra -1.478089, Score -10.219815 <- with no parallelisation
 /// Score inter -15.313679, Score intra -1.478089, Score -10.219813 <- real
 
-#define BUCKET_MULTIPLIER 18
+#define BUCKET_MULTIPLIER 36
 #define MAX_LIGAND_ATOMS 256
-
-    /**
-     *  TODO: add the boolean problem in the relation https://gemini.google.com/share/eb3cf48bb2eb
-     */
-
 
 namespace mudock {
   
-    typedef struct {
-      fp_type x, y, z;
-    } coords_t;
-
     __device__ static constexpr fp_type GAUSS1_COEFF_CUDA{- 0.035579f};
     __device__ static constexpr fp_type GAUSS2_COEFF_CUDA{- 0.005156f};
     __device__ static constexpr fp_type REPULSION_COEFF_CUDA{0.840245f};
@@ -56,25 +48,25 @@ namespace mudock {
       return (fp_type)(dst < 0.0f) * (dst * dst);
     }
 
-    __device__ inline fp_type hydrophobic(const fp_type dst, const int is_hydro) {
+    __device__ inline fp_type hydrophobic(const fp_type dst, const fp_type is_hydro) {
       fp_type hydro_1 = (fp_type)(dst <= 0.5f); 
       fp_type val = 1.5f - dst;
       fp_type hydro_2 = fmaxf(0.0f, fminf(1.0f, val)) * (fp_type)(dst > 0.5f);
-      return is_hydro * (hydro_1 + hydro_2);
+      return is_hydro * (hydro_1 + hydro_2); 
     }
 
-    __device__ inline fp_type hbonding(const fp_type dst, const int is_hb) {
+    __device__ inline fp_type hbonding(const fp_type dst, const fp_type is_hb) {
       fp_type h_bond_1 = (fp_type)(dst <= -0.7f);
       fp_type val = -dst * 1.42857f;
-      fp_type h_bond_2 = fmaxf(0.0f, fminf(1.0f, val)) * (fp_type)(dst > -0.7f & dst < 0.0f);
+      fp_type h_bond_2 = fmaxf(0.0f, fminf(1.0f, val)) * (fp_type)(dst > -0.7f && dst < 0.0f);
       return is_hb * (h_bond_1 + h_bond_2);
     }
 
     __device__ inline fp_type compute_pair_energy(
         fp_type dx, fp_type dy, fp_type dz,
         fp_type vdw1, fp_type vdw2,
-        int is_hba1, int is_hbd1, int is_hba2, int is_hbd2,
-        int is_hydro1, int is_hydro2
+        fp_type is_hba1, fp_type is_hbd1, fp_type is_hba2, fp_type is_hbd2,
+        fp_type is_hydro1, fp_type is_hydro2
         ) {
 
       fp_type d2 = dx*dx + dy*dy + dz*dz;
@@ -83,8 +75,9 @@ namespace mudock {
       fp_type dst = distance(dx, dy, dz);
 
       dst -= (vdw1 + vdw2);
-      const int is_h = (is_hba1 & is_hbd2) | (is_hba2 & is_hbd1);
-      const int is_hydro = is_hydro1 & is_hydro2;
+
+      const fp_type is_h = fminf(1.0f, (is_hba1 * is_hbd2) + (is_hba2 * is_hbd1));
+      const fp_type is_hydro = is_hydro1 * is_hydro2;
 
       fp_type res = GAUSS1_COEFF_CUDA * gauss1(dst) +
         GAUSS2_COEFF_CUDA * gauss2(dst) +
@@ -108,11 +101,13 @@ namespace mudock {
 
         ///Ligand data
         const size_t num_atoms_ligand,
-        const coords_t* ligand_coords, 
-        const int* __restrict__ l_is_hbond_acceptor,
-        const int* __restrict__ l_is_hbond_donor,
-        const int* __restrict__ l_is_hydrophobic,
-        const fp_type* __restrict__ l_vdw_radius
+        const fp_type* ligand_coords_x, 
+        const fp_type* ligand_coords_y, 
+        const fp_type* ligand_coords_z, 
+        const fp_type* l_is_ha,
+        const fp_type* l_is_hd,
+        const fp_type* l_is_hydro,
+        const fp_type* l_vdw_radius
         ) {
       fp_type total = 0;
       for (size_t pIdx = threadIdx.x; pIdx < num_atoms_protein; pIdx += blockDim.x) {
@@ -125,15 +120,16 @@ namespace mudock {
         int phbd = p_is_hbond_donor[pIdx];
         int phf = p_is_hydrophobic[pIdx];
 
-        for (size_t lIdx = 0; lIdx < num_atoms_ligand; lIdx++) {
+#pragma unroll 4
+        for (int lIdx = 0; lIdx < num_atoms_ligand; lIdx++) {
           total += compute_pair_energy(
-              px - ligand_coords[lIdx].x,
-              py - ligand_coords[lIdx].y,
-              pz - ligand_coords[lIdx].z,
+              px - ligand_coords_x[lIdx],
+              py - ligand_coords_y[lIdx],
+              pz - ligand_coords_z[lIdx],
               prv, l_vdw_radius[lIdx],
               phba, phbd,
-              l_is_hbond_acceptor[lIdx], l_is_hbond_donor[lIdx],
-              phf, l_is_hydrophobic[lIdx]
+              l_is_ha[lIdx], l_is_hd[lIdx],
+              phf, l_is_hydro[lIdx]
               );
         }
       }
@@ -142,11 +138,13 @@ namespace mudock {
 
 
     __device__ inline fp_type score_intra(
-        const coords_t* ligand_coords, 
-        const int* __restrict__ l_is_hbond_acceptor,
-        const int* __restrict__ l_is_hbond_donor,
-        const int* __restrict__ l_is_hydrophobic,
-        const fp_type* __restrict__ l_vdw_radius,
+        const fp_type* ligand_coords_x, 
+        const fp_type* ligand_coords_y, 
+        const fp_type* ligand_coords_z, 
+        const fp_type* l_is_ha,
+        const fp_type* l_is_hd,
+        const fp_type* l_is_hydro,
+        const fp_type* l_vdw_radius,
         const int* __restrict__ interacting_pairs_first,
         const int* __restrict__ interacting_pairs_second,
         const size_t num_interacting_pairs
@@ -156,13 +154,13 @@ namespace mudock {
         int a1 = interacting_pairs_first[i];
         int a2 = interacting_pairs_second[i];
         total += compute_pair_energy(
-            ligand_coords[a1].x - ligand_coords[a2].x,
-            ligand_coords[a1].y - ligand_coords[a2].y,
-            ligand_coords[a1].z - ligand_coords[a2].z,
+            ligand_coords_x[a1] - ligand_coords_x[a2],
+            ligand_coords_y[a1] - ligand_coords_y[a2],
+            ligand_coords_z[a1] - ligand_coords_z[a2],
             l_vdw_radius[a1], l_vdw_radius[a2],
-            l_is_hbond_acceptor[a1], l_is_hbond_donor[a1],
-            l_is_hbond_acceptor[a2], l_is_hbond_donor[a2],
-            l_is_hydrophobic[a1], l_is_hydrophobic[a2]
+            l_is_ha[a1], l_is_hd[a1],
+            l_is_ha[a2], l_is_hd[a2],
+            l_is_hydro[a1], l_is_hydro[a2]
             );
       }
       return total;
@@ -181,11 +179,13 @@ namespace mudock {
 
         ///Ligand data
         const size_t num_atoms_ligand,
-        const coords_t* ligand_coords, 
-        const int* __restrict__ l_is_hbond_acceptor,
-        const int* __restrict__ l_is_hbond_donor,
-        const int* __restrict__ l_is_hydrophobic,
-        const fp_type* __restrict__ l_vdw_radius,
+        const fp_type* ligand_coords_x, 
+        const fp_type* ligand_coords_y, 
+        const fp_type* ligand_coords_z, 
+        const fp_type* l_is_ha,
+        const fp_type* l_is_hd,
+        const fp_type* l_is_hydro,
+        const fp_type* l_vdw_radius,
         const size_t active_torsions,
         const int* __restrict__ interacting_pairs_first,
         const int* __restrict__ interacting_pairs_second,
@@ -202,18 +202,22 @@ namespace mudock {
             p_is_hydrophobic,
             p_vdw_radius,
             num_atoms_ligand,
-            ligand_coords,
-            l_is_hbond_acceptor,
-            l_is_hbond_donor,
-            l_is_hydrophobic,
+            ligand_coords_x, 
+            ligand_coords_y, 
+            ligand_coords_z, 
+            l_is_ha,
+            l_is_hd,
+            l_is_hydro,
             l_vdw_radius
         );
         
         fp_type intra_score = score_intra(
-            ligand_coords,
-            l_is_hbond_acceptor,
-            l_is_hbond_donor,
-            l_is_hydrophobic,
+            ligand_coords_x, 
+            ligand_coords_y, 
+            ligand_coords_z, 
+            l_is_ha,
+            l_is_hd,
+            l_is_hydro,
             l_vdw_radius,
             interacting_pairs_first,
             interacting_pairs_second,
@@ -273,17 +277,35 @@ namespace mudock {
 
     fp_type* scores_l = scores + ligand_id * scores_per_ligand;
 
-    __shared__ coords_t ligand_coords[MAX_LIGAND_ATOMS];
+    __shared__ fp_type ligand_coords_x[MAX_LIGAND_ATOMS];
+    __shared__ fp_type ligand_coords_y[MAX_LIGAND_ATOMS];
+    __shared__ fp_type ligand_coords_z[MAX_LIGAND_ATOMS];
+    __shared__ fp_type ligand_ha[MAX_LIGAND_ATOMS];
+    __shared__ fp_type ligand_hd[MAX_LIGAND_ATOMS];
+    __shared__ fp_type ligand_hydro[MAX_LIGAND_ATOMS];
+    __shared__ fp_type ligand_vdw[MAX_LIGAND_ATOMS];
+    __shared__ fp_type warp_shared_buffer[32];
+
+    for (int i = local_thread_id; i < num_atoms_ligand; i += blockDim.x) {
+      ligand_ha[i]        = l_is_hbond_acceptor[i];
+      ligand_hd[i]        = l_is_hbond_donor[i];
+      ligand_hydro[i]     = l_is_hydrophobic[i];
+      ligand_vdw[i]       = l_vdw_radius[i];
+    }
+
+    __syncthreads();
 
     for (int scores_index = 0; scores_index < scores_per_ligand; ++scores_index) {
 
-      // Copy original coordinates
-      for (int i = local_thread_id; i < num_atoms_ligand; i += blockDim.x) {
-        ligand_coords[i].x = l_scratch_x[scores_index * atom_stride + i];
-        ligand_coords[i].y = l_scratch_y[scores_index * atom_stride + i];
-        ligand_coords[i].z = l_scratch_z[scores_index * atom_stride + i];
-      }
+      const fp_type* ligand_x = l_scratch_x + scores_index * atom_stride;
+      const fp_type* ligand_y = l_scratch_y + scores_index * atom_stride;
+      const fp_type* ligand_z = l_scratch_z + scores_index * atom_stride;
 
+      for (int i = local_thread_id; i < num_atoms_ligand; i += blockDim.x) {
+        ligand_coords_x[i] = ligand_x[i];
+        ligand_coords_y[i] = ligand_y[i];
+        ligand_coords_z[i] = ligand_z[i];
+      }
       __syncthreads();
 
       // Calculate energy 
@@ -296,11 +318,13 @@ namespace mudock {
           p_is_hydrophobic, 
           p_vdw_radius, 
           num_atoms_ligand, 
-          ligand_coords,
-          l_is_hbond_acceptor,
-          l_is_hbond_donor,
-          l_is_hydrophobic,
-          l_vdw_radius,
+          ligand_coords_x, 
+          ligand_coords_y, 
+          ligand_coords_z, 
+          ligand_ha,
+          ligand_hd,
+          ligand_hydro,
+          ligand_vdw,
           active_torsions,
           interacting_pairs_first, 
           interacting_pairs_second, 
@@ -313,13 +337,33 @@ namespace mudock {
 #endif
 
 #pragma unroll
-      for (int offset = BLOCK_SIZE / 2; offset > 0; offset /= 2) {
+      for (int offset = 16; offset > 0; offset /= 2) {
         result += __shfl_down_sync(0xffffffff, result, offset);
       }
 
-      if (local_thread_id == 0) {
-        scores_l[scores_index]         = result;
+      int laneId = local_thread_id % 32;
+      int warpId = local_thread_id / 32;
+
+      if (laneId == 0) {
+        warp_shared_buffer[warpId] = result;
       }
+
+      __syncthreads(); 
+
+      if (warpId == 0) {
+        fp_type final_result = (laneId < (blockDim.x / 32)) ? warp_shared_buffer[laneId] : 0.0f;
+
+#pragma unroll
+        for (int offset = 16; offset > 0; offset /= 2) {
+          final_result += __shfl_down_sync(0xffffffff, final_result, offset);
+        }
+
+        if (local_thread_id == 0) {
+          scores_l[scores_index] = final_result; 
+        }
+      }
+
+      __syncthreads(); 
     }
   }
 
@@ -371,7 +415,7 @@ namespace mudock {
     int num_block_per_SM = 0;
     // TODO
     MUDOCK_CHECK(cudaOccupancyMaxActiveBlocksPerMultiprocessor(&num_block_per_SM,
-                                                               calc_energy,
+                                                               calc_energy<MAX_ATOMS>,
                                                                BLOCK_SIZE,
                                                                0));
     // TODO check the return value
