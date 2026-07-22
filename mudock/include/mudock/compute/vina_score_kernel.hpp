@@ -16,7 +16,7 @@ namespace mudock {
           const int batch_ligands_,
           const int batch_atoms_,
           //Protein data
-          const size_t num_atoms_protein_,
+          const int num_atoms_protein_,
           const fp_type* __restrict__ protein_x_,
           const fp_type* __restrict__ protein_y_,
           const fp_type* __restrict__ protein_z_,
@@ -81,7 +81,7 @@ namespace mudock {
       const int batch_ligands;
       const int batch_atoms;   
       //Protein data
-      const size_t num_atoms_protein;
+      const int num_atoms_protein;
       const fp_type* __restrict__ protein_x;
       const fp_type* __restrict__ protein_y;
       const fp_type* __restrict__ protein_z;

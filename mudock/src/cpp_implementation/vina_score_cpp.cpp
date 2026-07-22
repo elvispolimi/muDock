@@ -1,10 +1,7 @@
-#include <cstdio>
-#include <vector>
 #include <cmath>
 
 #include <mudock/format.hpp>
 #include <mudock/molecule.hpp>
-#include <mudock/type_alias.hpp>
 #include <mudock/cpp_implementation/vina_score_cpp.hpp>
 
 #define GAUSS1_COEFF        (- 0.035579f)
@@ -14,86 +11,7 @@
 #define H_BOND_COEFF        (- 0.587439f)
 #define NROT_COEFF          (0.05846f)
 
-namespace mudock {
-
-  std::unordered_map<int, std::vector<int>> get_atoms_in_frag(
-      const std::span<const bond>& bonds, 
-      const std::size_t num_atom
-      ){
-    auto graph = make_graph(bonds, num_atom);
-    const auto ligand_fragments =
-      std::make_unique<fragments<static_containers>>(graph,
-          bonds,
-          num_atom);
-
-    auto rigid_pieces = ligand_fragments.get()->get_rigid_pieces();
-
-    std::unordered_map<int, std::vector<int>> atoms_in_fragment;
-
-    for (size_t i = 0; i < num_atom; ++i) {
-      atoms_in_fragment[rigid_pieces[i]].emplace_back(i);
-    }
-
-    return atoms_in_fragment;
-  }
-
-
-  std::pair<std::vector<int>, std::vector<int>> get_interactive_pairs(const static_molecule& ligand){
-
-    std::pair<std::vector<int>, std::vector<int>> out;
-
-    const std::span<const bond>& bonds = ligand.get_bonds(); 
-    const size_t num_atom = ligand.num_atoms();
-
-    std::unordered_map<int, std::vector<int>> atoms_in_fragment = get_atoms_in_frag(bonds, num_atom);
-
-    const auto num_rotamers = atoms_in_fragment.size();
-
-    for (size_t rot1 = 0; rot1 < num_rotamers; ++rot1) {
-
-      /// const auto* bitmask_rot1 = frag_masks + rot1 * num_atoms;
-      std::vector<int> atoms_rot1 = atoms_in_fragment[rot1];
-      for(size_t i = 0; i < atoms_rot1.size(); ++i){
-
-        int atom1 = atoms_rot1[i];
-
-        for(size_t rot2 = rot1 + 1; rot2 < num_rotamers; ++rot2){
-
-          /// const auto* bitmask_rot2 = frag_masks + rot2 * num_atoms;
-          std::vector<int> atoms_rot2 = atoms_in_fragment[rot2];
-
-          for(size_t j = 0; j < atoms_rot2.size(); ++j){
-
-            int atom2 = atoms_rot2[j];
-
-            /// Search for the atom2 in the neighbors of atom1
-            bool found = false;
-            for(size_t nb = 0; nb < max_static_neighbors() && !found; nb++) {
-              int atom1_nb = ligand.neighbors(atom1, nb);
-              if (atom1_nb == atom2) found = true;
-              else if (atom1_nb == -1) break;
-            }
-            if (found) continue;
-
-            /// Opendock: if [i, j] in self.torsion_bond_index or [j, i] in self.torsion_bond_index: continue
-
-            //int mask_1 = bitmask_rot1[atom1];
-            //int mask_2 = bitmask_rot2[atom2];
-            ///if(mask_1 == 3 || mask_2 == 3 || mask_1 == 2 || mask_2 == 2) continue;
-
-            /// Order pair before adding it to the output
-            int a = std::min(atom1, atom2);
-            int b = std::max(atom1, atom2);
-            out.first.emplace_back(a);
-            out.second.emplace_back(b);
-          }
-        }
-      }
-    }
-
-    // info("Total interacting pairs: ", out.first.size());
-    return out;
-  }
+namespace mudock { 
 
   inline fp_type distance(fp_type x, fp_type y, fp_type z) {
     return sqrt( x*x + y*y + z*z );
@@ -153,7 +71,7 @@ namespace mudock {
 
   inline fp_type score_inter(
       /// Protein data
-      const size_t num_atoms_protein,
+      const int num_atoms_protein,
       const fp_type* __restrict__ protein_x,
       const fp_type* __restrict__ protein_y,
       const fp_type* __restrict__ protein_z,
@@ -162,8 +80,8 @@ namespace mudock {
       const int* __restrict__ p_is_hydrophobic,
       const fp_type* __restrict__ p_vdw_radius,
 
-      ///Ligand data
-      const size_t num_atoms_ligand,
+      /// Ligand data
+      const int num_atoms_ligand,
       const fp_type* __restrict__ ligand_x,
       const fp_type* __restrict__ ligand_y,
       const fp_type* __restrict__ ligand_z,
@@ -173,22 +91,33 @@ namespace mudock {
       const fp_type* __restrict__ l_vdw_radius
       ) {
     fp_type total = 0;
-    for (size_t pIdx = 0; pIdx < num_atoms_protein; pIdx++) {
-      for (size_t lIdx = 0; lIdx < num_atoms_ligand; lIdx++) {
+
+    // Guided because we can expact protein atoms to be further away
+#pragma omp parallel for reduction(+:total) schedule(guided)
+    for (int pIdx = 0; pIdx < num_atoms_protein; pIdx++) {
+
+      const fp_type px = protein_x[pIdx];
+      const fp_type py = protein_y[pIdx];
+      const fp_type pz = protein_z[pIdx];
+      const fp_type pvdw = p_vdw_radius[pIdx];
+      const bool phba = p_is_hbond_acceptor[pIdx];
+      const bool phbd = p_is_hbond_donor[pIdx];
+      const bool phydro = p_is_hydrophobic[pIdx];
+
+      for (int lIdx = 0; lIdx < num_atoms_ligand; lIdx++) {
         total += compute_pair_energy(
-            protein_x[pIdx] - ligand_x[lIdx],
-            protein_y[pIdx] - ligand_y[lIdx],
-            protein_z[pIdx] - ligand_z[lIdx],
-            p_vdw_radius[pIdx], l_vdw_radius[lIdx],
-            p_is_hbond_acceptor[pIdx], p_is_hbond_donor[pIdx],
+            px - ligand_x[lIdx],
+            py - ligand_y[lIdx],
+            pz - ligand_z[lIdx],
+            pvdw, l_vdw_radius[lIdx],
+            phba, phbd,
             l_is_hbond_acceptor[lIdx], l_is_hbond_donor[lIdx],
-            p_is_hydrophobic[pIdx], l_is_hydrophobic[lIdx]
+            phydro, l_is_hydrophobic[lIdx]
             );
       }
-    }
-    return total;       
+    }    
+    return total;        
   }
-
 
   inline fp_type score_intra(
       const fp_type* __restrict__ ligand_x,
@@ -200,12 +129,14 @@ namespace mudock {
       const fp_type* __restrict__ l_vdw_radius,
       const int* __restrict__ interacting_pairs_first,
       const int* __restrict__ interacting_pairs_second,
-      const size_t num_interacting_pairs
+      const int num_interacting_pairs
       ) {
     fp_type total = 0;
-    for (size_t i = 0; i < num_interacting_pairs; i++) {
-      int a1 = interacting_pairs_first[i];
-      int a2 = interacting_pairs_second[i];
+
+#pragma omp parallel for reduction(+:total) schedule(static)
+    for (int i = 0; i < num_interacting_pairs; i++) {
+      const int a1 = interacting_pairs_first[i];
+      const int a2 = interacting_pairs_second[i];
       total += compute_pair_energy(
           ligand_x[a1] - ligand_x[a2],
           ligand_y[a1] - ligand_y[a2],
@@ -222,7 +153,7 @@ namespace mudock {
 #define print_matrix(namematrix, size, msg, mat) do{      \
   printf(namematrix);                             \
   printf("[");                                    \
-  for(size_t i = 0; i < (size); i++){             \
+  for(int i = 0; i < (size); i++){             \
     if(i != 0) printf(", ");                      \
     printf(msg, (mat)[i]);                        \
   }                                               \
@@ -231,7 +162,7 @@ namespace mudock {
 
 inline fp_type vina_scoring(  
     /// Protein data
-    const size_t num_atoms_protein,
+    const int num_atoms_protein,
     const fp_type* __restrict__ protein_x,
     const fp_type* __restrict__ protein_y,
     const fp_type* __restrict__ protein_z,
@@ -241,7 +172,7 @@ inline fp_type vina_scoring(
     const fp_type* __restrict__ p_vdw_radius,
 
     ///Ligand data
-    const size_t num_atoms_ligand,
+    const int num_atoms_ligand,
     const fp_type* __restrict__ ligand_x,
     const fp_type* __restrict__ ligand_y,
     const fp_type* __restrict__ ligand_z,
@@ -249,13 +180,18 @@ inline fp_type vina_scoring(
     const int* __restrict__ l_is_hbond_donor,
     const int* __restrict__ l_is_hydrophobic,
     const fp_type* __restrict__ l_vdw_radius,
-    const size_t active_torsions,
+    const int active_torsions,
     const int* __restrict__ interacting_pairs_first,
     const int* __restrict__ interacting_pairs_second,
-    const size_t num_interacting_pairs
+    const int num_interacting_pairs
     ){
 
+
+    print_matrix("ligand_x", num_atoms_ligand, "%f", ligand_x);
+
 #if 0
+printf("num_atoms_protein: %i\n", num_atoms_protein);
+printf("num_atoms_ligand: %i\n", num_atoms_ligand);
       print_matrix("protein_x", num_atoms_protein, "%f", protein_x);
       print_matrix("protein_y", num_atoms_protein, "%f", protein_y);
       print_matrix("protein_z", num_atoms_protein, "%f", protein_z);
@@ -267,14 +203,15 @@ inline fp_type vina_scoring(
       print_matrix("ligand_x", num_atoms_ligand, "%f", ligand_x);
       print_matrix("ligand_y", num_atoms_ligand, "%f", ligand_y);
       print_matrix("ligand_z", num_atoms_ligand, "%f", ligand_z);
-      print_matrix("l_is_hbond_acceptor", num_atoms_ligand, "%i", l_is_hbond_acceptor);
-      print_matrix("l_is_hbond_donor", num_atoms_ligand, "%i", l_is_hbond_donor);
-      print_matrix("l_is_hydrophobic", num_atoms_ligand, "%i", l_is_hydrophobic);
+      print_matrix("l_is_hbond_acceptor", num_atoms_ligand, "%f", l_is_hbond_acceptor);
+      print_matrix("l_is_hbond_donor", num_atoms_ligand, "%f",l_is_hbond_donor);
+      print_matrix("l_is_hydrophobic", num_atoms_ligand, "%f", l_is_hydrophobic);
       print_matrix("l_vdw_radius", num_atoms_ligand, "%f", l_vdw_radius);
 
-      printf("active torsions: %zu\n", active_torsions);
+      printf("active torsions: %i\n", active_torsions);
       print_matrix("interacting_pairs_first", num_interacting_pairs, "%i", interacting_pairs_first);
       print_matrix("interacting_pairs_second", num_interacting_pairs, "%i", interacting_pairs_second);
+
 #endif
       fp_type inter_score = score_inter(
           num_atoms_protein,
@@ -311,7 +248,7 @@ inline fp_type vina_scoring(
 
       fp_type score = (inter_score + intra_score) / ( 1 + NROT_COEFF * active_torsions);
 
-      // printf("Score inter %f, Score intra %f, Score %f\n", inter_score, intra_score, score); 
+      printf("Score inter %f, Score intra %f, Score %f\n", inter_score, intra_score, score); 
 
       return score;
     }
@@ -335,7 +272,7 @@ inline void calc_energy(
     const int* __restrict__ interacting_pairs_offset_b, 
 
     /// Protein data
-    const size_t num_atoms_protein,
+    const int num_atoms_protein,
     const fp_type* __restrict__ protein_x,
     const fp_type* __restrict__ protein_y,
     const fp_type* __restrict__ protein_z,
@@ -360,7 +297,7 @@ inline void calc_energy(
     const int active_torsions = active_torsions_b[ligand_index];
     const int* __restrict__ interacting_pairs_first =  interacting_pairs_first_b + offset_interacting_pairs;
     const int* __restrict__ interacting_pairs_second =  interacting_pairs_second_b + offset_interacting_pairs;
-    const size_t num_interacting_pairs = num_interacting_pairs_b[ligand_index];
+    const int num_interacting_pairs = num_interacting_pairs_b[ligand_index];
 
 
     fp_type *__restrict__ scores_l = scores_b + ligand_index * scores_per_ligand;

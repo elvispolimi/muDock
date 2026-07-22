@@ -2,7 +2,6 @@
 
 #include <boost/range/size.hpp>
 #include <cassert>
-#include <cstddef>
 #include <cstring>
 #include <mudock/batch.hpp>
 #include <mudock/chem/autodock_ligand.hpp>
@@ -20,6 +19,8 @@ namespace mudock {
   #define MAX_INTERACTING_PAIRS_IN_BATCH (10 * 1000 * 1000)
   #define REMOVE_HYDROGENS false
 
+  std::pair<std::vector<int>, std::vector<int>> get_interactive_pairs(const static_molecule& ligand);
+
   template<typename molecule_type>
     void remove_hydrogens(molecule_type& molecule) {
       if(!REMOVE_HYDROGENS) return;
@@ -33,9 +34,7 @@ namespace mudock {
       return;
     }
 
-  std::pair<std::vector<int>, std::vector<int>> get_interactive_pairs(const static_molecule& ligand);
-
-  template<typename queue_type>
+   template<typename queue_type>
     // requires std::derived_from<queue_type, queue>
     int get_vina_score_batch(const int, std::shared_ptr<queue_type>);
 

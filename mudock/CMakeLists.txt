@@ -105,6 +105,7 @@ list(
   "${source_path}/chem/autodock_grid_types.cpp"
   "${source_path}/chem/elements.cpp"
   "${source_path}/compute/parse_ids.cpp"
+  "${source_path}/compute/vina_score.cpp"
   "${source_path}/format/dot.cpp"
   "${source_path}/format/mol2.cpp"
   "${source_path}/format/adt_mol2.cpp"
@@ -314,7 +315,7 @@ if(MUDOCK_ENABLE_FAST)
   else()
     message(
       STATUS
-        "MuDock does not optimize SIMD auto-vectorization with {CMAKE_C_COMPILER_ID}"
+        "MuDock does not optimize SIMD auto-vectorization with ${CMAKE_C_COMPILER_ID}"
     )
   endif()
 
