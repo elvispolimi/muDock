@@ -14,11 +14,9 @@
 
 #include <mudock/type_alias.hpp>
 
-/// -10.219824: risultato finale variazione solo di +0.000009       <- with parallelisation
-/// Score inter -15.313681, Score intra -1.478089, Score -10.219815 <- with no parallelisation
-/// Score inter -15.313679, Score intra -1.478089, Score -10.219813 <- real
+/// ON A RTX 4050 OPTIMAL BLOCK SIZE 256
 
-#define BUCKET_MULTIPLIER 36
+#define BUCKET_MULTIPLIER 22
 
 namespace mudock {
   
@@ -212,17 +210,6 @@ __device__ inline fp_type block_reduce_sum_v2(fp_type val, fp_type shared_data[N
       return total;
     }
 
-#define print_matrix(namematrix, size, msg, mat) do{      \
-  printf(namematrix);                             \
-  printf("[");                                    \
-  for(int i = 0; i < (size); i++){             \
-    if(i != 0) printf(", ");                      \
-    printf(msg, (mat)[i]);                        \
-  }                                               \
-  printf("]\n");                                  \
-}while(false)                                             \
-
-
  template<int MAX_ATOMS>
     __device__ inline fp_type scoring_cuda(  
         /// Protein data
@@ -244,34 +231,6 @@ __device__ inline fp_type block_reduce_sum_v2(fp_type val, fp_type shared_data[N
         const int* __restrict__ interacting_pairs_second,
         const int num_interacting_pairs
     ){
-
-
-#if 0
-
-      if(threadIdx.x == 0) {
-printf("num_atoms_protein: %i\n", num_atoms_protein);
-printf("num_atoms_ligand: %i\n", num_atoms_ligand);
-      print_matrix("protein_x", num_atoms_protein, "%f", protein_x);
-      print_matrix("protein_y", num_atoms_protein, "%f", protein_y);
-      print_matrix("protein_z", num_atoms_protein, "%f", protein_z);
-      print_matrix("p_is_hbond_acceptor", num_atoms_protein, "%i", p_is_hbond_acceptor);
-      print_matrix("p_is_hbond_donor", num_atoms_protein, "%i", p_is_hbond_donor);
-      print_matrix("p_is_hydrophobic", num_atoms_protein, "%i", p_is_hydrophobic);
-      print_matrix("p_vdw_radius", num_atoms_protein, "%f", p_vdw_radius);
-
-      print_matrix("ligand_x", num_atoms_ligand, "%f", ligand_coords_x);
-      print_matrix("ligand_y", num_atoms_ligand, "%f", ligand_coords_y);
-      print_matrix("ligand_z", num_atoms_ligand, "%f", ligand_coords_z);
-      print_matrix("l_is_hbond_acceptor", num_atoms_ligand, "%f", l_is_ha);
-      print_matrix("l_is_hbond_donor", num_atoms_ligand, "%f", l_is_hd);
-      print_matrix("l_is_hydrophobic", num_atoms_ligand, "%f", l_is_hydro);
-      print_matrix("l_vdw_radius", num_atoms_ligand, "%f", l_vdw_radius);
-
-      printf("active torsions: %i\n", active_torsions);
-      print_matrix("interacting_pairs_first", num_interacting_pairs, "%i", interacting_pairs_first);
-      print_matrix("interacting_pairs_second", num_interacting_pairs, "%i", interacting_pairs_second);
-      }
-#endif
 
         fp_type inter_score = score_inter<MAX_ATOMS>(
             num_atoms_protein,
@@ -332,11 +291,6 @@ template<int MAX_ATOMS>
     const int local_thread_id = threadIdx.x;
 
     //if(local_thread_id == 0) printf("MAX_ATOMS: %d\n", MAX_ATOMS);
-    // if(local_thread_id == 0) print_matrix("protein_x", num_atoms_protein, "%f", protein_x);
- 
-    // Using MUDOCK_ENABLE_BUCKET can cause problems
-    // here with ligand data/1fkb_ligand.mol2 (144 atoms) was assigned to bucket of size 32
-    assert(num_atoms_ligand <= MAX_ATOMS);
   
     const int num_atoms_ligand    = num_atoms_b[ligand_id];
     const int active_torsions = ligand_active_torsions[ligand_id];
@@ -362,12 +316,12 @@ template<int MAX_ATOMS>
     __shared__ fp_type warp_shared_buffer[BLOCK_SIZE/32];
 
     for (int i = local_thread_id; i < num_atoms_ligand; i += blockDim.x) {
-      ligand_par[i] = {
-        .x = (float) l_is_hbond_acceptor[i], 
-        .y = (float) l_is_hbond_donor[i], 
-        .z = (float) l_is_hydrophobic[i], 
-        .w = l_vdw_radius[i]
-      };
+      ligand_par[i] = make_float4(
+          (float) l_is_hbond_acceptor[i], 
+          (float) l_is_hbond_donor[i], 
+          (float) l_is_hydrophobic[i], 
+          (float) l_vdw_radius[i]
+          );  
     }
 
     __syncthreads();
@@ -379,7 +333,7 @@ template<int MAX_ATOMS>
       const fp_type* ligand_z = l_scratch_z + scores_index * atom_stride;
 
       for (int i = local_thread_id; i < num_atoms_ligand; i += blockDim.x) {
-        ligand_coords[i] = {.x = ligand_x[i], .y = ligand_y[i], .z = ligand_z[i]};
+        ligand_coords[i] = make_float4(ligand_x[i], ligand_y[i], ligand_z[i], .0f);
       }
       __syncthreads();
 
