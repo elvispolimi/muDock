@@ -29,6 +29,12 @@ namespace mudock {
     __device__ static constexpr fp_type H_BOND_COEFF_CUDA{- 0.587439f};
     __device__ static constexpr fp_type NROT_COEFF_CUDA{0.05846f};
 
+#define PARAM_HA    x
+#define PARAM_HD    y
+#define PARAM_HYDRO z
+#define PARAM_VDW   w
+
+#define get_ligand_par(l_par, par) ((l_par).PARAM_##par)
 
 __device__ inline float warp_reduce_sum(float val)
 {
@@ -43,7 +49,7 @@ __device__ inline float warp_reduce_sum(float val)
 }
 
 template <size_t NUM_THREADS, size_t NUM_WARPS = NUM_THREADS / 32>
-__device__ inline fp_type block_reduce_sum_v2(float val, float shared_data[NUM_WARPS])
+__device__ inline fp_type block_reduce_sum_v2(fp_type val, fp_type shared_data[NUM_WARPS])
 {
     val = warp_reduce_sum(val);
 
@@ -139,45 +145,35 @@ __device__ inline fp_type block_reduce_sum_v2(float val, float shared_data[NUM_W
 
         ///Ligand data
         const int num_atoms_ligand,
-        const fp_type* ligand_coords_x, 
-        const fp_type* ligand_coords_y, 
-        const fp_type* ligand_coords_z, 
-        const fp_type* l_is_ha,
-        const fp_type* l_is_hd,
-        const fp_type* l_is_hydro,
-        const fp_type* l_vdw_radius
+        const float4* ligand_coords, 
+        const float4* ligand_par
         ) {
       fp_type total = 0;
       for (int pIdx = threadIdx.x; pIdx < num_atoms_protein; pIdx += blockDim.x) {
 
-        fp_type px = protein_x[pIdx];
-        fp_type py = protein_y[pIdx];
-        fp_type pz = protein_z[pIdx];
-        fp_type pvdw = p_vdw_radius[pIdx];
+        const fp_type px = protein_x[pIdx];
+        const fp_type py = protein_y[pIdx];
+        const fp_type pz = protein_z[pIdx];
+        const fp_type pvdw = p_vdw_radius[pIdx];
         // Explicit conversion to fp_type
-        fp_type phba = (fp_type) p_is_hbond_acceptor[pIdx];
-        fp_type phbd = (fp_type) p_is_hbond_donor[pIdx];
-        fp_type phf  = (fp_type) p_is_hydrophobic[pIdx];
+        const fp_type phba = (fp_type) p_is_hbond_acceptor[pIdx];
+        const fp_type phbd = (fp_type) p_is_hbond_donor[pIdx];
+        const fp_type phf  = (fp_type) p_is_hydrophobic[pIdx];
 
-#pragma unroll 8 // unsing unroll on MAX_ATOMS cause register spilling
+#pragma unroll 8 // unsing unroll on MAX_ATOMS cause register spilling. Trying I found 8 as a good balance.
         for (int lIdx = 0; lIdx < num_atoms_ligand; lIdx++) {
 
-          fp_type lx = ligand_coords_x[lIdx];
-          fp_type ly = ligand_coords_y[lIdx];
-          fp_type lz = ligand_coords_z[lIdx];
-          fp_type l_vdw = l_vdw_radius[lIdx];
-          fp_type l_ha = l_is_ha[lIdx];
-          fp_type l_hd = l_is_hd[lIdx];
-          fp_type l_hydro = l_is_hydro[lIdx];
+          const float4 coords = ligand_coords[lIdx];
+          const float4 par    = ligand_par[lIdx];
 
           total += compute_pair_energy(
-              px, lx, 
-              py, ly,
-              pz, lz,
-              pvdw, l_vdw,
+              px, coords.x, 
+              py, coords.y,
+              pz, coords.z,
+              pvdw, get_ligand_par(par, VDW),
               phba, phbd,
-              l_ha, l_hd,
-              phf, l_hydro
+              get_ligand_par(par, HA), get_ligand_par(par, HD),
+              phf, get_ligand_par(par, HYDRO)
               );        
         }
       }
@@ -186,30 +182,32 @@ __device__ inline fp_type block_reduce_sum_v2(float val, float shared_data[NUM_W
 
 
     __device__ inline fp_type score_intra(
-        const fp_type* ligand_coords_x, 
-        const fp_type* ligand_coords_y, 
-        const fp_type* ligand_coords_z, 
-        const fp_type* l_is_ha,
-        const fp_type* l_is_hd,
-        const fp_type* l_is_hydro,
-        const fp_type* l_vdw_radius,
+        const float4* ligand_coords, 
+        const float4* ligand_par,
         const int* __restrict__ interacting_pairs_first,
         const int* __restrict__ interacting_pairs_second,
         const int num_interacting_pairs
         ) {
       fp_type total = 0;
       for (int i = threadIdx.x; i < num_interacting_pairs; i += blockDim.x) {
-        int a1 = interacting_pairs_first[i];
-        int a2 = interacting_pairs_second[i];
+        const int a1 = interacting_pairs_first[i];
+        const int a2 = interacting_pairs_second[i];
+ 
+        const float4 a1c = ligand_coords[a1];
+        const float4 a2c = ligand_coords[a2];
+        
+        const float4 a1p = ligand_par[a1];
+        const float4 a2p = ligand_par[a2];
+
         total += compute_pair_energy(
-            ligand_coords_x[a1], ligand_coords_x[a2],
-            ligand_coords_y[a1], ligand_coords_y[a2],
-            ligand_coords_z[a1], ligand_coords_z[a2],
-            l_vdw_radius[a1], l_vdw_radius[a2],
-            l_is_ha[a1], l_is_hd[a1],
-            l_is_ha[a2], l_is_hd[a2],
-            l_is_hydro[a1], l_is_hydro[a2]
-            );
+            a1c.x, a2c.x,
+            a1c.y, a2c.y,
+            a1c.z, a2c.z,
+            get_ligand_par(a1p, VDW),   get_ligand_par(a2p, VDW),
+            get_ligand_par(a1p, HA),    get_ligand_par(a1p, HD),
+            get_ligand_par(a2p, HA),    get_ligand_par(a2p, HD),
+            get_ligand_par(a1p, HYDRO), get_ligand_par(a2p, HYDRO)
+            );     
       }
       return total;
     }
@@ -239,13 +237,8 @@ __device__ inline fp_type block_reduce_sum_v2(float val, float shared_data[NUM_W
 
         ///Ligand data
         const int num_atoms_ligand,
-        const fp_type* ligand_coords_x, 
-        const fp_type* ligand_coords_y, 
-        const fp_type* ligand_coords_z, 
-        const fp_type* l_is_ha,
-        const fp_type* l_is_hd,
-        const fp_type* l_is_hydro,
-        const fp_type* l_vdw_radius,
+        const float4* ligand_coords, 
+        const float4* l_is_par,
         const int active_torsions,
         const int* __restrict__ interacting_pairs_first,
         const int* __restrict__ interacting_pairs_second,
@@ -290,23 +283,13 @@ printf("num_atoms_ligand: %i\n", num_atoms_ligand);
             p_is_hydrophobic,
             p_vdw_radius,
             num_atoms_ligand,
-            ligand_coords_x, 
-            ligand_coords_y, 
-            ligand_coords_z, 
-            l_is_ha,
-            l_is_hd,
-            l_is_hydro,
-            l_vdw_radius
+            ligand_coords, 
+            l_is_par
         );
         
         fp_type intra_score = score_intra(
-            ligand_coords_x, 
-            ligand_coords_y, 
-            ligand_coords_z, 
-            l_is_ha,
-            l_is_hd,
-            l_is_hydro,
-            l_vdw_radius,
+            ligand_coords, 
+            l_is_par,
             interacting_pairs_first,
             interacting_pairs_second,
             num_interacting_pairs
@@ -374,20 +357,17 @@ template<int MAX_ATOMS>
 
     fp_type* scores_l = scores + ligand_id * scores_per_ligand;
 
-    __shared__ fp_type ligand_coords_x[MAX_ATOMS];
-    __shared__ fp_type ligand_coords_y[MAX_ATOMS];
-    __shared__ fp_type ligand_coords_z[MAX_ATOMS];
-    __shared__ fp_type ligand_ha[MAX_ATOMS];
-    __shared__ fp_type ligand_hd[MAX_ATOMS];
-    __shared__ fp_type ligand_hydro[MAX_ATOMS];
-    __shared__ fp_type ligand_vdw[MAX_ATOMS];
+    __shared__ float4 ligand_coords[MAX_ATOMS];
+    __shared__ float4 ligand_par[MAX_ATOMS];
     __shared__ fp_type warp_shared_buffer[BLOCK_SIZE/32];
 
     for (int i = local_thread_id; i < num_atoms_ligand; i += blockDim.x) {
-      ligand_ha[i]        = l_is_hbond_acceptor[i];
-      ligand_hd[i]        = l_is_hbond_donor[i];
-      ligand_hydro[i]     = l_is_hydrophobic[i];
-      ligand_vdw[i]       = l_vdw_radius[i];
+      ligand_par[i] = {
+        .x = (float) l_is_hbond_acceptor[i], 
+        .y = (float) l_is_hbond_donor[i], 
+        .z = (float) l_is_hydrophobic[i], 
+        .w = l_vdw_radius[i]
+      };
     }
 
     __syncthreads();
@@ -399,9 +379,7 @@ template<int MAX_ATOMS>
       const fp_type* ligand_z = l_scratch_z + scores_index * atom_stride;
 
       for (int i = local_thread_id; i < num_atoms_ligand; i += blockDim.x) {
-        ligand_coords_x[i] = ligand_x[i];
-        ligand_coords_y[i] = ligand_y[i];
-        ligand_coords_z[i] = ligand_z[i];
+        ligand_coords[i] = {.x = ligand_x[i], .y = ligand_y[i], .z = ligand_z[i]};
       }
       __syncthreads();
 
@@ -415,13 +393,8 @@ template<int MAX_ATOMS>
           p_is_hydrophobic, 
           p_vdw_radius, 
           num_atoms_ligand, 
-          ligand_coords_x, 
-          ligand_coords_y, 
-          ligand_coords_z, 
-          ligand_ha,
-          ligand_hd,
-          ligand_hydro,
-          ligand_vdw,
+          ligand_coords, 
+          ligand_par,
           active_torsions,
           interacting_pairs_first, 
           interacting_pairs_second, 

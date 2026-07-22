@@ -4,7 +4,7 @@
 #include <mudock/compute/queue.hpp>
 #include <mudock/grid/mdindex.hpp>
 
-#define BLOCK_SIZE 256
+#define BLOCK_SIZE 512
 
 namespace mudock {
   struct queue_cuda: queue {
