@@ -32,6 +32,10 @@ namespace mudock {
     PROT_SIZE_XY,
     PROT_SIZE_XYZ,
     PROT_GRID_MAPS,
+    PROT_NUM_ATOMS,
+    PROT_X_COORDS,
+    PROT_Y_COORDS,
+    PROT_Z_COORDS,
     PROT_H_ACCETORS,
     PROT_H_DONORS,
     PROT_HYDROPHOBICS,
@@ -126,6 +130,22 @@ namespace mudock {
   template<>
   struct buffer_type_traits<buffer_data_type::PROT_GRID_MAPS> {
     using type = buffer_type_traits_impl<buffer_data_type::PROT_SIZE_XYZ, fp_type>::type;
+  };
+  template<>
+  struct buffer_type_traits<buffer_data_type::PROT_NUM_ATOMS> {
+    using type = buffer_type_traits_impl<buffer_data_type::PROT_NUM_ATOMS, int>::type;
+  };
+  template<>
+  struct buffer_type_traits<buffer_data_type::PROT_X_COORDS> {
+    using type = buffer_type_traits_impl<buffer_data_type::PROT_X_COORDS, fp_type>::type;
+  };
+  template<>
+  struct buffer_type_traits<buffer_data_type::PROT_Y_COORDS> {
+    using type = buffer_type_traits_impl<buffer_data_type::PROT_Y_COORDS, fp_type>::type;
+  };
+  template<>
+  struct buffer_type_traits<buffer_data_type::PROT_Z_COORDS> {
+    using type = buffer_type_traits_impl<buffer_data_type::PROT_Z_COORDS, fp_type>::type;
   };
   template<>
   struct buffer_type_traits<buffer_data_type::PROT_H_ACCETORS> {

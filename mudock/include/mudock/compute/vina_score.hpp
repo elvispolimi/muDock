@@ -2,6 +2,7 @@
 
 #include <boost/range/size.hpp>
 #include <cassert>
+#include <cstdio>
 #include <cstring>
 #include <mudock/batch.hpp>
 #include <mudock/chem/autodock_ligand.hpp>
@@ -62,10 +63,10 @@ namespace mudock {
 
             int num_atoms_protein = protein.num_atoms();
 
-            auto &num_atoms           = (*device_scratch).template get<buffer_data_type::NUM_ATOMS>();
-            auto &protein_x           = (*device_scratch).template get<buffer_data_type::X_COORDS>();
-            auto &protein_y           = (*device_scratch).template get<buffer_data_type::Y_COORDS>();
-            auto &protein_z           = (*device_scratch).template get<buffer_data_type::Z_COORDS>();
+            auto &num_atoms           = (*device_scratch).template get<buffer_data_type::PROT_NUM_ATOMS>();
+            auto &protein_x           = (*device_scratch).template get<buffer_data_type::PROT_X_COORDS>();
+            auto &protein_y           = (*device_scratch).template get<buffer_data_type::PROT_Y_COORDS>();
+            auto &protein_z           = (*device_scratch).template get<buffer_data_type::PROT_Z_COORDS>();
             auto &p_is_hbond_acceptor = (*device_scratch).template get<buffer_data_type::PROT_H_ACCETORS>();
             auto &p_is_hbond_donor    = (*device_scratch).template get<buffer_data_type::PROT_H_DONORS>();
             auto &p_is_hydrophobic    = (*device_scratch).template get<buffer_data_type::PROT_HYDROPHOBICS>();
@@ -132,6 +133,8 @@ namespace mudock {
             p_is_hbond_donor.copy_host2device();
             p_is_hydrophobic.copy_host2device();
             p_vdw_radius.copy_host2device();
+
+            (*this->scratch).get_queue()->synchronize();
           }
         }
 
@@ -242,10 +245,10 @@ namespace mudock {
         const fp_type *z_scratch_b = (*this->scratch).template get<buffer_data_type::Z_SCRATCH>().dev_pointer();
 
         /// Pointers to protein data
-        const int num_atoms_protein = (*device_scratch).template get<buffer_data_type::NUM_ATOMS>().host_pointer()[0];
-        const fp_type *protein_x_p =  (*device_scratch).template get<buffer_data_type::X_COORDS>().dev_pointer();
-        const fp_type *protein_y_p =  (*device_scratch).template get<buffer_data_type::Y_COORDS>().dev_pointer();
-        const fp_type *protein_z_p =  (*device_scratch).template get<buffer_data_type::Z_COORDS>().dev_pointer();
+        const int num_atoms_protein = (*device_scratch).template get<buffer_data_type::PROT_NUM_ATOMS>().host_pointer()[0];
+        const fp_type *protein_x_p =  (*device_scratch).template get<buffer_data_type::PROT_X_COORDS>().dev_pointer();
+        const fp_type *protein_y_p =  (*device_scratch).template get<buffer_data_type::PROT_Y_COORDS>().dev_pointer();
+        const fp_type *protein_z_p =  (*device_scratch).template get<buffer_data_type::PROT_Z_COORDS>().dev_pointer();
         const int *p_is_hbond_acceptor_p =(*device_scratch).template get<buffer_data_type::PROT_H_ACCETORS>().dev_pointer();
         const int *p_is_hbond_donor_p =  (*device_scratch).template get<buffer_data_type::PROT_H_DONORS>().dev_pointer();
         const int *p_is_hydrophobic_p =  (*device_scratch).template get<buffer_data_type::PROT_HYDROPHOBICS>().dev_pointer();

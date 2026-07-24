@@ -11,6 +11,8 @@
 #define H_BOND_COEFF        (- 0.587439f)
 #define NROT_COEFF          (0.05846f)
 
+#define IS_DIFF_FROM_ZERO(dst) (std::fabs(dst) > 1e-6f)
+
 namespace mudock { 
 
   inline fp_type distance(fp_type x, fp_type y, fp_type z) {
@@ -19,13 +21,13 @@ namespace mudock {
 
   inline fp_type gauss1(const fp_type dst) {
     fp_type gauss1 = 0;
-    if(dst != 0) gauss1 = exp(- powf(dst / 0.5f, 2));
+    if(IS_DIFF_FROM_ZERO(dst)) gauss1 = exp(- powf(dst / 0.5f, 2));
     return gauss1;
   }
 
   inline fp_type gauss2(const fp_type dst) {
     fp_type gauss2 = 0;
-    if(dst != 0) gauss2 = exp(- pow((dst - 3) / 2, 2));
+    if(IS_DIFF_FROM_ZERO(dst)) gauss2 = exp(- pow((dst - 3) / 2, 2));
     return gauss2;
   }
 
@@ -57,7 +59,7 @@ namespace mudock {
       ) {
     fp_type dst = distance(dx, dy, dz);
     if (dst > 8) return 0;
-
+    
     dst -= (vdw1 + vdw2);
     int is_h = (is_hba1 && is_hbd2) || (is_hba2 && is_hbd1);
     int is_hydro = is_hydro1 && is_hydro2;
@@ -92,8 +94,7 @@ namespace mudock {
       ) {
     fp_type total = 0;
 
-    // Guided because we can expact protein atoms to be further away
-#pragma omp parallel for reduction(+:total) schedule(guided)
+#pragma omp simd
     for (int pIdx = 0; pIdx < num_atoms_protein; pIdx++) {
 
       const fp_type px = protein_x[pIdx];
@@ -133,8 +134,8 @@ namespace mudock {
       ) {
     fp_type total = 0;
 
-#pragma omp parallel for reduction(+:total) schedule(static)
-    for (int i = 0; i < num_interacting_pairs; i++) {
+#pragma omp simd
+  for (int i = 0; i < num_interacting_pairs; i++) {
       const int a1 = interacting_pairs_first[i];
       const int a2 = interacting_pairs_second[i];
       total += compute_pair_energy(
@@ -186,8 +187,6 @@ inline fp_type vina_scoring(
     const int num_interacting_pairs
     ){
 
-
-    print_matrix("ligand_x", num_atoms_ligand, "%f", ligand_x);
 
 #if 0
 printf("num_atoms_protein: %i\n", num_atoms_protein);
@@ -248,7 +247,7 @@ printf("num_atoms_ligand: %i\n", num_atoms_ligand);
 
       fp_type score = (inter_score + intra_score) / ( 1 + NROT_COEFF * active_torsions);
 
-      printf("Score inter %f, Score intra %f, Score %f\n", inter_score, intra_score, score); 
+      // printf("Score inter %f, Score intra %f, Score %f\n", inter_score, intra_score, score); 
 
       return score;
     }
@@ -289,6 +288,11 @@ inline void calc_energy(
     const int atom_stride  = ligand_index * batch_atoms;
     const int num_atoms_ligand    = num_atoms_b[ligand_index];
 
+    const fp_type *__restrict__ scratch_x = x_scratch_b + atom_stride * scores_per_ligand;
+    const fp_type *__restrict__ scratch_y = y_scratch_b + atom_stride * scores_per_ligand;
+    const fp_type *__restrict__ scratch_z = z_scratch_b + atom_stride * scores_per_ligand;
+
+
     ///Ligand data
     const int* __restrict__ l_is_hbond_acceptor = l_is_hbond_acceptor_b + atom_stride;
     const int* __restrict__ l_is_hbond_donor = l_is_hbond_donor_b + atom_stride;
@@ -303,9 +307,9 @@ inline void calc_energy(
     fp_type *__restrict__ scores_l = scores_b + ligand_index * scores_per_ligand;
     for (int scores_index = 0; scores_index < scores_per_ligand; ++scores_index) {
 
-      const fp_type *__restrict__ scratch_x = x_scratch_b + atom_stride;
-      const fp_type *__restrict__ scratch_y = y_scratch_b + atom_stride;
-      const fp_type *__restrict__ scratch_z = z_scratch_b + atom_stride;
+        const fp_type *__restrict__ scratch_x_l = scratch_x + scores_index * batch_atoms;
+        const fp_type *__restrict__ scratch_y_l = scratch_y + scores_index * batch_atoms;
+        const fp_type *__restrict__ scratch_z_l = scratch_z + scores_index * batch_atoms;
 
       fp_type score = vina_scoring(num_atoms_protein,
           protein_x,
@@ -316,9 +320,9 @@ inline void calc_energy(
           p_is_hydrophobic,
           p_vdw_radius,
           num_atoms_ligand,
-          scratch_x,
-          scratch_y,
-          scratch_z,
+          scratch_x_l,
+          scratch_y_l,
+          scratch_z_l,
           l_is_hbond_acceptor,
           l_is_hbond_donor,
           l_is_hydrophobic,

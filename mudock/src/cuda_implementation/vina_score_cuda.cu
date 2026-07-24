@@ -14,9 +14,14 @@
 
 #include <mudock/type_alias.hpp>
 
-/// ON A RTX 4050 OPTIMAL BLOCK SIZE 256
-
+#define VINA_BLOCK_SIZE 256
 #define BUCKET_MULTIPLIER 22
+
+#ifndef EPSILON
+#define EPSILON 1e-6f
+#endif
+
+#define IS_DIFF_FROM_ZERO(dst) (fabsf(dst) > EPSILON)
 
 namespace mudock {
   
@@ -71,12 +76,12 @@ __device__ inline fp_type block_reduce_sum_v2(fp_type val, fp_type shared_data[N
 
     __device__ inline fp_type gauss1(const fp_type dst) {
       fp_type x = dst * 2.0f;
-      return (fp_type)(dst != 0.0f) * __expf(-(x*x));
+      return (fp_type)(IS_DIFF_FROM_ZERO(dst)) * __expf(-(x*x));
     }
 
     __device__ inline fp_type gauss2(const fp_type dst) {
       fp_type x = (dst - 3.0f) * 0.5f;
-      return (fp_type)(dst != 0.0f) * __expf(-(x*x));
+      return (fp_type)(IS_DIFF_FROM_ZERO(dst)) * __expf(-(x*x));
     }
 
     __device__ inline fp_type repulsion(const fp_type dst) {
@@ -172,7 +177,7 @@ __device__ inline fp_type block_reduce_sum_v2(fp_type val, fp_type shared_data[N
               phba, phbd,
               get_ligand_par(par, HA), get_ligand_par(par, HD),
               phf, get_ligand_par(par, HYDRO)
-              );        
+              );   
         }
       }
       return total;       
@@ -225,7 +230,7 @@ __device__ inline fp_type block_reduce_sum_v2(fp_type val, fp_type shared_data[N
         ///Ligand data
         const int num_atoms_ligand,
         const float4* ligand_coords, 
-        const float4* l_is_par,
+        const float4* l_par,
         const int active_torsions,
         const int* __restrict__ interacting_pairs_first,
         const int* __restrict__ interacting_pairs_second,
@@ -243,12 +248,12 @@ __device__ inline fp_type block_reduce_sum_v2(fp_type val, fp_type shared_data[N
             p_vdw_radius,
             num_atoms_ligand,
             ligand_coords, 
-            l_is_par
+            l_par
         );
         
         fp_type intra_score = score_intra(
             ligand_coords, 
-            l_is_par,
+            l_par,
             interacting_pairs_first,
             interacting_pairs_second,
             num_interacting_pairs
@@ -256,7 +261,7 @@ __device__ inline fp_type block_reduce_sum_v2(fp_type val, fp_type shared_data[N
 
         fp_type score = (inter_score + intra_score) / ( 1 + NROT_COEFF_CUDA * active_torsions);
 
-       // if(threadIdx.x == 0) printf("Score inter %f, Score intra %f, Score %f\n", inter_score, intra_score, score); 
+        // if(threadIdx.x == 0) printf("Score inter %f, Score intra %f, Score %f\n", inter_score, intra_score, score); 
         return score;
     }
 
@@ -313,7 +318,7 @@ template<int MAX_ATOMS>
 
     __shared__ float4 ligand_coords[MAX_ATOMS];
     __shared__ float4 ligand_par[MAX_ATOMS];
-    __shared__ fp_type warp_shared_buffer[BLOCK_SIZE/32];
+    __shared__ fp_type warp_shared_buffer[VINA_BLOCK_SIZE/32];
 
     for (int i = local_thread_id; i < num_atoms_ligand; i += blockDim.x) {
       ligand_par[i] = make_float4(
@@ -359,7 +364,7 @@ template<int MAX_ATOMS>
 #else
 #endif
 
-      fp_type final_result = block_reduce_sum_v2<BLOCK_SIZE>(result, warp_shared_buffer);
+      fp_type final_result = block_reduce_sum_v2<VINA_BLOCK_SIZE>(result, warp_shared_buffer);
 
       if (local_thread_id == 0) {
         scores_l[scores_index]         = final_result;
@@ -371,9 +376,6 @@ template<int MAX_ATOMS>
 
   template<>
   void vina_score_kernel<queue_cuda>::operator()() {
-    const int dev_id = q->get_id();
-    
-
     void* args[] = {(void*) &batch_atoms,
                     (void*) &scores_per_ligand,
                     (void*) &num_ligand_atoms_b,
@@ -402,7 +404,7 @@ template<int MAX_ATOMS>
     constexpr_switch_bucket<0, reorder_buffer<static_molecule>::get_num_atom_clusters(), 1>(
         [&](const auto atom_index) {
           const auto max_atoms = reorder_buffer<static_molecule>::atoms_clusters[atom_index];
-          q->launch_kernel((void*) calc_energy<max_atoms>, args, batch_ligands, BLOCK_SIZE);
+          q->launch_kernel((void*) calc_energy<max_atoms>, args, batch_ligands, VINA_BLOCK_SIZE);
         },
         batch_atoms,
         reorder_buffer<static_molecule>::atoms_clusters.data());
@@ -418,7 +420,7 @@ template<int MAX_ATOMS>
     // TODO
     MUDOCK_CHECK(cudaOccupancyMaxActiveBlocksPerMultiprocessor(&num_block_per_SM,
                                                                calc_energy<MAX_ATOMS>,
-                                                               BLOCK_SIZE,
+                                                               VINA_BLOCK_SIZE,
                                                                0));
     // TODO check the return value
     return num_block_per_SM * props.multiProcessorCount;

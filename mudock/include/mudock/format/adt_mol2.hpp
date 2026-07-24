@@ -74,16 +74,26 @@ namespace mudock {
         switch (state) {
           case adt_mol2_state::NONE:
             if (line.find(adt_mol2_tokens::MOLECULE_TOKEN) != std::string::npos) {
+              if (atom_index > 0) molecule.resize(atom_index, bond_index); 
               state = adt_mol2_state::MOLECULE;
             }
-            break;
+            break;        
           case adt_mol2_state::MOLECULE:
             if (line.find(adt_mol2_tokens::ATOM_TOKEN) != std::string::npos) {
               state      = adt_mol2_state::ATOM;
               atom_index = 0;
               bond_index = 0;
-            }
-            break;
+            }else if (!line.empty() && line != "SMALL" && line != "GASTEIGER") {
+              std::istringstream header_stream(line);
+              int n_atoms = 0, n_bonds = 0;
+
+              if (header_stream >> n_atoms >> n_bonds && n_atoms > 0 && n_bonds > 0) {
+                molecule.resize(n_atoms, n_bonds);
+              } 
+              else {
+                molecule.properties.initialize(property_type::NAME, line);
+              }
+            }            break;      
           case adt_mol2_state::ATOM:
             if (line.find(adt_mol2_tokens::BOND_TOKEN) != std::string::npos) {
               state = adt_mol2_state::BOND;
@@ -107,10 +117,12 @@ namespace mudock {
             }
             break;
           case adt_mol2_state::BOND:
-            // if (line.find(adt_mol2_tokens::MOLECULE_TOKEN) != std::string::npos) {
-            //   state = adt_mol2_state::MOLECULE;
-            // } else
-            if (line.empty()) {
+            if (line.find(adt_mol2_tokens::MOLECULE_TOKEN) != std::string::npos) { // <-- AGGIUNGI QUESTO IF
+              molecule.resize(atom_index, bond_index);
+              state = adt_mol2_state::MOLECULE;
+              atom_index = 0;
+              bond_index = 0;
+            } else if (line.empty()) {
               state = adt_mol2_state::NONE;
               molecule.resize(atom_index, bond_index);
             } else {
@@ -127,8 +139,9 @@ namespace mudock {
             }
           default: break;
         }
-      }
-      assert(state == adt_mol2_state::NONE);
-    }
+      } // END OF WHILE
+      if (atom_index > 0) molecule.resize(atom_index, bond_index); 
+      assert(state == adt_mol2_state::NONE || state == adt_mol2_state::BOND); 
+    }  
   };
 } // namespace mudock
