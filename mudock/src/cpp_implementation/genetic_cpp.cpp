@@ -1,3 +1,5 @@
+#include "mudock/type_alias.hpp"
+
 #include <cstring>
 #include <mudock/compute/buffer.hpp>
 #include <mudock/compute/devices_memory.hpp>
@@ -12,8 +14,8 @@
 #include <random>
 
 namespace mudock {
-  static constexpr auto coordinate_step = fp_type{0.2};
-  static constexpr auto angle_step      = fp_type{4};
+  static constexpr auto coordinate_step = static_cast<fp_type>(0.2);
+  static constexpr auto angle_step      = static_cast<fp_type>(4);
 
   thread_local device_memory<std::mt19937> rand_device;
 
@@ -24,11 +26,11 @@ namespace mudock {
                                               const T& max) {
     fp_type value;
     if constexpr (is_debug())
-      value = fp_type{0.4};
+      value = static_cast<fp_type>(0.4);
     else {
       value = dist(generator);
     }
-    return static_cast<T>(value * (max - min) + min);
+    return static_cast<T>(value * static_cast<fp_type>(max - min) + static_cast<fp_type>(min));
   }
 
   inline int get_selection_distribution(std::mt19937& generator,
@@ -96,7 +98,7 @@ namespace mudock {
   void iterate_impl(const int batch_ligands,
                     const int population_number,
                     const int tournament_length,
-                    const int mutation_prob,
+                    const fp_type mutation_prob,
                     chromosome* population,
                     chromosome* next_population,
                     int* __restrict__ num_rotamers_b,
@@ -174,35 +176,35 @@ namespace mudock {
 
   template<>
   void genetic_kernel<queue_cpp>::finalize() {
-    q->invoke_kernel<this->finalize_region_name>(finalize_impl,
-                                                 batch_ligands,
-                                                 population_number,
-                                                 population,
-                                                 num_rotamers_b,
-                                                 scores_b,
-                                                 best_scores_b,
-                                                 best_chromosomes_b);
+    q->invoke_kernel<finalize_region_name>(finalize_impl,
+                                           batch_ligands,
+                                           population_number,
+                                           population,
+                                           num_rotamers_b,
+                                           scores_b,
+                                           best_scores_b,
+                                           best_chromosomes_b);
   }
   template<>
   void genetic_kernel<queue_cpp>::operator()() {
-    q->invoke_kernel<this->iterate_region_name>(iterate_impl,
-                                                batch_ligands,
-                                                population_number,
-                                                tournament_length,
-                                                mutation_prob,
-                                                population,
-                                                next_population,
-                                                num_rotamers_b,
-                                                scores_b);
+    q->invoke_kernel<iterate_region_name>(iterate_impl,
+                                          batch_ligands,
+                                          population_number,
+                                          tournament_length,
+                                          mutation_prob,
+                                          population,
+                                          next_population,
+                                          num_rotamers_b,
+                                          scores_b);
   }
   template<>
   void genetic_kernel<queue_cpp>::initialize() {
-    q->invoke_kernel<this->initialize_region_name>(initialize_impl,
-                                                   batch_ligands,
-                                                   population_number,
-                                                   seed,
-                                                   population,
-                                                   num_rotamers_b,
-                                                   scores_b);
+    q->invoke_kernel<initialize_region_name>(initialize_impl,
+                                             batch_ligands,
+                                             population_number,
+                                             seed,
+                                             population,
+                                             num_rotamers_b,
+                                             scores_b);
   }
 } // namespace mudock

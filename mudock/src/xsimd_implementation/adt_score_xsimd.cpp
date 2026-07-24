@@ -3,22 +3,23 @@
 #include <xsimd/xsimd.hpp>
 
 namespace mudock {
-  template<typename T, typename V, typename VI>
-  inline V trilinear_interpolation_vectorized_xsimd(const T* __restrict__ map,
-                                                    const VI& base_index,
-                                                    const V& p1u,
-                                                    const V& p1v,
-                                                    const V& p1w,
-                                                    const V& p0u,
-                                                    const V& p0v,
-                                                    const V& p0w,
-                                                    const VI& map_index_plus_one_vec,
-                                                    const VI& map_index_x_vec,
-                                                    const VI& map_index_x_plus_one_vec,
-                                                    const VI& map_index_xy_vec,
-                                                    const VI& map_index_xy_plus_one_vec,
-                                                    const VI& map_index_x_xy_vec,
-                                                    const VI& map_index_x_xy_plus_one_vec) {
+  namespace {
+    template<typename T, typename V, typename VI>
+    V trilinear_interpolation_vectorized_xsimd(const T* __restrict__ map,
+                                               const VI& base_index,
+                                               const V& p1u,
+                                               const V& p1v,
+                                               const V& p1w,
+                                               const V& p0u,
+                                               const V& p0v,
+                                               const V& p0w,
+                                               const VI& map_index_plus_one_vec,
+                                               const VI& map_index_x_vec,
+                                               const VI& map_index_x_plus_one_vec,
+                                               const VI& map_index_xy_vec,
+                                               const VI& map_index_xy_plus_one_vec,
+                                               const VI& map_index_x_xy_vec,
+                                               const VI& map_index_x_xy_plus_one_vec) {
     using batch_type = V;
 
     // Precompute products
@@ -43,33 +44,33 @@ namespace mudock {
         xsimd::fma(p0u * p0v_p0w, batch_type::gather(map, base_index + map_index_x_xy_plus_one_vec), value);
 
     return value;
-  }
-  inline void calc_energy(const int batch_atoms,
-                          const int batch_ligands,
-                          const int scores_per_ligand,
-                          const fp_type* __restrict__ x_scratch_b,
-                          const fp_type* __restrict__ y_scratch_b,
-                          const fp_type* __restrict__ z_scratch_b,
-                          const fp_type* __restrict__ vols_b,
-                          const fp_type* __restrict__ solpars_b,
-                          const fp_type* __restrict__ charges_b,
-                          const int* __restrict__ num_atoms_b,
-                          const int* __restrict__ num_rotamers_b,
-                          const int* __restrict__ num_nonbonds_b,
-                          const int* __restrict__ nonbond_a1_b,
-                          const int* __restrict__ nonbond_a2_b,
-                          const fp_type* __restrict__ nonbond_cA_b,
-                          const fp_type* __restrict__ nonbond_cB_b,
-                          const int* __restrict__ nonbond_xB_b,
-                          const fp_type* __restrict__ grid_maps,
-                          const fp_type* __restrict__ minimum,
-                          const fp_type* __restrict__ maximum,
-                          const fp_type* __restrict__ center,
-                          const int* __restrict__ map_offsets_b,
-                          const int map_index_x,
-                          const int map_index_xy,
-                          const int map_index_xyz,
-                          fp_type* __restrict__ scores_b) {
+    }
+    void calc_energy(const int batch_atoms,
+                     const int batch_ligands,
+                     const int scores_per_ligand,
+                     const fp_type* __restrict__ x_scratch_b,
+                     const fp_type* __restrict__ y_scratch_b,
+                     const fp_type* __restrict__ z_scratch_b,
+                     const fp_type* __restrict__ vols_b,
+                     const fp_type* __restrict__ solpars_b,
+                     const fp_type* __restrict__ charges_b,
+                     const int* __restrict__ num_atoms_b,
+                     const int* __restrict__ num_rotamers_b,
+                     const int* __restrict__ num_nonbonds_b,
+                     const int* __restrict__ nonbond_a1_b,
+                     const int* __restrict__ nonbond_a2_b,
+                     const fp_type* __restrict__ nonbond_cA_b,
+                     const fp_type* __restrict__ nonbond_cB_b,
+                     const int* __restrict__ nonbond_xB_b,
+                     const fp_type* __restrict__ grid_maps,
+                     const fp_type* __restrict__ minimum,
+                     const fp_type* __restrict__ maximum,
+                     const fp_type* __restrict__ center,
+                     const int* __restrict__ map_offsets_b,
+                     const int map_index_x,
+                     const int map_index_xy,
+                     const int map_index_xyz,
+                     fp_type* __restrict__ scores_b) {
     using batch_type = xsimd::batch<fp_type>;
     using batch_int  = xsimd::batch<int>;
     using mask_type  = typename batch_type::batch_bool_type;
@@ -359,35 +360,36 @@ namespace mudock {
         scores_l[scores_index] = total_trilinear + total_eintcal + tors_free_energy;
       }
     }
-  }
+    }
+  } // namespace
   template<>
   void adt_score_kernel<queue_xsimd>::operator()() {
-    q->invoke_kernel<this->adt_region_name>(calc_energy,
-                                            batch_atoms,
-                                            batch_ligands,
-                                            scores_per_ligand,
-                                            x_scratch_b,
-                                            y_scratch_b,
-                                            z_scratch_b,
-                                            vols_b,
-                                            solpars_b,
-                                            charges_b,
-                                            num_atoms_b,
-                                            num_rotamers_b,
-                                            num_nonbonds_b,
-                                            nonbond_a1_b,
-                                            nonbond_a2_b,
-                                            nonbond_cA_b,
-                                            nonbond_cB_b,
-                                            nonbond_xB_b,
-                                            grid_maps,
-                                            minimum,
-                                            maximum,
-                                            center,
-                                            map_offsets_b,
-                                            map_index_x,
-                                            map_index_xy,
-                                            map_index_xyz,
-                                            scores_b);
+    q->invoke_kernel<adt_region_name>(calc_energy,
+                                      batch_atoms,
+                                      batch_ligands,
+                                      scores_per_ligand,
+                                      x_scratch_b,
+                                      y_scratch_b,
+                                      z_scratch_b,
+                                      vols_b,
+                                      solpars_b,
+                                      charges_b,
+                                      num_atoms_b,
+                                      num_rotamers_b,
+                                      num_nonbonds_b,
+                                      nonbond_a1_b,
+                                      nonbond_a2_b,
+                                      nonbond_cA_b,
+                                      nonbond_cB_b,
+                                      nonbond_xB_b,
+                                      grid_maps,
+                                      minimum,
+                                      maximum,
+                                      center,
+                                      map_offsets_b,
+                                      map_index_x,
+                                      map_index_xy,
+                                      map_index_xyz,
+                                      scores_b);
   }
 } // namespace mudock

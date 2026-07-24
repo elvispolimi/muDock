@@ -26,12 +26,25 @@ constexpr void constexpr_switch(F&& f, T value) {
 template<auto Start, auto End, auto Inc, class T, class V, class F>
 constexpr void constexpr_switch_bucket(F&& f, T value, V* values) {
   if constexpr (Start < End) {
-    if (static_cast<T>(values[Start]) <= value)
+    if (value <= static_cast<T>(values[Start]))
       f(std::integral_constant<decltype(Start), Start>());
     else
-      constexpr_switch<Start + Inc, End, Inc>(f, value);
+      constexpr_switch_bucket<Start + Inc, End, Inc>(f, value, values);
   }
 }
+
+// Unroll control for kernels
+#define MUDOCK_STRINGIFY_INNER(x) #x
+#define MUDOCK_STRINGIFY(x) MUDOCK_STRINGIFY_INNER(x)
+#ifndef MUDOCK_UNROLL_FACTOR
+  #define MUDOCK_UNROLL_FACTOR 8
+#endif
+#define MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, STEP) (((MAX_ATOMS) + (STEP)-1) / (STEP))
+#ifdef MUDOCK_DISABLE_UNROLL
+  #define MUDOCK_PRAGMA_UNROLL(factor) _Pragma("unroll 1")
+#else
+  #define MUDOCK_PRAGMA_UNROLL(factor) _Pragma(MUDOCK_STRINGIFY(unroll factor))
+#endif
 
 // utility function that reads the whole content of a stream
 template<class stream_type>

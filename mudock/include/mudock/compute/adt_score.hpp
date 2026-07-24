@@ -1,29 +1,35 @@
 #pragma once
 
+#include <cstddef>
 #include <cstring>
 #include <mudock/batch.hpp>
 #include <mudock/chem/autodock_grid_types.hpp>
 #include <mudock/chem/autodock_ligand.hpp>
 #include <mudock/chem/autodock_protein.hpp>
 #include <mudock/compute/adt_score_kernel.hpp>
-#ifndef __CUDACC__
+#include <mudock/compute/batch_multiple.hpp>
+#if !defined(__CUDACC__) && !defined(__HIPCC__)
   #include <mudock/compute/buffer_utils.hpp>
   #include <mudock/compute/scoring.hpp>
   #include <mudock/compute/scratchpad.hpp>
 #endif
+#include <mudock/log.hpp>
 #include <mudock/molecule.hpp>
 #include <mudock/type_alias.hpp>
 
 namespace mudock {
 
   template<typename queue_type>
-  // requires std::derived_from<queue_type, queue>
-  int get_adt_score_batch(const int, std::shared_ptr<queue_type>);
+  batch_multiple get_adt_score_batch_multiple(const int, std::shared_ptr<queue_type>) {
+    return {};
+  }
 
-#ifndef __CUDACC__
+#if !defined(__CUDACC__) && !defined(__HIPCC__)
   // TODO check that the object type and the kernel impl are the same
   template<typename queue_type>
   struct adt_score: public scoring<queue_type> {
+    static constexpr const char stage_name[] = "ADT";
+
     adt_score(std::shared_ptr<scratchpad<queue_type>> _scratch,
               std::shared_ptr<scratchpad<queue_type>> _device_scratch,
               dynamic_molecule &protein)
@@ -61,9 +67,9 @@ namespace mudock {
         std::memcpy(prot_min(), adt_prot.get_min_p(), 3 * sizeof(fp_type));
         std::memcpy(prot_max(), adt_prot.get_max_p(), 3 * sizeof(fp_type));
         std::memcpy(prot_center(), adt_prot.get_center_p(), 3 * sizeof(fp_type));
-        prot_index_x()[0]   = adt_prot.get_size_x();
-        prot_index_xy()[0]  = adt_prot.get_size_xy();
-        prot_index_xyz()[0] = adt_prot.get_size_xyz();
+        prot_index_x()[0]   = static_cast<int>(adt_prot.get_size_x());
+        prot_index_xy()[0]  = static_cast<int>(adt_prot.get_size_xy());
+        prot_index_xyz()[0] = static_cast<int>(adt_prot.get_size_xyz());
         std::memcpy(prot_grid_maps(),
                     adt_prot.get_maps_pointer(),
                     adt_prot.get_map_flat_size() * num_autodock_grids() * sizeof(fp_type));
@@ -89,9 +95,19 @@ namespace mudock {
       load_num_rotamers(batch, this->scratch);
       load_num_atoms(batch, this->scratch);
 
+      const int scores_per_ligand =
+          std::max(1, static_cast<int>((*this->scratch).configuration.population_number));
+
       auto &score_b = (*this->scratch).template get<buffer_data_type::SCORES>();
-      if (load_scratchs<queue_type>(batch, this->scratch)) {
-        score_b.alloc(batch_ligands);
+      if (load_scratchs<queue_type>(batch, this->scratch, scores_per_ligand)) {
+        if (!score_b.is_valid() ||
+            score_b.num_elements() != static_cast<size_t>(batch_ligands * scores_per_ligand)) {
+          score_b.alloc(batch_ligands * scores_per_ligand);
+          score_b.set_valid();
+        }
+      } else if (!score_b.is_valid() ||
+                 score_b.num_elements() != static_cast<size_t>(batch_ligands * scores_per_ligand)) {
+        score_b.alloc(batch_ligands * scores_per_ligand);
         score_b.set_valid();
       }
 
@@ -135,7 +151,7 @@ namespace mudock {
         std::memcpy((void *) (nonbond_xB() + num_nonbond()[ligand_index]),
                     adt_ligand.non_bond_xB(),
                     non_bond_size * sizeof(int));
-        num_nonbond()[ligand_index + 1] = num_nonbond()[ligand_index] + non_bond_size;
+        num_nonbond()[ligand_index + 1] = static_cast<int>(num_nonbond()[ligand_index] + non_bond_size);
 
         // Autodock typing
         std::memcpy((void *) (vols() + stride_atoms), adt_ligand.vol(), num_atoms * sizeof(fp_type));
@@ -143,7 +159,7 @@ namespace mudock {
         std::memcpy((void *) (charges() + stride_atoms), ligand.charge(), num_atoms * sizeof(fp_type));
 
         std::memcpy((void *) (map_offsets() + stride_atoms),
-                    adt_ligand.atom_map_index(),
+                    adt_ligand.atom_map_offsets(),
                     num_atoms * sizeof(int));
       }
 
@@ -161,10 +177,12 @@ namespace mudock {
 
       // TODO ask Davide about this performance
       // Bind to the kernel function
-      const auto scores_per_ligand = score_b.num_elements() / batch_ligands;
-      assert((*this->scratch).template get<buffer_data_type::X_SCRATCH>().num_elements() !=
-                 (scores_per_ligand * batch_ligands) &&
-             "Number of scores per ligands does not match the allocated coordinates space");
+      const auto expected_scratch_elements =
+          static_cast<std::size_t>(scores_per_ligand) * static_cast<std::size_t>(tot_atoms_in_batch);
+      (void) expected_scratch_elements;
+      assert((*this->scratch).template get<buffer_data_type::X_SCRATCH>().num_elements() ==
+                 expected_scratch_elements &&
+             "Number of scores per ligand does not match the allocated coordinates space");
 
       const int *num_atoms_b = (*this->scratch).template get<buffer_data_type::NUM_ATOMS>().dev_pointer();
       const int *num_rotamers_b =
@@ -236,6 +254,55 @@ namespace mudock {
       (*kernel)();
     }
 
+    static std::size_t get_shared_ligand_mem(const int max_atoms, const knobs conf) {
+      const int scores_per_ligand = std::max(1, static_cast<int>(conf.population_number));
+      return sizeof(int) + sizeof(int) + sizeof(fp_type) * scores_per_ligand +
+             3 * sizeof(fp_type) * max_atoms * scores_per_ligand;
+    }
+
+    static std::size_t get_private_ligand_mem(const int max_atoms, const knobs) {
+      const int non_bonds_atoms = max_atoms * max_atoms;
+      std::size_t mem{0};
+      mem += sizeof(fp_type) * max_atoms;       // vols
+      mem += sizeof(fp_type) * max_atoms;       // solpars
+      mem += sizeof(fp_type) * max_atoms;       // charges
+      mem += sizeof(int) * max_atoms;           // map_offsets
+      mem += sizeof(int);                       // num_nonbond
+      mem += sizeof(int) * non_bonds_atoms;     // nonbond_a1
+      mem += sizeof(int) * non_bonds_atoms;     // nonbond_a2
+      mem += sizeof(fp_type) * non_bonds_atoms; // nonbond_cA
+      mem += sizeof(fp_type) * non_bonds_atoms; // nonbond_cB
+      mem += sizeof(int) * non_bonds_atoms;     // nonbond_xB
+      return mem;
+    }
+
+    static int get_ligand_mem(const int max_atoms, const knobs conf) {
+      return static_cast<int>(get_shared_ligand_mem(max_atoms, conf) +
+                              get_private_ligand_mem(max_atoms, conf));
+    }
+
+    static batch_multiple get_batch_size(const int atoms,
+                                         std::shared_ptr<queue_type> q,
+                                         const knobs &conf,
+                                         const size_t max_bucket_size) {
+      (void) conf;
+      const auto plain_multiple_info =
+          normalize_batch_multiple(get_adt_score_batch_multiple<queue_type>(atoms, q));
+      mudock::stage_bucket_trace("ADT stage plain multiple for ",
+                                 atoms,
+                                 " atoms -> total=",
+                                 plain_multiple_info.total_multiple(),
+                                 " (active_blocks_per_sm=",
+                                 plain_multiple_info.active_blocks_per_sm,
+                                 ", num_sms=",
+                                 plain_multiple_info.num_sms,
+                                 ")",
+                                 " (max_bucket_size hint=",
+                                 max_bucket_size,
+                                 ")");
+      return plain_multiple_info;
+    }
+
   private:
     int batch_ligands;
     int batch_atoms;
@@ -257,19 +324,15 @@ namespace mudock {
     void teardown_impl(batch<static_molecule> &batch) override {
       assert(batch.num_ligands == batch_ligands && "Scoring algorithm received different batch for teardown");
 
-      //TODO this could be an issue if the scores per population would be equal to 1;
-      if (batch_ligands ==
-          static_cast<int>((*this->scratch).template get<buffer_data_type::SCORES>().num_elements())) {
-        auto &scores_b = (*this->scratch).template get<buffer_data_type::SCORES>();
-        scores_b.copy_device2host();
-        (*this->scratch).get_queue()->synchronize();
-        for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
-          auto &ligand = *batch.molecules[ligand_index];
-
-          ligand.properties.assign(property_type::SCORE, std::to_string(scores_b()[ligand_index]));
-        }
+      auto &scores_b              = (*this->scratch).template get<buffer_data_type::SCORES>();
+      const int scores_per_ligand = static_cast<int>(scores_b.num_elements() / batch_ligands);
+      scores_b.copy_device2host();
+      (*this->scratch).get_queue()->synchronize();
+      for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
+        auto &ligand          = *batch.molecules[ligand_index];
+        const int score_index = ligand_index * scores_per_ligand;
+        ligand.properties.assign(property_type::SCORE, std::to_string(scores_b()[score_index]));
       }
-      // Otherwise the upper stage gave the responsibility to do so
     };
   };
 #endif

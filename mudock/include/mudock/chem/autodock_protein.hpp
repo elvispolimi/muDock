@@ -3,6 +3,7 @@
 #include <mudock/chem/autodock_grid_types.hpp>
 #include <mudock/chem/autodock_layer.hpp>
 #include <mudock/chem/autodock_parameters.hpp>
+#include <mudock/chem/pdbqt_forcefield_override.hpp>
 #include <mudock/chem/autodock_types.hpp>
 #include <mudock/chem/grid_const.hpp>
 #include <mudock/grid.hpp>
@@ -46,8 +47,8 @@ namespace mudock {
         const auto& prot_desc = get_description(static_cast<autodock_ff>(prot_type_index));
         shape.nbp_r           = (lig_desc.Rii + prot_desc.Rii) / fp_type{2};
         shape.nbp_eps         = std::sqrt(lig_desc.epsii * autodock_parameters::coeff_vdW * prot_desc.epsii *
-                                  autodock_parameters::coeff_vdW);
-        shape.hbonder         = lig_desc.hbond > fp_type{0} ? true : false;
+                                          autodock_parameters::coeff_vdW);
+        shape.hbonder         = lig_desc.hbond > 0 ? true : false;
         if (lig_desc.hbond > 2 && (prot_desc.hbond == 1 || prot_desc.hbond == 2)) {
           shape.xB      = 10;
           shape.nbp_r   = lig_desc.Rij_hb;
@@ -90,7 +91,7 @@ namespace mudock {
 
         energy_table.get(0, prot_type_index, lig_type_index) = EINTCLAMP;
         for (int indx_r = 1; indx_r < NEINT - 1; ++indx_r) {
-          const fp_type r  = indx_r / A_DIV;
+          const fp_type r  = static_cast<fp_type>(indx_r) / A_DIV;
           const fp_type rA = std::pow(r, shape.xA);
           const fp_type rB = std::pow(r, shape.xB);
 
@@ -132,7 +133,7 @@ namespace mudock {
         //   const auto min_value = *std::min_element(energy_row, energy_row + num_radius_tick_desolv);
         //   for (std::size_t i = 0; i < num_radius_tick_elect; ++i) { energy_row[i] = min_value; }
         // }
-        const int i_smooth = std::floor(r_smooth * A_DIV / inv_spacing);
+        const int i_smooth = static_cast<int>(std::floor(r_smooth * A_DIV / inv_spacing));
         std::vector<fp_type> energy_smooth;
         energy_smooth.resize(NEINT, EINTCLAMP);
         if (i_smooth > 0) {
@@ -161,9 +162,11 @@ namespace mudock {
   static inline auto compute_desolvation_energy() {
     std::array<fp_type, num_radius_tick_desolv> energy_table;
     for (std::size_t radius_index = 0; radius_index < num_radius_tick_desolv; ++radius_index) {
-      const auto radius          = static_cast<fp_type>(radius_index) / lookup_resolution;
-      energy_table[radius_index] = autodock_parameters::coeff_desolv *
-                                   std::exp(-(radius * radius) / (fp_type{2} * fp_type{3.6} * fp_type{3.6}));
+      const auto radius = static_cast<fp_type>(radius_index) / lookup_resolution;
+      energy_table[radius_index] =
+          autodock_parameters::coeff_desolv *
+          std::exp(-(radius * radius) /
+                   (static_cast<fp_type>(2) * static_cast<fp_type>(3.6) * static_cast<fp_type>(3.6)));
     }
     return energy_table;
   }
@@ -173,11 +176,11 @@ namespace mudock {
   //===------------------------------------------------------------------------------------------------------
 
   static inline auto compute_electostatic_energy() {
-    constexpr auto lambda   = fp_type{0.003627};
-    constexpr auto epsilon0 = fp_type{78.4};
-    constexpr auto A        = fp_type{-8.5525};
+    constexpr auto lambda   = static_cast<fp_type>(0.003627);
+    constexpr auto epsilon0 = static_cast<fp_type>(78.4);
+    constexpr auto A        = static_cast<fp_type>(-8.5525);
     constexpr auto B        = epsilon0 - A;
-    constexpr auto rk       = fp_type{7.7839};
+    constexpr auto rk       = static_cast<fp_type>(7.7839);
     constexpr auto lambda_B = -lambda * B;
 
     std::array<fp_type, num_radius_tick_elect> adt_protein;
@@ -194,7 +197,7 @@ namespace mudock {
         : index(min.difference(max)
                     .apply(std::abs<fp_type>)
                     .divide({resolution})
-                    .apply(static_cast<fp_type (*)(fp_type)>(std::ceil))
+                    .apply([](fp_type x) { return std::ceil(x); })
                     .add({fp_type{1}})),
           data(index.size_x(), index.size_y(), index.size_z(), num_autodock_grids()),
           _inv_resolution(1 / resolution),
@@ -273,10 +276,12 @@ namespace mudock {
                      dynamic_molecule& _molecule,
                      std::function<void(dynamic_molecule&)> f = {})
         : autodock_dynamic_layer(_molecule, f), adt_grid(min, max, resolution) {
+      check_source_path_pdbqt_forcefield_override(*this, _molecule);
       autodock_protein::prepare();
     };
     autodock_protein(dynamic_molecule& _molecule, std::function<void(dynamic_molecule&)> f = {})
         : autodock_dynamic_layer(_molecule, f) {
+      check_source_path_pdbqt_forcefield_override(*this, _molecule);
       autodock_protein::prepare();
     };
     autodock_protein(dynamic_molecule& _molecule, std::function<void(autodock_dynamic_layer&)> f)

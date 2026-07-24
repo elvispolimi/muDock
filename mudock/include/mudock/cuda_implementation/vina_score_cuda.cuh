@@ -5,7 +5,7 @@
 
 namespace mudock {
   template<>
-  int get_vina_score_batch<queue_cuda>(const int, std::shared_ptr<queue_cuda>);
+  batch_multiple get_vina_score_batch_multiple<queue_cuda>(const int, std::shared_ptr<queue_cuda>);
 
   template<>
   void vina_score_kernel<queue_cuda>::operator()();

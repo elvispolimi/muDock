@@ -8,7 +8,6 @@
 #include <mudock/chem/autodock_protein.hpp>
 #include <mudock/compute/adt_score.hpp>
 #include <mudock/format/ob_wrapper.hpp>
-#include <mudock/format/pdbqt.hpp>
 #include <mudock/format/reader.hpp>
 #include <mudock/log.hpp>
 #include <mudock/mudock.hpp>
@@ -43,20 +42,17 @@ int main(int argc, char *argv[]) {
   mudock::autodock_grid adt_grid = load_autogrid_map_dpf(dpf_path);
 
   const auto ligand_path = get_ligand_path(dpf_path);
-  mudock::static_molecule ligand =
-      mudock::parser<mudock::static_molecule>(ligand_path, &mudock::pdbqt_rotate_check);
-
-  auto f =
-      std::function<void(mudock::autodock_static_layer &)>{[ligand_path](mudock::autodock_static_layer &l) {
-        mudock::apply_autodock_forcefield_pdbqt(l, ligand_path);
-      }};
-  mudock::autodock_ligand adt_ligand{ligand, f};
+  const auto ligand_format = mudock::parse_supported_format(std::filesystem::path{ligand_path});
+  const auto rotate_check  = ligand_format == mudock::supported_format::PDBQT ? &mudock::pdbqt_rotate_check
+                                                                               : &mudock::ob_rotate_check;
+  mudock::static_molecule ligand = mudock::parser<mudock::static_molecule>(ligand_path, rotate_check);
+  mudock::autodock_ligand adt_ligand{ligand};
   const auto adt_score       = load_autodock_score(dpf_path);
   const auto adt_error_score = load_autodock_error_score(dpf_path);
 
   const auto num_atoms    = ligand.num_atoms();
   const auto num_rotamers = ligand.num_rotamers();
-  adt_ligand.update_offsets(adt_grid.get_map_flat_size());
+  adt_ligand.update_offsets(static_cast<int>(adt_grid.get_map_flat_size()));
 
   mudock::info("Computing energy ...");
   std::vector<int> num_atoms_b{num_atoms};
@@ -95,9 +91,9 @@ int main(int argc, char *argv[]) {
   adt_kernel();
   const mudock::fp_type energy = scores_b[0];
   // High tolerance due to the precomputation done in autodock, refers to intnbtable.cc
-  if (std::abs(energy - adt_score + adt_error_score) > mudock::fp_type{0.1}) {
+  if (std::abs(energy - adt_score + adt_error_score) > static_cast<mudock::fp_type>(0.1)) {
     // High tolerance due to the precomputation done in autodock, refers to intnbtable.cc
-    if (std::abs(energy - adt_score + adt_error_score) > mudock::fp_type{0.1}) {
+    if (std::abs(energy - adt_score + adt_error_score) > static_cast<mudock::fp_type>(0.1)) {
       mudock::error(std::format("Difference betweem scores of {} ({} vs {})",
                                 dpf_path.string(),
                                 adt_score - adt_error_score,

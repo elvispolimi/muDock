@@ -7,6 +7,7 @@
 #include <mudock/batch.hpp>
 #include <mudock/chem/autodock_ligand.hpp>
 #include <mudock/compute/vina_score_kernel.hpp>
+#include <mudock/compute/batch_multiple.hpp>
 #ifndef __CUDACC__
 #include <mudock/compute/buffer_utils.hpp>
 #include <mudock/compute/scoring.hpp>
@@ -16,9 +17,18 @@
 #include <mudock/type_alias.hpp>
 
 namespace mudock {
-  
-  #define MAX_INTERACTING_PAIRS_IN_BATCH (10 * 1000 * 1000)
+
+  #define MAX_INTERACTING_PAIRS_IN_LINGAD (1000)  
+  #define MAX_INTERACTING_PAIRS_IN_BATCH (10 * 1000 * MAX_INTERACTING_PAIRS_IN_LINGAD)
   #define REMOVE_HYDROGENS false
+
+
+  template<typename queue_type>
+  batch_multiple get_vina_score_batch_multiple(const int, std::shared_ptr<queue_type>) {
+    return {};
+  }
+
+
 
   std::pair<std::vector<int>, std::vector<int>> get_interactive_pairs(const static_molecule& ligand);
 
@@ -43,6 +53,8 @@ namespace mudock {
   // TODO check that the object type and the kernel impl are the same
   template<typename queue_type>
     struct vina_score: public scoring<queue_type> {
+      static constexpr const char stage_name[] = "VINA";
+
       vina_score(std::shared_ptr<scratchpad<queue_type>> _scratch,
           std::shared_ptr<scratchpad<queue_type>> _device_scratch,
           dynamic_molecule &protein)
@@ -303,6 +315,46 @@ namespace mudock {
         assert(kernel && "Kernel method not yet prepared");
         (*kernel)();
       }
+
+
+      static std::size_t get_private_ligand_mem(const int max_atoms, const knobs) {
+        std::size_t mem{0};
+        mem += sizeof(int) * max_atoms;           // hbonda 
+        mem += sizeof(int) * max_atoms;           // hbondd
+        mem += sizeof(int) * max_atoms;           // is hydro 
+        mem += sizeof(int) * MAX_INTERACTING_PAIRS_IN_LINGAD * 2;   // interacting_pairs    
+        mem += sizeof(int);                       // num_interacting_pairs
+        mem += sizeof(int);                       // offset_interacting_pairs 
+        mem += sizeof(fp_type) * max_atoms;       //vdw 
+        return mem;
+      }
+
+      static int get_ligand_mem(const int max_atoms, const knobs conf) {
+        return static_cast<int>(get_private_ligand_mem(max_atoms, conf));
+      }
+
+      static batch_multiple get_batch_size(const int atoms,
+          std::shared_ptr<queue_type> q,
+          const knobs &conf,
+          const size_t max_bucket_size) {
+        (void) conf;
+        const auto plain_multiple_info =
+          normalize_batch_multiple(get_vina_score_batch_multiple<queue_type>(atoms, q));
+        mudock::stage_bucket_trace("VINA stage plain multiple for ",
+            atoms,
+            " atoms -> total=",
+            plain_multiple_info.total_multiple(),
+            " (active_blocks_per_sm=",
+            plain_multiple_info.active_blocks_per_sm,
+            ", num_sms=",
+            plain_multiple_info.num_sms,
+            ")",
+            " (max_bucket_size hint=",
+            max_bucket_size,
+            ")");
+        return plain_multiple_info;
+      }
+
 
       private:
       int batch_ligands;

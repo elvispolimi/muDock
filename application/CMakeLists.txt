@@ -9,105 +9,53 @@ list(APPEND header_files "${header_path}/command_line_args.hpp")
 # sources
 set(source_path "${CMAKE_CURRENT_SOURCE_DIR}/src")
 list(APPEND source_files "${header_path}/command_line_args.cpp"
-     "${source_path}/main.cpp")
+                         "${source_path}/main.cpp")
 
 # ##############################################################################
 # ### Declare the compile step
 # ##############################################################################
 
+function(mudock_configure_application_target target include_dir)
+  target_include_directories("${target}" PRIVATE "${include_dir}")
+  set_target_properties(
+    "${target}"
+    PROPERTIES CXX_STANDARD 20
+               CXX_STANDARD_REQUIRED ON
+               CXX_EXTENSIONS OFF
+               POSITION_INDEPENDENT_CODE FALSE)
+  target_compile_options("${target}" PRIVATE -fno-plt)
+  target_link_options("${target}" PRIVATE -Wl,-z,now)
+  if(NOT MUDOCK_ENABLE_OMP)
+    target_compile_options("${target}" PRIVATE -Wno-unknown-pragmas)
+  endif()
+  if(MUDOCK_ENABLE_GH)
+    target_link_libraries("${target}" PRIVATE hwy::hwy)
+  endif()
+  if(MUDOCK_ENABLE_OMP OR MUDOCK_ENABLE_OMP_OFFLOAD)
+    target_link_libraries("${target}" PRIVATE OpenMP::OpenMP_CXX)
+  endif()
+  if(MUDOCK_ENABLE_OMP_OFFLOAD)
+    target_compile_options("${target}" PRIVATE "-fopenmp-targets=nvptx64")
+    target_link_options("${target}" PRIVATE "-fopenmp-targets=nvptx64")
+  endif()
+endfunction()
+
+function(mudock_link_application_target target)
+  target_link_libraries("${target}" PRIVATE libmudock Boost::program_options)
+endfunction()
+
 # declare the application executable
-set(files ${header_files} ${source_files})
 add_executable_mudock("${CMAKE_PROJECT_NAME}" "${header_files}"
                       "${source_files}")
-target_include_directories("${CMAKE_PROJECT_NAME}" PRIVATE "${header_path}")
-set_target_properties(
-  "${CMAKE_PROJECT_NAME}"
-  PROPERTIES CXX_STANDARD 20
-             CXX_STANDARD_REQUIRED ON
-             CXX_EXTENSIONS OFF
-             POSITION_INDEPENDENT_CODE FALSE)
-# Required by OpenBabel dynamic plugin/libraries loading
-target_compile_options("${CMAKE_PROJECT_NAME}" PRIVATE -fno-plt)
-target_link_options("${CMAKE_PROJECT_NAME}" PRIVATE -Wl,-z,now)
-if(NOT MUDOCK_ENABLE_OMP)
-  target_compile_options("${CMAKE_PROJECT_NAME}" PRIVATE -Wno-unknown-pragmas)
+mudock_configure_application_target("${CMAKE_PROJECT_NAME}" "${header_path}")
+mudock_link_application_target("${CMAKE_PROJECT_NAME}")
+if(MUDOCK_ENABLE_MPI)
+  target_link_libraries("${CMAKE_PROJECT_NAME}" PRIVATE MPI::MPI_CXX)
 endif()
 
-# add the dependencies
-if(MUDOCK_ENABLE_SYCL)
-  string(FIND "${ACPP_TARGETS}" "omp" SUBSTRING_INDEX)
-  if(SUBSTRING_INDEX GREATER -1)
-    target_link_libraries("${CMAKE_PROJECT_NAME}" omp)
-  endif()
-  target_link_libraries(
-    ${CMAKE_PROJECT_NAME}
-    libmudock
-    Boost::program_options
-    Boost::context
-    pthread
-    Boost::fiber
-    m
-    stdc++)
-else()
-  target_link_libraries(
-    ${CMAKE_PROJECT_NAME}
-    libmudock
-    Boost::program_options
-    Boost::context
-    pthread
-    m
-    stdc++)
-endif()
-
-if(MUDOCK_ENABLE_GH)
-  target_link_libraries("${CMAKE_PROJECT_NAME}" hwy::hwy)
-endif()
-
-if(MUDOCK_ENABLE_OMP OR MUDOCK_ENABLE_OMP_OFFLOAD)
-  target_link_libraries("${CMAKE_PROJECT_NAME}" OpenMP::OpenMP_CXX)
-endif()
-
-if(MUDOCK_ENABLE_OMP_OFFLOAD)
-  target_compile_options("${CMAKE_PROJECT_NAME}"
-                         PRIVATE "-fopenmp-targets=nvptx64")
-  # target_link_options("${CMAKE_PROJECT_NAME}" PRIVATE "-fopenmp")
-  target_link_options("${CMAKE_PROJECT_NAME}" PRIVATE
-                      "-fopenmp-targets=nvptx64")
-endif()
-
+add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/src/bench" bench)
 if(MUDOCK_ENABLE_TEST)
-  add_executable_mudock(test_grid
-                        "${CMAKE_CURRENT_SOURCE_DIR}/src/tests/grid_test.cpp")
-  target_include_directories(test_grid
-                             PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/")
-  set_target_properties(
-    test_grid
-    PROPERTIES CXX_STANDARD 20
-               CXX_STANDARD_REQUIRED ON
-               CXX_EXTENSIONS OFF)
-  target_link_libraries(test_grid libmudock Boost::program_options)
-
-  add_executable_mudock(
-    test_score_adt "${CMAKE_CURRENT_SOURCE_DIR}/src/tests/adt_score_test.cpp")
-  target_include_directories(test_score_adt
-                             PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/")
-  set_target_properties(
-    test_score_adt
-    PROPERTIES CXX_STANDARD 20
-               CXX_STANDARD_REQUIRED ON
-               CXX_EXTENSIONS OFF)
-  target_link_libraries(test_score_adt libmudock Boost::program_options)
-
-  add_executable_mudock(test_score_adt_impl
-                        "${CMAKE_CURRENT_SOURCE_DIR}/src/tests/adt_impl_score_test.cpp")
-  target_include_directories(test_score_adt_impl
-                             PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/")
-  set_target_properties(
-    test_score_adt_impl
-    PROPERTIES CXX_STANDARD 20
-               CXX_STANDARD_REQUIRED ON
-               CXX_EXTENSIONS OFF)
-  target_link_libraries(test_score_adt_impl libmudock Boost::program_options)
+  add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/src/tests" tests)
 endif()
 
 # if(MUDOCK_ENABLE_LIKWID)
@@ -123,14 +71,8 @@ endif()
 # ### Declare the install step
 # ##############################################################################
 add_executable_mudock(converter "${CMAKE_CURRENT_SOURCE_DIR}/src/converter.cpp")
-set_target_properties(
-  converter
-  PROPERTIES CXX_STANDARD 20
-             CXX_STANDARD_REQUIRED ON
-             CXX_EXTENSIONS OFF)
-target_link_libraries(converter libmudock Boost::program_options)
-target_compile_options(converter PRIVATE -fno-plt)
-target_link_options(converter PRIVATE -Wl,-z,now)
+mudock_configure_application_target(converter "${header_path}")
+mudock_link_application_target(converter)
 
 # ##############################################################################
 # ### Declare the install step

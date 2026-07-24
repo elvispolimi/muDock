@@ -5,3 +5,6 @@ build*/
 *.o
 *.a
 compile_commands.json
+.codex
+docs/
+the-molecular-docking-dataset

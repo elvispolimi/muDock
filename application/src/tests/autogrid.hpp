@@ -47,6 +47,19 @@ struct dpf_tokens {
 static constexpr auto SCORE_TOKEN       = "AUTODOCK_SCORE";
 static constexpr auto ERROR_SCORE_TOKEN = "AUTODOCK_ERROR_CORRECTION";
 
+static inline std::filesystem::path resolve_autodock_reference_path(const std::filesystem::path& owner_path,
+                                                                    const std::string& raw_path) {
+  const std::filesystem::path parsed_path{raw_path};
+  if (std::filesystem::exists(parsed_path))
+    return parsed_path;
+
+  const auto fallback = owner_path.parent_path() / parsed_path.filename();
+  if (std::filesystem::exists(fallback))
+    return fallback;
+
+  return parsed_path;
+}
+
 static inline mudock::autodock_grid load_autogrid_map_fld(const std::string& fld_path) {
   mudock::info("Reading and parsing FLD file ", fld_path, " for autogrid maps ...");
 
@@ -55,8 +68,10 @@ static inline mudock::autodock_grid load_autogrid_map_fld(const std::string& fld
   mudock::point3D min, max;
   std::array<std::filesystem::path, mudock::num_autodock_grids()> grids_filepath;
   int label{0};
-  std::array<mudock::autodock_grid_type, mudock::num_autodock_ff_grids()> variables;
+  // FLD labels include affinity maps plus electrostatics and desolvation.
+  std::array<mudock::autodock_grid_type, mudock::num_autodock_grids()> variables;
   const auto fld_desc = read_from_stream(std::ifstream(fld_path));
+  const std::filesystem::path fld_fs_path{fld_path};
   std::stringstream fld_desc_s{fld_desc};
 
   int x{0}, y{0}, z{0};
@@ -80,8 +95,8 @@ static inline mudock::autodock_grid load_autogrid_map_fld(const std::string& fld
     } else if (line.find(fld_tokens::XYZ_TOKEN) != std::string::npos) {
       std::smatch match;
       if (std::regex_search(line, match, std::regex(fld_tokens::FILE_REGEX))) {
-        const std::string xyz_path = match[2];
-        const auto xyz_desc        = read_from_stream(std::ifstream(xyz_path));
+        const auto xyz_path = resolve_autodock_reference_path(fld_fs_path, match[2]);
+        const auto xyz_desc = read_from_stream(std::ifstream(xyz_path));
 
         std::stringstream xyz_desc_s{xyz_desc};
 
@@ -132,7 +147,8 @@ static inline mudock::autodock_grid load_autogrid_map_fld(const std::string& fld
       v_stream >> token >> id >> map_path >> token;
 
       map_path = map_path.substr(std::strlen(fld_tokens::FILE_TOKEN));
-      grids_filepath[static_cast<int>(variables[id - 1])] = map_path;
+      grids_filepath[static_cast<int>(variables[id - 1])] =
+          resolve_autodock_reference_path(fld_fs_path, map_path);
     }
   }
   sizes = {x, y, z};
@@ -173,6 +189,7 @@ static inline mudock::autodock_grid load_autogrid_map_fld(const std::string& fld
 static inline mudock::autodock_grid load_autogrid_map_dpf(const std::string& dpf_path) {
   mudock::info("Reading and parsing DPF file ", dpf_path, " for autogrid maps ...");
   const auto desc = read_from_stream(std::ifstream(dpf_path));
+  const std::filesystem::path dpf_fs_path{dpf_path};
   std::stringstream desc_s{desc};
 
   std::string line;
@@ -188,7 +205,7 @@ static inline mudock::autodock_grid load_autogrid_map_dpf(const std::string& dpf
     }
   }
 
-  return load_autogrid_map_fld(fld_path);
+  return load_autogrid_map_fld(resolve_autodock_reference_path(dpf_fs_path, fld_path).string());
 }
 
 static inline mudock::fp_type load_autodock_score(const std::string& dpf_path) {
@@ -240,6 +257,7 @@ static inline mudock::fp_type load_autodock_error_score(const std::string& dpf_p
 static inline std::string get_ligand_path(const std::string& dpf_path) {
   mudock::info("Reading and parsing DPF file ", dpf_path, " for ligand ...");
   const auto desc = read_from_stream(std::ifstream(dpf_path));
+  const std::filesystem::path dpf_fs_path{dpf_path};
   std::stringstream desc_s{desc};
 
   std::string line;
@@ -254,7 +272,7 @@ static inline std::string get_ligand_path(const std::string& dpf_path) {
       std::string ligand_path, _;
       ss >> _ >> ligand_path;
 
-      return ligand_path;
+      return resolve_autodock_reference_path(dpf_fs_path, ligand_path).string();
     }
   }
   throw std::runtime_error("Cannot file ligand path inside given PDF file");

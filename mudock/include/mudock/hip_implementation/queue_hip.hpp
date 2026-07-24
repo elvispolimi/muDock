@@ -4,7 +4,11 @@
 #include <mudock/compute/queue.hpp>
 #include <mudock/grid/mdindex.hpp>
 
-#define BLOCK_SIZE 32
+#ifdef __HIP_PLATFORM_AMD__
+  #define BLOCK_SIZE 64
+#else
+  #define BLOCK_SIZE 32
+#endif
 
 namespace mudock {
   struct queue_hip: queue {
@@ -28,6 +32,7 @@ namespace mudock {
     void copy_device2host(const void*, void*, const size_t);
     void copy_device2device(const void*, void*, const size_t);
     bool obj_required() { return true; }
+    bool honors_stage_bucket_policy() const override { return true; }
 
     void operator()();
 

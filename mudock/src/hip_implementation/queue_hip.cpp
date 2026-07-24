@@ -1,15 +1,51 @@
+#include <mudock/compute/devices_memory.hpp>
 #include <mudock/compute/reorder_buffer.hpp>
 #include <mudock/hip_implementation/hip_utils.hpp>
 #include <mudock/hip_implementation/queue_hip.hpp>
 #include <mudock/log.hpp>
-#include <mudock/molecule.hpp>
 #include <mudock/type_alias.hpp>
 #include <mudock/utils.hpp>
+#include <mutex>
 
 namespace mudock {
+#ifdef MUDOCK_KERNEL_LOCK
+  namespace {
+    constexpr int k_max_devices_kernel_lock = 16;
+
+    struct device_kernel_lock {
+      std::mutex mutex;
+      hipEvent_t event{};
+      bool event_created{false};
+      bool has_event{false};
+
+      ~device_kernel_lock() noexcept(false) {
+        if (event_created) {
+          (void) hipEventDestroy(event); // best-effort at teardown; runtime may already be shutdown
+        }
+      }
+    };
+
+    device_memory_array<k_max_devices_kernel_lock, device_kernel_lock> hip_kernel_locks;
+
+    device_kernel_lock* get_kernel_lock(const int dev) {
+      hip_kernel_locks.init(dev, std::function<std::unique_ptr<device_kernel_lock>()>([&]() {
+                              MUDOCK_CHECK(hipSetDevice(dev));
+                              auto lock = std::make_unique<device_kernel_lock>();
+                              MUDOCK_CHECK(hipEventCreateWithFlags(&lock->event, hipEventDisableTiming));
+                              lock->event_created = true;
+                              lock->has_event     = false;
+                              return lock;
+                            }));
+      return hip_kernel_locks.v[dev].get_data();
+    }
+  } // namespace
+#endif
+
   struct queue_hip::impl {
     hipStream_t stream;
+    int device_id;
     impl(const int id) {
+      device_id = id;
       MUDOCK_CHECK(hipSetDevice(static_cast<int>(id)));
       MUDOCK_CHECK(hipStreamCreate(&stream));
     };
@@ -40,8 +76,21 @@ namespace mudock {
 
     // const std::size_t shared_mem =
     //     std::max(configuration.population_number, static_cast<std::size_t>(BLOCK_SIZE)) * sizeof(fp_type);
+#ifdef MUDOCK_KERNEL_LOCK
+    auto* lock = get_kernel_lock(impl_->device_id);
+    std::unique_lock<std::mutex> guard(lock->mutex);
+    if (lock->has_event) {
+      MUDOCK_CHECK(hipStreamWaitEvent(impl_->stream, lock->event, 0));
+    }
+#endif
+
     MUDOCK_CHECK(hipLaunchKernel(f, grid, block, args, 0, impl_->stream));
     MUDOCK_CHECK_KERNELCALL();
+
+#ifdef MUDOCK_KERNEL_LOCK
+    MUDOCK_CHECK(hipEventRecord(lock->event, impl_->stream));
+    lock->has_event = true;
+#endif
   };
   void queue_hip::launch_kernel(void* f, void* args[], const int gridDim, const int blockDim) {
     assert(gridDim >= 0 && blockDim >= 0);

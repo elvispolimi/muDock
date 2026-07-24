@@ -15,3 +15,5 @@
 #include <mudock/chem/grid_const.hpp>
 #include <mudock/chem/mehler_solmajer.hpp>
 #include <mudock/chem/molecule_layer.hpp>
+#include <mudock/chem/residue_types.hpp>
+#include <mudock/chem/sybyl_atom_types.hpp>

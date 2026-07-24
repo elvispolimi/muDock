@@ -2,13 +2,14 @@
 
 #include <functional>
 #include <mudock/chem/autodock_layer.hpp>
-#include <mudock/chem/autodock_protein.hpp>
+#include <mudock/chem/pdbqt_forcefield_override.hpp>
 #include <mudock/molecule/fragments.hpp>
 
 namespace mudock {
   struct autodock_ligand: public autodock_static_layer {
     autodock_ligand(static_molecule& _molecule, std::function<void(static_molecule&)> f = {})
         : autodock_static_layer(_molecule, f) {
+      check_source_path_pdbqt_forcefield_override(*this, _molecule);
       prepare();
     };
     autodock_ligand(static_molecule& _molecule, std::function<void(autodock_static_layer&)> f)

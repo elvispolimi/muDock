@@ -12,7 +12,7 @@
 
 This file was created at:			5:35 59" p.m., 04/10/2025
                    on host:		"fedora"
-Current Working Directory = "/home/gaccordi/repo/autodock4/autodock/build"
+Current Working Directory = "."
 
       ________________________________________________________________
 
@@ -21,7 +21,7 @@ Current Working Directory = "/home/gaccordi/repo/autodock4/autodock/build"
 
 
 Random number generator was seeded with values 1696703, 1744299359.
-Docking parameter file (DPF) used for this docking:		/home/gaccordi/repo/muDock/data/1fkb/1fkb_epdb.dpf
+Docking parameter file (DPF) used for this docking:		1fkb_epdb.dpf
 DPF> ## GENERIC SECTION
 
 DPF> autodock_parameter_version 4.2       # used by autodock to validate parameter set
@@ -41,9 +41,9 @@ DPF> ## LIGAND-SPECIFIC SECTION
 
 DPF> ligand_types A C H HD N NA OA SA Cl F S Br P I             # ligand atom types
 
-DPF> fld /home/gaccordi/repo/muDock/data/1fkb/1fkb_pocket.maps.fld  # grid_data_file
+DPF> fld 1fkb_pocket.maps.fld  # grid_data_file
 
-Opening Grid Map Dimensions file:		/home/gaccordi/repo/muDock/data/1fkb/1fkb_pocket.maps.fld
+Opening Grid Map Dimensions file:		1fkb_pocket.maps.fld
 Grid Point Spacing =				0.500 Angstroms
 
 Even Number of User-specified Grid Points =	96 x-points
@@ -51,48 +51,48 @@ Even Number of User-specified Grid Points =	96 x-points
 						92 z-points
 
 Coordinates of Central Grid Point of Maps =	(3.000, 7.000, 12.500)
-Macromolecule file used to create Grid Maps =	/home/gaccordi/repo/muDock/data/1fkb/1fkb_pocket.pdbqt
-Grid Parameter file used to create Grid Maps =	/home/gaccordi/repo/muDock/data/1fkb/1fkb_pocket.gpf
+Macromolecule file used to create Grid Maps =	1fkb_pocket.pdbqt
+Grid Parameter file used to create Grid Maps =	1fkb_pocket.gpf
 Minimum coordinates in grid = (-21.000, -15.500, -10.500)
 Maximum coordinates in grid = (27.000, 29.500, 35.500)
 
-DPF> map /home/gaccordi/repo/muDock/data/1fkb/1fkb_pocket.A.map # atom-specific affinity map
+DPF> map 1fkb_pocket.A.map # atom-specific affinity map
 
-DPF> map /home/gaccordi/repo/muDock/data/1fkb/1fkb_pocket.C.map # atom-specific affinity map
+DPF> map 1fkb_pocket.C.map # atom-specific affinity map
 
-DPF> map /home/gaccordi/repo/muDock/data/1fkb/1fkb_pocket.H.map # atom-specific affinity map
+DPF> map 1fkb_pocket.H.map # atom-specific affinity map
 
-DPF> map /home/gaccordi/repo/muDock/data/1fkb/1fkb_pocket.HD.map # atom-specific affinity map
+DPF> map 1fkb_pocket.HD.map # atom-specific affinity map
 
-DPF> map /home/gaccordi/repo/muDock/data/1fkb/1fkb_pocket.N.map # atom-specific affinity map
+DPF> map 1fkb_pocket.N.map # atom-specific affinity map
 
-DPF> map /home/gaccordi/repo/muDock/data/1fkb/1fkb_pocket.NA.map # atom-specific affinity map
+DPF> map 1fkb_pocket.NA.map # atom-specific affinity map
 
-DPF> map /home/gaccordi/repo/muDock/data/1fkb/1fkb_pocket.OA.map # atom-specific affinity map
+DPF> map 1fkb_pocket.OA.map # atom-specific affinity map
 
-DPF> map /home/gaccordi/repo/muDock/data/1fkb/1fkb_pocket.SA.map # atom-specific affinity map
+DPF> map 1fkb_pocket.SA.map # atom-specific affinity map
 
-DPF> map /home/gaccordi/repo/muDock/data/1fkb/1fkb_pocket.Cl.map # atom-specific affinity map
+DPF> map 1fkb_pocket.Cl.map # atom-specific affinity map
 
-DPF> map /home/gaccordi/repo/muDock/data/1fkb/1fkb_pocket.F.map # atom-specific affinity map
+DPF> map 1fkb_pocket.F.map # atom-specific affinity map
 
-DPF> map /home/gaccordi/repo/muDock/data/1fkb/1fkb_pocket.S.map # atom-specific affinity map
+DPF> map 1fkb_pocket.S.map # atom-specific affinity map
 
-DPF> map /home/gaccordi/repo/muDock/data/1fkb/1fkb_pocket.Br.map # atom-specific affinity map
+DPF> map 1fkb_pocket.Br.map # atom-specific affinity map
 
-DPF> map /home/gaccordi/repo/muDock/data/1fkb/1fkb_pocket.P.map # atom-specific affinity map
+DPF> map 1fkb_pocket.P.map # atom-specific affinity map
 
-DPF> map /home/gaccordi/repo/muDock/data/1fkb/1fkb_pocket.I.map # atom-specific affinity map
+DPF> map 1fkb_pocket.I.map # atom-specific affinity map
 
-DPF> elecmap /home/gaccordi/repo/muDock/data/1fkb/1fkb_pocket.e.map # electrostatic potential map
+DPF> elecmap 1fkb_pocket.e.map # electrostatic potential map
 
-DPF> dsolvmap /home/gaccordi/repo/muDock/data/1fkb/1fkb_pocket.d.map              # desolvation potential map
+DPF> dsolvmap 1fkb_pocket.d.map              # desolvation potential map
 
-DPF> move /home/gaccordi/repo/muDock/data/1fkb/1fkb_ligand.pdbqt
+DPF> move 1fkb_ligand.pdbqt
 
 1,4-interactions will be _ignored_ in the non-bonded internal energy calculation.
 
-Ligand PDBQT file = "/home/gaccordi/repo/muDock/data/1fkb/1fkb_ligand.pdbqt"
+Ligand PDBQT file = "1fkb_ligand.pdbqt"
 
 INPUT LIGAND PDBQT FILE:
 ________________________
@@ -6958,7 +6958,7 @@ This docking finished at:			5:36 48" p.m., 04/10/2025
 
 ________________________________________________________________________________
 
-/home/gaccordi/repo/autodock4/autodock/build/autodock4: Successful Completion on "fedora"
+autodock4: Successful Completion on "fedora"
 
 Real= 48.90s,  CPU= 1.82s,  System= 0.08s
 ________________________________________________________________________________

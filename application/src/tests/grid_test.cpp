@@ -8,7 +8,6 @@
 #include <mudock/chem/autodock_protein.hpp>
 #include <mudock/cpp_implementation/queue_cpp.hpp>
 #include <mudock/format.hpp>
-#include <mudock/format/pdbqt.hpp>
 #include <mudock/format/reader.hpp>
 #include <mudock/log.hpp>
 #include <mudock/mudock.hpp>
@@ -18,6 +17,15 @@
 #include <string>
 #include <tests/autogrid.hpp>
 #include <utility>
+
+#ifndef MUDOCK_CTEST_SKIP_RETURN_CODE
+#  error "MUDOCK_CTEST_SKIP_RETURN_CODE must be defined by CMake."
+#endif
+
+namespace {
+// CTest treats this exit code as "skipped" when the grid test is not applicable.
+constexpr int ctest_skip_return_code = MUDOCK_CTEST_SKIP_RETURN_CODE;
+}
 
 template<class T>
 inline T round3dp(const T x) {
@@ -47,11 +55,7 @@ int main(int argc, char* argv[]) {
     po::notify(vm);
 
     mudock::dynamic_molecule protein = mudock::parser<mudock::dynamic_molecule>(pdbqt_path);
-    auto f =
-        std::function<void(mudock::autodock_dynamic_layer&)>{[pdbqt_path](mudock::autodock_dynamic_layer& l) {
-          mudock::apply_autodock_forcefield_pdbqt(l, pdbqt_path);
-        }};
-    mudock::autodock_protein adt_protein{protein, f};
+    mudock::autodock_protein adt_protein{protein};
 
     mudock::autodock_grid protein_autogrid = load_autogrid_map_fld(fld_path);
 
@@ -60,13 +64,13 @@ int main(int argc, char* argv[]) {
       const auto reference_grid_map = adt_protein.get_atom_map(map_type);
       const auto autogrid_map       = protein_autogrid.get_atom_map(map_type);
 
-      for (size_t k = 0; k < std::min(reference_grid_map.z(), autogrid_map.z()); ++k)
-        for (size_t j = 0; j < std::min(reference_grid_map.y(), autogrid_map.y()); ++j)
-          for (size_t i = 0; i < std::min(reference_grid_map.x(), autogrid_map.x()); ++i) {
+      for (std::size_t k = 0; k < std::min(reference_grid_map.size<2>(), autogrid_map.size<2>()); ++k)
+        for (std::size_t j = 0; j < std::min(reference_grid_map.size<1>(), autogrid_map.size<1>()); ++j)
+          for (std::size_t i = 0; i < std::min(reference_grid_map.size<0>(), autogrid_map.size<0>()); ++i) {
             const auto reference_round = static_cast<float>(round3dp(reference_grid_map.get(i, j, k)));
             const auto autogrid_round  = static_cast<float>(autogrid_map.get(i, j, k));
             const auto max_absolute = std::max(std::fabs(reference_round), std::fabs(autogrid_round)) / 100;
-            const auto delta        = std::clamp(max_absolute, float{0.01}, float{1});
+            const auto delta        = std::clamp(max_absolute, 0.01f, 1.0f);
             if (std::fabs(reference_round - autogrid_round) > delta) {
               mudock::error(std::format(
                   "Difference betweem maps {} at ({},{},{}): muDock {} autogrid {} with an error threshold of {}",
@@ -84,7 +88,7 @@ int main(int argc, char* argv[]) {
     mudock::info(std::format("Succesfully verified grid maps in {}", fld_path.string()));
   } else {
     mudock::info("Grid test requires mudock::fp_type to be double");
-    return EXIT_FAILURE;
+    return ctest_skip_return_code;
   }
   return EXIT_SUCCESS;
 }

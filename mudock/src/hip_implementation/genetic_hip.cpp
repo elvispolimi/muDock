@@ -13,39 +13,40 @@ namespace mudock {
   static constexpr fp_type angle_step{4};
 
   template<typename T>
-  __device__ inline const T random_gen_hip(hiprandState& state, const T min, const T max) {
+  __device__ __forceinline__ const T random_gen_hip(hiprandState& state, const T min, const T max) {
     fp_type value;
     if constexpr (is_debug()) {
       // TODO value here for debug
-      value = fp_type{0.4};
+      value = static_cast<fp_type>(0.4);
     } else {
-      value = curand_uniform(&state);
+      value = hiprand_uniform(&state);
     }
     return static_cast<T>((value * static_cast<fp_type>(max - min)) + min);
   }
 
-  __device__ inline int get_selection_distribution(hiprandState& state, const int* population_number) {
+  __device__ __forceinline__ int get_selection_distribution(hiprandState& state,
+                                                            const int* population_number) {
     return random_gen_hip<int>(state, 0, *population_number - 1);
   };
 
-  __device__ inline fp_type get_init_change_distribution(hiprandState& state) {
+  __device__ __forceinline__ fp_type get_init_change_distribution(hiprandState& state) {
     return random_gen_hip<fp_type>(state, -45, 45);
   }
-  __device__ inline fp_type get_mutation_change_distribution(hiprandState& state) {
+  __device__ __forceinline__ fp_type get_mutation_change_distribution(hiprandState& state) {
     return random_gen_hip<fp_type>(state, -10, 10);
   };
-  __device__ inline fp_type get_mutation_coin_distribution(hiprandState& state) {
+  __device__ __forceinline__ fp_type get_mutation_coin_distribution(hiprandState& state) {
     return random_gen_hip<fp_type>(state, 0, 1);
   };
   // TODO check what happens if max num_rotamers is reached, read for split index could go out of bound
-  __device__ inline int get_crossover_distribution(hiprandState& state, const int* num_rotamers) {
+  __device__ __forceinline__ int get_crossover_distribution(hiprandState& state, const int* num_rotamers) {
     return random_gen_hip<int>(state, 0, 6 + *num_rotamers);
   };
 
-  __device__ inline int tournament_selection_hip(hiprandState& state,
-                                                 const int tournament_length,
-                                                 const int chromosome_number,
-                                                 const fp_type* __restrict__ scores) {
+  __device__ __forceinline__ int tournament_selection_hip(hiprandState& state,
+                                                          const int tournament_length,
+                                                          const int chromosome_number,
+                                                          const fp_type* __restrict__ scores) {
     const int num_iterations = tournament_length;
     int best_individual      = get_selection_distribution(state, &chromosome_number);
     for (int i = 0; i < num_iterations; ++i) {
@@ -66,6 +67,8 @@ namespace mudock {
     const int local_thread_id  = threadIdx.x;
     const int thread_per_block = blockDim.x;
     const int global_thread_id = local_thread_id + thread_per_block * ligand_id;
+    assert(thread_per_block == BLOCK_SIZE && warpSize == BLOCK_SIZE &&
+           "Warpsize and the number of thread per block does not coincide");
 
     const int num_rotamers       = ligand_num_rotamers[ligand_id];
     chromosome* l_chromosomes    = chromosomes + ligand_id * chromosome_number;
@@ -84,11 +87,11 @@ namespace mudock {
     for (int chromosome_index = local_thread_id; chromosome_index < chromosome_number;
          chromosome_index += thread_per_block) {
       chromosome& chromo = *(l_chromosomes + chromosome_index);
-#pragma unroll
+      MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
       for (int i{0}; i < 3; ++i) { // initialize the rigid translation
         chromo[i] = get_init_change_distribution(l_state) * coordinate_step;
       }
-#pragma unroll
+      MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
       for (int i{3}; i < 6 + num_rotamers; ++i) { // initialize the rotations
         chromo[i] = get_init_change_distribution(l_state) * angle_step;
       }
@@ -109,6 +112,8 @@ namespace mudock {
     const int local_thread_id  = threadIdx.x;
     const int thread_per_block = blockDim.x;
     const int global_thread_id = local_thread_id + thread_per_block * ligand_id;
+    assert(thread_per_block == BLOCK_SIZE && warpSize == BLOCK_SIZE &&
+           "Warpsize and the number of thread per block does not coincide");
 
     const int num_rotamers                      = ligand_num_rotamers[ligand_id];
     chromosome* __restrict__ l_chromosomes      = chromosomes + ligand_id * chromosome_number;
@@ -135,13 +140,13 @@ namespace mudock {
       const fp_type* p2     = l_chromosomes[best_individual_2].data();
       for (int i = 0; i < (6 + num_rotamers); ++i) { dst[i] = (i < split_index) ? p1[i] : p2[i]; }
 
-// mutate the offspring
-#pragma unroll
+      // mutate the offspring
+      MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
       for (int i{0}; i < 3; ++i) {
         if (get_mutation_coin_distribution(l_state) < mutation_prob)
           next_chromosome[i] += get_mutation_change_distribution(l_state) * coordinate_step;
       }
-#pragma unroll
+      MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
       for (int i{3}; i < 6 + num_rotamers; ++i) {
         if (get_mutation_coin_distribution(l_state) < mutation_prob) {
           next_chromosome[i] += get_mutation_change_distribution(l_state) * angle_step;
@@ -160,6 +165,8 @@ namespace mudock {
     const int ligand_id        = blockIdx.x;
     const int local_thread_id  = threadIdx.x;
     const int thread_per_block = blockDim.x;
+    assert(thread_per_block == BLOCK_SIZE && warpSize == BLOCK_SIZE &&
+           "Warpsize and the number of thread per block does not coincide");
 
     const int num_rotamers                 = ligand_num_rotamers[ligand_id];
     chromosome* __restrict__ l_chromosomes = chromosomes + ligand_id * chromosome_number;
@@ -177,11 +184,11 @@ namespace mudock {
         min_score = scores[chromosome_index];
       }
     }
-// Intra warp reduction
-#pragma unroll
-    for (int offset = warpSize / 2; offset > 0; offset /= 2) {
-      const fp_type other_min_score = __shfl_down_sync(BITLANE_MASK, min_score, offset);
-      const int other_min_index     = __shfl_down_sync(BITLANE_MASK, min_index, offset);
+    // Intra warp reduction
+    MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
+    for (int offset = BLOCK_SIZE / 2; offset > 0; offset /= 2) {
+      const fp_type other_min_score = SHFL_DOWN(BITLANE_MASK, min_score, offset, BLOCK_SIZE);
+      const int other_min_index     = SHFL_DOWN(BITLANE_MASK, min_index, offset, BLOCK_SIZE);
       if (other_min_score < min_score) {
         min_score = other_min_score;
         min_index = other_min_index;

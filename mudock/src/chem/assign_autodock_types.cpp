@@ -81,13 +81,13 @@ namespace mudock {
     auto types                  = mol.get_autodock_type();
 
     typename molecule_type::template atoms_array_type<autodock_babel_ff> babel_types;
-    mudock::resize(babel_types, num_atoms);
+    mudock::resize(babel_types, static_cast<int>(num_atoms));
 
     // create the graph of the molecule
     const auto graph = make_graph(mol.get_bonds(), num_atoms);
 
     // assign the autodock babel type
-    assign_autodock_babel_types(make_span(babel_types, num_atoms),
+    assign_autodock_babel_types(make_span(babel_types, static_cast<int>(num_atoms)),
                                 mol.get_x(),
                                 mol.get_y(),
                                 mol.get_z(),

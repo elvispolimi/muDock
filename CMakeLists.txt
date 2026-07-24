@@ -1,5 +1,10 @@
 cmake_minimum_required(VERSION 3.25 FATAL_ERROR)
-cmake_policy(SET CMP0167 NEW)
+if(POLICY CMP0144)
+  cmake_policy(SET CMP0144 NEW)
+endif()
+if(POLICY CMP0167)
+  cmake_policy(SET CMP0167 NEW)
+endif()
 
 # Utilities define the function to remove the version from the end of shared
 # object
@@ -14,9 +19,7 @@ function(remove_version_from_filename input_filename version output_filename)
       PARENT_SCOPE)
 endfunction()
 
-# Inlude compialtios details and Third-party libraries that we download and
-# compile
-include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/prerequisite.cmake")
+# Inlude compialtios details
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/mudock.cmake")
 
 # ##############################################################################
@@ -27,7 +30,7 @@ set(MUDOCK_GPU_ARCHITECTURES
     "none"
     CACHE
       STRING
-      "Optimize for specific target GPU architecture (none to disable, otherwise cuda:sm_$$ or hip:$$)"
+      "Optimize for target GPU architecture (none, nvidia:sm_$$, amd:gfx$$$, intel:$$; cuda:sm_$$ kept as alias for nvidia)"
 )
 set(MUDOCK_CPU_TARGET
     "native"
@@ -58,6 +61,11 @@ if(NOT MUDOCK_GPU_ARCHITECTURES STREQUAL "none")
     # Get the part after the colon
     string(SUBSTRING ${MUDOCK_GPU_ARCHITECTURES} ${COLON_POS} 1000 GPU_TEMP)
     string(SUBSTRING ${GPU_TEMP} 1 1000 GPU_ARCHITECTURE) # Skip the colon
+
+    # Backward-compatibility alias: treat "cuda:*" as NVIDIA target naming.
+    if(GPU_PLATFORM STREQUAL "cuda")
+      set(GPU_PLATFORM "nvidia")
+    endif()
   else()
     message(FATAL_ERROR "${MUDOCK_GPU_ARCHITECTURES} cannot be parsed.")
   endif()
@@ -66,7 +74,20 @@ endif()
 # CPU
 project(muDock VERSION 1.0)
 enable_language(CXX)
-option(MUDOCK_ENABLE_BUCKET "Enable large bucket usage" OFF)
+
+function(mudock_normalize_stage_bucket_policy out_var input_policy)
+  set(policy "${input_policy}")
+  set(${out_var} "${policy}" PARENT_SCOPE)
+endfunction()
+
+set(MUDOCK_DEFAULT_ATOM_CLUSTER_LEVEL "OFF")
+set(MUDOCK_DEFAULT_STAGE_BUCKET_POLICY "MAX_UTILIZATION")
+set(MUDOCK_DEFAULT_GENETIC_BUCKET_COMBINE "MIN")
+set(MUDOCK_DEFAULT_UNROLL_FACTOR "8")
+
+set(MUDOCK_ATOM_CLUSTER_LEVEL "${MUDOCK_DEFAULT_ATOM_CLUSTER_LEVEL}" CACHE STRING
+    "Ligand atom-cluster granularity: OFF|MEDIUM|LARGE|EXTREME")
+set_property(CACHE MUDOCK_ATOM_CLUSTER_LEVEL PROPERTY STRINGS OFF MEDIUM LARGE EXTREME)
 option(MUDOCK_ENABLE_IPO "Enable IPO" OFF)
 if(MUDOCK_ENABLE_IPO)
   include(CheckIPOSupported)
@@ -78,6 +99,18 @@ if(MUDOCK_ENABLE_IPO)
     message(WARNING "IPO is not supported: ${ipo_output}")
   endif()
 endif()
+
+option(
+  OVERRIDE_PRECOMPUTE_OPT
+  "Compile selected precompute-heavy sources with -O2"
+  OFF)
+
+#MPI
+option(MUDOCK_ENABLE_MPI "Enable MPI support" OFF)
+if(MUDOCK_ENABLE_MPI)
+  find_package(MPI REQUIRED COMPONENTS CXX)
+endif()
+
 # HIP
 option(MUDOCK_ENABLE_HIP "Enable the HIP kernel implementation" OFF)
 
@@ -87,11 +120,12 @@ if(MUDOCK_ENABLE_HIP)
      AND NOT MUDOCK_ENABLE_OMP_OFFLOAD)
     find_program(HIP_COMPILER hipcc)
 
-    if(GPU_PLATFORM STREQUAL "cuda")
+    if(GPU_PLATFORM STREQUAL "nvidia")
       set(HIP_PLATFORM "nvidia")
       find_package(CUDAToolkit REQUIRED COMPONENTS curand)
     elseif(GPU_PLATFORM STREQUAL "amd")
       set(HIP_PLATFORM "${GPU_PLATFORM}")
+      find_package(rocrand REQUIRED)
 
       # TODO target arch
     else()
@@ -99,7 +133,11 @@ if(MUDOCK_ENABLE_HIP)
       message(FATAL_ERROR "Wrong target for HIP implementation")
     endif()
 
-    set(CMAKE_HIP_ARCHITECTURES "${GPU_ARCHITECTURE}")
+    set(HIP_ARCHITECTURE "${GPU_ARCHITECTURE}")
+    if(HIP_PLATFORM STREQUAL "nvidia")
+      string(REGEX REPLACE "^sm_" "" HIP_ARCHITECTURE "${HIP_ARCHITECTURE}")
+    endif()
+    set(CMAKE_HIP_ARCHITECTURES "${HIP_ARCHITECTURE}")
     find_package(hip REQUIRED)
     enable_language(HIP)
     find_package(hiprand REQUIRED)
@@ -144,6 +182,7 @@ endif()
 
 # CUDA
 option(MUDOCK_ENABLE_CUDA "Enable the CUDA kernel implementation" OFF)
+option(MUDOCK_ENABLE_KERNEL_LOCK "Serialize kernel launches per device" OFF)
 
 if(MUDOCK_ENABLE_CUDA)
   if(NOT MUDOCK_ENABLE_HIP
@@ -178,47 +217,149 @@ endif()
 
 # SYCL
 option(MUDOCK_ENABLE_SYCL "Enable the SYCL kernel implementation" OFF)
+set(MUDOCK_SYCL_EXTRA_FLAGS "" CACHE STRING "Extra SYCL flags appended to both oneAPI compile and link steps")
+set(MUDOCK_SYCL_EXTRA_COMPILE_FLAGS "" CACHE STRING "Extra SYCL flags appended only to oneAPI compile steps")
+set(MUDOCK_SYCL_EXTRA_LINK_FLAGS "" CACHE STRING "Extra SYCL link flags appended to the clang++ link step")
+set(MUDOCK_SYC_EXTRA_LINK_FLAGS "" CACHE STRING "Deprecated alias for MUDOCK_SYCL_EXTRA_LINK_FLAGS")
+set(MUDOCK_SYCL_WG_SIZE "" CACHE STRING "SYCL work-group size override for kernels (e.g. 32 or 64)")
+
+set(MUDOCK_STAGE_BUCKET_OVERRIDE "" CACHE STRING
+    "Override stage bucket size (optional integer)")
+set(MUDOCK_STAGE_BUCKET_MULTIPLE_OVERRIDE "" CACHE STRING
+    "Override stage bucket scaling factor (optional real > 0)")
+set(MUDOCK_STAGE_BUCKET_POLICY "${MUDOCK_DEFAULT_STAGE_BUCKET_POLICY}" CACHE STRING
+    "Stage bucket policy: DEVICE_ALIGNED|SM_ALIGNED|MAX_UTILIZATION")
+set_property(CACHE MUDOCK_STAGE_BUCKET_POLICY PROPERTY STRINGS DEVICE_ALIGNED
+                                                          SM_ALIGNED
+                                                          MAX_UTILIZATION)
+set(MUDOCK_GENETIC_BUCKET_COMBINE "${MUDOCK_DEFAULT_GENETIC_BUCKET_COMBINE}" CACHE STRING "GENETIC score/geom combine policy: MIN|SCORE_ONLY|GEOM_ONLY|LCM")
+set_property(CACHE MUDOCK_GENETIC_BUCKET_COMBINE PROPERTY STRINGS MIN SCORE_ONLY GEOM_ONLY LCM)
+option(MUDOCK_ENABLE_STAGE_BUCKET_TRACE
+       "Enable detailed runtime logging for stage bucket selection"
+       OFF)
+option(MUDOCK_DISABLE_UNROLL "Disable kernel loop unrolling" OFF)
+set(MUDOCK_UNROLL_FACTOR "${MUDOCK_DEFAULT_UNROLL_FACTOR}" CACHE STRING "Kernel loop unroll factor when unrolling is enabled")
 
 if(MUDOCK_ENABLE_SYCL)
   if(NOT MUDOCK_ENABLE_HIP
      AND NOT MUDOCK_ENABLE_CUDA
      AND NOT MUDOCK_ENABLE_OMP_OFFLOAD)
-    # Only GPU targets supported for now prepare the option for the AdaptiveCPP
-    # package finder
-    if(${SYCL_COMPILER} STREQUAL "AdaptiveCpp")
-      # TODO add ACPP generic pass support and check performance
-      list(APPEND sycl_targets "${MUDOCK_GPU_ARCHITECTURES}")
-      find_package(AdaptiveCpp CONFIG REQUIRED)
-    elseif(${SYCL_COMPILER} STREQUAL "oneAPI")
-      find_package(LLVM REQUIRED)
-      set(CMAKE_LINKER
-          clang++
-          CACHE STRING "C++ linker" FORCE)
-      string(FIND "${MUDOCK_GPU_ARCHITECTURES}" ":" COLON_INDEX)
-
-      # Check that a colon was found
-      if(NOT COLON_INDEX EQUAL -1)
-        math(EXPR VALUE_INDEX "${COLON_INDEX} + 1")
-        string(SUBSTRING "${MUDOCK_GPU_ARCHITECTURES}" ${VALUE_INDEX} -1
-                         VALUE_AFTER_COLON)
-        if(MUDOCK_GPU_ARCHITECTURES MATCHES "cuda")
-          list(APPEND sycl_targets "nvidia_gpu_${VALUE_AFTER_COLON}")
-        elseif(MUDOCK_GPU_ARCHITECTURES MATCHES "intel")
-          list(APPEND sycl_targets "intel_gpu_${VALUE_AFTER_COLON}")
-        endif()
-        set(CMAKE_CXX_LINK_EXECUTABLE
-            "${LLVM_TOOLS_BINARY_DIR}/clang++ -fsycl -fsycl-targets=${sycl_targets} <FLAGS> <CMAKE_CXX_LINK_FLAGS> <LINK_FLAGS> <OBJECTS> -o <TARGET> <LINK_LIBRARIES>"
-        )
-
+    if(MUDOCK_SYCL_WG_SIZE STREQUAL "")
+      if(MUDOCK_GPU_ARCHITECTURES MATCHES "amd")
+        set(MUDOCK_SYCL_WG_SIZE 64)
+      elseif(MUDOCK_GPU_ARCHITECTURES MATCHES "intel")
+        set(MUDOCK_SYCL_WG_SIZE 32)
       else()
-        message(WARNING "No colon found in string.")
+        # NVIDIA and others default to 32
+        set(MUDOCK_SYCL_WG_SIZE 32)
       endif()
+    endif()
+    find_package(LLVM REQUIRED)
+    set(CMAKE_LINKER
+        clang++
+        CACHE STRING "C++ linker" FORCE)
+    # Optional user-provided compile flags for SYCL source compilation.
+    # If passed as -DSYCL_BACKEND_FLAGS_COMPILE="...", append to auto backend flags.
+    set(SYCL_BACKEND_FLAGS_COMPILE_USER "${SYCL_BACKEND_FLAGS_COMPILE}")
+    set(MUDOCK_SYCL_EXTRA_FLAGS_USER "${MUDOCK_SYCL_EXTRA_FLAGS}")
+    set(MUDOCK_SYCL_EXTRA_COMPILE_FLAGS_USER "${MUDOCK_SYCL_EXTRA_COMPILE_FLAGS}")
+    set(SYCL_BACKEND_FLAGS_LINK "")
+    set(SYCL_BACKEND_FLAGS_COMPILE "")
+    set(MUDOCK_SYCL_EXTRA_LINK_FLAGS_EFFECTIVE "${MUDOCK_SYCL_EXTRA_LINK_FLAGS}")
+    if(NOT MUDOCK_SYC_EXTRA_LINK_FLAGS STREQUAL "")
+      if(NOT MUDOCK_SYCL_EXTRA_LINK_FLAGS_EFFECTIVE STREQUAL "")
+        string(APPEND MUDOCK_SYCL_EXTRA_LINK_FLAGS_EFFECTIVE " ")
+      endif()
+      string(APPEND MUDOCK_SYCL_EXTRA_LINK_FLAGS_EFFECTIVE
+                    "${MUDOCK_SYC_EXTRA_LINK_FLAGS}")
+      message(
+        WARNING
+          "MUDOCK_SYC_EXTRA_LINK_FLAGS is deprecated. Use MUDOCK_SYCL_EXTRA_LINK_FLAGS instead."
+      )
+    endif()
+    if(NOT MUDOCK_SYCL_EXTRA_FLAGS STREQUAL "")
+      if(NOT MUDOCK_SYCL_EXTRA_LINK_FLAGS_EFFECTIVE STREQUAL "")
+        string(APPEND MUDOCK_SYCL_EXTRA_LINK_FLAGS_EFFECTIVE " ")
+      endif()
+      string(APPEND MUDOCK_SYCL_EXTRA_LINK_FLAGS_EFFECTIVE
+                    "${MUDOCK_SYCL_EXTRA_FLAGS}")
+    endif()
+    string(FIND "${MUDOCK_GPU_ARCHITECTURES}" ":" COLON_INDEX)
+
+    # Check that a colon was found
+    if(NOT COLON_INDEX EQUAL -1)
+      math(EXPR VALUE_INDEX "${COLON_INDEX} + 1")
+      string(SUBSTRING "${MUDOCK_GPU_ARCHITECTURES}" ${VALUE_INDEX} -1
+                       VALUE_AFTER_COLON)
+      if(MUDOCK_GPU_ARCHITECTURES MATCHES "nvidia")
+        list(APPEND sycl_targets "nvptx64-nvidia-cuda")
+        if(VALUE_AFTER_COLON MATCHES "^sm_")
+          set(CUDA_ARCH "${VALUE_AFTER_COLON}")
+        else()
+          set(CUDA_ARCH "sm_${VALUE_AFTER_COLON}")
+        endif()
+        set(SYCL_BACKEND_FLAGS_LINK
+            "-Xsycl-target-backend=nvptx64-nvidia-cuda;--cuda-gpu-arch=${CUDA_ARCH};-Xcuda-ptxas;-v")
+        set(SYCL_BACKEND_FLAGS_COMPILE "${SYCL_BACKEND_FLAGS_LINK}")
+      elseif(MUDOCK_GPU_ARCHITECTURES MATCHES "amd")
+        list(APPEND sycl_targets "amdgcn-amd-amdhsa")
+        set(SYCL_BACKEND_FLAGS_LINK
+            "-Xsycl-target-backend=amdgcn-amd-amdhsa;--offload-arch=${VALUE_AFTER_COLON};-Xsycl-target-frontend=amdgcn-amd-amdhsa;-Rpass-analysis=kernel-resource-usage")
+        set(SYCL_BACKEND_FLAGS_COMPILE "${SYCL_BACKEND_FLAGS_LINK}")
+      elseif(MUDOCK_GPU_ARCHITECTURES MATCHES "intel")
+        list(APPEND sycl_targets "intel_gpu_${VALUE_AFTER_COLON}")
+        set(SYCL_BACKEND_FLAGS_COMPILE "${SYCL_BACKEND_FLAGS_LINK}")
+      endif()
+      if(NOT SYCL_BACKEND_FLAGS_COMPILE_USER STREQUAL "")
+        separate_arguments(SYCL_BACKEND_FLAGS_COMPILE_USER_LIST UNIX_COMMAND
+                           "${SYCL_BACKEND_FLAGS_COMPILE_USER}")
+        list(APPEND SYCL_BACKEND_FLAGS_COMPILE ${SYCL_BACKEND_FLAGS_COMPILE_USER_LIST})
+      endif()
+      if(NOT MUDOCK_SYCL_EXTRA_FLAGS_USER STREQUAL "")
+        separate_arguments(MUDOCK_SYCL_EXTRA_FLAGS_USER_LIST UNIX_COMMAND
+                           "${MUDOCK_SYCL_EXTRA_FLAGS_USER}")
+        list(APPEND SYCL_BACKEND_FLAGS_COMPILE
+             ${MUDOCK_SYCL_EXTRA_FLAGS_USER_LIST})
+      endif()
+      if(NOT MUDOCK_SYCL_EXTRA_COMPILE_FLAGS_USER STREQUAL "")
+        separate_arguments(MUDOCK_SYCL_EXTRA_COMPILE_FLAGS_USER_LIST UNIX_COMMAND
+                           "${MUDOCK_SYCL_EXTRA_COMPILE_FLAGS_USER}")
+        list(APPEND SYCL_BACKEND_FLAGS_COMPILE
+             ${MUDOCK_SYCL_EXTRA_COMPILE_FLAGS_USER_LIST})
+      endif()
+      string(JOIN " " SYCL_BACKEND_FLAGS_LINK_STR ${SYCL_BACKEND_FLAGS_LINK})
+      set(CMAKE_CXX_LINK_EXECUTABLE
+          "${LLVM_TOOLS_BINARY_DIR}/clang++ -fsycl -fsycl-targets=${sycl_targets} <FLAGS> <CMAKE_CXX_LINK_FLAGS> <LINK_FLAGS> ${SYCL_BACKEND_FLAGS_LINK_STR} ${MUDOCK_SYCL_EXTRA_LINK_FLAGS_EFFECTIVE} <OBJECTS> -o <TARGET> <LINK_LIBRARIES>"
+      )
+
+    else()
+      message(WARNING "No colon found in string.")
     endif()
 
     set(SYCL_TARGETS ${sycl_targets})
   else()
     message(FATAL_ERROR "Enable only one parallel framework at a time.")
   endif()
+endif()
+
+mudock_normalize_stage_bucket_policy(MUDOCK_STAGE_BUCKET_POLICY
+                                     "${MUDOCK_STAGE_BUCKET_POLICY}")
+if(NOT MUDOCK_STAGE_BUCKET_POLICY STREQUAL "MAX_UTILIZATION"
+   AND NOT MUDOCK_STAGE_BUCKET_POLICY STREQUAL "SM_ALIGNED"
+   AND NOT MUDOCK_STAGE_BUCKET_POLICY STREQUAL "DEVICE_ALIGNED")
+  message(FATAL_ERROR "MUDOCK_STAGE_BUCKET_POLICY must be one of: DEVICE_ALIGNED, SM_ALIGNED, MAX_UTILIZATION")
+endif()
+if(NOT MUDOCK_ATOM_CLUSTER_LEVEL STREQUAL "OFF"
+   AND NOT MUDOCK_ATOM_CLUSTER_LEVEL STREQUAL "MEDIUM"
+   AND NOT MUDOCK_ATOM_CLUSTER_LEVEL STREQUAL "LARGE"
+   AND NOT MUDOCK_ATOM_CLUSTER_LEVEL STREQUAL "EXTREME")
+  message(FATAL_ERROR "MUDOCK_ATOM_CLUSTER_LEVEL must be one of: OFF, MEDIUM, LARGE, EXTREME")
+endif()
+if(NOT MUDOCK_GENETIC_BUCKET_COMBINE STREQUAL "MIN"
+   AND NOT MUDOCK_GENETIC_BUCKET_COMBINE STREQUAL "SCORE_ONLY"
+   AND NOT MUDOCK_GENETIC_BUCKET_COMBINE STREQUAL "GEOM_ONLY"
+   AND NOT MUDOCK_GENETIC_BUCKET_COMBINE STREQUAL "LCM")
+  message(FATAL_ERROR "MUDOCK_GENETIC_BUCKET_COMBINE must be one of: MIN, SCORE_ONLY, GEOM_ONLY, LCM")
 endif()
 
 # OpenMP
@@ -248,7 +389,7 @@ if(MUDOCK_ENABLE_OMP_OFFLOAD)
   if(NOT MUDOCK_ENABLE_HIP
      AND NOT MUDOCK_ENABLE_CUDA
      AND NOT MUDOCK_ENABLE_SYCL)
-    if(GPU_PLATFORM STREQUAL "cuda" OR GPU_PLATFORM STREQUAL "amd")
+    if(GPU_PLATFORM STREQUAL "nvidia" OR GPU_PLATFORM STREQUAL "amd")
       set(OMP_TARGET "${MUDOCK_GPU_ARCHITECTURES}")
     else()
       # Set to use the CPU
@@ -296,6 +437,8 @@ endif()
 # ### Testing
 # ##############################################################################
 option(MUDOCK_ENABLE_TEST "Enabel muDock tests" OFF)
+# Exit code reported by test binaries when CTest should mark them as skipped.
+set(MUDOCK_CTEST_SKIP_RETURN_CODE 77)
 if(MUDOCK_ENABLE_TEST)
   if(CMAKE_BUILD_TYPE STREQUAL "Release")
     message(
@@ -333,7 +476,10 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # ##############################################################################
 
 # Third-party libraries that must be manually installed
-find_package(Boost CONFIG REQUIRED COMPONENTS program_options graph fiber)
+find_package(Boost QUIET CONFIG COMPONENTS program_options graph fiber)
+if(NOT Boost_FOUND)
+  find_package(Boost REQUIRED COMPONENTS program_options graph fiber)
+endif()
 find_package(Eigen3 REQUIRED)
 find_package(OpenBabel3 REQUIRED)
 set(CMAKE_ENABLE_EXPORTS ON)
@@ -354,9 +500,10 @@ if(NOT MUDOCK_ENABLE_HIP AND (("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
     global_c_cxx_flags
     -Wall
     -Wextra
-    -Wpedantic
     -Wshadow
-    -Wdouble-promotion)
+    -Wdouble-promotion
+    -Wconversion
+    )
 endif()
 
 # if we are using ninja, force to have colored output
@@ -369,8 +516,15 @@ if("${CMAKE_GENERATOR}" STREQUAL "Ninja")
 endif()
 
 # add all the previously defined flags to each target language
+add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-Wpedantic>)
 foreach(flag IN LISTS global_c_cxx_flags)
   add_compile_options($<$<COMPILE_LANGUAGE:CXX>:${flag}>)
+  if(MUDOCK_ENABLE_CUDA)
+    add_compile_options($<$<COMPILE_LANGUAGE:CUDA>:${flag}>)
+  endif()
+  if(MUDOCK_ENABLE_HIP)
+    add_compile_options($<$<COMPILE_LANGUAGE:HIP>:${flag}>)
+  endif()
 endforeach()
 
 # ##############################################################################
@@ -382,146 +536,170 @@ add_subdirectory(mudock)
 # ##############################################################################
 # ### Print a small recap of the project configuration
 # ##############################################################################
+function(mudock_print_config label value var_name)
+  string(LENGTH "${label}" label_len)
+  math(EXPR dots_len "38 - ${label_len}")
+  if(dots_len LESS 1)
+    set(dots_len 1)
+  endif()
+  string(REPEAT "." ${dots_len} dots)
+  message(STATUS "${label}${dots}: ${value} (${var_name})")
+endfunction()
+
 message(STATUS "")
 message(STATUS "//===---------------------------===//")
 message(STATUS "//       CONFIGURATION RECAP       //")
 message(STATUS "//===---------------------------===//")
-message(
-  STATUS
-    "CXX compiler........................: ${CMAKE_CXX_COMPILER} (CMAKE_CXX_COMPILER)"
-)
-message(
-  STATUS
-    "Build type..........................: ${CMAKE_BUILD_TYPE} (CMAKE_BUILD_TYPE)"
-)
-message(
-  STATUS
-    "Install prefix......................: ${CMAKE_INSTALL_PREFIX} (CMAKE_INSTALL_PREFIX)"
-)
-message(
-  STATUS
-    "Bucket usage........................: ${MUDOCK_ENABLE_BUCKET} (MUDOCK_ENABLE_BUCKET)"
-)
-message(
-  STATUS
-    "CPU Architecture....................: ${MUDOCK_CPU_ARCHITECTURES} (MUDOCK_CPU_ARCHITECTURES)"
-)
+mudock_print_config("CXX compiler" "${CMAKE_CXX_COMPILER}" "CMAKE_CXX_COMPILER")
+mudock_print_config("Build type" "${CMAKE_BUILD_TYPE}" "CMAKE_BUILD_TYPE")
+mudock_print_config("Install prefix" "${CMAKE_INSTALL_PREFIX}"
+                    "CMAKE_INSTALL_PREFIX")
+if(NOT MUDOCK_ATOM_CLUSTER_LEVEL STREQUAL "${MUDOCK_DEFAULT_ATOM_CLUSTER_LEVEL}")
+  mudock_print_config("Atom cluster level" "${MUDOCK_ATOM_CLUSTER_LEVEL}"
+                      "MUDOCK_ATOM_CLUSTER_LEVEL")
+endif()
+mudock_print_config("CPU Architecture" "${MUDOCK_CPU_ARCHITECTURES}"
+                    "MUDOCK_CPU_ARCHITECTURES")
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
-  message(
-    STATUS
-      "CPU Target..........................: ${MUDOCK_CPU_TARGET} (MUDOCK_CPU_TARGET)"
-  )
+  mudock_print_config("CPU Target" "${MUDOCK_CPU_TARGET}" "MUDOCK_CPU_TARGET")
 endif()
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64")
-  message(
-    STATUS
-      "CPU Tune............................: ${MUDOCK_CPU_TUNE} (MUDOCK_CPU_TUNE)"
-  )
+  mudock_print_config("CPU Tune" "${MUDOCK_CPU_TUNE}" "MUDOCK_CPU_TUNE")
 endif()
 
-message(
-  STATUS
-    "Fast mode ..........................: ${MUDOCK_ENABLE_FAST} (MUDOCK_ENABLE_FAST)"
-)
+mudock_print_config("Fast mode" "${MUDOCK_ENABLE_FAST}" "MUDOCK_ENABLE_FAST")
+if(OVERRIDE_PRECOMPUTE_OPT)
+  mudock_print_config("Override precompute opt" "${OVERRIDE_PRECOMPUTE_OPT}"
+                      "OVERRIDE_PRECOMPUTE_OPT")
+endif()
 
 if(MUDOCK_ENABLE_TEST)
-  message(
-    STATUS
-      "Enable Test.........................: ${MUDOCK_ENABLE_TEST} (MUDOCK_ENABLE_TEST)"
-  )
+  mudock_print_config("Enable Test" "${MUDOCK_ENABLE_TEST}"
+                      "MUDOCK_ENABLE_TEST")
 endif()
 
-message(
-  STATUS
-    "IPO Optimizations...................: ${MUDOCK_ENABLE_IPO} (MUDOCK_ENABLE_IPO)"
-)
-
-message(
-  STATUS
-    "Likwid Profiling....................: ${MUDOCK_ENABLE_LIKWID} (MUDOCK_ENABLE_LIKWID)"
-)
+mudock_print_config("IPO Optimizations" "${MUDOCK_ENABLE_IPO}"
+                    "MUDOCK_ENABLE_IPO")
+mudock_print_config("Likwid Profiling" "${MUDOCK_ENABLE_LIKWID}"
+                    "MUDOCK_ENABLE_LIKWID")
+if(MUDOCK_DISABLE_UNROLL)
+  mudock_print_config("Disable kernel unrolling" "${MUDOCK_DISABLE_UNROLL}"
+                      "MUDOCK_DISABLE_UNROLL")
+elseif(NOT MUDOCK_UNROLL_FACTOR STREQUAL "${MUDOCK_DEFAULT_UNROLL_FACTOR}")
+  mudock_print_config("Kernel unroll factor" "${MUDOCK_UNROLL_FACTOR}"
+                      "MUDOCK_UNROLL_FACTOR")
+endif()
+if(MUDOCK_ENABLE_STAGE_BUCKET_TRACE)
+  mudock_print_config("Stage bucket trace" "${MUDOCK_ENABLE_STAGE_BUCKET_TRACE}"
+                      "MUDOCK_ENABLE_STAGE_BUCKET_TRACE")
+endif()
+if(NOT MUDOCK_STAGE_BUCKET_OVERRIDE STREQUAL "")
+  mudock_print_config("Stage bucket override" "${MUDOCK_STAGE_BUCKET_OVERRIDE}"
+                      "MUDOCK_STAGE_BUCKET_OVERRIDE")
+endif()
+if(NOT MUDOCK_STAGE_BUCKET_MULTIPLE_OVERRIDE STREQUAL "")
+  mudock_print_config("Stage bucket multiple override"
+                      "${MUDOCK_STAGE_BUCKET_MULTIPLE_OVERRIDE}"
+                      "MUDOCK_STAGE_BUCKET_MULTIPLE_OVERRIDE")
+endif()
+if(NOT MUDOCK_STAGE_BUCKET_POLICY STREQUAL "${MUDOCK_DEFAULT_STAGE_BUCKET_POLICY}")
+  mudock_print_config("Stage bucket policy" "${MUDOCK_STAGE_BUCKET_POLICY}"
+                      "MUDOCK_STAGE_BUCKET_POLICY")
+endif()
+if(NOT MUDOCK_GENETIC_BUCKET_COMBINE STREQUAL
+       "${MUDOCK_DEFAULT_GENETIC_BUCKET_COMBINE}")
+  mudock_print_config("Genetic stage bucket combine"
+                      "${MUDOCK_GENETIC_BUCKET_COMBINE}"
+                      "MUDOCK_GENETIC_BUCKET_COMBINE")
+endif()
 if(MUDOCK_ENABLE_LIKWID)
-  message(
-  STATUS
-    "Likwid CPP Profiling................: ${MUDOCK_LIKWID_CPP} (MUDOCK_LIKWID_CPP)"
-)
-  message(
-  STATUS
-    "Likwid CUDA Profiling...............: ${MUDOCK_LIKWID_CUDA} (MUDOCK_LIKWID_CUDA)"
-)
+  mudock_print_config("Likwid CPP Profiling" "${MUDOCK_LIKWID_CPP}"
+                      "MUDOCK_LIKWID_CPP")
+  mudock_print_config("Likwid CUDA Profiling" "${MUDOCK_LIKWID_CUDA}"
+                      "MUDOCK_LIKWID_CUDA")
 endif()
 
-message(
-  STATUS
-    "Enable Google Highway...............: ${MUDOCK_ENABLE_GH} (MUDOCK_ENABLE_GH)"
-)
-
-message(
-  STATUS
-    "Enable XSimd........................: ${MUDOCK_ENABLE_XSIMD} (MUDOCK_ENABLE_XSIMD)"
-)
-
-message(
-  STATUS
-    "Enable CUDA.........................: ${MUDOCK_ENABLE_CUDA} (MUDOCK_ENABLE_CUDA)"
-)
+mudock_print_config("Enable Google Highway" "${MUDOCK_ENABLE_GH}"
+                    "MUDOCK_ENABLE_GH")
+mudock_print_config("Enable XSimd" "${MUDOCK_ENABLE_XSIMD}"
+                    "MUDOCK_ENABLE_XSIMD")
+mudock_print_config("Enable CUDA" "${MUDOCK_ENABLE_CUDA}"
+                    "MUDOCK_ENABLE_CUDA")
+if(MUDOCK_ENABLE_KERNEL_LOCK)
+  mudock_print_config("Kernel lock" "${MUDOCK_ENABLE_KERNEL_LOCK}"
+                      "MUDOCK_ENABLE_KERNEL_LOCK")
+endif()
 
 if(MUDOCK_ENABLE_CUDA)
-  # TODO use instead the MUDOCK_GPU_ARCHITECTURES
-  message(
-    STATUS
-      "Target CUDA architecture............: ${CMAKE_CUDA_ARCHITECTURES} (CMAKE_CUDA_ARCHITECTURES)"
-  )
+  mudock_print_config("Target CUDA architecture" "${CMAKE_CUDA_ARCHITECTURES}"
+                      "CMAKE_CUDA_ARCHITECTURES")
 endif()
 
-message(
-  STATUS
-    "Enable HIP..........................: ${MUDOCK_ENABLE_HIP} (MUDOCK_ENABLE_HIP)"
-)
+mudock_print_config("Enable HIP" "${MUDOCK_ENABLE_HIP}" "MUDOCK_ENABLE_HIP")
 
 if(MUDOCK_ENABLE_HIP)
-  message(
-    STATUS
-      "Target HIP platform.................: ${HIP_PLATFORM} (HIP_PLATFORM)")
-  message(
-    STATUS
-      "Target HIP targets..................: ${CMAKE_HIP_ARCHITECTURES} (CMAKE_HIP_ARCHITECTURES)"
-  )
+  mudock_print_config("Target HIP platform" "${HIP_PLATFORM}" "HIP_PLATFORM")
+  mudock_print_config("Target HIP targets" "${CMAKE_HIP_ARCHITECTURES}"
+                      "CMAKE_HIP_ARCHITECTURES")
 endif()
 
-message(
-  STATUS
-    "Enable SYCL.........................: ${MUDOCK_ENABLE_SYCL} (MUDOCK_ENABLE_SYCL)"
-)
+mudock_print_config("Enable SYCL" "${MUDOCK_ENABLE_SYCL}" "MUDOCK_ENABLE_SYCL")
 
 if(MUDOCK_ENABLE_SYCL)
-  message(
-    STATUS
-      "Target SYCL architecture............: ${SYCL_TARGETS} (SYCL_TARGETS)")
-  message(
-    STATUS
-      "SYCL Compiler.......................: ${SYCL_COMPILER} (SYCL_COMPILER)")
-  if(${SYCL_COMPILER} STREQUAL "oneAPI")
-    message(
-      STATUS
-        "oneAPI Compiler Path................: ${LLVM_TOOLS_BINARY_DIR} (LLVM_TOOLS_BINARY_DIR)"
-    )
+  mudock_print_config("Target SYCL architecture" "${SYCL_TARGETS}"
+                      "SYCL_TARGETS")
+  mudock_print_config("SYCL Work-group size" "${MUDOCK_SYCL_WG_SIZE}"
+                      "MUDOCK_SYCL_WG_SIZE")
+  mudock_print_config("oneAPI Compiler Path" "${LLVM_TOOLS_BINARY_DIR}"
+                      "LLVM_TOOLS_BINARY_DIR")
+  if(NOT SYCL_BACKEND_FLAGS_LINK STREQUAL "")
+    string(JOIN " " SYCL_BACKEND_FLAGS_PRINT ${SYCL_BACKEND_FLAGS_LINK})
+    mudock_print_config("oneAPI Backend Flags" "${SYCL_BACKEND_FLAGS_PRINT}"
+                        "SYCL_BACKEND_FLAGS_LINK")
+  endif()
+  if(NOT SYCL_BACKEND_FLAGS_COMPILE_USER STREQUAL "")
+    mudock_print_config("oneAPI User Compile Flags"
+                        "${SYCL_BACKEND_FLAGS_COMPILE_USER}"
+                        "SYCL_BACKEND_FLAGS_COMPILE")
+  endif()
+  if(NOT MUDOCK_SYCL_EXTRA_FLAGS STREQUAL "")
+    mudock_print_config("oneAPI Extra SYCL Flags" "${MUDOCK_SYCL_EXTRA_FLAGS}"
+                        "MUDOCK_SYCL_EXTRA_FLAGS")
+  endif()
+  if(NOT MUDOCK_SYCL_EXTRA_COMPILE_FLAGS STREQUAL "")
+    mudock_print_config("oneAPI Extra Compile Flags"
+                        "${MUDOCK_SYCL_EXTRA_COMPILE_FLAGS}"
+                        "MUDOCK_SYCL_EXTRA_COMPILE_FLAGS")
+  endif()
+  if(NOT MUDOCK_SYCL_EXTRA_LINK_FLAGS STREQUAL "")
+    mudock_print_config("oneAPI Extra Link Flags"
+                        "${MUDOCK_SYCL_EXTRA_LINK_FLAGS}"
+                        "MUDOCK_SYCL_EXTRA_LINK_FLAGS")
+  endif()
+  if(NOT MUDOCK_SYCL_EXTRA_LINK_FLAGS_EFFECTIVE STREQUAL "")
+    mudock_print_config("oneAPI Effective Link Flags"
+                        "${MUDOCK_SYCL_EXTRA_LINK_FLAGS_EFFECTIVE}"
+                        "MUDOCK_SYCL_EXTRA_LINK_FLAGS_EFFECTIVE")
+  endif()
+  if(NOT MUDOCK_SYC_EXTRA_LINK_FLAGS STREQUAL "")
+    mudock_print_config("oneAPI Deprecated Link Flags"
+                        "${MUDOCK_SYC_EXTRA_LINK_FLAGS}"
+                        "MUDOCK_SYC_EXTRA_LINK_FLAGS")
   endif()
 endif()
 
-message(
-  STATUS
-    "Enable OpenMP.......................: ${MUDOCK_ENABLE_OMP} (MUDOCK_ENABLE_OMP)"
-)
-message(
-  STATUS
-    "Enable OpenMP Offload...............: ${MUDOCK_ENABLE_OMP_OFFLOAD} (MUDOCK_ENABLE_OMP_OFFLOAD)"
-)
+mudock_print_config("Enable OpenMP" "${MUDOCK_ENABLE_OMP}" "MUDOCK_ENABLE_OMP")
+mudock_print_config("Enable OpenMP Offload" "${MUDOCK_ENABLE_OMP_OFFLOAD}"
+                    "MUDOCK_ENABLE_OMP_OFFLOAD")
 
 if(MUDOCK_ENABLE_OMP_OFFLOAD)
-  message(
-    STATUS "Target OpenMP architecture..........: ${OMP_TARGET} (OMP_TARGET)")
+  mudock_print_config("Target OpenMP architecture" "${OMP_TARGET}" "OMP_TARGET")
 endif()
+
+message(
+  STATUS
+    "Enable MPI............................: ${MUDOCK_ENABLE_MPI} (MUDOCK_ENABLE_MPI)"
+)
 
 message(STATUS "//===---------------------------===//")
 message(STATUS "")

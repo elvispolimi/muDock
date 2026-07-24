@@ -12,7 +12,7 @@
 
 This file was created at:			10:50 15" p.m., 04/12/2025
                    on host:		"fedora"
-Current Working Directory = "/home/gaccordi/repo/autodock4/autodock/build"
+Current Working Directory = "."
 
       ________________________________________________________________
 
@@ -21,7 +21,7 @@ Current Working Directory = "/home/gaccordi/repo/autodock4/autodock/build"
 
 
 Random number generator was seeded with values 2049966, 1744491015.
-Docking parameter file (DPF) used for this docking:		/home/gaccordi/repo/muDock/data/4few/4few_epdb.dpf
+Docking parameter file (DPF) used for this docking:		4few_epdb.dpf
 DPF> ## GENERIC SECTION
 
 DPF> autodock_parameter_version 4.2       # used by autodock to validate parameter set

@@ -30,8 +30,8 @@ namespace mudock {
 
   // utility functions to work with them
   inline const bond_type_description& get_description(const bond_type b) {
-    assert(BOND_DICTIONARY[static_cast<int>(b)].value == b);
-    return BOND_DICTIONARY[static_cast<int>(b)];
+    assert(BOND_DICTIONARY[static_cast<size_t>(b)].value == b);
+    return BOND_DICTIONARY[static_cast<size_t>(b)];
   }
 
   bond_type parse_bond_type(const std::string_view type);

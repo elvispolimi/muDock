@@ -14,7 +14,7 @@ namespace mudock {
     for (std::size_t i = 0; i < num_atoms; ++i) {
       const auto [new_vertex_it, is_inserted] = index2vertex.emplace(i, boost::add_vertex(g));
       assert(is_inserted);
-      g[new_vertex_it->second].atom_index = i;
+      g[new_vertex_it->second].atom_index = static_cast<int>(i);
     }
 
     // populate the graph with the molecule topology
@@ -25,7 +25,7 @@ namespace mudock {
       assert(source != std::end(index2vertex) && dest != std::end(index2vertex));
       const auto [edge, is_inserted] = boost::add_edge(source->second, dest->second, g);
       assert(is_inserted);
-      g[edge].bond_index = i;
+      g[edge].bond_index = static_cast<int>(i);
     }
 
     return g;

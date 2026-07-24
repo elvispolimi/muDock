@@ -14,6 +14,8 @@ list(
   "${header_path}/${header_prefix}/chem/autodock_layer.hpp"
   "${header_path}/${header_prefix}/chem/autodock_ligand.hpp"
   "${header_path}/${header_prefix}/chem/autodock_parameters.hpp"
+  "${header_path}/${header_prefix}/chem/sybyl_atom_types.hpp"
+  "${header_path}/${header_prefix}/chem/residue_types.hpp"
   "${header_path}/${header_prefix}/chem/autodock_protein.hpp"
   "${header_path}/${header_prefix}/chem/autodock_types.hpp"
   "${header_path}/${header_prefix}/chem/bond_types.hpp"
@@ -41,6 +43,8 @@ list(
   "${header_path}/${header_prefix}/compute/docking.hpp"
   "${header_path}/${header_prefix}/compute/genetic.hpp"
   "${header_path}/${header_prefix}/compute/transform.hpp"
+  "${header_path}/${header_prefix}/compute/algorithm.hpp"
+  "${header_path}/${header_prefix}/compute/pipeline_selector.hpp"
   "${header_path}/${header_prefix}/compute/geometric_transform.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/chromosome.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/vectorization.hpp"
@@ -77,6 +81,10 @@ list(
   "${header_path}/${header_prefix}/molecule/graph.hpp"
   "${header_path}/${header_prefix}/molecule/properties.hpp"
   "${header_path}/${header_prefix}/molecule/property_table.hpp"
+  "${header_path}/${header_prefix}/tbb_implementation/stream_filter.hpp"
+  "${header_path}/${header_prefix}/tbb_implementation/parser_filter.hpp"
+  "${header_path}/${header_prefix}/tbb_implementation/runtime_services.hpp"
+  "${header_path}/${header_prefix}/tbb_implementation/tbb_pipeline.hpp"
   "${header_path}/${header_prefix}/batch.hpp"
   "${header_path}/${header_prefix}/chem.hpp"
   "${header_path}/${header_prefix}/compute.hpp"
@@ -100,12 +108,15 @@ list(
   "${source_path}/chem/autodock_babel_types.cpp"
   "${source_path}/chem/autodock_protein.cpp"
   "${source_path}/chem/autodock_ligand.cpp"
+  "${source_path}/chem/sybyl_atom_types.cpp"
+  "${source_path}/chem/residue_types.cpp"
   "${source_path}/chem/autodock_types.cpp"
   "${source_path}/chem/bond_types.cpp"
   "${source_path}/chem/autodock_grid_types.cpp"
   "${source_path}/chem/elements.cpp"
   "${source_path}/compute/parse_ids.cpp"
   "${source_path}/compute/vina_score.cpp"
+  "${source_path}/compute/algorithm.cpp"
   "${source_path}/format/dot.cpp"
   "${source_path}/format/mol2.cpp"
   "${source_path}/format/adt_mol2.cpp"
@@ -124,7 +135,30 @@ list(
   "${source_path}/cpp_implementation/adt_score_cpp.cpp"
   "${source_path}/cpp_implementation/vina_score_cpp.cpp"
   "${source_path}/cpp_implementation/genetic_cpp.cpp"
+  "${source_path}/tbb_implementation/runtime_services.cpp"
 )
+
+set(mudock_precompute_opt_sources
+    "${source_path}/chem/autodock_protein.cpp")
+
+if(OVERRIDE_PRECOMPUTE_OPT)
+  foreach(precompute_source IN LISTS mudock_precompute_opt_sources)
+    set_source_files_properties("${precompute_source}"
+                                PROPERTIES COMPILE_OPTIONS "-O2")
+  endforeach()
+endif()
+
+if(MUDOCK_ENABLE_MPI)
+  list(
+    APPEND
+    header_files
+    "${header_path}/${header_prefix}/mpi_implementation/byte_range.hpp"
+    "${header_path}/${header_prefix}/mpi_implementation/stream_partition.hpp"
+    "${header_path}/${header_prefix}/mpi_implementation/distributed_ranges.hpp"
+    "${header_path}/${header_prefix}/mpi_implementation/utilities.hpp"
+    )
+endif()
+
 if(MUDOCK_ENABLE_GH)
   list(APPEND source_files
        "${source_path}/gh_implementation/geom_transform_gh.cpp"
@@ -202,6 +236,7 @@ if(MUDOCK_ENABLE_SYCL)
     "${header_path}/${header_prefix}/sycl_implementation/sycl_texture.hpp"
     "${header_path}/${header_prefix}/sycl_implementation/adt_score_sycl.hpp"
     "${header_path}/${header_prefix}/sycl_implementation/queue_sycl_impl.hpp"
+    "${header_path}/${header_prefix}/sycl_implementation/sycl_kernel_lock.hpp"
     "${header_path}/${header_prefix}/sycl_implementation/invoke_kernel_sycl.hpp"
     "${header_path}/${header_prefix}/sycl_implementation/mutate.hpp"
     "${header_path}/${header_prefix}/sycl_implementation/sycl_random.hpp"
@@ -215,6 +250,7 @@ if(MUDOCK_ENABLE_SYCL)
       "${source_path}/sycl_implementation/geom_transform_sycl.cpp"
       "${source_path}/sycl_implementation/sycl_random.cpp"
       "${source_path}/sycl_implementation/genetic_sycl.cpp"
+      "${source_path}/sycl_implementation/sycl_kernel_lock.cpp"
   )
 endif()
 
@@ -250,6 +286,7 @@ endif()
 # ##############################################################################
 
 # declare the mudock library
+find_package(TBB REQUIRED)
 add_library(libmudock STATIC ${source_files} ${header_files})
 add_library(mudock::libmudock ALIAS libmudock)
 set_target_properties(libmudock PROPERTIES PUBLIC_HEADER "${headers}")
@@ -262,9 +299,7 @@ set_target_properties(
              CXX_STANDARD_REQUIRED ON
              CXX_EXTENSIONS OFF
              POSITION_INDEPENDENT_CODE ON)
-target_link_libraries(libmudock PUBLIC Microsoft.GSL::GSL Boost::graph
-                                       ${OpenBabel3_LIBRARIES})
-target_include_directories(libmudock SYSTEM PRIVATE ${Boost_INCLUDE_DIR})
+target_link_libraries(libmudock PUBLIC Boost::graph ${OpenBabel3_LIBRARIES} TBB::tbb)
 if(NOT MUDOCK_ENABLE_OMP)
   target_compile_options(libmudock PRIVATE -Wno-unknown-pragmas)
 endif()
@@ -273,8 +308,51 @@ target_compile_options(
   libmudock
   PUBLIC $<$<AND:$<CONFIG:RELEASE>,$<COMPILE_LANGUAGE:CXX>>:${release_flags}>)
 
-if(MUDOCK_ENABLE_BUCKET)
-  target_compile_definitions(libmudock PUBLIC MUDOCK_BUCKET_LARGE)
+# Ensure cache-driven compile definitions are applied to the target so custom
+# SYCL compile commands can see them via COMPILE_DEFINITIONS.
+if(MUDOCK_ENABLE_MPI)
+  target_compile_definitions(libmudock PUBLIC MUDOCK_USE_MPI)
+  target_link_libraries(libmudock PRIVATE MPI::MPI_CXX)
+endif()
+if(MUDOCK_ENABLE_KERNEL_LOCK)
+  target_compile_definitions(libmudock PUBLIC MUDOCK_KERNEL_LOCK)
+endif()
+if(NOT MUDOCK_STAGE_BUCKET_OVERRIDE STREQUAL "")
+  target_compile_definitions(libmudock PUBLIC MUDOCK_STAGE_BUCKET_OVERRIDE=${MUDOCK_STAGE_BUCKET_OVERRIDE})
+endif()
+if(NOT MUDOCK_STAGE_BUCKET_MULTIPLE_OVERRIDE STREQUAL "")
+  target_compile_definitions(libmudock PUBLIC MUDOCK_STAGE_BUCKET_MULTIPLE_OVERRIDE=${MUDOCK_STAGE_BUCKET_MULTIPLE_OVERRIDE})
+endif()
+if(MUDOCK_STAGE_BUCKET_POLICY STREQUAL "MAX_UTILIZATION")
+  target_compile_definitions(libmudock PUBLIC MUDOCK_STAGE_BUCKET_POLICY_MAX_UTILIZATION)
+elseif(MUDOCK_STAGE_BUCKET_POLICY STREQUAL "SM_ALIGNED")
+  target_compile_definitions(libmudock PUBLIC MUDOCK_STAGE_BUCKET_POLICY_SM_ALIGNED)
+endif()
+if(MUDOCK_GENETIC_BUCKET_COMBINE STREQUAL "SCORE_ONLY")
+  target_compile_definitions(libmudock PUBLIC MUDOCK_GENETIC_BUCKET_COMBINE_SCORE_ONLY)
+elseif(MUDOCK_GENETIC_BUCKET_COMBINE STREQUAL "GEOM_ONLY")
+  target_compile_definitions(libmudock PUBLIC MUDOCK_GENETIC_BUCKET_COMBINE_GEOM_ONLY)
+elseif(MUDOCK_GENETIC_BUCKET_COMBINE STREQUAL "LCM")
+  target_compile_definitions(libmudock PUBLIC MUDOCK_GENETIC_BUCKET_COMBINE_LCM)
+elseif(NOT MUDOCK_GENETIC_BUCKET_COMBINE STREQUAL "MIN")
+  message(FATAL_ERROR "MUDOCK_GENETIC_BUCKET_COMBINE must be one of: MIN, SCORE_ONLY, GEOM_ONLY, LCM")
+endif()
+if(NOT MUDOCK_UNROLL_FACTOR STREQUAL "")
+  target_compile_definitions(libmudock PUBLIC MUDOCK_UNROLL_FACTOR=${MUDOCK_UNROLL_FACTOR})
+endif()
+if(MUDOCK_DISABLE_UNROLL)
+  target_compile_definitions(libmudock PUBLIC MUDOCK_DISABLE_UNROLL)
+endif()
+if(MUDOCK_ENABLE_STAGE_BUCKET_TRACE)
+  target_compile_definitions(libmudock PUBLIC MUDOCK_ENABLE_STAGE_BUCKET_TRACE)
+endif()
+
+if(MUDOCK_ATOM_CLUSTER_LEVEL STREQUAL "EXTREME")
+  target_compile_definitions(libmudock PUBLIC MUDOCK_ATOM_CLUSTER_LEVEL_EXTREME)
+elseif(MUDOCK_ATOM_CLUSTER_LEVEL STREQUAL "LARGE")
+  target_compile_definitions(libmudock PUBLIC MUDOCK_ATOM_CLUSTER_LEVEL_LARGE)
+elseif(MUDOCK_ATOM_CLUSTER_LEVEL STREQUAL "MEDIUM")
+  target_compile_definitions(libmudock PUBLIC MUDOCK_ATOM_CLUSTER_LEVEL_MEDIUM)
 endif()
 
 # Profiling
@@ -330,14 +408,14 @@ if(MUDOCK_ENABLE_HIP)
     libmudock
     PUBLIC
       $<$<AND:$<COMPILE_LANGUAGE:HIP>,$<HIP_COMPILER_ID:NVIDIA>>:--expt-relaxed-constexpr
-      -rdc=true>)
+      -rdc=true -Xptxas -v --resource-usage>)
   target_compile_options(
     libmudock
-    PUBLIC $<$<AND:$<COMPILE_LANGUAGE:HIP>,$<HIP_COMPILER_ID:Clang>>:-fgpu-rdc>)
+    PUBLIC $<$<AND:$<COMPILE_LANGUAGE:HIP>,$<HIP_COMPILER_ID:Clang>>:-fgpu-rdc -Rpass-analysis=kernel-resource-usage>)
   target_link_options(
     libmudock PUBLIC
     $<$<AND:$<COMPILE_LANGUAGE:HIP>,$<HIP_COMPILER_ID:Clang>>:-fgpu-rdc
-    --hip-link>)
+    --hip-link -Rpass-analysis=kernel-resource-usage>)
   target_compile_options(
     libmudock
     PUBLIC
@@ -347,6 +425,11 @@ if(MUDOCK_ENABLE_HIP)
   if(HIP_PLATFORM STREQUAL "nvidia")
     # FIX ME some platform requires -Wl,-rpath to link the correct CUDA rand lib
     target_link_libraries(libmudock PUBLIC CUDA::curand)
+  elseif(HIP_PLATFORM STREQUAL "amd")
+    if(DEFINED ROCRAND_INCLUDE_DIRS)
+      target_include_directories(libmudock SYSTEM PRIVATE ${ROCRAND_INCLUDE_DIRS})
+    endif()
+    target_link_libraries(libmudock PUBLIC rocrand)
   endif()
 endif()
 
@@ -387,7 +470,7 @@ if(MUDOCK_ENABLE_OMP_OFFLOAD)
   # Enable offloading to AMD GPUs using Clang
   if(NOT OMP_TARGET EQUAL "cpu")
     if("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
-      if(GPU_PLATFORM STREQUAL "cuda")
+      if(GPU_PLATFORM STREQUAL "nvidia")
         target_compile_options(libmudock PRIVATE "-fopenmp")
         target_compile_options(libmudock PRIVATE "-fopenmp-targets=nvptx64")
         # target_compile_options(libmudock PRIVATE "-Xopenmp-target=nvptx64")
@@ -420,27 +503,22 @@ endif()
 # check if we need to activate the compilation flag that signals SYCL
 if(MUDOCK_ENABLE_SYCL)
   target_compile_definitions(libmudock PUBLIC MUDOCK_USE_SYCL)
+  if(NOT MUDOCK_SYCL_WG_SIZE STREQUAL "")
+    target_compile_definitions(libmudock PUBLIC MUDOCK_SYCL_WG_SIZE=${MUDOCK_SYCL_WG_SIZE})
+  endif()
   set(sycl_generated_source)
   set(sycl_objects"")
   add_sycl_files("${sycl_source_files}" ${header_path} "${header_files}"
                  sycl_objects)
   target_sources(libmudock PRIVATE "${sycl_objects}")
   add_dependencies(libmudock sycl_targets)
-  if(${SYCL_COMPILER} STREQUAL "AdaptiveCpp")
-
-    find_package(CUDAToolkit REQUIRED)
-    target_link_libraries(libmudock PRIVATE AdaptiveCpp::acpp-rt Boost::fiber
-                                            CUDA::cudart)
-  elseif(${SYCL_COMPILER} STREQUAL "oneAPI")
-    target_link_directories(libmudock PUBLIC "${LLVM_LIBRARY_DIRS}")
-    target_link_libraries(libmudock PRIVATE sycl)
-  endif()
+  target_link_directories(libmudock PUBLIC "${LLVM_LIBRARY_DIRS}")
+  target_link_libraries(libmudock PRIVATE sycl)
 endif()
 
 if(MUDOCK_ENABLE_OMP)
   target_link_libraries(libmudock PRIVATE OpenMP::OpenMP_CXX)
-  target_compile_options(libmudock
-                               PRIVATE "-fopenmp")
+  target_compile_options(libmudock PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-fopenmp>)
 endif()
 
 # ##############################################################################

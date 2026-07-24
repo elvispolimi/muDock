@@ -7,7 +7,7 @@ namespace mudock {
     const int id     = threadIdx.x + blockIdx.x * blockDim.x;
     const int stride = gridDim.x * blockDim.x;
     for (int index = id; index < num_elements; index += stride) {
-      curand_init(seed + index, index, 0, &state[index]);
+      hiprand_init(seed + index, index, 0, &state[index]);
     }
   }
 

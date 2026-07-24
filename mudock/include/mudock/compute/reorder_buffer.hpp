@@ -19,9 +19,15 @@ namespace mudock {
   template<class T>
   class reorder_buffer {
   public:
-#ifdef MUDOCK_BUCKET_LARGE
+#ifdef MUDOCK_ATOM_CLUSTER_LEVEL_EXTREME
+    // the description of how we generate the clusters
+    static constexpr std::array<int, 9> atoms_clusters = {{16, 32, 58, 64, 96, 128, 160, 192, 256}};
+#elif defined(MUDOCK_ATOM_CLUSTER_LEVEL_LARGE)
     // the description of how we generate the clusters
     static constexpr std::array<int, 6> atoms_clusters = {{32, 64, 128, 160, 192, 256}};
+#elif defined(MUDOCK_ATOM_CLUSTER_LEVEL_MEDIUM)
+    // the description of how we generate the clusters
+    static constexpr std::array<int, 4> atoms_clusters = {{32, 64, 128, 256}};
 #else
     // the description of how we generate the clusters
     static constexpr std::array<int, 1> atoms_clusters = {{256}};
@@ -36,10 +42,11 @@ namespace mudock {
 
     // helper functor that given a random ligand, it will find the index of its cluster
     static constexpr auto get_flattened_index(const int num_atoms) {
-      auto index_atoms = static_cast<std::size_t>(
-          std::count_if(std::begin(atoms_clusters), std::end(atoms_clusters), [&num_atoms](const auto a) {
-            return a <= num_atoms;
-          }));
+      const auto it = std::find_if(
+          std::begin(atoms_clusters), std::end(atoms_clusters), [&num_atoms](const auto a) {
+            return num_atoms <= a;
+          });
+      auto index_atoms = static_cast<std::size_t>(std::distance(std::begin(atoms_clusters), it));
       if (index_atoms >= get_num_atom_clusters()) {
         throw std::runtime_error("Molecule with " + std::to_string(num_atoms) + " atoms, it is too large");
       }

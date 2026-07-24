@@ -29,8 +29,9 @@ namespace mudock {
 
     void alloc(const size_t num_elements) {
       if (num_elements > alloc_size) {
-        if (ptr)
+        if (ptr) {
           q->free((void**) &ptr);
+        }
         q->alloc((void**) &ptr, num_elements * sizeof(T));
         alloc_size = num_elements;
       }

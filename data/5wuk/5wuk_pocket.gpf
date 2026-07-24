@@ -1,25 +1,25 @@
 npts 85 80 88# num.grid points in xyz
-gridfld /home/gaccordi/repo/muDock/data/5wuk/5wuk_pocket.maps.fld # grid_data_file
+gridfld 5wuk_pocket.maps.fld # grid_data_file
 spacing 0.5                        # spacing(A)
 receptor_types A C NA OA N S HD      # receptor atom types
 ligand_types A C H HD N NA OA SA Cl F S Br P I             # ligand atom types
-receptor /home/gaccordi/repo/muDock/data/5wuk/5wuk_pocket.pdbqt # macromolecule
+receptor 5wuk_pocket.pdbqt # macromolecule
 gridcenter 18.5 -15.5 -19                    # xyz-coordinates or auto
 smooth 0.5                           # store minimum energy w/in rad(A)
-map /home/gaccordi/repo/muDock/data/5wuk/5wuk_pocket.A.map # atom-specific affinity map
-map /home/gaccordi/repo/muDock/data/5wuk/5wuk_pocket.C.map # atom-specific affinity map
-map /home/gaccordi/repo/muDock/data/5wuk/5wuk_pocket.H.map # atom-specific affinity map
-map /home/gaccordi/repo/muDock/data/5wuk/5wuk_pocket.HD.map # atom-specific affinity map
-map /home/gaccordi/repo/muDock/data/5wuk/5wuk_pocket.N.map # atom-specific affinity map
-map /home/gaccordi/repo/muDock/data/5wuk/5wuk_pocket.NA.map # atom-specific affinity map
-map /home/gaccordi/repo/muDock/data/5wuk/5wuk_pocket.OA.map # atom-specific affinity map
-map /home/gaccordi/repo/muDock/data/5wuk/5wuk_pocket.SA.map # atom-specific affinity map
-map /home/gaccordi/repo/muDock/data/5wuk/5wuk_pocket.Cl.map # atom-specific affinity map
-map /home/gaccordi/repo/muDock/data/5wuk/5wuk_pocket.F.map # atom-specific affinity map
-map /home/gaccordi/repo/muDock/data/5wuk/5wuk_pocket.S.map # atom-specific affinity map
-map /home/gaccordi/repo/muDock/data/5wuk/5wuk_pocket.Br.map # atom-specific affinity map
-map /home/gaccordi/repo/muDock/data/5wuk/5wuk_pocket.P.map # atom-specific affinity map
-map /home/gaccordi/repo/muDock/data/5wuk/5wuk_pocket.I.map # atom-specific affinity map
-elecmap /home/gaccordi/repo/muDock/data/5wuk/5wuk_pocket.e.map # electrostatic potential map
-dsolvmap /home/gaccordi/repo/muDock/data/5wuk/5wuk_pocket.d.map              # desolvation potential map
+map 5wuk_pocket.A.map # atom-specific affinity map
+map 5wuk_pocket.C.map # atom-specific affinity map
+map 5wuk_pocket.H.map # atom-specific affinity map
+map 5wuk_pocket.HD.map # atom-specific affinity map
+map 5wuk_pocket.N.map # atom-specific affinity map
+map 5wuk_pocket.NA.map # atom-specific affinity map
+map 5wuk_pocket.OA.map # atom-specific affinity map
+map 5wuk_pocket.SA.map # atom-specific affinity map
+map 5wuk_pocket.Cl.map # atom-specific affinity map
+map 5wuk_pocket.F.map # atom-specific affinity map
+map 5wuk_pocket.S.map # atom-specific affinity map
+map 5wuk_pocket.Br.map # atom-specific affinity map
+map 5wuk_pocket.P.map # atom-specific affinity map
+map 5wuk_pocket.I.map # atom-specific affinity map
+elecmap 5wuk_pocket.e.map # electrostatic potential map
+dsolvmap 5wuk_pocket.d.map              # desolvation potential map
 dielectric -0.1465                   # <0, AD4 distance-dep.diel;>0, constant

@@ -7,10 +7,11 @@
 #define FLATTENED_3D(x, y, z, index_x, index_xy) (index_xy * (z) + (y) * index_x + (x))
 
 namespace mudock {
-  inline fp_type trilinear_interpolation(const fp_type *__restrict__ map,
-                                         const fp_type *__restrict__ coeffs,
-                                         const int &map_index_x,
-                                         const int &map_index_xy) {
+  namespace {
+    fp_type trilinear_interpolation(const fp_type *__restrict__ map,
+                                    const fp_type *__restrict__ coeffs,
+                                    const int &map_index_x,
+                                    const int &map_index_xy) {
     fp_type value{0};
 
     value = coeffs[0] * map[0] + value;
@@ -23,34 +24,34 @@ namespace mudock {
     value = coeffs[7] * map[1 + map_index_x + map_index_xy] + value;
 
     return value;
-  }
+    }
 
-  inline void calc_energy(const int batch_atoms,
-                          const int batch_ligands,
-                          const int scores_per_ligand,
-                          const fp_type *__restrict__ x_scratch_b,
-                          const fp_type *__restrict__ y_scratch_b,
-                          const fp_type *__restrict__ z_scratch_b,
-                          const fp_type *__restrict__ vols_b,
-                          const fp_type *__restrict__ solpars_b,
-                          const fp_type *__restrict__ charges_b,
-                          const int *__restrict__ num_atoms_b,
-                          const int *__restrict__ num_rotamers_b,
-                          const int *__restrict__ num_nonbonds_b,
-                          const int *__restrict__ nonbond_a1_b,
-                          const int *__restrict__ nonbond_a2_b,
-                          const fp_type *__restrict__ nonbond_cA_b,
-                          const fp_type *__restrict__ nonbond_cB_b,
-                          const int *__restrict__ nonbond_xB_b,
-                          const fp_type *__restrict__ grid_maps,
-                          const fp_type *__restrict__ minimum,
-                          const fp_type *__restrict__ maximum,
-                          const fp_type *__restrict__ center,
-                          const int *__restrict__ map_offsets_b,
-                          const int map_index_x,
-                          const int map_index_xy,
-                          const int map_index_xyz,
-                          fp_type *__restrict__ scores_b) {
+    void calc_energy(const int batch_atoms,
+                     const int batch_ligands,
+                     const int scores_per_ligand,
+                     const fp_type *__restrict__ x_scratch_b,
+                     const fp_type *__restrict__ y_scratch_b,
+                     const fp_type *__restrict__ z_scratch_b,
+                     const fp_type *__restrict__ vols_b,
+                     const fp_type *__restrict__ solpars_b,
+                     const fp_type *__restrict__ charges_b,
+                     const int *__restrict__ num_atoms_b,
+                     const int *__restrict__ num_rotamers_b,
+                     const int *__restrict__ num_nonbonds_b,
+                     const int *__restrict__ nonbond_a1_b,
+                     const int *__restrict__ nonbond_a2_b,
+                     const fp_type *__restrict__ nonbond_cA_b,
+                     const fp_type *__restrict__ nonbond_cB_b,
+                     const int *__restrict__ nonbond_xB_b,
+                     const fp_type *__restrict__ grid_maps,
+                     const fp_type *__restrict__ minimum,
+                     const fp_type *__restrict__ maximum,
+                     const fp_type *__restrict__ center,
+                     const int *__restrict__ map_offsets_b,
+                     const int map_index_x,
+                     const int map_index_xy,
+                     const int map_index_xyz,
+                     fp_type *__restrict__ scores_b) {
     for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
       const int atom_stride  = ligand_index * batch_atoms;
       const int num_atoms    = num_atoms_b[ligand_index];
@@ -103,15 +104,15 @@ namespace mudock {
             coord[1] = (coord[1] - minimum[1]) * inv_spacing;
             coord[2] = (coord[2] - minimum[2]) * inv_spacing;
 
-            const int u0      = coord[0];
+            const int u0      = static_cast<int>(coord[0]);
             const fp_type p0u = coord[0] - static_cast<fp_type>(u0);
             const fp_type p1u = fp_type{1} - p0u;
 
-            const int v0      = coord[1];
+            const int v0      = static_cast<int>(coord[1]);
             const fp_type p0v = coord[1] - static_cast<fp_type>(v0);
             const fp_type p1v = fp_type{1} - p0v;
 
-            const int w0      = coord[2];
+            const int w0      = static_cast<int>(coord[2]);
             const fp_type p0w = coord[2] - static_cast<fp_type>(w0);
             const fp_type p1w = fp_type{1} - p0w;
 
@@ -196,43 +197,44 @@ namespace mudock {
             emap_total_eintcal += e_vdW_Hb;
           }
         }
-        const fp_type tors_free_energy = num_rotamers * autodock_parameters::coeff_tors;
+        const fp_type tors_free_energy = static_cast<fp_type>(num_rotamers) * autodock_parameters::coeff_tors;
 
         const fp_type total_trilinear = emap_total_trilinear + elect_total_trilinear + dmap_total_trilinear;
         const fp_type total_eintcal   = emap_total_eintcal + elect_total_eintcal + dmap_total_eintcal;
         scores_l[scores_index]        = total_trilinear + total_eintcal + tors_free_energy;
       }
     }
-  };
+    }
+  } // namespace
 
   template<>
   void adt_score_kernel<queue_cpp>::operator()() {
-    q->invoke_kernel<this->adt_region_name>(calc_energy,
-                                            batch_atoms,
-                                            batch_ligands,
-                                            scores_per_ligand,
-                                            x_scratch_b,
-                                            y_scratch_b,
-                                            z_scratch_b,
-                                            vols_b,
-                                            solpars_b,
-                                            charges_b,
-                                            num_atoms_b,
-                                            num_rotamers_b,
-                                            num_nonbonds_b,
-                                            nonbond_a1_b,
-                                            nonbond_a2_b,
-                                            nonbond_cA_b,
-                                            nonbond_cB_b,
-                                            nonbond_xB_b,
-                                            grid_maps,
-                                            minimum,
-                                            maximum,
-                                            center,
-                                            map_offsets_b,
-                                            map_index_x,
-                                            map_index_xy,
-                                            map_index_xyz,
-                                            scores_b);
+    q->invoke_kernel<adt_region_name>(calc_energy,
+                                      batch_atoms,
+                                      batch_ligands,
+                                      scores_per_ligand,
+                                      x_scratch_b,
+                                      y_scratch_b,
+                                      z_scratch_b,
+                                      vols_b,
+                                      solpars_b,
+                                      charges_b,
+                                      num_atoms_b,
+                                      num_rotamers_b,
+                                      num_nonbonds_b,
+                                      nonbond_a1_b,
+                                      nonbond_a2_b,
+                                      nonbond_cA_b,
+                                      nonbond_cB_b,
+                                      nonbond_xB_b,
+                                      grid_maps,
+                                      minimum,
+                                      maximum,
+                                      center,
+                                      map_offsets_b,
+                                      map_index_x,
+                                      map_index_xy,
+                                      map_index_xyz,
+                                      scores_b);
   }
 } // namespace mudock

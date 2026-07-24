@@ -6,7 +6,7 @@ function(hip_separable_compilation target)
   if(CMAKE_HIP_PLATFORM STREQUAL "nvidia")
     set(MUDOCK_LIB "$<TARGET_FILE:libmudock>")
     set(OBJECTS $<TARGET_OBJECTS:${target}>)
-    set(DEVICE_LINK_OBJ ${CMAKE_CURRENT_BINARY_DIR}/link/${target}.o)
+    set(DEVICE_LINK_OBJ ${CMAKE_CURRENT_BINARY_DIR}/${target}.o)
 
     separate_arguments(flags UNIX_COMMAND PROGRAM ${CMAKE_HIP_FLAGS})
 
@@ -20,7 +20,9 @@ function(hip_separable_compilation target)
       DEPENDS ${OBJECTS_ARGS} libmudock
       VERBATIM)
     add_custom_target(${target}_device_link_obj ALL DEPENDS ${DEVICE_LINK_OBJ})
-    target_link_libraries(${target} ${DEVICE_LINK_OBJ})
+    add_dependencies(${target} ${target}_device_link_obj)
+    target_sources("${target}" PRIVATE ${DEVICE_LINK_OBJ})
+    # target_link_libraries("${target}" PRIVATE ${DEVICE_LINK_OBJ})
   endif()
 endfunction()
 

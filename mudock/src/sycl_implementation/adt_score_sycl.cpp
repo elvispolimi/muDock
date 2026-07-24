@@ -7,11 +7,17 @@
 #include <mudock/sycl_implementation/invoke_kernel_sycl.hpp>
 #include <mudock/sycl_implementation/queue_sycl.hpp>
 #include <mudock/sycl_implementation/sycl_texture.hpp>
+#include <mudock/sycl_implementation/sycl_utils.hpp>
 #include <mudock/utils.hpp>
+#include <stdexcept>
 
 #define FLATTENED_3D(x, y, z, index_x, index_xy) (index_xy * (z) + (y) * index_x + (x))
 
 #define BUCKET_MULTIPLIER 3
+
+#ifndef MUDOCK_SYCL_WG_SIZE
+  #define MUDOCK_SYCL_WG_SIZE 32
+#endif
 
 namespace mudock {
   inline fp_type trilinear_interpolation_sycl(const fp_type* __restrict__ map,
@@ -33,15 +39,19 @@ namespace mudock {
   }
 
   constexpr int k_max_devices = 16;
-
-  device_memory_array<k_max_devices, sycl_texture_devices> sycl_texture_memory;
+  device_memory_array<k_max_devices, sycl_texture_devices>* get_sycl_texture_memory() {
+    // Intentionally leaked to avoid static destruction after SYCL runtime teardown.
+    static auto* storage = new device_memory_array<k_max_devices, sycl_texture_devices>();
+    return storage;
+  }
 
   void init_device(const int dev,
                    const device_type dev_type,
                    const int map_index_xyz,
                    const fp_type* map_grids) {
     // Thread-safe, exactly-once init per device:
-    sycl_texture_memory.init(dev, dev_type, map_index_xyz, num_autodock_grids(), map_grids);
+    auto* texture_memory = get_sycl_texture_memory();
+    texture_memory->init(dev, dev_type, map_index_xyz, num_autodock_grids(), map_grids);
   }
 
   template<int MAX_ATOMS>
@@ -72,11 +82,12 @@ namespace mudock {
                     const fp_type* __restrict__ grid_maps,
                     const int* __restrict__ map_tex_indexes,
                     fp_type* __restrict__ scores) const {
-      const int workgroup_size       = it.get_local_range(0);
-      const int workgroup_id         = it.get_group(0);
-      const int ligand_id            = workgroup_id;
-      const int workitem_id_in_group = it.get_local_id(0);
-      const auto& sub_group          = it.get_sub_group();
+      const int workgroup_id         = static_cast<int>(it.get_group(0));
+      const int ligand_id            = static_cast<int>(workgroup_id);
+      const int workitem_id_in_group = static_cast<int>(it.get_local_id(0));
+      const auto sub_group           = it.get_sub_group();
+      assert(it.get_local_range(0) == MUDOCK_SYCL_WG_SIZE &&
+             "SYCL WG size and the number of thread per block does not coincide");
 
       const fp_type* electro_map = grid_maps + map_index_xyz * static_cast<int>(autodock_grid_type::ELEC);
       const fp_type* desolv_map  = grid_maps + map_index_xyz * static_cast<int>(autodock_grid_type::DESOLV);
@@ -112,8 +123,9 @@ namespace mudock {
         fp_type elect_total_trilinear = 0;
         fp_type emap_total_trilinear  = 0;
         fp_type dmap_total_trilinear  = 0;
-#pragma unroll
-        for (int atom_index = workitem_id_in_group; atom_index < MAX_ATOMS; atom_index += workgroup_size) {
+        MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
+        for (int atom_index = workitem_id_in_group; atom_index < MAX_ATOMS;
+             atom_index += MUDOCK_SYCL_WG_SIZE) {
           if (atom_index < num_atoms) {
             fp_type coord_tex[3]{ligand_x[atom_index], ligand_y[atom_index], ligand_z[atom_index]};
             if (coord_tex[0] < minimum[0] || coord_tex[0] > maximum[0] || coord_tex[1] < minimum[1] ||
@@ -134,17 +146,17 @@ namespace mudock {
               coord_tex[1]            = (coord_tex[1] - minimum[1]) * inv_spacing;
               coord_tex[2]            = (coord_tex[2] - minimum[2]) * inv_spacing;
               const auto& charge      = l_charge[atom_index];
-              const fp_type* atom_map = grid_maps + map_tex_indexes[atom_index];
+              const fp_type* atom_map = grid_maps + l_atom_tex_indexes[atom_index];
 
-              const int u0      = coord_tex[0];
+              const int u0      = static_cast<int>(coord_tex[0]);
               const fp_type p0u = coord_tex[0] - static_cast<fp_type>(u0);
               const fp_type p1u = fp_type{1} - p0u;
 
-              const int v0      = coord_tex[1];
+              const int v0      = static_cast<int>(coord_tex[1]);
               const fp_type p0v = coord_tex[1] - static_cast<fp_type>(v0);
               const fp_type p1v = fp_type{1} - p0v;
 
-              const int w0      = coord_tex[2];
+              const int w0      = static_cast<int>(coord_tex[2]);
               const fp_type p0w = coord_tex[2] - static_cast<fp_type>(w0);
               const fp_type p1w = fp_type{1} - p0w;
 
@@ -179,10 +191,10 @@ namespace mudock {
 
         fp_type elect_total_eintcal{0}, emap_total_eintcal{0}, dmap_total_eintcal{0};
         if (num_rotamers > 0)
-          for (int nonbond_list = it.get_local_id(0); nonbond_list < num_nonbonds;
-               nonbond_list += it.get_local_range(0)) {
-            const int& a1 = nonbond_a1[nonbond_list];
-            const int& a2 = nonbond_a2[nonbond_list];
+          for (int nonbond_list = workitem_id_in_group; nonbond_list < num_nonbonds;
+               nonbond_list += MUDOCK_SYCL_WG_SIZE) {
+            const int& a1 = l_nonbond_a1[nonbond_list];
+            const int& a2 = l_nonbond_a2[nonbond_list];
 
             const auto diff_x                = ligand_x[a1] - ligand_x[a2];
             const auto diff_y                = ligand_y[a1] - ligand_y[a2];
@@ -233,11 +245,12 @@ namespace mudock {
           }
         fp_type total_energy = emap_total_eintcal + elect_total_eintcal + dmap_total_eintcal +
                                emap_total_trilinear + elect_total_trilinear + dmap_total_trilinear;
-        total_energy = sycl::reduce_over_group(sub_group, total_energy, std::plus<fp_type>());
+        total_energy         = sycl::reduce_over_group(sub_group, total_energy, std::plus<fp_type>());
 
         if (workitem_id_in_group == 0) {
-          const fp_type tors_free_energy = num_rotamers * autodock_parameters::coeff_tors;
-          scores_l[scores_index]         = total_energy + tors_free_energy;
+          const fp_type tors_free_energy =
+              static_cast<fp_type>(num_rotamers) * autodock_parameters::coeff_tors;
+          scores_l[scores_index] = total_energy + tors_free_energy;
         }
       }
     };
@@ -253,7 +266,7 @@ namespace mudock {
         [&](const auto atom_index) {
           const auto max_atoms = reorder_buffer<static_molecule>::atoms_clusters[atom_index];
           q->invoke_kernel<calc_energy<max_atoms>>(batch_ligands,
-                                                   q->get_preferred_workgroup_size(),
+                                                   MUDOCK_SYCL_WG_SIZE,
                                                    batch_atoms,
                                                    scores_per_ligand,
                                                    x_scratch_b,
@@ -276,7 +289,7 @@ namespace mudock {
                                                    map_index_x,
                                                    map_index_xy,
                                                    map_index_xyz,
-                                                   sycl_texture_memory.v[dev_id].data->tex_dev,
+                                                   get_sycl_texture_memory()->v[dev_id].data->tex_dev,
                                                    map_offsets_b,
                                                    scores_b);
         },
@@ -286,19 +299,16 @@ namespace mudock {
   }; // namespace mudock
 
   template<>
-  int get_adt_score_batch<queue_sycl>(const int atoms, std::shared_ptr<queue_sycl> q_b) {
-    // populate the bucket dimension
-    int bucket_size{0};
+  batch_multiple get_adt_score_batch_multiple<queue_sycl>(const int atoms, std::shared_ptr<queue_sycl> q_b) {
+    batch_multiple bucket_multiple{};
     constexpr_for<0, reorder_buffer<static_molecule>::get_num_atom_clusters(), 1>([&](const auto atom_index) {
       const auto n_atoms = reorder_buffer<static_molecule>::atoms_clusters[atom_index];
       if (atoms == n_atoms)
-        bucket_size = q_b->get_batch_size<calc_energy<n_atoms>>();
+        bucket_multiple = get_kernel_batch_multiple_sycl<calc_energy<n_atoms>>(q_b, "adt_score::calc_energy");
     });
-    if (bucket_size == 0)
+    if (bucket_multiple.total_multiple() <= 0)
       throw std::runtime_error(
           "Compilation error: there is a bucket of atoms number which it is not handled.");
-
-    mudock::info("SYCL Bucket size for ", atoms, " atoms ", bucket_size * BUCKET_MULTIPLIER, " ligands.");
-    return bucket_size * BUCKET_MULTIPLIER;
-  };
+    return normalize_batch_multiple(bucket_multiple);
+  }
 } // namespace mudock

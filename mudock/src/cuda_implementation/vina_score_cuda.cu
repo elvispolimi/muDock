@@ -168,8 +168,7 @@ __device__ inline fp_type block_reduce_sum_v2(fp_type val, fp_type shared_data[N
 
           const float4 coords = ligand_coords[lIdx];
           const float4 par    = ligand_par[lIdx];
-
-          total += compute_pair_energy(
+          fp_type e_pair = compute_pair_energy(
               px, coords.x, 
               py, coords.y,
               pz, coords.z,
@@ -178,6 +177,17 @@ __device__ inline fp_type block_reduce_sum_v2(fp_type val, fp_type shared_data[N
               get_ligand_par(par, HA), get_ligand_par(par, HD),
               phf, get_ligand_par(par, HYDRO)
               );   
+
+          // TRAPPA SUL SINGOLO THREAD CHE SBALLA
+          if (e_pair > 1000.0f || isnan(e_pair)) {
+            printf("BUG DETECTED on Thread %d | ProtIdx %d (x=%f, y=%f, z=%f, vdw=%f) vs LigIdx %d (x=%f, y=%f, z=%f, vdw=%f) -> Energy: %f\n",
+                threadIdx.x, pIdx, px, py, pz, pvdw, lIdx, coords.x, coords.y, coords.z, get_ligand_par(par, VDW), e_pair);
+
+            // Se vuoi bloccare direttamente cuda-gdb quando succede:
+            // asm("trap;"); 
+          }
+
+          total += e_pair;       
         }
       }
       return total;       
@@ -261,7 +271,7 @@ __device__ inline fp_type block_reduce_sum_v2(fp_type val, fp_type shared_data[N
 
         fp_type score = (inter_score + intra_score) / ( 1 + NROT_COEFF_CUDA * active_torsions);
 
-        // if(threadIdx.x == 0) printf("Score inter %f, Score intra %f, Score %f\n", inter_score, intra_score, score); 
+        if(threadIdx.x == 0) printf("Score inter %f, Score intra %f, Score %f\n", inter_score, intra_score, score); 
         return score;
     }
 
@@ -411,37 +421,28 @@ template<int MAX_ATOMS>
 
   }; // namespace mudock
 
-  template<int MAX_ATOMS>
-  int get_evaluate_fitness_batch(const int device_id) {
-    MUDOCK_CHECK(cudaSetDevice(device_id));
-    cudaDeviceProp props;
-    MUDOCK_CHECK(cudaGetDeviceProperties(&props, device_id));
-    int num_block_per_SM = 0;
-    // TODO
-    MUDOCK_CHECK(cudaOccupancyMaxActiveBlocksPerMultiprocessor(&num_block_per_SM,
-                                                               calc_energy<MAX_ATOMS>,
-                                                               VINA_BLOCK_SIZE,
-                                                               0));
-    // TODO check the return value
-    return num_block_per_SM * props.multiProcessorCount;
-  }
+ 
+template<int MAX_ATOMS>
+batch_multiple get_evaluate_fitness_batch(const int device_id) {
+  return get_kernel_batch_multiple_cuda<calc_energy<MAX_ATOMS>>(device_id,
+      VINA_BLOCK_SIZE,
+      0,
+      "vina_score::calc_energy");
+}
 
-  template<>
-  int get_vina_score_batch<queue_cuda>(const int atoms, std::shared_ptr<queue_cuda> q_b) {
-    // populate the bucket dimension
-    int bucket_size{0};
-    const int device_id = q_b->get_id();
-    constexpr_for<0, reorder_buffer<static_molecule>::get_num_atom_clusters(), 1>([&](const auto atom_index) {
+template<>
+batch_multiple get_vina_score_batch_multiple<queue_cuda>(const int atoms, std::shared_ptr<queue_cuda> q_b) {
+  batch_multiple bucket_multiple{};
+  const int device_id = q_b->get_id();
+  constexpr_for<0, reorder_buffer<static_molecule>::get_num_atom_clusters(), 1>([&](const auto atom_index) {
       const auto n_atoms = reorder_buffer<static_molecule>::atoms_clusters[atom_index];
       if (atoms == n_atoms)
-        bucket_size = get_evaluate_fitness_batch<n_atoms>(device_id);
-    });
-    if (bucket_size == 0)
-      throw std::runtime_error(
-          "Compilation error: there is a bucket of atoms number which it is not handled.");
-
-    mudock::info("CUDA Bucket size for ", atoms, " atoms ", bucket_size * BUCKET_MULTIPLIER, " ligands.");
-    return bucket_size * BUCKET_MULTIPLIER;
-  };
+      bucket_multiple = get_evaluate_fitness_batch<n_atoms>(device_id);
+      });
+  if (bucket_multiple.total_multiple() <= 0)
+    throw std::runtime_error(
+        "Compilation error: there is a bucket of atoms number which it is not handled.");
+  return normalize_batch_multiple(bucket_multiple);
+}
 }
 
