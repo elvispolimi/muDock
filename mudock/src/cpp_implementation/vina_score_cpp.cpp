@@ -27,12 +27,12 @@ namespace mudock {
 
   inline fp_type gauss2(const fp_type dst) {
     fp_type gauss2 = 0;
-    if(IS_DIFF_FROM_ZERO(dst)) gauss2 = exp(- pow((dst - 3) / 2, 2));
+    if(IS_DIFF_FROM_ZERO(dst)) gauss2 = expf(- powf((dst - 3) / 2, 2));
     return gauss2;
   }
 
   inline fp_type repulsion(const fp_type dst) {
-    return pow((dst < 0) * dst, 2);
+    return powf((dst < 0) * dst, 2);
   }
 
   inline fp_type hydrophobic(const fp_type dst, const int rec_lig_is_hydrophobic) {
@@ -189,8 +189,7 @@ inline fp_type vina_scoring(
 
 
 #if 0
-printf("num_atoms_protein: %i\n", num_atoms_protein);
-printf("num_atoms_ligand: %i\n", num_atoms_ligand);
+      printf("num_atoms_protein: %i\n", num_atoms_protein);
       print_matrix("protein_x", num_atoms_protein, "%f", protein_x);
       print_matrix("protein_y", num_atoms_protein, "%f", protein_y);
       print_matrix("protein_z", num_atoms_protein, "%f", protein_z);
@@ -198,19 +197,21 @@ printf("num_atoms_ligand: %i\n", num_atoms_ligand);
       print_matrix("p_is_hbond_donor", num_atoms_protein, "%i", p_is_hbond_donor);
       print_matrix("p_is_hydrophobic", num_atoms_protein, "%i", p_is_hydrophobic);
       print_matrix("p_vdw_radius", num_atoms_protein, "%f", p_vdw_radius);
+#endif
 
+#if 0
+      printf("num_atoms_ligand: %i\n", num_atoms_ligand);
       print_matrix("ligand_x", num_atoms_ligand, "%f", ligand_x);
       print_matrix("ligand_y", num_atoms_ligand, "%f", ligand_y);
       print_matrix("ligand_z", num_atoms_ligand, "%f", ligand_z);
-      print_matrix("l_is_hbond_acceptor", num_atoms_ligand, "%f", l_is_hbond_acceptor);
-      print_matrix("l_is_hbond_donor", num_atoms_ligand, "%f",l_is_hbond_donor);
-      print_matrix("l_is_hydrophobic", num_atoms_ligand, "%f", l_is_hydrophobic);
+      print_matrix("l_is_hbond_acceptor", num_atoms_ligand, "%i", l_is_hbond_acceptor);
+      print_matrix("l_is_hbond_donor", num_atoms_ligand, "%i",l_is_hbond_donor);
+      print_matrix("l_is_hydrophobic", num_atoms_ligand, "%i", l_is_hydrophobic);
       print_matrix("l_vdw_radius", num_atoms_ligand, "%f", l_vdw_radius);
 
       printf("active torsions: %i\n", active_torsions);
       print_matrix("interacting_pairs_first", num_interacting_pairs, "%i", interacting_pairs_first);
       print_matrix("interacting_pairs_second", num_interacting_pairs, "%i", interacting_pairs_second);
-
 #endif
       fp_type inter_score = score_inter(
           num_atoms_protein,

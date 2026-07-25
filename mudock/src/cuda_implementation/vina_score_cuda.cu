@@ -15,7 +15,6 @@
 #include <mudock/type_alias.hpp>
 
 #define VINA_BLOCK_SIZE 256
-#define BUCKET_MULTIPLIER 22
 
 #ifndef EPSILON
 #define EPSILON 1e-6f
@@ -43,7 +42,7 @@ __device__ inline float warp_reduce_sum(float val)
 {
     constexpr unsigned int FULL_MASK{0xffffffff};
 #pragma unroll
-    for (size_t offset{16}; offset > 0; offset /= 2)
+    for (int offset{16}; offset > 0; offset /= 2)
     {
         val += __shfl_down_sync(FULL_MASK, val, offset);
     }
@@ -134,7 +133,7 @@ __device__ inline fp_type block_reduce_sum_v2(fp_type val, fp_type shared_data[N
     }
 
 
- template<int MAX_ATOMS>
+    template<int MAX_ATOMS>
     __device__ inline fp_type score_inter(
         /// Protein data
         const int num_atoms_protein,
@@ -163,31 +162,19 @@ __device__ inline fp_type block_reduce_sum_v2(fp_type val, fp_type shared_data[N
         const fp_type phbd = (fp_type) p_is_hbond_donor[pIdx];
         const fp_type phf  = (fp_type) p_is_hydrophobic[pIdx];
 
-#pragma unroll 8 // unsing unroll on MAX_ATOMS cause register spilling. Trying I found 8 as a good balance.
+MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
         for (int lIdx = 0; lIdx < num_atoms_ligand; lIdx++) {
 
           const float4 coords = ligand_coords[lIdx];
           const float4 par    = ligand_par[lIdx];
-          fp_type e_pair = compute_pair_energy(
-              px, coords.x, 
-              py, coords.y,
-              pz, coords.z,
+          total += compute_pair_energy(
+              px, py, pz,
+              coords.x, coords.y, coords.z,
               pvdw, get_ligand_par(par, VDW),
               phba, phbd,
               get_ligand_par(par, HA), get_ligand_par(par, HD),
               phf, get_ligand_par(par, HYDRO)
               );   
-
-          // TRAPPA SUL SINGOLO THREAD CHE SBALLA
-          if (e_pair > 1000.0f || isnan(e_pair)) {
-            printf("BUG DETECTED on Thread %d | ProtIdx %d (x=%f, y=%f, z=%f, vdw=%f) vs LigIdx %d (x=%f, y=%f, z=%f, vdw=%f) -> Energy: %f\n",
-                threadIdx.x, pIdx, px, py, pz, pvdw, lIdx, coords.x, coords.y, coords.z, get_ligand_par(par, VDW), e_pair);
-
-            // Se vuoi bloccare direttamente cuda-gdb quando succede:
-            // asm("trap;"); 
-          }
-
-          total += e_pair;       
         }
       }
       return total;       
@@ -213,9 +200,8 @@ __device__ inline fp_type block_reduce_sum_v2(fp_type val, fp_type shared_data[N
         const float4 a2p = ligand_par[a2];
 
         total += compute_pair_energy(
-            a1c.x, a2c.x,
-            a1c.y, a2c.y,
-            a1c.z, a2c.z,
+            a1c.x, a1c.y, a1c.z, 
+            a2c.x, a2c.y, a2c.z,           
             get_ligand_par(a1p, VDW),   get_ligand_par(a2p, VDW),
             get_ligand_par(a1p, HA),    get_ligand_par(a1p, HD),
             get_ligand_par(a2p, HA),    get_ligand_par(a2p, HD),
@@ -271,7 +257,7 @@ __device__ inline fp_type block_reduce_sum_v2(fp_type val, fp_type shared_data[N
 
         fp_type score = (inter_score + intra_score) / ( 1 + NROT_COEFF_CUDA * active_torsions);
 
-        if(threadIdx.x == 0) printf("Score inter %f, Score intra %f, Score %f\n", inter_score, intra_score, score); 
+        // if(threadIdx.x == 0) printf("Score inter %f, Score intra %f, Score %f\n", inter_score, intra_score, score); 
         return score;
     }
 
@@ -305,8 +291,7 @@ template<int MAX_ATOMS>
     const int ligand_id       = blockIdx.x;
     const int local_thread_id = threadIdx.x;
 
-    //if(local_thread_id == 0) printf("MAX_ATOMS: %d\n", MAX_ATOMS);
-  
+
     const int num_atoms_ligand    = num_atoms_b[ligand_id];
     const int active_torsions = ligand_active_torsions[ligand_id];
     const int num_interacting_pairs = ligand_num_interacting_pairs[ligand_id];

@@ -18,8 +18,7 @@
 
 namespace mudock {
 
-  #define MAX_INTERACTING_PAIRS_IN_LINGAD (1000)  
-  #define MAX_INTERACTING_PAIRS_IN_BATCH (10 * 1000 * MAX_INTERACTING_PAIRS_IN_LINGAD)
+  #define MAX_INTERACTING_PAIRS_IN_BATCH (10 * 1000 * 1000)
   #define REMOVE_HYDROGENS false
 
 
@@ -27,8 +26,6 @@ namespace mudock {
   batch_multiple get_vina_score_batch_multiple(const int, std::shared_ptr<queue_type>) {
     return {};
   }
-
-
 
   std::pair<std::vector<int>, std::vector<int>> get_interactive_pairs(const static_molecule& ligand);
 
@@ -278,6 +275,8 @@ namespace mudock {
 
         fp_type *scores_b = score_b.dev_pointer();
 
+        // (*this->scratch).get_queue()->synchronize();
+
         kernel = std::make_unique<vina_score_kernel<queue_type>>(
             scores_per_ligand,
             batch_ligands,
@@ -322,7 +321,7 @@ namespace mudock {
         mem += sizeof(int) * max_atoms;           // hbonda 
         mem += sizeof(int) * max_atoms;           // hbondd
         mem += sizeof(int) * max_atoms;           // is hydro 
-        mem += sizeof(int) * MAX_INTERACTING_PAIRS_IN_LINGAD * 2;   // interacting_pairs    
+        mem += sizeof(int) * max_static_neighbors() * 2;   // interacting_pairs    
         mem += sizeof(int);                       // num_interacting_pairs
         mem += sizeof(int);                       // offset_interacting_pairs 
         mem += sizeof(fp_type) * max_atoms;       //vdw 

@@ -69,8 +69,8 @@ int main(int argc, char* argv[]) {
               std::size_t compound_index = 0;
               for (const auto& description: ligands_description) {
                 try {
-                  mudock::writer<out_format, mudock::dynamic_molecule>(
-                      mudock::parser<in_format, mudock::dynamic_molecule>(description),
+                  mudock::writer<out_format, mudock::static_molecule>(
+                      mudock::parser<in_format, mudock::static_molecule>(description),
                       ofs);
                 } catch (const std::exception& e) {
                   ++skipped_compounds;

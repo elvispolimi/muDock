@@ -67,7 +67,6 @@ namespace mudock {
                const ob_mol_wrapper& source,
                std::function<bool(OpenBabel::OBBond&)> check_rotor_bond = ob_rotate_check) {
 
-    printf("HI\n");
     const size_t num_atoms = source->NumAtoms();
     const size_t num_bonds = source->NumBonds();
     // set the molecule geometry
