@@ -146,7 +146,12 @@ namespace mudock {
 
         const auto ligand_center_of_mass = compute_center_of_mass(x, y, z, num_atoms);
         const auto offset                = protein_center - ligand_center_of_mass;
-        translate_molecule<cpu_vectorization::AUTO>(x, y, z, num_atoms, offset.x(), offset.y(), offset.z());
+        bool is_standalone_local_search = ((*this->scratch).configuration.population_number == 1) &&
+                                          ((*this->scratch).configuration.num_generations == 1);
+
+        if (!is_standalone_local_search){
+          translate_molecule<cpu_vectorization::AUTO>(x, y, z, num_atoms, offset.x(), offset.y(), offset.z());
+        }
 
         const auto num_rotamers = ligand.num_rotamers();
         assert(batch_rotamers > num_rotamers);

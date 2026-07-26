@@ -205,7 +205,6 @@ namespace mudock {
 
     void run_standalone() {
       auto &scores_b = (*this->scratch).template get<buffer_data_type::SCORES>();
-      const std::size_t dump_every = std::max<std::size_t>(1, this->iterations / 10);
       int dump_index = 1;
 
       const std::string score_log_path = "adadelta_scores.csv";
@@ -232,10 +231,8 @@ namespace mudock {
 
         log_scores(iter);
 
-        if (iter % dump_every == 0) {
-          this->dump_pose(dump_index++);
-          printf("Iter: %ld, Score: %f\n", iter, double(scores_b()[0]));
-        }
+        this->dump_pose(dump_index++);
+        //printf("Iter: %ld, Score: %f\n", iter, double(scores_b()[0]));
 
         (this->score_stage).get()->compute_gradient();
         (*adadelta_krnl)();
