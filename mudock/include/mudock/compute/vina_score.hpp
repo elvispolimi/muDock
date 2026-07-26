@@ -19,7 +19,7 @@
 namespace mudock {
 
   #define MAX_INTERACTING_PAIRS_IN_BATCH (10 * 1000 * 1000)
-  #define REMOVE_HYDROGENS false
+  #define REMOVE_HYDROGENS true 
 
 
   template<typename queue_type>
@@ -66,7 +66,7 @@ namespace mudock {
         l_interacting_pairs_offset(_scratch->get_queue()),
         device_scratch(_device_scratch) {
           if (!(*device_scratch).template exists<buffer_data_type::PROT_HYDROPHOBICS>()) {
-            info("Removing hydrogens from ligand (", protein.num_atoms(), ")...");
+            info("Removing hydrogens from protein (", protein.num_atoms(), ")...");
             remove_hydrogens(protein);           
             info("Protein size reduced to ", protein.num_atoms());
 

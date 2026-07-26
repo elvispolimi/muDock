@@ -256,82 +256,81 @@ namespace mudock {
     atoms_size = n_atoms;
     bonds_size = n_bonds;
   }
+
+  // TODO: check correctness
   template<class container_aliases>
     requires is_container_specification<container_aliases>
-  void molecule<container_aliases>::remove_atom(const int index) {
-    // remove the target atom from all the containers
-    mudock::remove_atom(atom_elements, index);
-    mudock::remove_atom(x_coordinates, index);
-    mudock::remove_atom(y_coordinates, index);
-    mudock::remove_atom(z_coordinates, index);
-    // mudock::remove_atom(bond_descriptions, index);
-    mudock::remove_atom(atom_is_hbond_donor, index);
-    mudock::remove_atom(atom_is_hbond_acceptor, index);
-    mudock::remove_atom(atom_is_hydrophobic, index);
-    mudock::remove_atom(atom_vdw_radius, index);
-    mudock::resize(bond_descriptions, index);
-    mudock::resize(atom_autodock_type, index);
-    mudock::resize(atom_is_aromatic, index);
-    mudock::resize(atom_charge, index);
-    mudock::resize(atom_num_hbond, index);
-    mudock::remove_atom(atom_names, index);
-    mudock::remove_atom(atom_sybyl_types, index);
+    void molecule<container_aliases>::remove_atom(const int index) {
+      assert(index >= 0 && index < atoms_size && "Index out of bounds in remove_atom");
+      mudock::remove_atom(atom_elements, index);
+      mudock::remove_atom(x_coordinates, index);
+      mudock::remove_atom(y_coordinates, index);
+      mudock::remove_atom(z_coordinates, index);
 
-    mudock::remove_atom(residue_ids, index);
-    mudock::remove_atom(residue_names, index);
-    mudock::remove_atom(atom_residue_types, index);
-    atoms_size--;
+      mudock::remove_atom(atom_autodock_type, index);
+      mudock::remove_atom(atom_is_aromatic, index);
+      mudock::remove_atom(atom_charge, index);
+      mudock::remove_atom(atom_num_hbond, index);
 
-    /// Update the neighbors
+      mudock::remove_atom(atom_is_hbond_donor, index);
+      mudock::remove_atom(atom_is_hbond_acceptor, index);
+      mudock::remove_atom(atom_is_hydrophobic, index);
+      mudock::remove_atom(atom_vdw_radius, index);
 
-    ///Clear the neighbors of the removed atom
-    const int max_neighbors = max_static_neighbors();
-    size_t start = index * max_neighbors;
-    std::shift_left(atoms_neighbors.begin() + start,
-        atoms_neighbors.end(),
-        max_neighbors);
-    mudock::resize(atoms_neighbors, atoms_size * max_neighbors);
+      mudock::remove_atom(atom_names, index);
+      mudock::remove_atom(atom_sybyl_types, index);
+      mudock::remove_atom(residue_ids, index);
+      mudock::remove_atom(residue_names, index);
+      mudock::remove_atom(atom_residue_types, index);
 
-    /// For each atom, we need to remove the index of the removed atom from its neighbors
-    for (int i = 0; i < atoms_size; ++i) {
-      int* neighbors = &atoms_neighbors[i * max_neighbors];
-      int write_pos = 0;
-      for (int j = 0; j < max_neighbors; ++j) {
-        int n = neighbors[j];
-        if (n == -1) break;
-        if (n > index) {
-          neighbors[write_pos++] = n - 1;
-        } else if (n != index) {
-          neighbors[write_pos++] = n;
-        }      
-      }
-      while (write_pos < max_neighbors) {
-        neighbors[write_pos++] = -1;
-      }
+      atoms_size--;
+
+      const int max_neighbors = max_static_neighbors();
+      const size_t start_shift = static_cast<size_t>(index) * max_neighbors;
+
+      std::shift_left(std::begin(atoms_neighbors) + start_shift, 
+          std::end(atoms_neighbors), 
+          max_neighbors);
+
+      mudock::resize(atoms_neighbors, atoms_size * max_neighbors);
+
+      for (int i = 0; i < atoms_size; ++i) {
+        int* neighbors = &atoms_neighbors[i * max_neighbors];
+        int write_pos = 0;
+
+        for (int j = 0; j < max_neighbors; ++j) {
+          int n = neighbors[j];
+          if (n == -1) break; 
+
+          if (n > index) {
+            neighbors[write_pos++] = n - 1; 
+          } else if (n != index) {
+            neighbors[write_pos++] = n;
+          }
+        }
+
+        while (write_pos < max_neighbors) {
+          neighbors[write_pos++] = -1;
+    }
+  }
+
+  size_t write_idx = 0;
+  for (size_t read_idx = 0; read_idx < static_cast<size_t>(bonds_size); ++read_idx) {
+    auto& b = bond_descriptions[read_idx];
+
+    if (b.source == index || b.dest == index) {
+      continue;
     }
 
-    size_t write_idx = 0;
-    for (size_t read_idx = 0; read_idx < bonds_size; ++read_idx) {
-      auto& b = bond_descriptions[read_idx];
+    if (b.source > index) --b.source;
+    if (b.dest > index)   --b.dest;
 
-      // If this bond is connected to the atom we just deleted, skip it
-      if (b.source == index || b.dest == index) {
-        continue;
-      }
+    bond_descriptions[write_idx++] = b;
+  }
 
-      // Otherwise, we keep it and update its indices
-      if (b.source > index) --b.source;
-      if (b.dest > index)   --b.dest;
+  bonds_size = static_cast<int>(write_idx);
+  mudock::resize(bond_descriptions, bonds_size);
 
-      // Move it to the 'current' valid position in the array
-      bond_descriptions[write_idx++] = b;
-    }
-
-    // 2. Update the bond count and resize the container
-    bonds_size = static_cast<int>(write_idx);
-    mudock::resize(bond_descriptions, bonds_size);
-
-  
 #if 0
 // now we need to update the bonds as well
     auto end_loop = std::begin(bond_descriptions) + bonds_size;

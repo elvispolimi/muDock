@@ -117,7 +117,7 @@ namespace mudock {
               if (!std::getline(desc, line)) {
                 throw std::runtime_error("Invalid ADT-MOL2 file: missing molecule name");
               }
-              molecule.properties.initialize(property_type::NAME, line);
+              molecule.properties.assign(property_type::NAME, line);
 
               if (!std::getline(desc, line)) {
                 throw std::runtime_error("Invalid ADT-MOL2 file: missing molecule counts line");
