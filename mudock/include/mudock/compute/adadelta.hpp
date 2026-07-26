@@ -6,6 +6,7 @@
 #include <fstream>
 #include <random>
 #include <mudock/batch.hpp>
+#include <mudock/csv_logger.hpp>
 #include <mudock/chem/autodock_grid_types.hpp>
 #include <mudock/chem/autodock_ligand.hpp>
 #include <mudock/chem/autodock_protein.hpp>
@@ -207,8 +208,7 @@ namespace mudock {
       (*this->scratch).get_queue()->synchronize();
 
       const int num_atoms = this->ligand_template->num_atoms();
-      const point3D current_com =
-          compute_center_of_mass(x_scratch_b.host_pointer(), y_scratch_b.host_pointer(), z_scratch_b.host_pointer(), num_atoms);
+      const point3D current_com = compute_center_of_mass(x_scratch_b.host_pointer(), y_scratch_b.host_pointer(), z_scratch_b.host_pointer(), num_atoms);
 
       if (!initial_com) {
         initial_com = current_com;
@@ -227,37 +227,15 @@ namespace mudock {
     }
 
     void run_standalone() {
+
+      csv_logger score_logger("adadelta_scores.csv", {"iteration", "ligand", "score"});
+      csv_logger com_logger("adadelta_com.csv", {"iteration", "ligand", "com_distance"});
+      
       auto &scores_b = (*this->scratch).template get<buffer_data_type::SCORES>();
-      int dump_index = 1;
-
-      const std::string score_log_path = "adadelta_scores.csv";
-      const bool file_already_exists =
-          std::filesystem::exists(score_log_path) && std::filesystem::file_size(score_log_path) > 0;
- 
-      std::ofstream score_log(score_log_path, std::ios::app);
-      if (!file_already_exists) {
-        score_log << "iteration,ligand,score\n";
-      }
-
-      const std::string com_log_path = "adadelta_com_distances.csv";
-      const bool com_file_already_exists =
-          std::filesystem::exists(com_log_path) && std::filesystem::file_size(com_log_path) > 0;
-      std::ofstream com_log(com_log_path, std::ios::app);
-      if (!com_file_already_exists) {
-        com_log << "iteration,ligand,com_distance\n";
-      }
 
       const std::string ligand_name = this->ligand_template ? this->ligand_template->properties.get(property_type::NAME) : std::string{"unknown"};
       
-      const auto log_scores = [&](std::size_t iter) {
-          score_log << iter << "," << ligand_name << "," << double(scores_b()[0]) << "\n";
-      };
-
       std::optional<point3D> initial_com;
-      const auto log_com_distance = [&](std::size_t iter) {
-        const fp_type com_distance = get_ligand_com_displacement(initial_com);
-        com_log << iter << "," << ligand_name << "," << double(com_distance) << "\n";
-      };
 
       for (std::size_t iter = 0; iter < this->iterations; ++iter) {
         geom_trans();
@@ -266,11 +244,15 @@ namespace mudock {
         scores_b.copy_device2host();
         (*this->scratch).get_queue()->synchronize();
 
-        log_scores(iter);
+        // Dump pose for visualization
+        this->dump_pose(iter);
+        
+        // Log scores
+        score_logger.log(iter, ligand_name, scores_b()[0]);
 
-        this->dump_pose(dump_index++);
-
-        log_com_distance(iter);
+        // Log Center Of Mass
+        const fp_type com_distance = get_ligand_com_displacement(initial_com);
+        com_logger.log(iter, ligand_name, com_distance);
 
         (this->score_stage).get()->compute_gradient();
         (*adadelta_krnl)();
@@ -281,9 +263,7 @@ namespace mudock {
 
       scores_b.copy_device2host();
       (*this->scratch).get_queue()->synchronize();
-      log_scores(this->iterations);
-      log_com_distance(this->iterations);
-      score_log.close();
+
     }
 
     // TODO L: Implement teardown
