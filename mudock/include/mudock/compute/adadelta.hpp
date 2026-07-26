@@ -195,6 +195,29 @@ namespace mudock {
     std::unique_ptr<adadelta_kernel<queue_type>> adadelta_krnl;
     geometric<queue_type> geom_trans;
 
+    fp_type get_ligand_com_displacement(std::optional<point3D>& initial_com) {
+      assert(this->ligand_template.has_value() && "Ligand template not initialized for COM logging");
+
+      auto& x_scratch_b = (*this->scratch).template get<buffer_data_type::X_SCRATCH>();
+      auto& y_scratch_b = (*this->scratch).template get<buffer_data_type::Y_SCRATCH>();
+      auto& z_scratch_b = (*this->scratch).template get<buffer_data_type::Z_SCRATCH>();
+      x_scratch_b.copy_device2host();
+      y_scratch_b.copy_device2host();
+      z_scratch_b.copy_device2host();
+      (*this->scratch).get_queue()->synchronize();
+
+      const int num_atoms = this->ligand_template->num_atoms();
+      const point3D current_com =
+          compute_center_of_mass(x_scratch_b.host_pointer(), y_scratch_b.host_pointer(), z_scratch_b.host_pointer(), num_atoms);
+
+      if (!initial_com) {
+        initial_com = current_com;
+        return fp_type{0};
+      }
+
+      return (current_com - *initial_com).magnitude();
+    }
+
     void run_as_lga_step() {
       for (std::size_t i = 0; i < this->iterations; ++i) {
         geom_trans();
@@ -216,10 +239,24 @@ namespace mudock {
         score_log << "iteration,ligand,score\n";
       }
 
-      const std::string ligand_name = this->ligand_template ? this->ligand_template->properties.get(property_type::NAME) : std::string{"unknown"};
+      const std::string com_log_path = "adadelta_com_distances.csv";
+      const bool com_file_already_exists =
+          std::filesystem::exists(com_log_path) && std::filesystem::file_size(com_log_path) > 0;
+      std::ofstream com_log(com_log_path, std::ios::app);
+      if (!com_file_already_exists) {
+        com_log << "iteration,ligand,com_distance\n";
+      }
 
+      const std::string ligand_name = this->ligand_template ? this->ligand_template->properties.get(property_type::NAME) : std::string{"unknown"};
+      
       const auto log_scores = [&](std::size_t iter) {
           score_log << iter << "," << ligand_name << "," << double(scores_b()[0]) << "\n";
+      };
+
+      std::optional<point3D> initial_com;
+      const auto log_com_distance = [&](std::size_t iter) {
+        const fp_type com_distance = get_ligand_com_displacement(initial_com);
+        com_log << iter << "," << ligand_name << "," << double(com_distance) << "\n";
       };
 
       for (std::size_t iter = 0; iter < this->iterations; ++iter) {
@@ -232,7 +269,8 @@ namespace mudock {
         log_scores(iter);
 
         this->dump_pose(dump_index++);
-        //printf("Iter: %ld, Score: %f\n", iter, double(scores_b()[0]));
+
+        log_com_distance(iter);
 
         (this->score_stage).get()->compute_gradient();
         (*adadelta_krnl)();
@@ -244,6 +282,7 @@ namespace mudock {
       scores_b.copy_device2host();
       (*this->scratch).get_queue()->synchronize();
       log_scores(this->iterations);
+      log_com_distance(this->iterations);
       score_log.close();
     }
 
