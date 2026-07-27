@@ -73,6 +73,7 @@ namespace mudock {
     int population_number;
     int num_generations;
     int tournament_length;
+    int current_generation = 0;
     fp_type mutation_prob;
     chromosome* __restrict__ population;
     chromosome* __restrict__ next_population;

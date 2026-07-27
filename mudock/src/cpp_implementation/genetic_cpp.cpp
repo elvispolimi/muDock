@@ -3,6 +3,7 @@
 #include <cstring>
 #include <mudock/compute/buffer.hpp>
 #include <mudock/compute/devices_memory.hpp>
+#include <mudock/csv_logger.hpp>
 #include <mudock/compute/genetic.hpp>
 #include <mudock/cpp_implementation/center_of_mass.hpp>
 #include <mudock/cpp_implementation/chromosome.hpp>
@@ -102,7 +103,8 @@ namespace mudock {
                     chromosome* population,
                     chromosome* next_population,
                     int* __restrict__ num_rotamers_b,
-                    fp_type* __restrict__ scores_b) {
+                    fp_type* __restrict__ scores_b,
+                    const int generation) {
     for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
       std::uniform_real_distribution<fp_type> dist{fp_type{0.0}, fp_type{1.0}};
       const int num_rotamers                     = num_rotamers_b[ligand_index];
@@ -111,6 +113,7 @@ namespace mudock {
       fp_type* __restrict__ scores               = scores_b + population_number * ligand_index;
 
       // TODO L remove this print
+      csv_logger score_logger("genetic.csv", {"ligand", "generation", "genetic_score"});
       // print best score
       fp_type best = scores[0];
       for(int i = 0; i < population_number; ++i){
@@ -118,7 +121,7 @@ namespace mudock {
           best = scores[i];
         }
       }
-      printf("Best score: %f\n", double(best));
+      score_logger.log(ligand_index, generation, best);
       // end print best score 
 
       // Generate the new population
@@ -207,7 +210,9 @@ namespace mudock {
                                                 population,
                                                 next_population,
                                                 num_rotamers_b,
-                                                scores_b);
+                                                scores_b,
+                                                current_generation);
+    ++current_generation;
   }
   template<>
   void genetic_kernel<queue_cpp>::initialize() {

@@ -228,8 +228,9 @@ namespace mudock {
 
     void run_standalone() {
 
-      csv_logger score_logger("adadelta_scores.csv", {"iteration", "ligand", "score"});
-      csv_logger com_logger("adadelta_com.csv", {"iteration", "ligand", "com_distance"});
+      // What to log during the local search
+      csv_logger score_logger("adadelta_scores.csv", {"ligand", "iteration", "standalone_ls_score"});
+      csv_logger com_logger("adadelta_com.csv", {"ligand", "iteration", "com_distance"});
       
       auto &scores_b = (*this->scratch).template get<buffer_data_type::SCORES>();
 
@@ -248,11 +249,11 @@ namespace mudock {
         this->dump_pose(iter);
         
         // Log scores
-        score_logger.log(iter, ligand_name, scores_b()[0]);
+        score_logger.log(ligand_name, iter, scores_b()[0]);
 
         // Log Center Of Mass
         const fp_type com_distance = get_ligand_com_displacement(initial_com);
-        com_logger.log(iter, ligand_name, com_distance);
+        com_logger.log(ligand_name, iter, com_distance);
 
         (this->score_stage).get()->compute_gradient();
         (*adadelta_krnl)();
