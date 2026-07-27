@@ -315,7 +315,6 @@ namespace mudock {
         (*kernel)();
       }
 
-
       static std::size_t get_private_ligand_mem(const int max_atoms, const knobs) {
         std::size_t mem{0};
         mem += sizeof(int) * max_atoms;           // hbonda 
@@ -328,6 +327,7 @@ namespace mudock {
         return mem;
       }
 
+      // TODO: consider also shared memory, ask how to compute it
       static int get_ligand_mem(const int max_atoms, const knobs conf) {
         return static_cast<int>(get_private_ligand_mem(max_atoms, conf));
       }

@@ -74,13 +74,14 @@ __device__ inline fp_type block_reduce_sum_v2(fp_type val, fp_type shared_data[N
 }
 
     __device__ inline fp_type gauss1(const fp_type dst) {
-      fp_type x = dst * 2.0f;
-      return (fp_type)(IS_DIFF_FROM_ZERO(dst)) * __expf(-(x*x));
+      fp_type neg_x2 = fmaf(-4.0f * dst, dst, 0.0f); // fp_type x = dst * 2.0f; -> -(x*x)
+      return (fp_type)(IS_DIFF_FROM_ZERO(dst)) * __expf(neg_x2);
     }
 
     __device__ inline fp_type gauss2(const fp_type dst) {
-      fp_type x = (dst - 3.0f) * 0.5f;
-      return (fp_type)(IS_DIFF_FROM_ZERO(dst)) * __expf(-(x*x));
+      const fp_type x = fmaf(dst, 0.5f, -1.5f); // fp_type x = (dst - 3.0f) * 0.5f;
+      const fp_type neg_x2 = fmaf(-x, x, 0.0f);
+      return IS_DIFF_FROM_ZERO(dst) * __expf(neg_x2);
     }
 
     __device__ inline fp_type repulsion(const fp_type dst) {
@@ -109,10 +110,13 @@ __device__ inline fp_type block_reduce_sum_v2(fp_type val, fp_type shared_data[N
         fp_type is_hydro1, fp_type is_hydro2
         ) {
 
-      const fp_type dx = x1 - x2;
-      const fp_type dy = y1 - y2;
-      const fp_type dz = z1 - z2;
-      fp_type d2 = (dx * dx) + (dy * dy) + (dz * dz);
+      float dx = x1 - x2;
+      float dy = y1 - y2;
+      float dz = z1 - z2;
+
+      float d2 = fmaf(dx, dx, 0.0f);
+      d2 = fmaf(dy, dy, d2);
+      d2 = fmaf(dz, dz, d2);
 
       if (d2 > 64.0f) return 0.0f;
 
