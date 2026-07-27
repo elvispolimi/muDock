@@ -65,7 +65,7 @@ def center_values(df: pd.DataFrame, id_col: str, x_col: str, y_col: str):
     return df
 
 
-def plot_data(df, id_col, x_col, y_col, out_dir: Path, centered: bool):
+def plot_data(df, id_col, x_col, y_col, out_dir: Path, centered: bool, output_base: str | None):
     """Generate one plot per dataset."""
 
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -100,7 +100,11 @@ def plot_data(df, id_col, x_col, y_col, out_dir: Path, centered: bool):
 
         fig.tight_layout()
 
-        filename = f"{dataset_id}_{y_col}.png"
+        if output_base is None:
+            filename = f"{dataset_id}_{y_col}.png"
+        else:
+            filename = f"{output_base}_{dataset_id}.png"
+
         out_path = out_dir / filename
 
         fig.savefig(out_path, dpi=150)
@@ -132,6 +136,16 @@ def main():
         help="Center each curve on its first recorded value",
     )
 
+    parser.add_argument(
+        "-o",
+        "--output",
+        default=None,
+        help=(
+            "Base name for output images. "
+            "For example '-o score' produces score_<id>.png."
+        ),
+    )
+
     args = parser.parse_args()
 
     csv_path = Path(args.csv_path)
@@ -149,6 +163,7 @@ def main():
         y_col,
         out_dir,
         args.center,
+        args.output,
     )
 
     for path in saved:
