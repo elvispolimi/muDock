@@ -84,6 +84,7 @@ namespace mudock {
       this->batch_ligands         = batch.num_ligands;
       this->num_generations       = static_cast<int>(configuration.num_generations);
       const int population_number = static_cast<int>(configuration.population_number);
+      ls_every                    = static_cast<int>(configuration.ls_every);
       auto q                      = (*this->scratch).get_queue();
 
       auto& num_rotamers_b = (*this->scratch).template get<buffer_data_type::NUM_ROTAMERS>();
@@ -145,7 +146,12 @@ namespace mudock {
       for (int generation = 0; generation < this->num_generations; ++generation) {
         this->geom_trans();
         (*this->score_stage)();
-        local_search_stage();
+
+        // Limit LS runs
+        if (generation % ls_every == 0) {
+          local_search_stage();
+        }
+
         (*this->lamarckian_kernel)();
 
         // Avoid full device-to-device copy by ping-ponging population buffers.
@@ -257,6 +263,7 @@ namespace mudock {
   private:
     local_search_t<queue_t, scoring_t> local_search_stage;
     std::unique_ptr<lamarckian_genetic_kernel<queue_t>> lamarckian_kernel;
+    int ls_every;
     
     void teardown_impl(batch<static_molecule>& batch) {
       assert(batch.num_ligands == this->batch_ligands && "Lamarckian-Genetic algorithm received different batch for teardown");

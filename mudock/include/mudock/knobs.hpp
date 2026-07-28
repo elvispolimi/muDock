@@ -13,6 +13,7 @@ namespace mudock {
     fp_type mutation_prob                     = static_cast<fp_type>(0.01);
     fp_type lsrate                            = static_cast<fp_type>(50);
     std::size_t lsit                          = 300;
+    std::size_t ls_every                      = 1;
     std::optional<std::size_t> seed           = std::optional<std::size_t>{};
     std::size_t max_tbb_tokens                = 4;
     std::size_t max_bytes_per_token           = 1048576; // 1 MB

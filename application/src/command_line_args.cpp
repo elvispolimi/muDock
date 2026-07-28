@@ -63,7 +63,11 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
  knobs_description.add_options()(
       "lsrate",
       po::value(&args.knobs.lsrate)->default_value(args.knobs.lsrate),
-      "Local search rate (in percentage) for LGA");
+      "Percentage of population affected by local search for LGA");
+ knobs_description.add_options()(
+      "ls_every",
+      po::value(&args.knobs.ls_every)->default_value(args.knobs.ls_every),
+      "Run local search every N generations");
   knobs_description.add_options()(
       "mutation",
       po::value(&args.knobs.mutation_prob)->default_value(args.knobs.mutation_prob),
