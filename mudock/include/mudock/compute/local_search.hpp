@@ -31,7 +31,7 @@ namespace mudock {
     std::optional<static_molecule> ligand_template;
     
 
-    void dump_pose(int i) {
+    void dump_pose(std::size_t i) {
       assert(ligand_template.has_value() && "Ligand template was not stored before dump_pose");
 
       auto& x_scratch_b = (*this->scratch).template get<buffer_data_type::X_SCRATCH>();
