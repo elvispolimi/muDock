@@ -5,9 +5,14 @@
 #include <mudock/compute/queue.hpp>
 #include <mudock/type_alias.hpp>
 
+/*
+ *  vina_score_kernel stores all the data neccessary to launche the vina scoring function.
+ *  It must me extended by the proper queue_type to support different devices.
+ *  For now you can find:
+ *    - vina_score_cpp.cpp (CPP:CPU)
+ *    - vina_score_cuda.cu (CUDA:GPU)
+ */
 namespace mudock {
-  // TODO check maybe the kernel can be fused togheter with main adt score
-  // May become an issue to keep separate the TU and the CUDA/etc dependencies
   template<typename queue_type>
     requires std::derived_from<queue_type, queue>
     struct vina_score_kernel {

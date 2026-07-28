@@ -48,10 +48,15 @@ namespace mudock {
 
 #ifndef __CUDACC__
   // TODO check that the object type and the kernel impl are the same
+ 
+  // Object to define a scoring function. In the constructor the protein fields must be initialized. 
+  // In prepare the function received as arfs a batch of ligands, it must move them onto the device and initialize
+  // a kernel object.
   template<typename queue_type>
     struct vina_score: public scoring<queue_type> {
       static constexpr const char stage_name[] = "VINA";
 
+      // If the protein is not yet initialized then initialize it on the device scratchpad
       vina_score(std::shared_ptr<scratchpad<queue_type>> _scratch,
           std::shared_ptr<scratchpad<queue_type>> _device_scratch,
           dynamic_molecule &protein)
@@ -143,6 +148,7 @@ namespace mudock {
             p_is_hydrophobic.copy_host2device();
             p_vdw_radius.copy_host2device();
 
+            // Wait for the transfer to be completed
             (*this->scratch).get_queue()->synchronize();
           }
         }
@@ -277,6 +283,7 @@ namespace mudock {
 
         // (*this->scratch).get_queue()->synchronize();
 
+        // initialize the kernel object
         kernel = std::make_unique<vina_score_kernel<queue_type>>(
             scores_per_ligand,
             batch_ligands,

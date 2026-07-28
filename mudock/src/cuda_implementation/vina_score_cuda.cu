@@ -41,7 +41,8 @@ namespace mudock {
 __device__ inline float warp_reduce_sum(float val)
 {
     constexpr unsigned int FULL_MASK{0xffffffff};
-#pragma unroll
+
+MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
     for (int offset{16}; offset > 0; offset /= 2)
     {
         val += __shfl_down_sync(FULL_MASK, val, offset);
@@ -102,6 +103,8 @@ __device__ inline fp_type block_reduce_sum_v2(fp_type val, fp_type shared_data[N
       return is_hb * (h_bond_1 + h_bond_2);
     }
 
+// If the pair of atoms are closer then 8A then compute the energy as the sum of the two gaussians, 
+// the repulsion, the hydrofobic factor and the hbond factor
     __device__ inline fp_type compute_pair_energy(
         fp_type x1, fp_type y1, fp_type z1,
         fp_type x2, fp_type y2, fp_type z2,
@@ -114,6 +117,7 @@ __device__ inline fp_type block_reduce_sum_v2(fp_type val, fp_type shared_data[N
       float dy = y1 - y2;
       float dz = z1 - z2;
 
+      // one clock cuda op: A * B + C
       float d2 = fmaf(dx, dx, 0.0f);
       d2 = fmaf(dy, dy, d2);
       d2 = fmaf(dz, dz, d2);
@@ -136,7 +140,7 @@ __device__ inline fp_type block_reduce_sum_v2(fp_type val, fp_type shared_data[N
       return res;
     }
 
-
+// For every atoms of the protein and the ligand compute the pair energy.
     template<int MAX_ATOMS>
     __device__ inline fp_type score_inter(
         /// Protein data
@@ -184,7 +188,8 @@ MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
       return total;       
     }
 
-
+// For every interacting pair (atoms that are further then 3 bonds and are not in the same rigid fragment) compute the 
+// pair energy.
     __device__ inline fp_type score_intra(
         const float4* ligand_coords, 
         const float4* ligand_par,
@@ -215,6 +220,7 @@ MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
       return total;
     }
 
+// Compute the protein-ligand score
  template<int MAX_ATOMS>
     __device__ inline fp_type scoring_cuda(  
         /// Protein data
@@ -237,6 +243,7 @@ MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
         const int num_interacting_pairs
     ){
 
+      // Protein-Ligand score
         fp_type inter_score = score_inter<MAX_ATOMS>(
             num_atoms_protein,
             protein_x,
@@ -250,7 +257,8 @@ MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
             ligand_coords, 
             l_par
         );
-        
+       
+      // Ligand-Ligand score
         fp_type intra_score = score_intra(
             ligand_coords, 
             l_par,
@@ -292,10 +300,11 @@ template<int MAX_ATOMS>
                               fp_type *__restrict__ scores                              
                               ) {
 
+    // Each block score a single ligand
     const int ligand_id       = blockIdx.x;
     const int local_thread_id = threadIdx.x;
 
-
+    // Extract current ligand informations
     const int num_atoms_ligand    = num_atoms_b[ligand_id];
     const int active_torsions = ligand_active_torsions[ligand_id];
     const int num_interacting_pairs = ligand_num_interacting_pairs[ligand_id];
@@ -315,6 +324,7 @@ template<int MAX_ATOMS>
 
     fp_type* scores_l = scores + ligand_id * scores_per_ligand;
 
+    // Initialize shared memory with ligand data
     __shared__ float4 ligand_coords[MAX_ATOMS];
     __shared__ float4 ligand_par[MAX_ATOMS];
     __shared__ fp_type warp_shared_buffer[VINA_BLOCK_SIZE/32];
@@ -363,6 +373,7 @@ template<int MAX_ATOMS>
 #else
 #endif
 
+      // Join the results across blocks
       fp_type final_result = block_reduce_sum_v2<VINA_BLOCK_SIZE>(result, warp_shared_buffer);
 
       if (local_thread_id == 0) {
@@ -373,6 +384,7 @@ template<int MAX_ATOMS>
     }
   }
 
+  // Extendes the base vina_score_kernel object and launch the kernel
   template<>
   void vina_score_kernel<queue_cuda>::operator()() {
     void* args[] = {(void*) &batch_atoms,
