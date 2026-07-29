@@ -9,7 +9,7 @@ set_target_properties(
   PROPERTIES CXX_STANDARD 20
               CXX_STANDARD_REQUIRED ON
               CXX_EXTENSIONS OFF)
-target_link_libraries(test_grid libmudock Boost::program_options)
+target_link_libraries(test_grid PRIVATE libmudock Boost::program_options)
 
 add_alpaka_application_executable(
   test_score_adt "${CMAKE_CURRENT_SOURCE_DIR}/adt_score_test.cpp")
@@ -20,7 +20,7 @@ set_target_properties(
   PROPERTIES CXX_STANDARD 20
               CXX_STANDARD_REQUIRED ON
               CXX_EXTENSIONS OFF)
-target_link_libraries(test_score_adt libmudock Boost::program_options)
+target_link_libraries(test_score_adt PRIVATE libmudock Boost::program_options)
 
 add_alpaka_application_executable(test_score_adt_impl
                       "${CMAKE_CURRENT_SOURCE_DIR}/adt_impl_score_test.cpp")
@@ -31,4 +31,4 @@ set_target_properties(
   PROPERTIES CXX_STANDARD 20
               CXX_STANDARD_REQUIRED ON
               CXX_EXTENSIONS OFF)
-target_link_libraries(test_score_adt_impl libmudock Boost::program_options)
+target_link_libraries(test_score_adt_impl PRIVATE libmudock Boost::program_options)
