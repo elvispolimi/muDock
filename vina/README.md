@@ -2,7 +2,7 @@
 
 ## Introduction
 
-As detailed in the main [muDock](../../README.md) documentation, muDock is a modular and high-performance molecular docking engine designed for flexibility, vectorization, and accelerator porting. Thanks to its stage-based architecture, muDock allows for the seamless integration and prototyping of alternative scoring models alongside its default energy engine.
+As detailed in the main [muDock](../README.md) documentation, muDock is a modular and high-performance molecular docking engine designed for flexibility, vectorization, and accelerator porting. Thanks to its stage-based architecture, muDock allows for the seamless integration and prototyping of alternative scoring models alongside its default energy engine.
 
 This directory implements the **AutoDock Vina scoring function** as an alternative evaluation backend. Developed based on the empirical scoring principles established by Trott and Olson (2010), the Vina scoring model is widely recognized as an industry standard across modern molecular docking tools and protocols due to its accuracy and computational efficiency.
 
@@ -86,7 +86,7 @@ The Vina scoring implementation is designed around a clean separation between hi
 
 ## Build and Configuration
 
-Vina scoring does not require any additional build flags beyond the standard muDock configuration options, so you can refer to the main [muDock README](../../README.md) for full instructions.
+Vina scoring does not require any additional build flags beyond the standard muDock configuration options, so you can refer to the main [muDock README](../README.md) for full instructions.
 
 For convenience, here are the build commands for the **CUDA backend** (targeting e.g. SM80):
 
