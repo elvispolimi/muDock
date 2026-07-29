@@ -110,8 +110,8 @@ To execute docking or scoring using the Vina energy model, specify `--score vina
 ```bash
 ./build/application/muDock \
   --protein <path_to_protein> \
-  --ligand <path_to_ligad_dataset> \
-  --use CUDA:GPU:0 \
+  --ligand <path_to_ligand_dataset> \
+  --use CUDA:GPU:0[:WORKERS][:DEVICE_MEMORY_BYTES] \
   --score vina \
   --search genetic
 ```
@@ -135,7 +135,14 @@ Kernel execution parameters evolved across iterations:
 
 - Early Implementations: Used warp-level optimizations, utilizing a block size of 32 threads (1 warp) and a bucket multiplier of 18.
 
-- Final/Optimized Configurations: Where feasible, CUDA kernels were scaled to 256 threads per block along with a bucket multiplier of 36. This aggressive batching strategy pushed GPU VRAM utilization near saturation, particularly during active profiling with ncu-ui.
+- Intermediate Configurations: Where feasible, CUDA kernels were scaled to 256 threads per block along with a bucket multiplier of 36. This aggressive batching strategy pushed GPU VRAM utilization near saturation, particularly during active profiling with ncu-ui.
+
+- Final Configurations: In the latest versions of muDock, the batch/bucket size is dynamically derived from the device memory limit passed as a CLI argument. For these versions, the kernels were kept at 256 threads per block. The `--use` flag was configured as follows:
+
+
+```bash
+--use CUDA:GPU:0:2:3000000000
+```
 
 All benchmark binaries were compiled using the following key optimization CMake flags:
 
@@ -144,7 +151,7 @@ CMAKE_BUILD_TYPE            Release
 MUDOCK_ENABLE_FAST          ON
 MUDOCK_ATOM_CLUSTER_LEVEL   LARGE
 # In older versions
-MUDOCK_ENABLE_LARGE_BUCKET  ON 
+MUDOCK_ENABLE_BUCKET        ON 
 ```
 Each implementation was evaluated under these standardized build flags and dataset partitioning conditions to guarantee fair, highly reproducible throughput and execution time comparisons across hardware backends.
 
@@ -154,7 +161,7 @@ Each implementation was evaluated under these standardized build flags and datas
 
 The optimization of the CUDA Vina kernel was an iterative process that evolved through several key architectural milestones. The main progression of the kernel's development can be traced through the following key commits:
 
-1. **`e06a2a9` — Naive Baseline**: Integration of the initial naive CUDA kernel, into the newly updated muDock architecture.
+1. **`e06a2a9` - Naive Baseline**: Integration of the initial naive CUDA kernel, into the newly updated muDock architecture.
 2. **`3854c97` - Memory Footprint Reduction**: Eliminated unnecessary intermediate buffers to reduce memory overhead and latency.
 3. **`0063f11` - Shared Memory & Grid Parallelism**: Moved ligand coordinates to shared memory (initial approach), replaced standard library math calls with hardware-accelerated intrinsics (e.g., `__expf`), and flipped the `inter_score` parallel execution model to iterate over receptor atoms instead of ligand limits.
 4. **`3ebe289` - Occupancy & Shared Memory Tuning**: Increased thread block size to 256 with a bucket multiplier of 36 (tuned for hardware constraints, e.g., NVIDIA RTX 4050 6GB VRAM). Loaded full ligand structure into shared memory and introduced intrinsic micro optimizations (`fmaxf`, `fminf`).
