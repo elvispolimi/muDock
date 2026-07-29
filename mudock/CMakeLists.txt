@@ -141,7 +141,7 @@ if(MUDOCK_ENABLE_MPI)
     "${header_path}/${header_prefix}/mpi_implementation/distributed_ranges.hpp"
     "${header_path}/${header_prefix}/mpi_implementation/utilities.hpp"
     )
-endif()    
+endif()
 
 if(MUDOCK_ENABLE_GH)
   list(APPEND source_files
@@ -245,15 +245,19 @@ if(MUDOCK_ENABLE_ALPAKA)
       "${source_path}/alpaka_implementation/geom_transform_alpaka.cpp")
   set(alpaka_queue_source
       "${source_path}/alpaka_implementation/queue_alpaka.cpp")
+  set(alpaka_random_source
+      "${source_path}/alpaka_implementation/alpaka_random.cpp")
   list(
     APPEND
     header_files
     "${header_path}/${header_prefix}/alpaka_implementation/adt_score_alpaka.hpp"
     "${header_path}/${header_prefix}/alpaka_implementation/alpaka_implementation.hpp"
+    "${header_path}/${header_prefix}/alpaka_implementation/alpaka_random.hpp"
     "${header_path}/${header_prefix}/alpaka_implementation/alpaka_types.hpp"
     "${header_path}/${header_prefix}/alpaka_implementation/genetic_alpaka.hpp"
     "${header_path}/${header_prefix}/alpaka_implementation/geom_transform_alpaka.hpp"
     "${header_path}/${header_prefix}/alpaka_implementation/invoke_kernel_alpaka.hpp"
+    "${header_path}/${header_prefix}/alpaka_implementation/mutate_alpaka.hpp"
     "${header_path}/${header_prefix}/alpaka_implementation/queue_alpaka.hpp"
     )
   list(
@@ -263,6 +267,7 @@ if(MUDOCK_ENABLE_ALPAKA)
     "${alpaka_genetic_source}"
     "${alpaka_geom_transform_source}"
     "${alpaka_queue_source}"
+    "${alpaka_random_source}"
   )
 endif()
 
@@ -308,6 +313,7 @@ if(MUDOCK_ENABLE_ALPAKA)
     set_source_files_properties("${alpaka_geom_transform_source}" PROPERTIES LANGUAGE CUDA)
     set_source_files_properties("${alpaka_queue_source}" PROPERTIES LANGUAGE CUDA)
     set_source_files_properties("${tbb_pipeline_source}" PROPERTIES LANGUAGE CUDA)
+    set_source_files_properties("${alpaka_random_source}" PROPERTIES LANGUAGE CUDA)
   elseif(MUDOCK_ALPAKA_BACKEND STREQUAL "hip" AND CMAKE_HIP_COMPILER)
     set_source_files_properties("${alpaka_adt_score_source}" PROPERTIES LANGUAGE HIP)
     set_source_files_properties("${alpaka_genetic_source}" PROPERTIES LANGUAGE HIP)
