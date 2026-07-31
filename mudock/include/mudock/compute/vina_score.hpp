@@ -19,7 +19,7 @@
 namespace mudock {
 
   #define MAX_INTERACTING_PAIRS_IN_BATCH (10 * 1000 * 1000)
-  #define REMOVE_HYDROGENS true 
+  #define REMOVE_HYDROGENS false 
 
 
   template<typename queue_type>
@@ -322,6 +322,12 @@ namespace mudock {
         (*kernel)();
       }
 
+      static std::size_t get_shared_ligand_mem(const int max_atoms, const knobs conf) {
+        const int scores_per_ligand = std::max(1, static_cast<int>(conf.population_number));
+        return sizeof(int) + sizeof(int) + sizeof(fp_type) * scores_per_ligand +
+          3 * sizeof(fp_type) * max_atoms * scores_per_ligand;
+      }
+
       static std::size_t get_private_ligand_mem(const int max_atoms, const knobs) {
         std::size_t mem{0};
         mem += sizeof(int) * max_atoms;           // hbonda 
@@ -330,14 +336,15 @@ namespace mudock {
         mem += sizeof(int) * max_static_neighbors() * 2;   // interacting_pairs    
         mem += sizeof(int);                       // num_interacting_pairs
         mem += sizeof(int);                       // offset_interacting_pairs 
-        mem += sizeof(fp_type) * max_atoms;       //vdw 
+        mem += sizeof(fp_type) * max_atoms;       // vdw 
         return mem;
       }
 
-      // TODO: consider also shared memory, ask how to compute it
       static int get_ligand_mem(const int max_atoms, const knobs conf) {
-        return static_cast<int>(get_private_ligand_mem(max_atoms, conf));
+        return static_cast<int>(get_shared_ligand_mem(max_atoms, conf) +
+            get_private_ligand_mem(max_atoms, conf));
       }
+
 
       static batch_multiple get_batch_size(const int atoms,
           std::shared_ptr<queue_type> q,

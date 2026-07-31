@@ -113,9 +113,9 @@ __device__ inline fp_type block_reduce_sum_v2(fp_type val, fp_type shared_data[N
         fp_type is_hydro1, fp_type is_hydro2
         ) {
 
-      float dx = x1 - x2;
-      float dy = y1 - y2;
-      float dz = z1 - z2;
+      const float dx = x1 - x2;
+      const float dy = y1 - y2;
+      const float dz = z1 - z2;
 
       // one clock cuda op: A * B + C
       float d2 = fmaf(dx, dx, 0.0f);
