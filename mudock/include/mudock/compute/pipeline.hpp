@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <memory>
 #include <mudock/compute/adt_score.hpp>
+#include <mudock/compute/vina_score.hpp>
 #include <mudock/compute/algorithm.hpp>
 #include <mudock/compute/bucket_size.hpp>
 #include <mudock/compute/genetic.hpp>
@@ -116,4 +117,7 @@ namespace mudock {
 
   using adt_score_pipeline   = scoring_pipeline<adt_score>;
   using genetic_adt_pipeline = genetic_scoring_pipeline<adt_score>;
+  using vina_score_pipeline  = scoring_pipeline<vina_score>;
+  using genetic_vina_pipeline = genetic_scoring_pipeline<vina_score>;
+
 } // namespace mudock

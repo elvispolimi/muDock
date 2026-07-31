@@ -11,6 +11,8 @@
 #include <openbabel/obiter.h>
 #include <openbabel/obutil.h>
 #include <openbabel/plugin.h>
+#include <openbabel/data.h>
+#include <openbabel/parsmart.h>
 #include <stdexcept>
 
 namespace mudock {
@@ -218,6 +220,51 @@ namespace mudock {
     } else {
       return convert_obelem(ob_atom.GetAtomicNum());
     }
+  }
+
+  bool isHydrophobicAtom(const ob_mol_wrapper &mol, const OpenBabel::OBAtom *atom) {
+    // Define a simple hydrophobic SMARTS: non-polar carbon, sp3
+    OpenBabel::OBSmartsPattern smarts;
+    smarts.Init(
+        "[c,s,F,Cl,Br,I,S&H0&v2,$([D3,D4;#6])&!$([#6]~[#7,#8,#9])&!$([#6X4H0]);+0]"); // aliphatic carbon not bonded to N/O/S
+
+    if (!smarts.Match(*mol.get()))
+      return false;
+
+    // Check if the atom is part of any match
+    for (const auto &match: smarts.GetMapList()) {
+      for (uint idx: match) {
+        if (idx == atom->GetIdx())
+          return true;
+      }
+    }
+
+    return false;
+  }
+
+  /// The neighbors of an atom are defined as the atoms that are connected to it a number of bonds <= 3
+  std::vector<int> calc_neighbors(const ob_mol_wrapper& mol, int atomIdx) {
+
+    std::set<int> neighbors;
+
+    OpenBabel::OBAtom* oba0 = mol->GetAtom(atomIdx + 1); // OpenBabel uses 1-based indexing
+    neighbors.insert(oba0->GetIndex());
+
+    OpenBabel::OBBondIterator it0 = oba0->BeginBonds();
+    for (OpenBabel::OBAtom* oba1 = oba0->BeginNbrAtom(it0); oba1 != nullptr; oba1 = oba0->NextNbrAtom(it0)) {
+      neighbors.insert(oba1->GetIndex());
+      OpenBabel::OBBondIterator it1 = oba0->BeginBonds();
+      for (OpenBabel::OBAtom* oba2 = oba1->BeginNbrAtom(it1); oba2 != nullptr; oba2 = oba1->NextNbrAtom(it1)) {
+        neighbors.insert(oba2->GetIndex());
+        OpenBabel::OBBondIterator it2 = oba1->BeginBonds();
+        for (OpenBabel::OBAtom* oba3 = oba2->BeginNbrAtom(it2); oba3 != nullptr; oba3 = oba2->NextNbrAtom(it2)) {
+          neighbors.insert(oba3->GetIndex());
+        }
+      }
+    }
+
+    std::vector<int> out(neighbors.begin(), neighbors.end());
+    return out;
   }
 
 } // namespace mudock

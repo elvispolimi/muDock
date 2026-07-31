@@ -2,26 +2,28 @@
 
 #include "mudock/chem/residue_types.hpp"
 #include "mudock/chem/sybyl_atom_types.hpp"
+#include "mudock/molecule/constraints.hpp"
 
-#include <fstream>
+#include <cassert>
 #include <iomanip>
 #include <iostream>
 #include <mudock/chem/autodock_types.hpp>
 #include <mudock/molecule.hpp>
-#include <string>
-#include <string_view>
 #include <sstream>
 #include <stdexcept>
+#include <string>
+#include <string_view>
 #include <vector>
 
 namespace mudock {
   struct adt_mol2_tokens {
-    static constexpr auto ATOM_TOKEN     = "@<TRIPOS>ATOM";
-    static constexpr auto BOND_TOKEN     = "@<TRIPOS>BOND";
-    static constexpr auto MOLECULE_TOKEN = "@<TRIPOS>MOLECULE";
+    static constexpr auto ATOM_TOKEN      = "@<TRIPOS>ATOM";
+    static constexpr auto BOND_TOKEN      = "@<TRIPOS>BOND";
+    static constexpr auto MOLECULE_TOKEN  = "@<TRIPOS>MOLECULE";
+    static constexpr auto NEIGHBORS_TOKEN = "@<TRIPOS>NEIGHBORS";
   };
 
-  enum class adt_mol2_state { NONE = 0, MOLECULE, ATOM, BOND };
+  enum class adt_mol2_state { NONE = 0, MOLECULE, ATOM, BOND, NEIGHBORS };
 
   class adt_mol2 {
   public:
@@ -40,7 +42,6 @@ namespace mudock {
       out_s << "SMALL" << std::endl;
       out_s << "GASTEIGER" << std::endl;
       out_s << std::endl;
-
       // Atoms
       out_s << "@<TRIPOS>ATOM" << std::endl;
       for (int atom_index = 0; atom_index < molecule.num_atoms(); ++atom_index) {
@@ -60,7 +61,12 @@ namespace mudock {
               << molecule.residue_id(atom_index) << " " << std::setw(8) << molecule.residue_name(atom_index)
               << " " << std::setw(8) << get_description(molecule.autodock_type(atom_index)).name << " "
               << std::setw(10) << molecule.charge(atom_index) << " " << std::setw(10)
-              << static_cast<int>(molecule.is_aromatic(atom_index)) << std::endl;
+              << static_cast<int>(molecule.is_aromatic(atom_index))
+              << std::setw(10) << molecule.vdw_radius(atom_index)
+              << std::setw(5) << molecule.is_hbond_acceptor(atom_index)
+              << std::setw(5) << molecule.is_hbond_donor(atom_index)
+              << std::setw(5) << molecule.is_hydrophobic(atom_index)
+              << std::endl;
       }
 
       // Bonds
@@ -71,6 +77,20 @@ namespace mudock {
               << std::setw(5) << bond.dest + 1 << " " << std::setw(2) << get_description(bond.type).name
               << " " << std::setw(2) << bond.can_rotate << std::endl;
       }
+
+      // Neighbors 
+      out_s << adt_mol2_tokens::NEIGHBORS_TOKEN << std::endl; 
+      for (int atom_index = 0; atom_index < molecule.num_atoms(); ++atom_index) {
+        out_s << std::setw(5) << atom_index + 1 << " " << std::setw(8);
+        for (int neighbor_index = 0; neighbor_index < max_static_neighbors(); ++neighbor_index) {
+          int neighbor = molecule.neighbors(atom_index, neighbor_index);
+          if(neighbor < 0) break;
+          if(neighbor_index != 0) out_s << ", ";
+          out_s << neighbor + 1;
+        }
+        out_s << std::endl;
+      }
+
 
       out_s << std::endl;
     }
@@ -83,26 +103,27 @@ namespace mudock {
 
       adt_mol2_state state = adt_mol2_state::NONE;
       int atom_index{0}, bond_index{0};
+
       while (std::getline(desc, line)) {
+        if (line.empty() && state != adt_mol2_state::BOND && state != adt_mol2_state::NEIGHBORS) {
+          continue;
+        }
+
         switch (state) {
           case adt_mol2_state::NONE:
             if (line.find(adt_mol2_tokens::MOLECULE_TOKEN) != std::string::npos) {
               state = adt_mol2_state::MOLECULE;
 
-              // Molecule name line
               if (!std::getline(desc, line)) {
                 throw std::runtime_error("Invalid ADT-MOL2 file: missing molecule name");
               }
-
               molecule.properties.assign(property_type::NAME, line);
 
-              // Counts line: num_atoms num_bonds ...
               if (!std::getline(desc, line)) {
                 throw std::runtime_error("Invalid ADT-MOL2 file: missing molecule counts line");
               }
 
               std::istringstream counts_stream(line);
-
               int num_atoms = 0;
               int num_bonds = 0;
 
@@ -130,8 +151,8 @@ namespace mudock {
             if (line.find(adt_mol2_tokens::BOND_TOKEN) != std::string::npos) {
               if (atom_index != molecule.num_atoms()) {
                 throw std::runtime_error("Invalid ADT-MOL2 file: expected " +
-                                         std::to_string(molecule.num_atoms()) + " atoms, parsed " +
-                                         std::to_string(atom_index));
+                                           std::to_string(molecule.num_atoms()) + " atoms, parsed " +
+                                           std::to_string(atom_index));
               }
 
               state      = adt_mol2_state::BOND;
@@ -142,38 +163,34 @@ namespace mudock {
               }
 
               std::istringstream stream(line);
-
               std::vector<std::string> tokens;
-              tokens.reserve(12);
+              tokens.reserve(16);
               for (std::string token; stream >> token;) {
                 tokens.push_back(std::move(token));
               }
 
-              // Fixed ADTMOL2 atom layout emitted by writer:
-              // atom_id atom_name x y z sybyl_type residue_id residue_name adt charge is_aromatic
-              if (tokens.size() != 11) {
-                throw std::runtime_error("Invalid ADT-MOL2 atom record: " + line);
+              if (tokens.size() != 15 && tokens.size() != 11) {
+                throw std::runtime_error("Invalid ADT-MOL2 atom record (expected 11 or 15 tokens): " + line);
               }
 
               const auto atom_id = std::stoi(tokens[0]);
 
-              // Optional sanity check: atom IDs in the file should normally be 1-based.
               if (atom_id != atom_index + 1) {
                 throw std::runtime_error("Invalid ADT-MOL2 atom record: unexpected atom id " +
-                                         std::to_string(atom_id) + ", expected " +
-                                         std::to_string(atom_index + 1));
+                                           std::to_string(atom_id) + ", expected " +
+                                           std::to_string(atom_index + 1));
               }
 
-              const auto& atom_name   = tokens[1];
-              const auto x            = static_cast<fp_type>(std::stod(tokens[2]));
-              const auto y            = static_cast<fp_type>(std::stod(tokens[3]));
-              const auto z            = static_cast<fp_type>(std::stod(tokens[4]));
-              const auto& sybyl_type  = tokens[5];
-              const auto residue_id   = std::stoi(tokens[6]);
+              const auto& atom_name    = tokens[1];
+              const auto x             = static_cast<fp_type>(std::stod(tokens[2]));
+              const auto y             = static_cast<fp_type>(std::stod(tokens[3]));
+              const auto z             = static_cast<fp_type>(std::stod(tokens[4]));
+              const auto& sybyl_type   = tokens[5];
+              const auto residue_id    = std::stoi(tokens[6]);
               const auto& residue_name = tokens[7];
-              const auto& adt         = tokens[8];
-              const auto charge       = static_cast<fp_type>(std::stod(tokens[9]));
-              const bool is_aromatic  = std::stoi(tokens[10]) != 0;
+              const auto& adt          = tokens[8];
+              const auto charge        = static_cast<fp_type>(std::stod(tokens[9]));
+              const bool is_aromatic   = std::stoi(tokens[10]) != 0;
 
               molecule.x(atom_index) = x;
               molecule.y(atom_index) = y;
@@ -183,8 +200,8 @@ namespace mudock {
               molecule.elements(atom_index)      = get_element(parsed_sybyl_type);
               molecule.autodock_type(atom_index) = parse_autodock_type(adt);
 
-              molecule.residue_id(atom_index)   = residue_id;
-              molecule.residue_name(atom_index) = residue_name;
+              molecule.residue_id(atom_index)         = residue_id;
+              molecule.residue_name(atom_index)       = residue_name;
               molecule.atom_residue_type(atom_index) = parse_residue_type(residue_name);
 
               molecule.atom_name(atom_index)  = atom_name;
@@ -193,18 +210,31 @@ namespace mudock {
               molecule.charge(atom_index)      = charge;
               molecule.is_aromatic(atom_index) = is_aromatic;
 
+              if (tokens.size() == 15) {
+                molecule.vdw_radius(atom_index)        = static_cast<fp_type>(std::stod(tokens[11]));
+                molecule.is_hbond_acceptor(atom_index) = std::stoi(tokens[12]) != 0;
+                molecule.is_hbond_donor(atom_index)    = std::stoi(tokens[13]) != 0;
+                molecule.is_hydrophobic(atom_index)    = std::stoi(tokens[14]) != 0;
+              }
+
               atom_index += 1;
             }
             break;
 
           case adt_mol2_state::BOND:
-            if (line.empty()) {
+            if (line.find(adt_mol2_tokens::NEIGHBORS_TOKEN) != std::string::npos) {
               if (bond_index != molecule.num_bonds()) {
                 throw std::runtime_error("Invalid ADT-MOL2 file: expected " +
-                                         std::to_string(molecule.num_bonds()) + " bonds, parsed " +
-                                         std::to_string(bond_index));
+                                           std::to_string(molecule.num_bonds()) + " bonds, parsed " +
+                                           std::to_string(bond_index));
               }
-
+              state = adt_mol2_state::NEIGHBORS;
+            } else if (line.empty()) {
+              if (bond_index != molecule.num_bonds()) {
+                throw std::runtime_error("Invalid ADT-MOL2 file: expected " +
+                                           std::to_string(molecule.num_bonds()) + " bonds, parsed " +
+                                           std::to_string(bond_index));
+              }
               state = adt_mol2_state::NONE;
             } else {
               if (bond_index >= molecule.num_bonds()) {
@@ -225,11 +255,10 @@ namespace mudock {
                 throw std::runtime_error("Invalid ADT-MOL2 bond record: " + line);
               }
 
-              // Optional sanity check: bond IDs should normally be 1-based.
               if (bond_id != bond_index + 1) {
                 throw std::runtime_error("Invalid ADT-MOL2 bond record: unexpected bond id " +
-                                         std::to_string(bond_id) + ", expected " +
-                                         std::to_string(bond_index + 1));
+                                           std::to_string(bond_id) + ", expected " +
+                                           std::to_string(bond_index + 1));
               }
 
               if (atom_1 <= 0 || atom_1 > molecule.num_atoms() || atom_2 <= 0 ||
@@ -242,14 +271,56 @@ namespace mudock {
               bond_index += 1;
             }
             break;
+
+          case adt_mol2_state::NEIGHBORS:
+            if (line.empty()) {
+              state = adt_mol2_state::NONE;
+            } else {
+              std::istringstream stream{line};
+              int atom_id = 0;
+              stream >> atom_id;
+
+              if (stream) {
+                int current_atom_idx = atom_id - 1;
+
+                if (current_atom_idx >= 0 && current_atom_idx < molecule.num_atoms()) {
+                  for (int n_idx = 0; n_idx < max_static_neighbors(); ++n_idx) {
+                    molecule.neighbors(current_atom_idx, n_idx) = -1;
+                  }
+
+                  std::string remaining_line;
+                  std::getline(stream, remaining_line);
+
+                  if (!remaining_line.empty()) {
+                    std::istringstream nbr_stream(remaining_line);
+                    std::string neighbor_str;
+                    int neighbor_slot = 0;
+
+                    while (std::getline(nbr_stream, neighbor_str, ',') && neighbor_slot < max_static_neighbors()) {
+                      auto first_not_space = neighbor_str.find_first_not_of(" \t");
+                      if (first_not_space != std::string::npos) {
+                        neighbor_str = neighbor_str.substr(first_not_space);
+                        int nbr_1based = std::stoi(neighbor_str);
+                        
+                        molecule.neighbors(current_atom_idx, neighbor_slot) = nbr_1based - 1;
+                        neighbor_slot++;
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            break;
         }
       }
+
       if (state == adt_mol2_state::BOND) {
         if (bond_index != molecule.num_bonds()) {
           throw std::runtime_error("Invalid ADT-MOL2 file: expected " + std::to_string(molecule.num_bonds()) +
-                                   " bonds, parsed " + std::to_string(bond_index));
+                                     " bonds, parsed " + std::to_string(bond_index));
         }
-
+        state = adt_mol2_state::NONE;
+      } else if (state == adt_mol2_state::NEIGHBORS) {
         state = adt_mol2_state::NONE;
       }
 
@@ -258,4 +329,5 @@ namespace mudock {
       }
     }
   };
+
 } // namespace mudock

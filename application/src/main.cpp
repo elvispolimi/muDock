@@ -1,4 +1,5 @@
 #include "command_line_args.hpp"
+#include "mudock/compute/pipeline.hpp"
 
 #include <cstdlib>
 #include <fstream>

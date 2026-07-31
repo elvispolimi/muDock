@@ -8,4 +8,7 @@ namespace mudock {
   // this is the maximum number of bonds that we can expect from a static storage
   [[nodiscard]] constexpr auto max_static_bonds() { return max_static_atoms() * int{2}; }
 
+  // this is the maximum number of neighbors that we can expect from a static storage
+  [[nodiscard]] constexpr auto max_static_neighbors() { return int{32}; }
+
 } // namespace mudock

@@ -57,11 +57,16 @@ namespace mudock {
   // Translate an OpenBabel molecule to our internal format
   //===------------------------------------------------------------------------------------------------------
 
+  bool isHydrophobicAtom(const ob_mol_wrapper &mol, const OpenBabel::OBAtom *atom); 
+  std::vector<int> calc_neighbors(const ob_mol_wrapper& mol, int atomIdx);
+
+
   template<class molecule_type>
     requires derived_from_molecule<molecule_type>
   void convert(molecule_type& dest,
                const ob_mol_wrapper& source,
                std::function<bool(OpenBabel::OBBond&)> check_rotor_bond = ob_rotate_check) {
+
     const size_t num_atoms = source->NumAtoms();
     const size_t num_bonds = source->NumBonds();
     // set the molecule geometry
@@ -114,6 +119,12 @@ namespace mudock {
       dest.charge(mudock_atom_index)      = static_cast<fp_type>(atom->GetPartialCharge());
       dest.is_aromatic(mudock_atom_index) = atom->IsAromatic();
       // }
+
+      dest.is_hbond_donor(mudock_atom_index)    = atom->IsHbondDonor();
+      dest.is_hbond_acceptor(mudock_atom_index) = atom->IsHbondAcceptor();
+      dest.is_hydrophobic(mudock_atom_index)    = isHydrophobicAtom(source, atom);
+      dest.vdw_radius(mudock_atom_index)        = OpenBabel::OBElements::GetVdwRad(atom->GetAtomicNum());
+
       index_translator.emplace(atom_id, mudock_atom_index);
       ++mudock_atom_index;
       max_atom_index = std::max(max_atom_index, atom_id);
@@ -132,6 +143,21 @@ namespace mudock {
       mudock_bond.dest       = static_cast<int>(index_translator.at(static_cast<int>(atom_id_dest)));
       mudock_bond.type       = parse_ob_bond_type(*bond);
       mudock_bond.can_rotate = check_rotor_bond(*bond);
+      
+      if constexpr (std::same_as<std::remove_cvref_t<molecule_type>, static_molecule>) {
+        for (size_t atom_id = 0; atom_id < num_atoms; ++atom_id) {
+          const std::vector<int> atom_neighbors = calc_neighbors(source, atom_id);
+          assert(atom_neighbors.size() <= max_static_neighbors());
+
+          for(size_t i = 0; i < max_static_neighbors(); ++i){
+            if(i < atom_neighbors.size()){
+              dest.neighbors(atom_id, i) = atom_neighbors[i];
+            } else {
+              dest.neighbors(atom_id, i) = -1;
+            }
+          }
+        }
+      }
       ++mudock_bond_index;
     }
 

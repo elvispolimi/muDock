@@ -24,6 +24,17 @@ namespace mudock {
     using type = mudock::genetic_adt_pipeline;
   };
 
+  template<>
+    struct pipeline_selector<search_algorithm::NONE, scoring_function::VINA> {
+      using type = mudock::vina_score_pipeline;
+    };
+
+  template<>
+    struct pipeline_selector<search_algorithm::GENETIC, scoring_function::VINA> {
+      using type = mudock::genetic_vina_pipeline;
+    };
+
+
   template<search_algorithm search, scoring_function scoring>
   using pipeline_selector_t = typename pipeline_selector<search, scoring>::type;
 
@@ -44,6 +55,13 @@ namespace mudock {
       : scoring_function_format_base<scoring_function_format<scoring_function::ADT>> {
     inline static constexpr std::array formats{supported_format::ADTMOL2, supported_format::PDBQT, supported_format::MOL2};
   };
+
+  template<>
+  struct scoring_function_format<scoring_function::VINA>
+      : scoring_function_format_base<scoring_function_format<scoring_function::VINA>> {
+    inline static constexpr std::array formats{supported_format::ADTMOL2, supported_format::PDBQT, supported_format::MOL2};
+  };
+
 
   template<typename callback_t>
   void dispatch_selected_pipeline(const search_algorithm search,

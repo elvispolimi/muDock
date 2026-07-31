@@ -22,6 +22,9 @@ namespace mudock {
 
     template<typename T>
     using fragments_size = std::array<T, max_static_atoms() * max_static_bonds()>;
+
+    template<typename T>
+    using neighbors_size = std::array<T, max_static_atoms() * max_static_neighbors()>;
   };
 
   // this set of type alas describe a molecule that allocates the required memory at runtime.It is the most
@@ -35,6 +38,9 @@ namespace mudock {
 
     template<typename T>
     using fragments_size = std::vector<T>;
+
+    template<typename T>
+    using neighbors_size = std::vector<T>;
   };
 
   // this concepts tell if a type is a specification of the container abstraction used in a class.

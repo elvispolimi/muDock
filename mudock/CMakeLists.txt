@@ -38,6 +38,7 @@ list(
   "${header_path}/${header_prefix}/compute/stage.hpp"
   "${header_path}/${header_prefix}/compute/scoring.hpp"
   "${header_path}/${header_prefix}/compute/adt_score.hpp"
+  "${header_path}/${header_prefix}/compute/vina_score.hpp"
   "${header_path}/${header_prefix}/compute/pipeline.hpp"
   "${header_path}/${header_prefix}/compute/docking.hpp"
   "${header_path}/${header_prefix}/compute/genetic.hpp"
@@ -52,6 +53,7 @@ list(
   "${header_path}/${header_prefix}/cpp_implementation/buffer_cpp.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/queue_cpp.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/adt_score_cpp.hpp"
+  "${header_path}/${header_prefix}/cpp_implementation/vina_score_cpp.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/geom_transform_cpp.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/genetic_cpp.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/cpp_implementation.hpp"
@@ -113,6 +115,7 @@ list(
   "${source_path}/chem/autodock_grid_types.cpp"
   "${source_path}/chem/elements.cpp"
   "${source_path}/compute/parse_ids.cpp"
+  "${source_path}/compute/vina_score.cpp"
   "${source_path}/compute/algorithm.cpp"
   "${source_path}/format/dot.cpp"
   "${source_path}/format/mol2.cpp"
@@ -130,6 +133,7 @@ list(
   "${source_path}/cpp_implementation/mutate_cpp.cpp"
   "${source_path}/cpp_implementation/geom_transform_cpp.cpp"
   "${source_path}/cpp_implementation/adt_score_cpp.cpp"
+  "${source_path}/cpp_implementation/vina_score_cpp.cpp"
   "${source_path}/cpp_implementation/genetic_cpp.cpp"
   "${source_path}/tbb_implementation/runtime_services.cpp"
 )
@@ -176,6 +180,7 @@ if(MUDOCK_ENABLE_CUDA)
     header_files
     "${header_path}/${header_prefix}/cuda_implementation/queue_cuda.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/adt_score_cuda.cuh"
+    "${header_path}/${header_prefix}/cuda_implementation/vina_score_cuda.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/genetic_cuda.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/cuda_random.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/cuda_utils.cuh"
@@ -188,6 +193,7 @@ if(MUDOCK_ENABLE_CUDA)
     source_files
     "${source_path}/cuda_implementation/queue_cuda.cu"
     "${source_path}/cuda_implementation/adt_score_cuda.cu"
+    "${source_path}/cuda_implementation/vina_score_cuda.cu"
     "${source_path}/cuda_implementation/genetic_cuda.cu"
     "${source_path}/cuda_implementation/cuda_random.cu"
     "${source_path}/cuda_implementation/geom_transform_cuda.cu"
@@ -450,7 +456,7 @@ if(MUDOCK_ENABLE_CUDA)
   # set(CMAKE_CUDA_ARCHITECTURES OFF)
   set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --expt-relaxed-constexpr")
   set(CMAKE_CUDA_FLAGS_RELEASE
-      "${CMAKE_CUDA_FLAGS_RELEASE} -use_fast_math -Xptxas -v")
+      "${CMAKE_CUDA_FLAGS_RELEASE} -use_fast_math -lineinfo -Xptxas -v")
   set(CMAKE_CUDA_FLAGS_RELWITHDEBINFO
       "${CMAKE_CUDA_FLAGS_RELWITHDEBINFO} -G -Xptxas -v")
   set(CMAKE_CUDA_FLAGS_DEBUG "${CMAKE_CUDA_FLAGS_DEBUG} -G -Xptxas -v")
@@ -519,4 +525,4 @@ endif()
 # ### Declare the install step
 # ##############################################################################
 
-# at the moment wedon't deploy the library
+# at the moment we don't deploy the library
