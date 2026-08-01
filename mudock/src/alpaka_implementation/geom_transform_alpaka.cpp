@@ -18,79 +18,87 @@ namespace mudock {
       ALPAKA_FN_ACC void operator()(TAcc const& acc,
                                     const int chromosome_number,
                                     const int atom_stride,
-                                    const fp_type* original_x,
-                                    const fp_type* original_y,
-                                    const fp_type* original_z,
-                                    fp_type* scratch_x,
-                                    fp_type* scratch_y,
-                                    fp_type* scratch_z,
-                                    const chromosome* chromosomes,
-                                    const int* fragments,
-                                    const int* ligand_fragments_start,
-                                    const int* fragments_start_index,
-                                    const int* fragments_stop_index,
-                                    const int* frag_indices_start,
-                                    const int* num_rotamers_b,
-                                    const int* num_atoms_b) const {
+                                    const fp_type* __restrict__ original_x,
+                                    const fp_type* __restrict__ original_y,
+                                    const fp_type* __restrict__ original_z,
+                                    fp_type* __restrict__ scratch_x,
+                                    fp_type* __restrict__ scratch_y,
+                                    fp_type* __restrict__ scratch_z,
+                                    const chromosome* __restrict__ chromosomes,
+                                    const int* __restrict__ fragments,
+                                    const int* __restrict__ ligand_fragments_start,
+                                    const int* __restrict__ fragments_start_index,
+                                    const int* __restrict__ fragments_stop_index,
+                                    const int* __restrict__ frag_indices_start,
+                                    const int* __restrict__ num_rotamers_b,
+                                    const int* __restrict__ num_atoms_b) const {
         const int ligand_id = static_cast<int>(alpaka::getIdx<alpaka::Grid, alpaka::Blocks>(acc)[0u]);
         const int thread_id = static_cast<int>(alpaka::getIdx<alpaka::Block, alpaka::Threads>(acc)[0u]);
-        const int thread_per_block =
-            static_cast<int>(alpaka::getWorkDiv<alpaka::Block, alpaka::Threads>(acc)[0u]);
 
         const int num_atoms    = num_atoms_b[ligand_id];
         const int num_rotamers = num_rotamers_b[ligand_id];
 
-        const fp_type* l_original_x         = original_x + ligand_id * atom_stride;
-        const fp_type* l_original_y         = original_y + ligand_id * atom_stride;
-        const fp_type* l_original_z         = original_z + ligand_id * atom_stride;
-        fp_type* l_scratch_x                = scratch_x + ligand_id * atom_stride * chromosome_number;
-        fp_type* l_scratch_y                = scratch_y + ligand_id * atom_stride * chromosome_number;
-        fp_type* l_scratch_z                = scratch_z + ligand_id * atom_stride * chromosome_number;
-        const chromosome* chromosomes_b     = chromosomes + ligand_id * chromosome_number;
-        const auto* l_fragments             = fragments + ligand_fragments_start[ligand_id];
-        const auto* l_frag_start_atom_index = fragments_start_index + frag_indices_start[ligand_id];
-        const auto* l_frag_stop_atom_index  = fragments_stop_index + frag_indices_start[ligand_id];
+        const fp_type* __restrict__ l_original_x    = original_x + ligand_id * atom_stride;
+        const fp_type* __restrict__ l_original_y    = original_y + ligand_id * atom_stride;
+        const fp_type* __restrict__ l_original_z    = original_z + ligand_id * atom_stride;
+        fp_type* __restrict__ l_scratch_x           = scratch_x + ligand_id * atom_stride * chromosome_number;
+        fp_type* __restrict__ l_scratch_y           = scratch_y + ligand_id * atom_stride * chromosome_number;
+        fp_type* __restrict__ l_scratch_z           = scratch_z + ligand_id * atom_stride * chromosome_number;
+        const chromosome* chromosomes_b             = chromosomes + ligand_id * chromosome_number;
+        const auto* __restrict__ l_fragments        = fragments + ligand_fragments_start[ligand_id];
+        const auto* __restrict__ l_frag_start_atom_index = fragments_start_index + frag_indices_start[ligand_id];
+        const auto* __restrict__ l_frag_stop_atom_index  = fragments_stop_index + frag_indices_start[ligand_id];
 
-        for (int chromosome_index = thread_id; chromosome_index < chromosome_number;
-             chromosome_index += thread_per_block) {
-          const chromosome& l_chromosomes = chromosomes_b[chromosome_index];
-          fp_type* x_scratch_chromosome   = l_scratch_x + chromosome_index * atom_stride;
-          fp_type* y_scratch_chromosome   = l_scratch_y + chromosome_index * atom_stride;
-          fp_type* z_scratch_chromosome   = l_scratch_z + chromosome_index * atom_stride;
+        for (int chromosome_index = 0; chromosome_index < chromosome_number; ++chromosome_index) {
+          const chromosome& l_chromosomes            = chromosomes_b[chromosome_index];
+          fp_type* __restrict__ x_scratch_chromosome = l_scratch_x + chromosome_index * atom_stride;
+          fp_type* __restrict__ y_scratch_chromosome = l_scratch_y + chromosome_index * atom_stride;
+          fp_type* __restrict__ z_scratch_chromosome = l_scratch_z + chromosome_index * atom_stride;
 
-          for (int atom_index = 0; atom_index < MAX_ATOMS; ++atom_index) {
+          MUDOCK_PRAGMA_UNROLL(MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, MUDOCK_ALPAKA_BLOCK_SIZE))
+          for (int i = 0; i < MAX_ATOMS; i += MUDOCK_ALPAKA_BLOCK_SIZE) {
+            const int atom_index = i + thread_id;
             if (atom_index < num_atoms) {
               x_scratch_chromosome[atom_index] = l_original_x[atom_index];
               y_scratch_chromosome[atom_index] = l_original_y[atom_index];
               z_scratch_chromosome[atom_index] = l_original_z[atom_index];
             }
           }
+          alpaka::syncBlockThreads(acc);
 
-          translate_molecule_alpaka<MAX_ATOMS>(x_scratch_chromosome,
-                                               y_scratch_chromosome,
-                                               z_scratch_chromosome,
-                                               l_chromosomes[0],
-                                               l_chromosomes[1],
-                                               l_chromosomes[2],
-                                               num_atoms);
-          rotate_molecule_alpaka<MAX_ATOMS>(x_scratch_chromosome,
-                                            y_scratch_chromosome,
-                                            z_scratch_chromosome,
-                                            l_chromosomes[3],
-                                            l_chromosomes[4],
-                                            l_chromosomes[5],
-                                            num_atoms);
+          translate_molecule_alpaka<MAX_ATOMS, MUDOCK_ALPAKA_BLOCK_SIZE>(acc,
+                                                                         x_scratch_chromosome,
+                                                                         y_scratch_chromosome,
+                                                                         z_scratch_chromosome,
+                                                                         l_chromosomes[0],
+                                                                         l_chromosomes[1],
+                                                                         l_chromosomes[2],
+                                                                         num_atoms);
+          alpaka::syncBlockThreads(acc);
 
+          rotate_molecule_alpaka<MAX_ATOMS, MUDOCK_ALPAKA_BLOCK_SIZE>(acc,
+                                                                      x_scratch_chromosome,
+                                                                      y_scratch_chromosome,
+                                                                      z_scratch_chromosome,
+                                                                      l_chromosomes[3],
+                                                                      l_chromosomes[4],
+                                                                      l_chromosomes[5],
+                                                                      num_atoms);
+          alpaka::syncBlockThreads(acc);
+
+          MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
           for (int i = 0; i < num_rotamers; ++i) {
-            const int* bitmask = l_fragments + i * num_atoms;
-            rotate_fragment_alpaka<MAX_ATOMS>(x_scratch_chromosome,
-                                              y_scratch_chromosome,
-                                              z_scratch_chromosome,
-                                              bitmask,
-                                              l_frag_start_atom_index[i],
-                                              l_frag_stop_atom_index[i],
-                                              l_chromosomes[6 + i],
-                                              num_atoms);
+            const int* __restrict__ bitmask = l_fragments + i * num_atoms;
+            rotate_fragment_alpaka<MAX_ATOMS, MUDOCK_ALPAKA_BLOCK_SIZE>(acc,
+                                                                        x_scratch_chromosome,
+                                                                        y_scratch_chromosome,
+                                                                        z_scratch_chromosome,
+                                                                        bitmask,
+                                                                        l_frag_start_atom_index[i],
+                                                                        l_frag_stop_atom_index[i],
+                                                                        l_chromosomes[6 + i],
+                                                                        num_atoms);
+            alpaka::syncBlockThreads(acc);
           }
         }
       }

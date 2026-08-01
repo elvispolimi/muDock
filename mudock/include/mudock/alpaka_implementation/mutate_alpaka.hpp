@@ -7,44 +7,95 @@
 
 namespace mudock {
 
-  template<int MAX_ATOMS>
-  ALPAKA_FN_ACC void translate_molecule_alpaka(fp_type* x,
-                                               fp_type* y,
-                                               fp_type* z,
+  template<int MAX_ATOMS, int BLOCK_SIZE, typename TAcc>
+  ALPAKA_FN_ACC void translate_molecule_alpaka(TAcc const& acc,
+                                               fp_type* __restrict__ x,
+                                               fp_type* __restrict__ y,
+                                               fp_type* __restrict__ z,
                                                const fp_type offset_x,
                                                const fp_type offset_y,
                                                const fp_type offset_z,
                                                const int num_atoms) {
-    for (int i = 0; i < MAX_ATOMS; ++i) {
-      if (i < num_atoms) {
-        x[i] += offset_x;
-        y[i] += offset_y;
-        z[i] += offset_z;
+    const int thread_id = static_cast<int>(alpaka::getIdx<alpaka::Block, alpaka::Threads>(acc)[0u]);
+
+    MUDOCK_PRAGMA_UNROLL(MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, BLOCK_SIZE))
+    for (int i = 0; i < MAX_ATOMS; i += BLOCK_SIZE) {
+      const int atom_index = i + thread_id;
+      if (atom_index < num_atoms) {
+        x[atom_index] += offset_x;
+        y[atom_index] += offset_y;
+        z[atom_index] += offset_z;
       }
     }
   }
 
-  template<int MAX_ATOMS>
-  ALPAKA_FN_ACC void rotate_molecule_alpaka(fp_type* x,
-                                            fp_type* y,
-                                            fp_type* z,
+  template<int MAX_ATOMS, int BLOCK_SIZE, typename TAcc>
+  ALPAKA_FN_ACC void rotate_molecule_alpaka(TAcc const& acc,
+                                            fp_type* __restrict__ x,
+                                            fp_type* __restrict__ y,
+                                            fp_type* __restrict__ z,
                                             const fp_type angle_x,
                                             const fp_type angle_y,
                                             const fp_type angle_z,
                                             const int num_atoms) {
+    const int thread_id = static_cast<int>(alpaka::getIdx<alpaka::Block, alpaka::Threads>(acc)[0u]);
+
     fp_type c_x{0}, c_y{0}, c_z{0};
-    for (int i = 0; i < MAX_ATOMS; ++i) {
-      if (i < num_atoms) {
-        c_x += x[i];
-        c_y += y[i];
-        c_z += z[i];
+    MUDOCK_PRAGMA_UNROLL(MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, BLOCK_SIZE))
+    for (int i = 0; i < MAX_ATOMS; i += BLOCK_SIZE) {
+      const int atom_index = i + thread_id;
+      if (atom_index < num_atoms) {
+        c_x += x[atom_index];
+        c_y += y[atom_index];
+        c_z += z[atom_index];
       }
     }
+
+#if defined(MUDOCK_ALPAKA_BACKEND_CUDA) || defined(MUDOCK_ALPAKA_BACKEND_HIP)
+    MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
+    for (int offset = BLOCK_SIZE / 2; offset > 0; offset /= 2) {
+      c_x += alpaka::warp::shfl_down(acc, c_x, offset, BLOCK_SIZE);
+      c_y += alpaka::warp::shfl_down(acc, c_y, offset, BLOCK_SIZE);
+      c_z += alpaka::warp::shfl_down(acc, c_z, offset, BLOCK_SIZE);
+    }
+    c_x = alpaka::warp::shfl(acc, c_x, 0, BLOCK_SIZE);
+    c_y = alpaka::warp::shfl(acc, c_y, 0, BLOCK_SIZE);
+    c_z = alpaka::warp::shfl(acc, c_z, 0, BLOCK_SIZE);
+
     c_x /= static_cast<fp_type>(num_atoms);
     c_y /= static_cast<fp_type>(num_atoms);
     c_z /= static_cast<fp_type>(num_atoms);
+#else
+    struct SharedData {
+      fp_type cx[BLOCK_SIZE];
+      fp_type cy[BLOCK_SIZE];
+      fp_type cz[BLOCK_SIZE];
+    };
+    auto& sdata = alpaka::declareSharedVar<SharedData, __COUNTER__>(acc);
+    if (thread_id < BLOCK_SIZE) {
+      sdata.cx[thread_id] = c_x;
+      sdata.cy[thread_id] = c_y;
+      sdata.cz[thread_id] = c_z;
+    }
+    alpaka::syncBlockThreads(acc);
+
+    ALPAKA_UNROLL()
+    for (uint32_t stride = BLOCK_SIZE / 2; stride > 0; stride /= 2) {
+      if (thread_id < stride) {
+        sdata.cx[thread_id] += sdata.cx[thread_id + stride];
+        sdata.cy[thread_id] += sdata.cy[thread_id + stride];
+        sdata.cz[thread_id] += sdata.cz[thread_id + stride];
+      }
+      alpaka::syncBlockThreads(acc);
+    }
+
+    c_x = sdata.cx[0] / static_cast<fp_type>(num_atoms);
+    c_y = sdata.cy[0] / static_cast<fp_type>(num_atoms);
+    c_z = sdata.cz[0] / static_cast<fp_type>(num_atoms);
+#endif
 
     const auto rad_x = deg_to_rad(angle_x), rad_y = deg_to_rad(angle_y), rad_z = deg_to_rad(angle_z);
+
     const fp_type cx = static_cast<fp_type>(::cos(rad_x));
     const fp_type sx = static_cast<fp_type>(::sin(rad_x));
     const fp_type cy = static_cast<fp_type>(::cos(rad_y));
@@ -62,25 +113,33 @@ namespace mudock {
     const fp_type m21 = sx * cy;
     const fp_type m22 = cx * cy;
 
-    for (int i = 0; i < MAX_ATOMS; ++i) {
-      if (i < num_atoms) {
-        const auto translated_x = x[i] - c_x, translated_y = y[i] - c_y, translated_z = z[i] - c_z;
-        x[i] = translated_x * m00 + translated_y * m01 + translated_z * m02 + c_x;
-        y[i] = translated_x * m10 + translated_y * m11 + translated_z * m12 + c_y;
-        z[i] = translated_x * m20 + translated_y * m21 + translated_z * m22 + c_z;
+    MUDOCK_PRAGMA_UNROLL(MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, BLOCK_SIZE))
+    for (int i = 0; i < MAX_ATOMS; i += BLOCK_SIZE) {
+      const int atom_index = i + thread_id;
+      if (atom_index < num_atoms) {
+        const auto translated_x = x[atom_index] - c_x;
+        const auto translated_y = y[atom_index] - c_y;
+        const auto translated_z = z[atom_index] - c_z;
+
+        x[atom_index] = translated_x * m00 + translated_y * m01 + translated_z * m02 + c_x;
+        y[atom_index] = translated_x * m10 + translated_y * m11 + translated_z * m12 + c_y;
+        z[atom_index] = translated_x * m20 + translated_y * m21 + translated_z * m22 + c_z;
       }
     }
   }
 
-  template<int MAX_ATOMS>
-  ALPAKA_FN_ACC void rotate_fragment_alpaka(fp_type* x,
-                                            fp_type* y,
-                                            fp_type* z,
-                                            const int* bitmask,
+  template<int MAX_ATOMS, int BLOCK_SIZE, typename TAcc>
+  ALPAKA_FN_ACC void rotate_fragment_alpaka(TAcc const& acc,
+                                            fp_type* __restrict__ x,
+                                            fp_type* __restrict__ y,
+                                            fp_type* __restrict__ z,
+                                            const int* __restrict__ bitmask,
                                             const int start_index,
                                             const int stop_index,
                                             const fp_type angle,
                                             const int num_atoms) {
+    const int thread_id = static_cast<int>(alpaka::getIdx<alpaka::Block, alpaka::Threads>(acc)[0u]);
+
     const auto origx = x[start_index], origy = y[start_index], origz = z[start_index];
     const auto destx = x[stop_index], desty = y[stop_index], destz = z[stop_index];
     const auto u = destx - origx;
@@ -102,25 +161,25 @@ namespace mudock {
     const fp_type m02 = (u * w * one_minus_c + v * l * s) / l2;
     const fp_type m03 =
         ((origx * (v2 + w2) - u * (origy * v + origz * w)) * one_minus_c + (origy * w - origz * v) * ls) / l2;
-
     const fp_type m10 = (u * v * one_minus_c + w * ls) / l2;
     const fp_type m11 = (v2 + (u2 + w2) * c) / l2;
     const fp_type m12 = (v * w * one_minus_c - u * ls) / l2;
     const fp_type m13 =
         ((origy * (u2 + w2) - v * (origx * u + origz * w)) * one_minus_c + (origz * u - origx * w) * ls) / l2;
-
     const fp_type m20 = (u * w * one_minus_c - v * ls) / l2;
     const fp_type m21 = (v * w * one_minus_c + u * ls) / l2;
     const fp_type m22 = (w2 + (u2 + v2) * c) / l2;
     const fp_type m23 =
         ((origz * (u2 + v2) - w * (origx * u + origy * v)) * one_minus_c + (origx * v - origy * u) * ls) / l2;
 
-    for (int i = 0; i < MAX_ATOMS; ++i) {
-      if (i < num_atoms && bitmask[i] != 0) {
-        const auto prev_x = x[i], prev_y = y[i], prev_z = z[i];
-        x[i] = prev_x * m00 + prev_y * m01 + prev_z * m02 + m03;
-        y[i] = prev_x * m10 + prev_y * m11 + prev_z * m12 + m13;
-        z[i] = prev_x * m20 + prev_y * m21 + prev_z * m22 + m23;
+    MUDOCK_PRAGMA_UNROLL(MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, BLOCK_SIZE))
+    for (int i = 0; i < MAX_ATOMS; i += BLOCK_SIZE) {
+      const int atom_index = i + thread_id;
+      if (atom_index < num_atoms && bitmask[atom_index] != 0) {
+        const auto prev_x = x[atom_index], prev_y = y[atom_index], prev_z = z[atom_index];
+        x[atom_index] = prev_x * m00 + prev_y * m01 + prev_z * m02 + m03;
+        y[atom_index] = prev_x * m10 + prev_y * m11 + prev_z * m12 + m13;
+        z[atom_index] = prev_x * m20 + prev_y * m21 + prev_z * m22 + m23;
       }
     }
   }
