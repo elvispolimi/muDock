@@ -18,7 +18,7 @@ namespace mudock {
                                                const int num_atoms) {
     const int thread_id = static_cast<int>(alpaka::getIdx<alpaka::Block, alpaka::Threads>(acc)[0u]);
 
-    MUDOCK_PRAGMA_UNROLL(MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, BLOCK_SIZE))
+    ALPAKA_UNROLL(MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, BLOCK_SIZE))
     for (int i = 0; i < MAX_ATOMS; i += BLOCK_SIZE) {
       const int atom_index = i + thread_id;
       if (atom_index < num_atoms) {
@@ -41,7 +41,7 @@ namespace mudock {
     const int thread_id = static_cast<int>(alpaka::getIdx<alpaka::Block, alpaka::Threads>(acc)[0u]);
 
     fp_type c_x{0}, c_y{0}, c_z{0};
-    MUDOCK_PRAGMA_UNROLL(MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, BLOCK_SIZE))
+    ALPAKA_UNROLL(MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, BLOCK_SIZE))
     for (int i = 0; i < MAX_ATOMS; i += BLOCK_SIZE) {
       const int atom_index = i + thread_id;
       if (atom_index < num_atoms) {
@@ -52,7 +52,7 @@ namespace mudock {
     }
 
 #if defined(MUDOCK_ALPAKA_BACKEND_CUDA) || defined(MUDOCK_ALPAKA_BACKEND_HIP)
-    MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
+    ALPAKA_UNROLL(MUDOCK_UNROLL_FACTOR)
     for (int offset = BLOCK_SIZE / 2; offset > 0; offset /= 2) {
       c_x += alpaka::warp::shfl_down(acc, c_x, offset, BLOCK_SIZE);
       c_y += alpaka::warp::shfl_down(acc, c_y, offset, BLOCK_SIZE);
@@ -96,12 +96,12 @@ namespace mudock {
 
     const auto rad_x = deg_to_rad(angle_x), rad_y = deg_to_rad(angle_y), rad_z = deg_to_rad(angle_z);
 
-    const fp_type cx = static_cast<fp_type>(::cos(rad_x));
-    const fp_type sx = static_cast<fp_type>(::sin(rad_x));
-    const fp_type cy = static_cast<fp_type>(::cos(rad_y));
-    const fp_type sy = static_cast<fp_type>(::sin(rad_y));
-    const fp_type cz = static_cast<fp_type>(::cos(rad_z));
-    const fp_type sz = static_cast<fp_type>(::sin(rad_z));
+    const fp_type cx = alpaka::math::cos(acc, rad_x);
+    const fp_type sx = alpaka::math::sin(acc, rad_x);
+    const fp_type cy = alpaka::math::cos(acc, rad_y);
+    const fp_type sy = alpaka::math::sin(acc, rad_y);
+    const fp_type cz = alpaka::math::cos(acc, rad_z);
+    const fp_type sz = alpaka::math::sin(acc, rad_z);
 
     const fp_type m00 = cy * cz;
     const fp_type m01 = sx * sy * cz - cx * sz;
@@ -113,7 +113,7 @@ namespace mudock {
     const fp_type m21 = sx * cy;
     const fp_type m22 = cx * cy;
 
-    MUDOCK_PRAGMA_UNROLL(MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, BLOCK_SIZE))
+    ALPAKA_UNROLL(MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, BLOCK_SIZE))
     for (int i = 0; i < MAX_ATOMS; i += BLOCK_SIZE) {
       const int atom_index = i + thread_id;
       if (atom_index < num_atoms) {
@@ -148,11 +148,11 @@ namespace mudock {
 
     const auto u2 = u * u, v2 = v * v, w2 = w * w;
     const auto l2   = u2 + v2 + w2;
-    const fp_type l = static_cast<fp_type>(::sqrt(l2));
+    const fp_type l = alpaka::math::sqrt(acc, l2);
 
     const auto rad            = deg_to_rad(angle);
-    const fp_type s           = static_cast<fp_type>(::sin(rad));
-    const fp_type c           = static_cast<fp_type>(::cos(rad));
+    const fp_type s           = alpaka::math::sin(acc, rad);
+    const fp_type c           = alpaka::math::cos(acc, rad);
     const fp_type one_minus_c = fp_type{1} - c;
     const fp_type ls          = l * s;
 
@@ -172,7 +172,7 @@ namespace mudock {
     const fp_type m23 =
         ((origz * (u2 + v2) - w * (origx * u + origy * v)) * one_minus_c + (origx * v - origy * u) * ls) / l2;
 
-    MUDOCK_PRAGMA_UNROLL(MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, BLOCK_SIZE))
+    ALPAKA_UNROLL(MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, BLOCK_SIZE))
     for (int i = 0; i < MAX_ATOMS; i += BLOCK_SIZE) {
       const int atom_index = i + thread_id;
       if (atom_index < num_atoms && bitmask[atom_index] != 0) {

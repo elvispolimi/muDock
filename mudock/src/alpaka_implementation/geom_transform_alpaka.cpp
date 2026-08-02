@@ -55,7 +55,7 @@ namespace mudock {
           fp_type* __restrict__ y_scratch_chromosome = l_scratch_y + chromosome_index * atom_stride;
           fp_type* __restrict__ z_scratch_chromosome = l_scratch_z + chromosome_index * atom_stride;
 
-          MUDOCK_PRAGMA_UNROLL(MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, MUDOCK_ALPAKA_BLOCK_SIZE))
+          ALPAKA_UNROLL(MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, MUDOCK_ALPAKA_BLOCK_SIZE))
           for (int i = 0; i < MAX_ATOMS; i += MUDOCK_ALPAKA_BLOCK_SIZE) {
             const int atom_index = i + thread_id;
             if (atom_index < num_atoms) {
@@ -86,7 +86,7 @@ namespace mudock {
                                                                       num_atoms);
           alpaka::syncBlockThreads(acc);
 
-          MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
+          ALPAKA_UNROLL(MUDOCK_UNROLL_FACTOR)
           for (int i = 0; i < num_rotamers; ++i) {
             const int* __restrict__ bitmask = l_fragments + i * num_atoms;
             rotate_fragment_alpaka<MAX_ATOMS, MUDOCK_ALPAKA_BLOCK_SIZE>(acc,

@@ -99,9 +99,11 @@ namespace mudock {
           scores[chromosome_index] = std::numeric_limits<fp_type>::infinity();
 
           chromosome& chromo = *(l_chromosomes + chromosome_index);
+          ALPAKA_UNROLL(MUDOCK_UNROLL_FACTOR)
           for (int i{0}; i < 3; ++i) {
             chromo[i] = get_init_change_distribution(l_state) * coordinate_step;
           }
+          ALPAKA_UNROLL(MUDOCK_UNROLL_FACTOR)
           for (int i{3}; i < 6 + num_rotamers; ++i) {
             chromo[i] = get_init_change_distribution(l_state) * angle_step;
           }
@@ -152,11 +154,13 @@ namespace mudock {
             dst[i] = (i < split_index) ? p1[i] : p2[i];
           }
 
+          ALPAKA_UNROLL(MUDOCK_UNROLL_FACTOR)
           for (int i{0}; i < 3; ++i) {
             if (get_mutation_coin_distribution(l_state) < mutation_prob) {
               next_chromosome[i] += get_mutation_change_distribution(l_state) * coordinate_step;
             }
           }
+          ALPAKA_UNROLL(MUDOCK_UNROLL_FACTOR)
           for (int i{3}; i < 6 + num_rotamers; ++i) {
             if (get_mutation_coin_distribution(l_state) < mutation_prob) {
               next_chromosome[i] += get_mutation_change_distribution(l_state) * angle_step;
@@ -177,28 +181,66 @@ namespace mudock {
                                     chromosome* __restrict__ chromosomes,
                                     chromosome* __restrict__ best_chromosomes) const {
         const int ligand_id = static_cast<int>(alpaka::getIdx<alpaka::Grid, alpaka::Blocks>(acc)[0u]);
-        const int thread_id = static_cast<int>(alpaka::getIdx<alpaka::Block, alpaka::Threads>(acc)[0u]);
-        if (thread_id != 0) {
-          return;
-        }
+        const int local_thread_id = static_cast<int>(alpaka::getIdx<alpaka::Block, alpaka::Threads>(acc)[0u]);
+        const int thread_per_block = static_cast<int>(alpaka::getWorkDiv<alpaka::Block, alpaka::Threads>(acc)[0u]);
 
         const int num_rotamers                 = ligand_num_rotamers[ligand_id];
         chromosome* __restrict__ l_chromosomes = chromosomes + ligand_id * chromosome_number;
         fp_type* __restrict__ scores           = ligand_scores + chromosome_number * ligand_id;
 
-        int min_index     = 0;
-        fp_type min_score = scores[0];
-        for (int chromosome_index = 1; chromosome_index < chromosome_number; ++chromosome_index) {
+        int min_index = local_thread_id;
+        fp_type min_score = min_index < chromosome_number ? scores[min_index] : std::numeric_limits<fp_type>::infinity();
+
+        for (int chromosome_index = local_thread_id + thread_per_block; chromosome_index < chromosome_number;
+             chromosome_index += thread_per_block) {
           if (min_score > scores[chromosome_index]) {
             min_index = chromosome_index;
             min_score = scores[chromosome_index];
           }
         }
 
-        ligand_best_scores[ligand_id] = min_score;
-        fp_type* dst                  = (best_chromosomes + ligand_id)->data();
-        const fp_type* src            = (l_chromosomes + min_index)->data();
-        for (int i = 0; i < (6 + num_rotamers); ++i) { dst[i] = src[i]; }
+#if defined(MUDOCK_ALPAKA_BACKEND_CUDA) || defined(MUDOCK_ALPAKA_BACKEND_HIP)
+        ALPAKA_UNROLL(MUDOCK_UNROLL_FACTOR)
+        for (uint32_t offset = MUDOCK_ALPAKA_BLOCK_SIZE / 2; offset > 0; offset /= 2) {
+          const fp_type other_min_score = alpaka::warp::shfl_down(acc, min_score, offset, MUDOCK_ALPAKA_BLOCK_SIZE);
+          const int other_min_index     = alpaka::warp::shfl_down(acc, min_index, offset, MUDOCK_ALPAKA_BLOCK_SIZE);
+          if (other_min_score < min_score) {
+            min_score = other_min_score;
+            min_index = other_min_index;
+          }
+        }
+#else
+        struct SharedData {
+          fp_type min_scores[MUDOCK_ALPAKA_BLOCK_SIZE];
+          int min_indices[MUDOCK_ALPAKA_BLOCK_SIZE];
+        };
+        auto& sdata = alpaka::declareSharedVar<SharedData, __COUNTER__>(acc);
+        if (local_thread_id < MUDOCK_ALPAKA_BLOCK_SIZE) {
+          sdata.min_scores[local_thread_id] = min_score;
+          sdata.min_indices[local_thread_id] = min_index;
+        }
+        alpaka::syncBlockThreads(acc);
+
+        ALPAKA_UNROLL()
+        for (uint32_t stride = MUDOCK_ALPAKA_BLOCK_SIZE / 2; stride > 0; stride /= 2) {
+          if (local_thread_id < stride) {
+            if (sdata.min_scores[local_thread_id + stride] < sdata.min_scores[local_thread_id]) {
+              sdata.min_scores[local_thread_id] = sdata.min_scores[local_thread_id + stride];
+              sdata.min_indices[local_thread_id] = sdata.min_indices[local_thread_id + stride];
+            }
+          }
+          alpaka::syncBlockThreads(acc);
+        }
+        min_score = sdata.min_scores[0];
+        min_index = sdata.min_indices[0];
+#endif
+
+        if (local_thread_id == 0) {
+          ligand_best_scores[ligand_id] = min_score;
+          fp_type* dst                  = (best_chromosomes + ligand_id)->data();
+          const fp_type* src            = (l_chromosomes + min_index)->data();
+          for (int i = 0; i < (6 + num_rotamers); ++i) { dst[i] = src[i]; }
+        }
       }
     };
   } // namespace
