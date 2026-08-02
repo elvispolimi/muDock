@@ -14,7 +14,7 @@ This foundation provided an ideal bridge into the *GPUs & Heterogeneous Systems*
 
 ## Scoring Algorithm
 
-The total fitness score $E_{\text{total}}$ is obtained by combining the intermolecular energy ($\text{score}_{\text{inter}}$) and intramolecular energy ($\text{score}_{\text{intra}}$), normalized by the weighted number of active rotatable bonds ($N_{\text{rot}}$):
+The total fitness score $E_{\text{total}}$ is obtained by combining the intermolecular energy $(\text{score}_{\mathrm{inter}})$ and intramolecular energy $(\text{score}_{\mathrm{intra}})$, normalized by the weighted number of active rotatable bonds ($N_{\text{rot}}$):
 
 $$E_{\text{total}} = \frac{\text{score}_{\text{inter}} + \text{score}_{\text{intra}}}{1 + w_{\text{rot}} \cdot N_{\text{rot}}}$$
 
@@ -25,7 +25,7 @@ Where:
 *   **$N_{\text{rot}}$**: The number of active rotatable torsions in the ligand.
 
 #### Pairwise Energy Function
-Both $\text{score}_{\text{inter}}$ and $\text{score}_{\text{intra}}$ are calculated by summing the pairwise interaction energy $E_{\text{pair}}(d_{ij})$ over all valid **interacting pairs**:
+Both $\text{score}_{\mathrm{inter}}$ and $\text{score}_{\mathrm{intra}}$ are calculated by summing the pairwise interaction energy $E_{\text{pair}}(d_{ij})$ over all valid **interacting pairs**:
 
 $$\text{score} = \sum_{i,j \in \text{interacting pairs}} E_{\text{pair}}(d_{ij})$$
 
@@ -45,7 +45,10 @@ $$E_{\text{pair}}(d_{ij}) = w_1 \cdot \text{gauss}_1(d_{ij}) + w_2 \cdot \text{g
 *   **Gaussian 2 (Long-range attraction)**:
     $$\text{gauss}_2(d) = e^{-\left(\frac{d - 3\,\text{Å}}{2\,\text{Å}}\right)^2}$$
 *   **Repulsion (Steric clash penalty)**:
-    $$\text{repulsion}(d) = \begin{cases} d^2 & \text{if } d < 0 \\ 0 & \text{if } d \ge 0 \end{cases}$$
+$$
+\text{repulsion}(d) = \begin{cases} d^2 & \text{if } d \lt 0 \\ 0 & \text{if } d \ge 0 \end{cases}
+$$
+
 *   **Hydrogen Bonding**: Distance and angle dependent attractive term applied specifically between designated donor and acceptor atom pairs.
 *   **Hydrophobic Interactions**: Favorable energy term applied when both atoms $i$ and $j$ are flagged as hydrophobic.
 
