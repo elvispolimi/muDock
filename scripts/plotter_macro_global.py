@@ -86,7 +86,7 @@ def plot_latency(df: pd.DataFrame, ds_name: str) -> str:
 
     ax.set_title(f"Latency Scaling — {ds_name}")
     ax.set_xlabel("Number of Generations")
-    ax.set_ylabel("Execution Time (s)  [lower is better]")
+    ax.set_ylabel("Execution Time (s)")
     ax.legend(loc="upper left", framealpha=0.85, ncol=2, fontsize=9)
     ax.xaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"{int(x):,}"))
     sns.despine()
@@ -119,7 +119,7 @@ def plot_throughput(df: pd.DataFrame, ds_name: str) -> str:
 
     ax.set_title(f"Throughput Scaling — {ds_name}")
     ax.set_xlabel("Number of Generations")
-    ax.set_ylabel("Throughput (Evals/s)  [higher is better]")
+    ax.set_ylabel("Throughput (Evals/s)")
     ax.yaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"{x:,.0f}"))
     ax.xaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"{int(x):,}"))
     ax.legend(loc="lower right", framealpha=0.85, ncol=2, fontsize=9)

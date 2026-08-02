@@ -113,7 +113,7 @@ def plot_rapid(ds_name: str, df: pd.DataFrame) -> str:
 
     ax.set_xticks(x)
     ax.set_xticklabels(backends, fontsize=11)
-    ax.set_ylabel("Throughput (Evals/s)  [higher is better]")
+    ax.set_ylabel("Throughput (Evals/s)")
     ax.set_title("Mean Throughput ± Std Dev")
     ax.yaxis.set_major_formatter(mticker.FuncFormatter(lambda v, _: f"{v:,.0f}"))
     # Y axis from 0 for honest comparison
