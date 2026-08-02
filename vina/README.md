@@ -44,12 +44,9 @@ $$E_{\text{pair}}(d_{ij}) = w_1 \cdot \text{gauss}_1(d_{ij}) + w_2 \cdot \text{g
     $$\text{gauss}_1(d) = e^{-\left(\frac{d}{0.5\,\text{Å}}\right)^2}$$
 *   **Gaussian 2 (Long-range attraction)**:
     $$\text{gauss}_2(d) = e^{-\left(\frac{d - 3\,\text{Å}}{2\,\text{Å}}\right)^2}$$
-*   **Repulsion (Steric clash penalty)**:
-
-    $$
-    \text{repulsion}(d) = \begin{cases} d^2 & \text{if } d \lt 0 \cr 0 & \text{if } d \ge 0 \end{cases}
-    $$
-
+*   **Repulsion (Steric clash penalty)**: Evaluates steric clashes between overlapping atoms based on their surface distance d:
+    - If d < 0 (atoms overlap): repulsion(d) = d^2  (penalizes physical overlap quadratically)
+    - If d >= 0 (no overlap):   repulsion(d) = 0
 *   **Hydrogen Bonding**: Distance and angle dependent attractive term applied specifically between designated donor and acceptor atom pairs.
 *   **Hydrophobic Interactions**: Favorable energy term applied when both atoms $i$ and $j$ are flagged as hydrophobic.
 
@@ -98,6 +95,8 @@ For convenience, here are the build commands for the **CUDA backend** (targeting
 cmake -S /path/to/muDock -B /path/to/muDock/build \
   -DMUDOCK_ENABLE_CUDA=ON \
   -DMUDOCK_GPU_ARCHITECTURES=nvidia:sm_80 \
+  -DMUDOCK_ENABLE_FAST=ON \
+  -DMUDOCK_ATOM_CLUSTER_LEVEL=LARGE \
   -DCMAKE_BUILD_TYPE=Release
 cmake --build /path/to/muDock/build
 ```
