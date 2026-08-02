@@ -29,6 +29,8 @@ Both score<sub>inter</sub> and score<sub>intra</sub> are calculated by summing t
 
 $$\text{score} = \sum_{i,j \in \text{interacting pairs}} E_{\text{pair}}(d_{ij})$$
 
+<i>Since this loop contains no loop-carried data dependencies, it represents the prime candidate for parallelization: the computation of pairwise interactions was distributed across CUDA threads, followed by a parallel reduction to aggregate the final score.</i>
+
 The pairwise energy $E_{\text{pair}}$ is computed as a function of the surface distance $d_{ij}$ between atom $i$ and atom $j$:
 
 $$d_{ij} = r_{ij} - (R_{ti} + R_{tj})$$
