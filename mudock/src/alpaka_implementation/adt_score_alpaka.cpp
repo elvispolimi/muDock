@@ -103,6 +103,15 @@ namespace mudock {
     // (36 bytes) are already perfectly captured by the L1 cache after the first access,
     // and syncBlockThreads adds net overhead. The gap with __constant__ memory
     // in CUDA is structural and cannot be bridged using only Alpaka 1.2.0 APIs.
+        const fp_type l_minimum[3] = {minimum[0], minimum[1], minimum[2]};
+        const fp_type l_maximum[3] = {maximum[0], maximum[1], maximum[2]};
+        const fp_type l_center[3]  = {center[0], center[1], center[2]};
+
+        const fp_type* electro_map =
+            grid_maps + map_index_xyz * static_cast<int>(autodock_grid_type::ELEC);
+        const fp_type* desolv_map =
+            grid_maps + map_index_xyz * static_cast<int>(autodock_grid_type::DESOLV);
+
         for (int scores_index = 0; scores_index < scores_per_ligand; ++scores_index) {
           const fp_type* ligand_x = l_scratch_x + scores_index * atom_stride;
           const fp_type* ligand_y = l_scratch_y + scores_index * atom_stride;
@@ -111,21 +120,17 @@ namespace mudock {
           fp_type elect_total_trilinear = 0;
           fp_type emap_total_trilinear = 0;
           fp_type dmap_total_trilinear = 0;
-          const fp_type* electro_map =
-              grid_maps + map_index_xyz * static_cast<int>(autodock_grid_type::ELEC);
-          const fp_type* desolv_map =
-              grid_maps + map_index_xyz * static_cast<int>(autodock_grid_type::DESOLV);
 
           ALPAKA_UNROLL(MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, MUDOCK_ALPAKA_BLOCK_SIZE))
-          for (int atom_index = thread_id; atom_index < MAX_ATOMS; atom_index += thread_per_block) {
+          for (int atom_index = thread_id; atom_index < MAX_ATOMS; atom_index += MUDOCK_ALPAKA_BLOCK_SIZE) {
             if (atom_index < num_atoms) {
               fp_type coord[3]{ligand_x[atom_index], ligand_y[atom_index], ligand_z[atom_index]};
 
-              if (coord[0] < minimum[0] || coord[0] > maximum[0] || coord[1] < minimum[1] ||
-                  coord[1] > maximum[1] || coord[2] < minimum[2] || coord[2] > maximum[2]) {
-                const auto diff_x = coord[0] - center[0];
-                const auto diff_y = coord[1] - center[1];
-                const auto diff_z = coord[2] - center[2];
+              if (coord[0] < l_minimum[0] || coord[0] > l_maximum[0] || coord[1] < l_minimum[1] ||
+                  coord[1] > l_maximum[1] || coord[2] < l_minimum[2] || coord[2] > l_maximum[2]) {
+                const auto diff_x = coord[0] - l_center[0];
+                const auto diff_y = coord[1] - l_center[1];
+                const auto diff_z = coord[2] - l_center[2];
                 const fp_type distance_two = diff_x * diff_x + diff_y * diff_y + diff_z * diff_z;
                 const fp_type epenalty = distance_two * ENERGYPENALTY;
                 elect_total_trilinear += epenalty;
@@ -134,9 +139,9 @@ namespace mudock {
                 const auto atom_charge = l_charge[atom_index];
                 const fp_type* atom_map = grid_maps + l_atom_map_offsets[atom_index];
 
-                coord[0] = (coord[0] - minimum[0]) * inv_spacing;
-                coord[1] = (coord[1] - minimum[1]) * inv_spacing;
-                coord[2] = (coord[2] - minimum[2]) * inv_spacing;
+                coord[0] = (coord[0] - l_minimum[0]) * inv_spacing;
+                coord[1] = (coord[1] - l_minimum[1]) * inv_spacing;
+                coord[2] = (coord[2] - l_minimum[2]) * inv_spacing;
 
                 const int u0 = static_cast<int>(coord[0]);
                 const fp_type p0u = coord[0] - static_cast<fp_type>(u0);
@@ -189,7 +194,7 @@ namespace mudock {
           fp_type emap_total_eintcal{0};
           fp_type dmap_total_eintcal{0};
           if (num_rotamers > 0) {
-            for (int nonbond_index = thread_id; nonbond_index < num_nonbonds; nonbond_index += thread_per_block) {
+            for (int nonbond_index = thread_id; nonbond_index < num_nonbonds; nonbond_index += MUDOCK_ALPAKA_BLOCK_SIZE) {
               const int a1 = l_nonbond_a1[nonbond_index];
               const int a2 = l_nonbond_a2[nonbond_index];
 
