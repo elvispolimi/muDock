@@ -144,19 +144,19 @@ namespace mudock {
       this->lamarckian_kernel->initialize();
 
       printf("Running LGA...\n");
-      for (int generation = 0; generation < this->num_generations; ++generation) {
+      for (int generation = 1; generation <= this->num_generations; ++generation) {
         this->geom_trans();
         (*this->score_stage)();
 
         // Limit LS runs: balance speed and results
-        if (generation % ls_every == 0 || generation >= (this->num_generations - ls_last_gen)) {
+        if (generation % ls_every == 0 || generation > (this->num_generations - ls_last_gen)) {
           local_search_stage();
         }
 
         (*this->lamarckian_kernel)();
 
         // Avoid full device-to-device copy by ping-ponging population buffers.
-        if (generation + 1 < this->num_generations) {
+        if (generation < this->num_generations) {
           std::swap(current_population_p, next_population_p);
           this->lamarckian_kernel->set_population_buffers(current_population_p, next_population_p);
           this->geom_trans.set_chromosomes_buffer(current_population_p);
