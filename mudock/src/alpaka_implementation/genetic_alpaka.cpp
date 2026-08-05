@@ -20,11 +20,11 @@ namespace mudock {
     static constexpr fp_type coordinate_step{static_cast<fp_type>(0.2)};
     static constexpr fp_type angle_step{4};
 
-    ALPAKA_FN_ACC std::uint32_t next_random(alpaka_rand_state& state) {
+    ALPAKA_FN_ACC ALPAKA_FN_INLINE std::uint32_t next_random(alpaka_rand_state& state) {
       return state();
     }
 
-    ALPAKA_FN_ACC fp_type random_unit(alpaka_rand_state& state) {
+    ALPAKA_FN_ACC ALPAKA_FN_INLINE fp_type random_unit(alpaka_rand_state& state) {
       if constexpr (is_debug()) {
         return fp_type{0.4};
       } else {
@@ -34,32 +34,32 @@ namespace mudock {
     }
 
     template<typename T>
-    ALPAKA_FN_ACC T random_gen_alpaka(alpaka_rand_state& state, const T min, const T max) {
+    ALPAKA_FN_ACC ALPAKA_FN_INLINE T random_gen_alpaka(alpaka_rand_state& state, const T min, const T max) {
       return static_cast<T>((random_unit(state) * static_cast<fp_type>(max - min)) +
                             static_cast<fp_type>(min));
     }
 
-    ALPAKA_FN_ACC int get_selection_distribution(alpaka_rand_state& state, const int population_number) {
+    ALPAKA_FN_ACC ALPAKA_FN_INLINE int get_selection_distribution(alpaka_rand_state& state, const int population_number) {
       return random_gen_alpaka<int>(state, 0, population_number - 1);
     }
 
-    ALPAKA_FN_ACC fp_type get_init_change_distribution(alpaka_rand_state& state) {
+    ALPAKA_FN_ACC ALPAKA_FN_INLINE fp_type get_init_change_distribution(alpaka_rand_state& state) {
       return random_gen_alpaka<fp_type>(state, -45, 45);
     }
 
-    ALPAKA_FN_ACC fp_type get_mutation_change_distribution(alpaka_rand_state& state) {
+    ALPAKA_FN_ACC ALPAKA_FN_INLINE fp_type get_mutation_change_distribution(alpaka_rand_state& state) {
       return random_gen_alpaka<fp_type>(state, -10, 10);
     }
 
-    ALPAKA_FN_ACC fp_type get_mutation_coin_distribution(alpaka_rand_state& state) {
+    ALPAKA_FN_ACC ALPAKA_FN_INLINE fp_type get_mutation_coin_distribution(alpaka_rand_state& state) {
       return random_gen_alpaka<fp_type>(state, 0, 1);
     }
 
-    ALPAKA_FN_ACC int get_crossover_distribution(alpaka_rand_state& state, const int num_rotamers) {
+    ALPAKA_FN_ACC ALPAKA_FN_INLINE int get_crossover_distribution(alpaka_rand_state& state, const int num_rotamers) {
       return random_gen_alpaka<int>(state, 0, 6 + num_rotamers);
     }
 
-    ALPAKA_FN_ACC int tournament_selection_alpaka(alpaka_rand_state& state,
+    ALPAKA_FN_ACC ALPAKA_FN_INLINE int tournament_selection_alpaka(alpaka_rand_state& state,
                                                   const int tournament_length,
                                                   const int chromosome_number,
                                                   const fp_type* scores) {

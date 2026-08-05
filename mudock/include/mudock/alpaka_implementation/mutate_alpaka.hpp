@@ -8,7 +8,7 @@
 namespace mudock {
 
   template<int MAX_ATOMS, int BLOCK_SIZE, typename TAcc>
-  ALPAKA_FN_ACC void translate_molecule_alpaka(TAcc const& acc,
+  ALPAKA_FN_ACC ALPAKA_FN_INLINE void translate_molecule_alpaka(TAcc const& acc,
                                                fp_type* __restrict__ x,
                                                fp_type* __restrict__ y,
                                                fp_type* __restrict__ z,
@@ -30,7 +30,7 @@ namespace mudock {
   }
 
   template<int MAX_ATOMS, int BLOCK_SIZE, typename TAcc>
-  ALPAKA_FN_ACC void rotate_molecule_alpaka(TAcc const& acc,
+  ALPAKA_FN_ACC ALPAKA_FN_INLINE void rotate_molecule_alpaka(TAcc const& acc,
                                             fp_type* __restrict__ x,
                                             fp_type* __restrict__ y,
                                             fp_type* __restrict__ z,
@@ -129,7 +129,7 @@ namespace mudock {
   }
 
   template<int MAX_ATOMS, int BLOCK_SIZE, typename TAcc>
-  ALPAKA_FN_ACC void rotate_fragment_alpaka(TAcc const& acc,
+  ALPAKA_FN_ACC ALPAKA_FN_INLINE void rotate_fragment_alpaka(TAcc const& acc,
                                             fp_type* __restrict__ x,
                                             fp_type* __restrict__ y,
                                             fp_type* __restrict__ z,

@@ -124,6 +124,7 @@ def run_rapid_benchmark() -> None:
                             stderr=subprocess.STDOUT,
                             text=True,
                             timeout=TIMEOUT_SEC,
+                            check=True,
                         )
                         t = extract_total_time(res.stdout)
                         if t is None:

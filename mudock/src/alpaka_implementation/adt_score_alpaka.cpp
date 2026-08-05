@@ -21,7 +21,7 @@
 
 namespace mudock {
   namespace {
-    ALPAKA_FN_ACC fp_type trilinear_interpolation_alpaka(const fp_type* __restrict__ map,
+    ALPAKA_FN_ACC ALPAKA_FN_INLINE fp_type trilinear_interpolation_alpaka(const fp_type* __restrict__ map,
                                                          const fp_type* __restrict__ coeffs,
                                                          const int map_index_x,
                                                          const int map_index_xy) {
@@ -93,8 +93,12 @@ namespace mudock {
 
         fp_type* scores_l = scores_b + ligand_id * scores_per_ligand;
 
-        for (int scores_index = thread_id; scores_index < scores_per_ligand;
-             scores_index += thread_per_block) {
+    // NOTE: Attempt to load minimum/maximum/center into shared memory as a
+    // portable equivalent of CUDA's __constant__ memory. Reverted: the 9 floats
+    // (36 bytes) are already perfectly captured by the L1 cache after the first access,
+    // and syncBlockThreads adds net overhead. The gap with __constant__ memory
+    // in CUDA is structural and cannot be bridged using only Alpaka 1.2.0 APIs.
+        for (int scores_index = 0; scores_index < scores_per_ligand; ++scores_index) {
           const fp_type* ligand_x = l_scratch_x + scores_index * atom_stride;
           const fp_type* ligand_y = l_scratch_y + scores_index * atom_stride;
           const fp_type* ligand_z = l_scratch_z + scores_index * atom_stride;
@@ -103,11 +107,10 @@ namespace mudock {
           fp_type emap_total_trilinear = 0;
           fp_type dmap_total_trilinear = 0;
           const fp_type* electro_map =
-              grid_maps + map_index_xyz * static_cast<int>(autodock_grid_type::ELEC);
-          const fp_type* desolv_map =
               grid_maps + map_index_xyz * static_cast<int>(autodock_grid_type::DESOLV);
 
-          for (int atom_index = 0; atom_index < MAX_ATOMS; ++atom_index) {
+          ALPAKA_UNROLL(MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, MUDOCK_ALPAKA_BLOCK_SIZE))
+          for (int atom_index = thread_id; atom_index < MAX_ATOMS; atom_index += thread_per_block) {
             if (atom_index < num_atoms) {
               fp_type coord[3]{ligand_x[atom_index], ligand_y[atom_index], ligand_z[atom_index]};
 
@@ -170,7 +173,7 @@ namespace mudock {
                                                    coeffs,
                                                    map_index_x,
                                                    map_index_xy) *
-                    ::fabs(atom_charge);
+                    alpaka::math::abs(acc, atom_charge);
               }
             }
           }
@@ -179,7 +182,7 @@ namespace mudock {
           fp_type emap_total_eintcal{0};
           fp_type dmap_total_eintcal{0};
           if (num_rotamers > 0) {
-            for (int nonbond_index = 0; nonbond_index < num_nonbonds; ++nonbond_index) {
+            for (int nonbond_index = thread_id; nonbond_index < num_nonbonds; nonbond_index += thread_per_block) {
               const int a1 = l_nonbond_a1[nonbond_index];
               const int a2 = l_nonbond_a2[nonbond_index];
 
@@ -189,23 +192,23 @@ namespace mudock {
               const fp_type distance_two = diff_x * diff_x + diff_y * diff_y + diff_z * diff_z;
               const fp_type distance_two_clamp =
                   distance_two > RMIN_ELEC_SQUARE ? distance_two : RMIN_ELEC_SQUARE;
-              const fp_type distance = ::sqrt(distance_two_clamp);
+              const fp_type distance = alpaka::math::sqrt(acc, distance_two_clamp);
 
               const fp_type epsilon =
                   mehler_solmajer::A +
                   mehler_solmajer::B /
-                      (fp_type{1} + mehler_solmajer::rk * ::exp(mehler_solmajer::lambda_B * distance));
+                      (fp_type{1} + mehler_solmajer::rk * alpaka::math::exp(acc, mehler_solmajer::lambda_B * distance));
               const fp_type r_dielectric = fp_type{1} / (distance * epsilon);
               const fp_type e_elec = l_charge[a1] * l_charge[a2] * ELECSCALE *
                                      autodock_parameters::coeff_estat * r_dielectric;
               elect_total_eintcal += e_elec;
 
               const fp_type nb_desolv =
-                  (l_vol[a2] * (l_solpar[a1] + qsolpar * ::fabs(l_charge[a1])) +
-                   l_vol[a1] * (l_solpar[a2] + qsolpar * ::fabs(l_charge[a2])));
+                  (l_vol[a2] * (l_solpar[a1] + qsolpar * alpaka::math::abs(acc, l_charge[a1])) +
+                   l_vol[a1] * (l_solpar[a2] + qsolpar * alpaka::math::abs(acc, l_charge[a2])));
 
               const fp_type e_desolv = autodock_parameters::coeff_desolv *
-                                       ::exp(fp_type{-0.5} / sigma_square * distance_two_clamp) *
+                                       alpaka::math::exp(acc, fp_type{-0.5} / sigma_square * distance_two_clamp) *
                                        nb_desolv;
               dmap_total_eintcal += e_desolv;
 
@@ -218,9 +221,9 @@ namespace mudock {
                   const fp_type cA = l_nonbond_cA[nonbond_index];
                   const fp_type cB = l_nonbond_cB[nonbond_index];
 
-                  const auto log_distance = ::log(distance);
-                  const fp_type rA = ::exp(static_cast<fp_type>(xA) * log_distance);
-                  const fp_type rB = ::exp(static_cast<fp_type>(xB) * log_distance);
+                  const auto log_distance = alpaka::math::log(acc, distance);
+                  const fp_type rA = alpaka::math::exp(acc, static_cast<fp_type>(xA) * log_distance);
+                  const fp_type rB = alpaka::math::exp(acc, static_cast<fp_type>(xB) * log_distance);
                   const fp_type e = cA / rA - cB / rB;
                   e_vdW_Hb = EINTCLAMP < e ? EINTCLAMP : e;
                 }
@@ -229,11 +232,40 @@ namespace mudock {
             }
           }
 
-          const fp_type tors_free_energy =
-              static_cast<fp_type>(num_rotamers) * autodock_parameters::coeff_tors;
-          scores_l[scores_index] = emap_total_eintcal + elect_total_eintcal + dmap_total_eintcal +
-                                   emap_total_trilinear + elect_total_trilinear +
-                                   dmap_total_trilinear + tors_free_energy;
+          fp_type total_energy = emap_total_eintcal + elect_total_eintcal + dmap_total_eintcal +
+                                 emap_total_trilinear + elect_total_trilinear +
+                                 dmap_total_trilinear;
+
+#if defined(MUDOCK_ALPAKA_BACKEND_CUDA) || defined(MUDOCK_ALPAKA_BACKEND_HIP)
+          ALPAKA_UNROLL(MUDOCK_UNROLL_FACTOR)
+          for (int offset = MUDOCK_ALPAKA_BLOCK_SIZE / 2; offset > 0; offset /= 2) {
+            total_energy += alpaka::warp::shfl_down(acc, total_energy, offset, MUDOCK_ALPAKA_BLOCK_SIZE);
+          }
+#else
+          struct SharedData {
+            fp_type energies[MUDOCK_ALPAKA_BLOCK_SIZE];
+          };
+          auto& sdata = alpaka::declareSharedVar<SharedData, __COUNTER__>(acc);
+          if (thread_id < MUDOCK_ALPAKA_BLOCK_SIZE) {
+            sdata.energies[thread_id] = total_energy;
+          }
+          alpaka::syncBlockThreads(acc);
+
+          ALPAKA_UNROLL(MUDOCK_UNROLL_FACTOR)
+          for (int stride = MUDOCK_ALPAKA_BLOCK_SIZE / 2; stride > 0; stride /= 2) {
+            if (thread_id < stride) {
+              sdata.energies[thread_id] += sdata.energies[thread_id + stride];
+            }
+            alpaka::syncBlockThreads(acc);
+          }
+          total_energy = sdata.energies[0];
+#endif
+
+          if (thread_id == 0) {
+            const fp_type tors_free_energy =
+                static_cast<fp_type>(num_rotamers) * autodock_parameters::coeff_tors;
+            scores_l[scores_index] = total_energy + tors_free_energy;
+          }
         }
       }
     };

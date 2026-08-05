@@ -64,7 +64,7 @@ namespace mudock {
               z_scratch_chromosome[atom_index] = l_original_z[atom_index];
             }
           }
-          alpaka::syncBlockThreads(acc);
+          // No sync needed: block-stride copy — each thread owns its atoms, translate reads the same set.
 
           translate_molecule_alpaka<MAX_ATOMS, MUDOCK_ALPAKA_BLOCK_SIZE>(acc,
                                                                          x_scratch_chromosome,
@@ -74,7 +74,7 @@ namespace mudock {
                                                                          l_chromosomes[1],
                                                                          l_chromosomes[2],
                                                                          num_atoms);
-          alpaka::syncBlockThreads(acc);
+          // No sync needed: translate wrote each thread's own atoms; rotate centroid-sum reads the same.
 
           rotate_molecule_alpaka<MAX_ATOMS, MUDOCK_ALPAKA_BLOCK_SIZE>(acc,
                                                                       x_scratch_chromosome,
