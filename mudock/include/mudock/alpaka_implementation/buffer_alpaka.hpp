@@ -89,6 +89,7 @@ namespace mudock {
                                             reinterpret_cast<byte_type*>(ptr),
                                             alpaka::Vec<dim, idx>{static_cast<idx>(bytes)});
       alpaka::memcpy(q->native_queue(), device_view, host_view);
+      q->synchronize();
     };
 
     inline void copy_host2device(const std::size_t copy_size = 0) {

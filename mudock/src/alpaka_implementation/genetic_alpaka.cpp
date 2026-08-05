@@ -9,8 +9,12 @@
 #include <mudock/compute/devices_memory.hpp>
 #include <mudock/alpaka_implementation/alpaka_random.hpp>
 
-#ifndef MUDOCK_ALPAKA_BLOCK_SIZE
-  #define MUDOCK_ALPAKA_BLOCK_SIZE 32
+#if defined(MUDOCK_ALPAKA_BACKEND_SERIAL) || defined(MUDOCK_ALPAKA_BACKEND_TBB) || defined(MUDOCK_ALPAKA_BACKEND_OMP2)
+  #define MUDOCK_ALPAKA_BLOCK_SIZE 1
+#else
+  #ifndef MUDOCK_ALPAKA_BLOCK_SIZE
+    #define MUDOCK_ALPAKA_BLOCK_SIZE 32
+  #endif
 #endif
 
 namespace mudock {
@@ -62,7 +66,7 @@ namespace mudock {
     ALPAKA_FN_ACC ALPAKA_FN_INLINE int tournament_selection_alpaka(alpaka_rand_state& state,
                                                   const int tournament_length,
                                                   const int chromosome_number,
-                                                  const fp_type* scores) {
+                                                  const fp_type* __restrict__ scores) {
       int best_individual = get_selection_distribution(state, chromosome_number);
       for (int i = 0; i < tournament_length; ++i) {
         const auto contended = get_selection_distribution(state, chromosome_number);
@@ -175,9 +179,9 @@ namespace mudock {
       template<typename TAcc>
       ALPAKA_FN_ACC void operator()(TAcc const& acc,
                                     const int chromosome_number,
-                                    const int* ligand_num_rotamers,
-                                    fp_type* ligand_scores,
-                                    fp_type* ligand_best_scores,
+                                    const int* __restrict__ ligand_num_rotamers,
+                                    fp_type* __restrict__ ligand_scores,
+                                    fp_type* __restrict__ ligand_best_scores,
                                     chromosome* __restrict__ chromosomes,
                                     chromosome* __restrict__ best_chromosomes) const {
         const int ligand_id = static_cast<int>(alpaka::getIdx<alpaka::Grid, alpaka::Blocks>(acc)[0u]);

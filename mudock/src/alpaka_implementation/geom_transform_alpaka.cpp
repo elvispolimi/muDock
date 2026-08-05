@@ -6,8 +6,12 @@
 #include <mudock/compute/reorder_buffer.hpp>
 #include <mudock/cpp_implementation/chromosome.hpp>
 #include <mudock/utils.hpp>
-#ifndef MUDOCK_ALPAKA_BLOCK_SIZE
-  #define MUDOCK_ALPAKA_BLOCK_SIZE 32
+#if defined(MUDOCK_ALPAKA_BACKEND_SERIAL) || defined(MUDOCK_ALPAKA_BACKEND_TBB) || defined(MUDOCK_ALPAKA_BACKEND_OMP2)
+  #define MUDOCK_ALPAKA_BLOCK_SIZE 1
+#else
+  #ifndef MUDOCK_ALPAKA_BLOCK_SIZE
+    #define MUDOCK_ALPAKA_BLOCK_SIZE 32
+  #endif
 #endif
 
 namespace mudock {

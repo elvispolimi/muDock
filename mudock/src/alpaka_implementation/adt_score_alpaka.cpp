@@ -15,11 +15,16 @@
 
 #define FLATTENED_3D(x, y, z, index_x, index_xy) (index_xy * (z) + (y) * index_x + (x))
 
-#ifndef MUDOCK_ALPAKA_BLOCK_SIZE
-  #define MUDOCK_ALPAKA_BLOCK_SIZE 32
+#if defined(MUDOCK_ALPAKA_BACKEND_SERIAL) || defined(MUDOCK_ALPAKA_BACKEND_TBB) || defined(MUDOCK_ALPAKA_BACKEND_OMP2)
+  #define MUDOCK_ALPAKA_BLOCK_SIZE 1
+#else
+  #ifndef MUDOCK_ALPAKA_BLOCK_SIZE
+    #define MUDOCK_ALPAKA_BLOCK_SIZE 32
+  #endif
 #endif
 
 namespace mudock {
+
   namespace {
     ALPAKA_FN_ACC ALPAKA_FN_INLINE fp_type trilinear_interpolation_alpaka(const fp_type* __restrict__ map,
                                                          const fp_type* __restrict__ coeffs,
@@ -107,6 +112,8 @@ namespace mudock {
           fp_type emap_total_trilinear = 0;
           fp_type dmap_total_trilinear = 0;
           const fp_type* electro_map =
+              grid_maps + map_index_xyz * static_cast<int>(autodock_grid_type::ELEC);
+          const fp_type* desolv_map =
               grid_maps + map_index_xyz * static_cast<int>(autodock_grid_type::DESOLV);
 
           ALPAKA_UNROLL(MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, MUDOCK_ALPAKA_BLOCK_SIZE))
@@ -243,22 +250,22 @@ namespace mudock {
           }
 #else
           struct SharedData {
-            fp_type energies[MUDOCK_ALPAKA_BLOCK_SIZE];
+            fp_type energy[MUDOCK_ALPAKA_BLOCK_SIZE];
           };
           auto& sdata = alpaka::declareSharedVar<SharedData, __COUNTER__>(acc);
           if (thread_id < MUDOCK_ALPAKA_BLOCK_SIZE) {
-            sdata.energies[thread_id] = total_energy;
+            sdata.energy[thread_id] = total_energy;
           }
           alpaka::syncBlockThreads(acc);
 
-          ALPAKA_UNROLL(MUDOCK_UNROLL_FACTOR)
-          for (int stride = MUDOCK_ALPAKA_BLOCK_SIZE / 2; stride > 0; stride /= 2) {
+          ALPAKA_UNROLL()
+          for (uint32_t stride = MUDOCK_ALPAKA_BLOCK_SIZE / 2; stride > 0; stride /= 2) {
             if (thread_id < stride) {
-              sdata.energies[thread_id] += sdata.energies[thread_id + stride];
+              sdata.energy[thread_id] += sdata.energy[thread_id + stride];
             }
             alpaka::syncBlockThreads(acc);
           }
-          total_energy = sdata.energies[0];
+          total_energy = sdata.energy[0];
 #endif
 
           if (thread_id == 0) {
