@@ -30,7 +30,7 @@ namespace mudock {
 
     ALPAKA_FN_ACC ALPAKA_FN_INLINE fp_type random_unit(alpaka_rand_state& state) {
       if constexpr (is_debug()) {
-        return fp_type{0.4};
+        return fp_type{0.4f};
       } else {
         return static_cast<fp_type>(next_random(state)) /
                static_cast<fp_type>(state.max());
@@ -226,7 +226,7 @@ namespace mudock {
         alpaka::syncBlockThreads(acc);
 
         ALPAKA_UNROLL()
-        for (uint32_t stride = MUDOCK_ALPAKA_BLOCK_SIZE / 2; stride > 0; stride /= 2) {
+        for (int stride = MUDOCK_ALPAKA_BLOCK_SIZE / 2; stride > 0; stride /= 2) {
           if (local_thread_id < stride) {
             if (sdata.min_scores[local_thread_id + stride] < sdata.min_scores[local_thread_id]) {
               sdata.min_scores[local_thread_id] = sdata.min_scores[local_thread_id + stride];

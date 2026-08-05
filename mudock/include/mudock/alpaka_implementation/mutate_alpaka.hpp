@@ -80,7 +80,7 @@ namespace mudock {
     alpaka::syncBlockThreads(acc);
 
     ALPAKA_UNROLL()
-    for (uint32_t stride = BLOCK_SIZE / 2; stride > 0; stride /= 2) {
+    for (int stride = BLOCK_SIZE / 2; stride > 0; stride /= 2) {
       if (thread_id < stride) {
         sdata.cx[thread_id] += sdata.cx[thread_id + stride];
         sdata.cy[thread_id] += sdata.cy[thread_id + stride];

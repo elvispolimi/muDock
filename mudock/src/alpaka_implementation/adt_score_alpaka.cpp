@@ -75,8 +75,6 @@ namespace mudock {
                                     fp_type* __restrict__ scores_b) const {
         const int ligand_id = static_cast<int>(alpaka::getIdx<alpaka::Grid, alpaka::Blocks>(acc)[0u]);
         const int thread_id = static_cast<int>(alpaka::getIdx<alpaka::Block, alpaka::Threads>(acc)[0u]);
-        const int thread_per_block =
-            static_cast<int>(alpaka::getWorkDiv<alpaka::Block, alpaka::Threads>(acc)[0u]);
 
         const int num_atoms = num_atoms_b[ligand_id];
         const int num_nonbonds = num_nonbonds_b[ligand_id + 1] - num_nonbonds_b[ligand_id];
@@ -264,9 +262,9 @@ namespace mudock {
           alpaka::syncBlockThreads(acc);
 
           ALPAKA_UNROLL()
-          for (uint32_t stride = MUDOCK_ALPAKA_BLOCK_SIZE / 2; stride > 0; stride /= 2) {
-            if (thread_id < stride) {
-              sdata.energy[thread_id] += sdata.energy[thread_id + stride];
+          for (int offset = MUDOCK_ALPAKA_BLOCK_SIZE / 2; offset > 0; offset /= 2) {
+            if (thread_id < offset) {
+              sdata.energy[thread_id] += sdata.energy[thread_id + offset];
             }
             alpaka::syncBlockThreads(acc);
           }
