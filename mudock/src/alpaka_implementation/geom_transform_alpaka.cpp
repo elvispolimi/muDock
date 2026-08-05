@@ -136,4 +136,20 @@ namespace mudock {
         batch_atoms,
         reorder_buffer<static_molecule>::atoms_clusters.data());
   }
+
+  template<>
+  batch_multiple get_geom_transform_batch_multiple<queue_alpaka>(const int atoms,
+                                                                 std::shared_ptr<queue_alpaka> q_b) {
+    const auto& dev = q_b->native_device();
+    const int num_sms = static_cast<int>(alpaka::getAccDevProps<alpaka_backend::acc>(dev).m_multiProcessorCount);
+
+#if defined(MUDOCK_ALPAKA_BACKEND_SERIAL) || defined(MUDOCK_ALPAKA_BACKEND_TBB) || defined(MUDOCK_ALPAKA_BACKEND_OMP2)
+    const int blocks_per_sm = 1;
+#else
+    const int blocks_per_sm = 16;
+#endif
+
+    mudock::info("ALPAKA GEOM batch multiple for ", atoms, " atoms -> ", blocks_per_sm * num_sms);
+    return {blocks_per_sm, num_sms};
+  }
 } // namespace mudock

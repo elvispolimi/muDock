@@ -489,6 +489,9 @@ endif()
 # check if we need to activate the compilation flag that signals CUDA
 if(MUDOCK_ENABLE_CUDA)
   target_compile_definitions(libmudock PUBLIC MUDOCK_USE_CUDA)
+endif()
+
+if(MUDOCK_ENABLE_CUDA_LANGUAGE)
   if(CMAKE_BUILD_TYPE STREQUAL "Release")
     # CUDA_SEPARABLE_COMPILATION ON required for constant memory to be shared
     # across translation unit

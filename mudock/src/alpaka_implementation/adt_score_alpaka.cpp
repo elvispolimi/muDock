@@ -322,8 +322,17 @@ namespace mudock {
 
   template<>
   batch_multiple get_adt_score_batch_multiple<queue_alpaka>(const int atoms,
-                                                            std::shared_ptr<queue_alpaka>) {
-    mudock::info("ALPAKA ADT batch multiple for ", atoms, " atoms -> 1");
-    return {};
+                                                            std::shared_ptr<queue_alpaka> q_b) {
+    const auto& dev = q_b->native_device();
+    const int num_sms = static_cast<int>(alpaka::getAccDevProps<alpaka_backend::acc>(dev).m_multiProcessorCount);
+
+#if defined(MUDOCK_ALPAKA_BACKEND_SERIAL) || defined(MUDOCK_ALPAKA_BACKEND_TBB) || defined(MUDOCK_ALPAKA_BACKEND_OMP2)
+    const int blocks_per_sm = 1;
+#else
+    const int blocks_per_sm = 16;
+#endif
+
+    mudock::info("ALPAKA ADT batch multiple for ", atoms, " atoms -> ", blocks_per_sm * num_sms);
+    return {blocks_per_sm, num_sms};
   }
 } // namespace mudock
