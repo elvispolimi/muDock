@@ -68,6 +68,10 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
       "ls_every",
       po::value(&args.knobs.ls_every)->default_value(args.knobs.ls_every),
       "Run local search every N generations");
+ knobs_description.add_options()(
+      "ls_last_gen",
+      po::value(&args.knobs.ls_last_gen)->default_value(args.knobs.ls_last_gen),
+      "Run local search on the last N generations");
   knobs_description.add_options()(
       "mutation",
       po::value(&args.knobs.mutation_prob)->default_value(args.knobs.mutation_prob),
