@@ -15,13 +15,7 @@
 
 #define FLATTENED_3D(x, y, z, index_x, index_xy) (index_xy * (z) + (y) * index_x + (x))
 
-#if defined(MUDOCK_ALPAKA_BACKEND_SERIAL) || defined(MUDOCK_ALPAKA_BACKEND_TBB) || defined(MUDOCK_ALPAKA_BACKEND_OMP2)
-  #define MUDOCK_ALPAKA_BLOCK_SIZE 1
-#else
-  #ifndef MUDOCK_ALPAKA_BLOCK_SIZE
-    #define MUDOCK_ALPAKA_BLOCK_SIZE 32
-  #endif
-#endif
+
 
 namespace mudock {
 
@@ -246,30 +240,10 @@ namespace mudock {
                                  emap_total_trilinear + elect_total_trilinear +
                                  dmap_total_trilinear;
 
-#if defined(MUDOCK_ALPAKA_BACKEND_CUDA) || defined(MUDOCK_ALPAKA_BACKEND_HIP)
           ALPAKA_UNROLL(MUDOCK_UNROLL_FACTOR)
           for (int offset = MUDOCK_ALPAKA_BLOCK_SIZE / 2; offset > 0; offset /= 2) {
             total_energy += alpaka::warp::shfl_down(acc, total_energy, offset, MUDOCK_ALPAKA_BLOCK_SIZE);
           }
-#else
-          struct SharedData {
-            fp_type energy[MUDOCK_ALPAKA_BLOCK_SIZE];
-          };
-          auto& sdata = alpaka::declareSharedVar<SharedData, __COUNTER__>(acc);
-          if (thread_id < MUDOCK_ALPAKA_BLOCK_SIZE) {
-            sdata.energy[thread_id] = total_energy;
-          }
-          alpaka::syncBlockThreads(acc);
-
-          ALPAKA_UNROLL()
-          for (int offset = MUDOCK_ALPAKA_BLOCK_SIZE / 2; offset > 0; offset /= 2) {
-            if (thread_id < offset) {
-              sdata.energy[thread_id] += sdata.energy[thread_id + offset];
-            }
-            alpaka::syncBlockThreads(acc);
-          }
-          total_energy = sdata.energy[0];
-#endif
 
           if (thread_id == 0) {
             const fp_type tors_free_energy =

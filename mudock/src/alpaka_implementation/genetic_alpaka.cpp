@@ -9,13 +9,7 @@
 #include <mudock/compute/devices_memory.hpp>
 #include <mudock/alpaka_implementation/alpaka_random.hpp>
 
-#if defined(MUDOCK_ALPAKA_BACKEND_SERIAL) || defined(MUDOCK_ALPAKA_BACKEND_TBB) || defined(MUDOCK_ALPAKA_BACKEND_OMP2)
-  #define MUDOCK_ALPAKA_BLOCK_SIZE 1
-#else
-  #ifndef MUDOCK_ALPAKA_BLOCK_SIZE
-    #define MUDOCK_ALPAKA_BLOCK_SIZE 32
-  #endif
-#endif
+
 
 namespace mudock {
   thread_local device_memory<alpaka_random_object> alpaka_random_memory;
@@ -203,7 +197,6 @@ namespace mudock {
           }
         }
 
-#if defined(MUDOCK_ALPAKA_BACKEND_CUDA) || defined(MUDOCK_ALPAKA_BACKEND_HIP)
         ALPAKA_UNROLL(MUDOCK_UNROLL_FACTOR)
         for (uint32_t offset = MUDOCK_ALPAKA_BLOCK_SIZE / 2; offset > 0; offset /= 2) {
           const fp_type other_min_score = alpaka::warp::shfl_down(acc, min_score, offset, MUDOCK_ALPAKA_BLOCK_SIZE);
@@ -213,31 +206,6 @@ namespace mudock {
             min_index = other_min_index;
           }
         }
-#else
-        struct SharedData {
-          fp_type min_scores[MUDOCK_ALPAKA_BLOCK_SIZE];
-          int min_indices[MUDOCK_ALPAKA_BLOCK_SIZE];
-        };
-        auto& sdata = alpaka::declareSharedVar<SharedData, __COUNTER__>(acc);
-        if (local_thread_id < MUDOCK_ALPAKA_BLOCK_SIZE) {
-          sdata.min_scores[local_thread_id] = min_score;
-          sdata.min_indices[local_thread_id] = min_index;
-        }
-        alpaka::syncBlockThreads(acc);
-
-        ALPAKA_UNROLL()
-        for (int stride = MUDOCK_ALPAKA_BLOCK_SIZE / 2; stride > 0; stride /= 2) {
-          if (local_thread_id < stride) {
-            if (sdata.min_scores[local_thread_id + stride] < sdata.min_scores[local_thread_id]) {
-              sdata.min_scores[local_thread_id] = sdata.min_scores[local_thread_id + stride];
-              sdata.min_indices[local_thread_id] = sdata.min_indices[local_thread_id + stride];
-            }
-          }
-          alpaka::syncBlockThreads(acc);
-        }
-        min_score = sdata.min_scores[0];
-        min_index = sdata.min_indices[0];
-#endif
 
         if (local_thread_id == 0) {
           ligand_best_scores[ligand_id] = min_score;

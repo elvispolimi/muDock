@@ -51,7 +51,6 @@ namespace mudock {
       }
     }
 
-#if defined(MUDOCK_ALPAKA_BACKEND_CUDA) || defined(MUDOCK_ALPAKA_BACKEND_HIP)
     ALPAKA_UNROLL(MUDOCK_UNROLL_FACTOR)
     for (int offset = BLOCK_SIZE / 2; offset > 0; offset /= 2) {
       c_x += alpaka::warp::shfl_down(acc, c_x, offset, BLOCK_SIZE);
@@ -65,34 +64,6 @@ namespace mudock {
     c_x /= static_cast<fp_type>(num_atoms);
     c_y /= static_cast<fp_type>(num_atoms);
     c_z /= static_cast<fp_type>(num_atoms);
-#else
-    struct SharedData {
-      fp_type cx[BLOCK_SIZE];
-      fp_type cy[BLOCK_SIZE];
-      fp_type cz[BLOCK_SIZE];
-    };
-    auto& sdata = alpaka::declareSharedVar<SharedData, __COUNTER__>(acc);
-    if (thread_id < BLOCK_SIZE) {
-      sdata.cx[thread_id] = c_x;
-      sdata.cy[thread_id] = c_y;
-      sdata.cz[thread_id] = c_z;
-    }
-    alpaka::syncBlockThreads(acc);
-
-    ALPAKA_UNROLL()
-    for (int stride = BLOCK_SIZE / 2; stride > 0; stride /= 2) {
-      if (thread_id < stride) {
-        sdata.cx[thread_id] += sdata.cx[thread_id + stride];
-        sdata.cy[thread_id] += sdata.cy[thread_id + stride];
-        sdata.cz[thread_id] += sdata.cz[thread_id + stride];
-      }
-      alpaka::syncBlockThreads(acc);
-    }
-
-    c_x = sdata.cx[0] / static_cast<fp_type>(num_atoms);
-    c_y = sdata.cy[0] / static_cast<fp_type>(num_atoms);
-    c_z = sdata.cz[0] / static_cast<fp_type>(num_atoms);
-#endif
 
     const auto rad_x = deg_to_rad(angle_x), rad_y = deg_to_rad(angle_y), rad_z = deg_to_rad(angle_z);
 
