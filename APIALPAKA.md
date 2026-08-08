@@ -116,12 +116,19 @@ I created this file to serve as an encyclopedic list of all Alpaka APIs I analyz
 - **Used:** Yes
 - **Rationale:** I use this because it is crucial to prevent data races when I read or write to shared memory during CPU fallbacks or between my geometric computation steps.
 
+### `ALPAKA_STATIC_ACC_MEM_CONSTANT`
+
+- **Syntax:** `ALPAKA_STATIC_ACC_MEM_CONSTANT alpaka::DevGlobal<TAcc, Type> var;`
+- **Purpose:** Allocates a variable in hardware constant memory (`__constant__`).
+- **Used:** No
+- **Rationale:** I simply overlooked this macro during the initial porting phase and failed to notice its existence in the framework.
+
 ### `alpaka::declareSharedVar`
 
 - **Syntax:** `alpaka::declareSharedVar<T, UniqueId>(acc)`
 - **Purpose:** Allocates a static array in block shared memory (`__shared__`).
 - **Used:** No
-- **Rationale:** I initially attempted to use it to emulate CUDA's `__constant__` memory  by caching atomic coordinates. However, it proved detrimental  because the hardware L1 cache already handles these global reads perfectly, and the mandatory `alpaka::syncBlockThreads` barrier introduced heavy warp stalls.
+- **Rationale:** I initially attempted to use it to cache atomic coordinates to force a constant-memory-like caching pattern. However, it proved detrimental (-8% performance) because the hardware L1 cache already handles these global reads perfectly, and the mandatory `alpaka::syncBlockThreads` barrier introduced heavy warp stalls. Furthermore, for warp reductions, I discovered that `alpaka::warp::shfl_down` automatically emulates shared-memory fallbacks on CPU, making manual `declareSharedVar` completely unnecessary.
 
 ### `alpaka::math::*` (sin, cos, sqrt, exp, abs, log)
 
