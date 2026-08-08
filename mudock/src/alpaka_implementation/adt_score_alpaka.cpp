@@ -18,6 +18,10 @@
 
 
 namespace mudock {
+  
+  ALPAKA_STATIC_ACC_MEM_CONSTANT alpaka::DevGlobal<TAcc, fp_type[3]> map_min_const;
+  ALPAKA_STATIC_ACC_MEM_CONSTANT alpaka::DevGlobal<TAcc, fp_type[3]> map_max_const;
+  ALPAKA_STATIC_ACC_MEM_CONSTANT alpaka::DevGlobal<TAcc, fp_type[3]> map_center_const;
 
   namespace {
     ALPAKA_FN_ACC ALPAKA_FN_INLINE fp_type trilinear_interpolation_alpaka(const fp_type* __restrict__ map,
@@ -58,9 +62,6 @@ namespace mudock {
                                     const fp_type* __restrict__ nonbond_cA_b,
                                     const fp_type* __restrict__ nonbond_cB_b,
                                     const int* __restrict__ nonbond_xB_b,
-                                    const fp_type* minimum,
-                                    const fp_type* maximum,
-                                    const fp_type* center,
                                     const int map_index_x,
                                     const int map_index_xy,
                                     const int map_index_xyz,
@@ -90,14 +91,9 @@ namespace mudock {
 
         fp_type* scores_l = scores_b + ligand_id * scores_per_ligand;
 
-    // NOTE: Attempt to load minimum/maximum/center into shared memory as a
-    // portable equivalent of CUDA's __constant__ memory. Reverted: the 9 floats
-    // (36 bytes) are already perfectly captured by the L1 cache after the first access,
-    // and syncBlockThreads adds net overhead. The gap with __constant__ memory
-    // in CUDA is structural and cannot be bridged using only Alpaka 1.2.0 APIs.
-        const fp_type l_minimum[3] = {minimum[0], minimum[1], minimum[2]};
-        const fp_type l_maximum[3] = {maximum[0], maximum[1], maximum[2]};
-        const fp_type l_center[3]  = {center[0], center[1], center[2]};
+        const fp_type l_minimum[3] = {map_min_const<TAcc>.get()[0], map_min_const<TAcc>.get()[1], map_min_const<TAcc>.get()[2]};
+        const fp_type l_maximum[3] = {map_max_const<TAcc>.get()[0], map_max_const<TAcc>.get()[1], map_max_const<TAcc>.get()[2]};
+        const fp_type l_center[3]  = {map_center_const<TAcc>.get()[0], map_center_const<TAcc>.get()[1], map_center_const<TAcc>.get()[2]};
 
         const fp_type* electro_map =
             grid_maps + map_index_xyz * static_cast<int>(autodock_grid_type::ELEC);
@@ -257,6 +253,15 @@ namespace mudock {
 
   template<>
   void adt_score_kernel<queue_alpaka>::operator()() {
+    const auto extent = alpaka::Vec<alpaka_backend::dim, alpaka_backend::idx>{3u};
+    auto view_min = alpaka::createView(q->native_device(), minimum, extent);
+    auto view_max = alpaka::createView(q->native_device(), maximum, extent);
+    auto view_center = alpaka::createView(q->native_device(), center, extent);
+
+    alpaka::memcpy(q->native_queue(), map_min_const<alpaka_backend::acc>, view_min, extent);
+    alpaka::memcpy(q->native_queue(), map_max_const<alpaka_backend::acc>, view_max, extent);
+    alpaka::memcpy(q->native_queue(), map_center_const<alpaka_backend::acc>, view_center, extent);
+
     constexpr_switch_bucket<0, reorder_buffer<static_molecule>::get_num_atom_clusters(), 1>(
         [&](const auto atom_index) {
           const auto max_atoms = reorder_buffer<static_molecule>::atoms_clusters[atom_index];
@@ -278,9 +283,6 @@ namespace mudock {
                                                    nonbond_cA_b,
                                                    nonbond_cB_b,
                                                    nonbond_xB_b,
-                                                   minimum,
-                                                   maximum,
-                                                   center,
                                                    map_index_x,
                                                    map_index_xy,
                                                    map_index_xyz,
