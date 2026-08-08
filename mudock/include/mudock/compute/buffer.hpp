@@ -36,7 +36,11 @@ namespace mudock {
     PROT_GRID_MAPS,
     ADADELTA_E_G2,
     ADADELTA_E_DW2,
-    ACTIVE_INDIVIDUALS
+    ACTIVE_INDIVIDUALS,
+    CONVERGED_LIGANDS,
+    HISTORY,
+    HISTORY_HEADS,
+    HISTORY_SIZES
   };
 
   using buffer_type_list = std::tuple<fp_type, int, chromosome>;
@@ -143,6 +147,22 @@ namespace mudock {
   template<>
   struct buffer_type_traits<buffer_data_type::ACTIVE_INDIVIDUALS> {
     using type = buffer_type_traits_impl<buffer_data_type::ACTIVE_INDIVIDUALS, int>::type;
+  };
+  template<>
+  struct buffer_type_traits<buffer_data_type::CONVERGED_LIGANDS> {
+    using type = buffer_type_traits_impl<buffer_data_type::CONVERGED_LIGANDS, int>::type;
+  };
+  template<>
+  struct buffer_type_traits<buffer_data_type::HISTORY> {
+    using type = buffer_type_traits_impl<buffer_data_type::HISTORY, fp_type>::type;
+  };
+  template<>
+  struct buffer_type_traits<buffer_data_type::HISTORY_HEADS> {
+    using type = buffer_type_traits_impl<buffer_data_type::HISTORY_HEADS, int>::type;
+  };
+  template<>
+  struct buffer_type_traits<buffer_data_type::HISTORY_SIZES> {
+    using type = buffer_type_traits_impl<buffer_data_type::HISTORY_SIZES, int>::type;
   };
 
   template<template<class...> class container_type, typename T, class queue_t, class... args>

@@ -76,6 +76,18 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
       "mutation",
       po::value(&args.knobs.mutation_prob)->default_value(args.knobs.mutation_prob),
       "Probability of a mutation to happen during GA (or LGA)");
+  knobs_description.add_options()(
+      "autostop",
+      po::value(&args.knobs.autostop)->default_value(args.knobs.autostop),
+      "Enable early stopping when per-ligand convergence is reached");
+  knobs_description.add_options()(
+      "convergence_window",
+      po::value(&args.knobs.convergence_window)->default_value(args.knobs.convergence_window),
+      "Number of generations used to evaluate convergence");
+  knobs_description.add_options()(
+      "variance_threshold",
+      po::value(&args.knobs.variance_threshold)->default_value(args.knobs.variance_threshold),
+      "Variance threshold for convergence of per-ligand best scores");
   knobs_description.add_options()("seed", po::value(&seed), "Seed for random values generators");
   knobs_description.add_options()(
       "tokens",

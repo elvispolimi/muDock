@@ -11,6 +11,9 @@ namespace mudock {
     std::size_t num_generations               = 1000;
     std::size_t tournament_length             = 10;
     fp_type mutation_prob                     = static_cast<fp_type>(0.01);
+    bool autostop                             = false;
+    std::size_t convergence_window            = 5;
+    fp_type variance_threshold                = static_cast<fp_type>(1e-4);
     fp_type lsrate                            = static_cast<fp_type>(50);
     std::size_t lsit                          = 300;
     std::size_t ls_every                      = 1;

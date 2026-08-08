@@ -96,6 +96,7 @@ namespace mudock {
       }
     }
   }
+
   void iterate_impl(const int batch_ligands,
                     const int population_number,
                     const int tournament_length,
@@ -104,60 +105,108 @@ namespace mudock {
                     chromosome* next_population,
                     int* __restrict__ num_rotamers_b,
                     fp_type* __restrict__ scores_b,
-                    const int generation) {
+                    fp_type* __restrict__ history_b,
+                    int* __restrict__ history_head_b,
+                    int* __restrict__ history_size_b,
+                    const int generation,
+                    const int convergence_window,
+                    const fp_type variance_threshold,
+                    const bool autostop,
+                    int* __restrict__ converged_ligands) {
     for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
-      std::uniform_real_distribution<fp_type> dist{fp_type{0.0}, fp_type{1.0}};
-      const int num_rotamers                     = num_rotamers_b[ligand_index];
-      chromosome* __restrict__ population_l      = population + population_number * ligand_index;
-      chromosome* __restrict__ next_population_l = next_population + population_number * ligand_index;
-      fp_type* __restrict__ scores               = scores_b + population_number * ligand_index;
+      if (!converged_ligands[ligand_index]) {
+        std::uniform_real_distribution<fp_type> dist{fp_type{0.0}, fp_type{1.0}};
+        const int num_rotamers                     = num_rotamers_b[ligand_index];
+        chromosome* __restrict__ population_l      = population + population_number * ligand_index;
+        chromosome* __restrict__ next_population_l = next_population + population_number * ligand_index;
+        fp_type* __restrict__ scores               = scores_b + population_number * ligand_index;
+        fp_type* __restrict__ history              = history_b + convergence_window * ligand_index;
+        int& head                                  = history_head_b[ligand_index];
+        int& size                                  = history_size_b[ligand_index];
 
-      // TODO L remove this print
-      csv_logger score_logger("genetic.csv", {"ligand", "generation", "genetic_score"});
-      // print best score
-      fp_type best = scores[0];
-      for(int i = 0; i < population_number; ++i){
-        if (scores[i] < best){
-          best = scores[i];
-        }
-      }
-      score_logger.log(ligand_index, generation, best);
-      // end print best score 
+        csv_logger score_logger("genetic.csv", {"ligand", "generation", "genetic_score"});
 
-      // Generate the new population
-      for (int element_index = 0; element_index < population_number; ++element_index) {
-        auto& next_individual = next_population_l[element_index];
-        // select the parent
-        auto best_individual_1 = get_selection_distribution(rand_device(), dist, population_number);
-        auto best_individual_2 = get_selection_distribution(rand_device(), dist, population_number);
-        for (int i = 0; i < tournament_length; ++i) {
-          const auto contendent_1 = get_selection_distribution(rand_device(), dist, population_number);
-          const auto contendent_2 = get_selection_distribution(rand_device(), dist, population_number);
-          if (scores[contendent_1] < scores[best_individual_1]) {
-            best_individual_1 = contendent_1;
-          }
-          if (scores[contendent_2] < scores[best_individual_2]) {
-            best_individual_2 = contendent_2;
+        // print best score
+        fp_type best = scores[0];
+        for(int i = 0; i < population_number; ++i){
+          if (scores[i] < best){
+            best = scores[i];
           }
         }
-        const auto& parent1 = population_l[best_individual_1];
-        const auto& parent2 = population_l[best_individual_2];
+        printf("Gen %d -- Best score: %f\n", generation, double(best));
+        // end print best score 
 
-        // generate the offspring
-        const auto split_index = get_crossover_distribution(rand_device(), dist, num_rotamers);
-        std::copy(std::begin(parent1), std::begin(parent1) + split_index, std::begin(next_individual));
-        std::copy(std::begin(parent2) + split_index,
-                  std::end(parent2),
-                  std::begin(next_individual) + split_index);
+        score_logger.log(ligand_index, generation, best);
 
-        // mutate the offspring
-        for (int i{0}; i < 3; ++i) {
-          if (get_mutation_coin_distribution(rand_device(), dist) < mutation_prob)
-            next_individual[i] += get_mutation_change_distribution(rand_device(), dist) * coordinate_step;
+        // TODO L move autostop logic inside genetic.hpp maybe as separated stage, maybe doing it every n generations instead of doing it every generation
+        if(autostop){
+          // Insert newest best score
+          history[head] = best;
+
+          // Advance circular index
+          head = (head + 1) % convergence_window;
+
+          // Grow until the buffer is full
+          if (size < convergence_window)
+            ++size;
+
+          // Only test convergence once the window is full
+          if (size == convergence_window) {
+            fp_type mean = 0.0;
+            for (int i = 0; i < convergence_window; ++i)
+              mean += history[i];
+            mean /= static_cast<fp_type>(convergence_window);
+
+            fp_type var = 0.0;
+            for (int i = 0; i < convergence_window; ++i) {
+              const fp_type d = history[i] - mean;
+              var += d * d;
+            }
+            var /= static_cast<fp_type>(convergence_window);
+
+            if (var < variance_threshold) {
+              // mark ligand as converged
+              converged_ligands[ligand_index] = 1;
+            }
+          }
         }
-        for (int i{3}; i < 6 + num_rotamers; ++i) {
-          if (get_mutation_coin_distribution(rand_device(), dist) < mutation_prob)
-            next_individual[i] += get_mutation_change_distribution(rand_device(), dist) * angle_step;
+
+
+        // Generate the new population
+        for (int element_index = 0; element_index < population_number; ++element_index) {
+          auto& next_individual = next_population_l[element_index];
+          // select the parent
+          auto best_individual_1 = get_selection_distribution(rand_device(), dist, population_number);
+          auto best_individual_2 = get_selection_distribution(rand_device(), dist, population_number);
+          for (int i = 0; i < tournament_length; ++i) {
+            const auto contendent_1 = get_selection_distribution(rand_device(), dist, population_number);
+            const auto contendent_2 = get_selection_distribution(rand_device(), dist, population_number);
+            if (scores[contendent_1] < scores[best_individual_1]) {
+              best_individual_1 = contendent_1;
+            }
+            if (scores[contendent_2] < scores[best_individual_2]) {
+              best_individual_2 = contendent_2;
+            }
+          }
+          const auto& parent1 = population_l[best_individual_1];
+          const auto& parent2 = population_l[best_individual_2];
+
+          // generate the offspring
+          const auto split_index = get_crossover_distribution(rand_device(), dist, num_rotamers);
+          std::copy(std::begin(parent1), std::begin(parent1) + split_index, std::begin(next_individual));
+          std::copy(std::begin(parent2) + split_index,
+                    std::end(parent2),
+                    std::begin(next_individual) + split_index);
+
+          // mutate the offspring
+          for (int i{0}; i < 3; ++i) {
+            if (get_mutation_coin_distribution(rand_device(), dist) < mutation_prob)
+              next_individual[i] += get_mutation_change_distribution(rand_device(), dist) * coordinate_step;
+          }
+          for (int i{3}; i < 6 + num_rotamers; ++i) {
+            if (get_mutation_coin_distribution(rand_device(), dist) < mutation_prob)
+              next_individual[i] += get_mutation_change_distribution(rand_device(), dist) * angle_step;
+          }
         }
       }
     }
@@ -211,7 +260,14 @@ namespace mudock {
                                                 next_population,
                                                 num_rotamers_b,
                                                 scores_b,
-                                                current_generation);
+                                                history_b,
+                                                history_head_b,
+                                                history_size_b,
+                                                current_generation,
+                                                convergence_window,
+                                                variance_threshold,
+                                                autostop,
+                                                converged_ligands);
     ++current_generation;
   }
   template<>

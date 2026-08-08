@@ -31,6 +31,13 @@ namespace mudock {
     lamarckian_genetic_kernel(const int batch_ligands_,
                               const int population_number_,
                               const int num_generations_,
+                              const int convergence_window_,
+                              const fp_type variance_threshold_,
+                              const bool autostop_,
+                              int* __restrict__ converged_ligands_,
+                              fp_type* __restrict__ history_b_,
+                              int* __restrict__ history_head_b_,
+                              int* __restrict__ history_size_b_,
                               const int tournament_length_,
                               const fp_type mutation_prob_,
                               const size_t seed_,
@@ -44,6 +51,13 @@ namespace mudock {
         : genetic_kernel<queue_type>(batch_ligands_,
                                      population_number_,
                                      num_generations_,
+                                     convergence_window_,
+                                     variance_threshold_,
+                                     autostop_,
+                                     converged_ligands_,
+                                     history_b_,
+                                     history_head_b_,
+                                     history_size_b_,
                                      tournament_length_,
                                      mutation_prob_,
                                      seed_,
@@ -86,11 +100,16 @@ namespace mudock {
       const int population_number = static_cast<int>(configuration.population_number);
       ls_every                    = static_cast<int>(configuration.ls_every);
       ls_last_gen                 = static_cast<int>(configuration.ls_last_gen);
+      const int convergence_window = static_cast<int>(configuration.convergence_window);
       auto q                      = (*this->scratch).get_queue();
 
       auto& num_rotamers_b = (*this->scratch).template get<buffer_data_type::NUM_ROTAMERS>();
       auto& chromosomes_b  = (*this->scratch).template get<buffer_data_type::CHROMOSOMES>();
       auto& scores_b       = (*this->scratch).template get<buffer_data_type::SCORES>();
+      auto& converged_ligands = (*this->scratch).template get<buffer_data_type::CONVERGED_LIGANDS>();
+      auto& history_b         = (*this->scratch).template get<buffer_data_type::HISTORY>();
+      auto& history_head_b    = (*this->scratch).template get<buffer_data_type::HISTORY_HEADS>();
+      auto& history_size_b    = (*this->scratch).template get<buffer_data_type::HISTORY_SIZES>();
 
       num_rotamers_b.alloc(this->batch_ligands);
       chromosomes_b.alloc(population_number * this->batch_ligands);
@@ -98,8 +117,13 @@ namespace mudock {
       scores_b.alloc(population_number * this->batch_ligands);
       this->best_scores.alloc(this->batch_ligands);
       this->best_chromosomes.alloc(this->batch_ligands);
+      converged_ligands.alloc(this->batch_ligands);
+      history_b.alloc(this->batch_ligands * convergence_window);
+      history_head_b.alloc(this->batch_ligands);
+      history_size_b.alloc(this->batch_ligands);
 
       load_num_rotamers<queue_t>(batch, this->scratch);
+      initialize_converged_ligands<queue_t>(batch, this->scratch);
 
       const auto seed =
           configuration.seed.has_value()
@@ -110,10 +134,21 @@ namespace mudock {
       fp_type* __restrict__ scores_p              = scores_b.dev_pointer();
       fp_type* __restrict__ best_scores_p         = this->best_scores.dev_pointer();
       chromosome* __restrict__ best_chromosomes_p = this->best_chromosomes.dev_pointer();
+      int* __restrict__ converged_ligands_p       = converged_ligands.dev_pointer();
+      fp_type* __restrict__ history_p                 = history_b.dev_pointer();
+      int* __restrict__ history_head_p            = history_head_b.dev_pointer();
+      int* __restrict__ history_size_p            = history_size_b.dev_pointer();
 
       this->lamarckian_kernel = std::make_unique<lamarckian_genetic_kernel<queue_t>>(this->batch_ligands,
                                                                                     population_number,
                                                                                     configuration.num_generations,
+                                                                                    configuration.convergence_window,
+                                                                                    configuration.variance_threshold,
+                                                                                    configuration.autostop,
+                                                                                    converged_ligands_p,
+                                                                                    history_p,
+                                                                                    history_head_p,
+                                                                                    history_size_p,
                                                                                     configuration.tournament_length,
                                                                                     configuration.mutation_prob,
                                                                                     seed,
@@ -172,6 +207,7 @@ namespace mudock {
       std::size_t mem{0};
       mem += sizeof(int);                                              // num_atoms
       mem += sizeof(int);                                              // num_rotamers
+      mem += sizeof(int);                                              // converged_ligands
       mem += sizeof(chromosome) * chromosomes_per_ligand;              // chromosomes
       mem += sizeof(fp_type) * chromosomes_per_ligand;                 // scores
       mem += 3 * sizeof(fp_type) * max_atoms;                          // coords

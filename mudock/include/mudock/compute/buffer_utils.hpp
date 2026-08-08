@@ -108,4 +108,22 @@ namespace mudock {
     } else
       return false;
   };
+
+  template<typename queue_type>
+    requires std::derived_from<queue_type, queue>
+  bool initialize_converged_ligands(batch<static_molecule> &batch, std::shared_ptr<scratchpad<queue_type>> scratch) {
+    const auto batch_ligands = batch.num_ligands;
+
+    auto &converged_ligands = (*scratch).template get<buffer_data_type::CONVERGED_LIGANDS>();
+
+    if (!converged_ligands.is_valid()) {
+      converged_ligands.alloc(batch_ligands);
+      for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
+        converged_ligands()[ligand_index] = static_cast<int>(0);
+      }
+      converged_ligands.copy_host2device();
+      return true;
+    } else
+      return false;
+  };
 } // namespace mudock
