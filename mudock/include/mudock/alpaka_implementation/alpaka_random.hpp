@@ -2,15 +2,32 @@
 
 #include <alpaka/alpaka.hpp>
 #include <alpaka/rand/RandPhilox.hpp>
+#include <alpaka/rand/RandStdLib.hpp>
+#include <alpaka/platform/Traits.hpp>
+#include <type_traits>
 #include <cstddef>
 #include <iterator>
 #include <memory>
 #include <mudock/alpaka_implementation/buffer_alpaka.hpp>
 #include <mudock/alpaka_implementation/queue_alpaka.hpp>
+#include <mudock/alpaka_implementation/alpaka_types.hpp>
 
 namespace mudock {
 
-  using alpaka_rand_state = alpaka::rand::Philox4x32x10;
+  template<typename TAcc, typename Enable = void>
+  struct rng_selector {
+      using type = alpaka::rand::Philox4x32x10;
+      using local_ref = type;
+  };
+
+  template<typename TAcc>
+  struct rng_selector<TAcc, std::enable_if_t<std::is_same_v<alpaka::Platform<TAcc>, alpaka::PlatformCpu>>> {
+      using type = alpaka::rand::engine::cpu::MersenneTwister;
+      using local_ref = type&;
+  };
+
+  using alpaka_rand_state = typename rng_selector<alpaka_backend::acc>::type;
+  using alpaka_rand_local = typename rng_selector<alpaka_backend::acc>::local_ref;
 
   struct alpaka_random_object {
   public:

@@ -19,7 +19,7 @@ namespace mudock {
     static constexpr fp_type angle_step{4};
 
     ALPAKA_FN_ACC ALPAKA_FN_INLINE std::uint32_t next_random(alpaka_rand_state& state) {
-      return state();
+      return static_cast<std::uint32_t>(state());
     }
 
     ALPAKA_FN_ACC ALPAKA_FN_INLINE fp_type random_unit(alpaka_rand_state& state) {
@@ -90,7 +90,7 @@ namespace mudock {
         chromosome* l_chromosomes = chromosomes + ligand_id * chromosome_number;
         fp_type* scores = ligand_scores + chromosome_number * ligand_id;
         
-        alpaka_rand_state l_state = state[global_thread_id];
+        alpaka_rand_local l_state = state[global_thread_id];
 
         for (int chromosome_index = local_thread_id; chromosome_index < chromosome_number;
              chromosome_index += thread_per_block) {
@@ -106,7 +106,9 @@ namespace mudock {
             chromo[i] = get_init_change_distribution(l_state) * angle_step;
           }
         }
-        state[global_thread_id] = l_state;
+        if constexpr (!std::is_reference_v<alpaka_rand_local>) {
+          state[global_thread_id] = l_state;
+        }
       }
     };
 
@@ -133,7 +135,7 @@ namespace mudock {
         chromosome* __restrict__ l_next_chromosomes = next_chromosomes + ligand_id * chromosome_number;
         const fp_type* __restrict__ scores = ligand_scores + chromosome_number * ligand_id;
 
-        alpaka_rand_state l_state = state[global_thread_id];
+        alpaka_rand_local l_state = state[global_thread_id];
 
         for (int chromosome_index = local_thread_id; chromosome_index < chromosome_number;
              chromosome_index += thread_per_block) {
@@ -165,7 +167,9 @@ namespace mudock {
             }
           }
         }
-        state[global_thread_id] = l_state;
+        if constexpr (!std::is_reference_v<alpaka_rand_local>) {
+          state[global_thread_id] = l_state;
+        }
       }
     };
 

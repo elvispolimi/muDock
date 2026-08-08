@@ -15,7 +15,9 @@ namespace mudock {
       const int id     = static_cast<int>(alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc)[0u]);
       const int stride = static_cast<int>(alpaka::getWorkDiv<alpaka::Grid, alpaka::Threads>(acc)[0u]);
 
-      for (std::size_t i = id; i < num_elements; i += stride) { state[i] = alpaka_rand_state(seed, i, 0); }
+      for (std::size_t i = id; i < num_elements; i += stride) { 
+        state[i] = alpaka_rand_state(static_cast<std::uint32_t>(seed), static_cast<std::uint32_t>(i), 0); 
+      }
     }
   };
 

@@ -33,7 +33,7 @@ POPULATIONS  = [50, 100, 200, 500]
 GENERATIONS  = [500, 1000, 2000, 5000]
 WARMUP_RUNS  = 1
 RUNS         = 3
-TIMEOUT_SEC  = 300   # per singolo run
+TIMEOUT_SEC  = 300   # timeout per single run (seconds)
 
 FIELDNAMES   = ["Backend", "Population", "Generations", "Run",
                 "Total Evaluations", "Time (s)", "Throughput (Evals/s)"]

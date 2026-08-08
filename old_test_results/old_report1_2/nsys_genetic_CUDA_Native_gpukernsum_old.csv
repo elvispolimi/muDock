@@ -1,0 +1,7 @@
+Time (%),Total Time (ns),Instances,Avg (ns),Med (ns),Min (ns),Max (ns),StdDev (ns),Name
+89.1,167431411119,1000,167431411.1,167487663.0,167235595,194647582,872772.6,"void mudock::calc_energy<(int)256>(int, int, const float *, const float *, const float *, const float *, const float *, const float *, const int *, const int *, const int *, const int *, const int *, const float *, const float *, const int *, int, int, int, const float *, const int *, float *)"
+10.8,20268093393,1000,20268093.4,20262125.0,20261991,26129978,185563.5,"void mudock::apply_cuda<(int)256>(int, int, const float *, const float *, const float *, float *, float *, float *, const std::array<float, (unsigned long)516> *, const int *, const int *, const int *, const int *, const int *, const int *, const int *)"
+0.1,249331677,1000,249331.7,249343.0,249311,250623,43.9,"mudock::iterate_gpu(int, float, int, const int *, std::array<float, (unsigned long)516> *, std::array<float, (unsigned long)516> *, curandStateXORWOW *, float *)"
+0.0,6024848,1,6024848.0,6024848.0,6024848,6024848,0.0,"mudock::init_curand(curandStateXORWOW *, long, int)"
+0.0,92385,1,92385.0,92385.0,92385,92385,0.0,"mudock::initialize_gpu(int, const int *, std::array<float, (unsigned long)516> *, curandStateXORWOW *, float *)"
+0.0,30912,1,30912.0,30912.0,30912,30912,0.0,"mudock::finalize_gpu(int, const int *, float *, float *, std::array<float, (unsigned long)516> *, std::array<float, (unsigned long)516> *)"

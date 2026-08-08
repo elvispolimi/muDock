@@ -17,23 +17,23 @@ DATASETS = {
     "single": {
         "PROTEIN": "/work/onedina/muDock_ON/data/1fkb/1fkb_pocket.pdbqt",
         "LIGAND":  "/work/onedina/muDock_ON/data/1fkb/1fkb_ligand.adtmol2",
-    },
-    "small_multi": {
-        "PROTEIN": "/work/onedina/muDock_ON/data/1fkb/1fkb_pocket.pdbqt",
-        "LIGAND":  "/work/onedina/muDock_ON/data/small_1/small.adtmol2",
-    },
+    }
 }
 
 BACKENDS = [
-    ("CPP", "/work/onedina/muDock_ON/build/cpp/application/muDock", "CPP:CPU:0"),
-    ("Alpaka CPU", "/work/onedina/muDock_ON/build/alpaka-serial/application/muDock", "ALPAKA:CPU:0"),
+    ("CPP Serial", "/work/onedina/muDock_ON/build/cpp/application/muDock", "CPP:CPU:0"),
+    ("Alpaka Serial (Unroll)", "/work/onedina/muDock_ON/build/alpaka-serial/application/muDock", "ALPAKA:CPU:0"),
+    ("Alpaka Serial (No Unroll)", "/work/onedina/muDock_ON/build/alpaka-serial-no-unroll/application/muDock", "ALPAKA:CPU:0"),
+    ("CPP OMP", "/work/onedina/muDock_ON/build/cpp-omp/application/muDock", "CPP:CPU:0"),
+    ("Alpaka OMP (Unroll)", "/work/onedina/muDock_ON/build/alpaka-omp/application/muDock", "ALPAKA:CPU:0"),
+    ("Alpaka OMP (No Unroll)", "/work/onedina/muDock_ON/build/alpaka-omp-no-unroll/application/muDock", "ALPAKA:CPU:0"),
 ]
 
-POPULATIONS  = [10, 25, 50]
-GENERATIONS  = [100, 250, 500]
+POPULATIONS  = [25, 50, 100, 200]
+GENERATIONS  = [250, 500, 1000, 2000]
 WARMUP_RUNS  = 1
 RUNS         = 3
-TIMEOUT_SEC  = 300   # per singolo run
+TIMEOUT_SEC  = 300   # timeout per single run (seconds)
 
 FIELDNAMES   = ["Backend", "Population", "Generations", "Run",
                 "Total Evaluations", "Time (s)", "Throughput (Evals/s)"]
