@@ -38,6 +38,7 @@ list(
   "${header_path}/${header_prefix}/compute/stage.hpp"
   "${header_path}/${header_prefix}/compute/scoring.hpp"
   "${header_path}/${header_prefix}/compute/adt_score.hpp"
+  "${header_path}/${header_prefix}/compute/adadelta.hpp"
   "${header_path}/${header_prefix}/compute/pipeline.hpp"
   "${header_path}/${header_prefix}/compute/docking.hpp"
   "${header_path}/${header_prefix}/compute/genetic.hpp"
@@ -135,6 +136,10 @@ list(
   "${source_path}/cpp_implementation/adadelta_cpp.cpp"
   "${source_path}/tbb_implementation/runtime_services.cpp"
 )
+
+set_source_files_properties(
+  "${source_path}/chem/autodock_protein.cpp"
+  PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS} -O2 -g")
 
 set(mudock_precompute_opt_sources
     "${source_path}/chem/autodock_protein.cpp")

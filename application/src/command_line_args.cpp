@@ -63,7 +63,7 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
  knobs_description.add_options()(
       "lsrate",
       po::value(&args.knobs.lsrate)->default_value(args.knobs.lsrate),
-      "Percentage of population affected by local search for LGA");
+      "Percentage of population affected by local search for LGA, done on the most promising individuals of each generation");
  knobs_description.add_options()(
       "ls_every",
       po::value(&args.knobs.ls_every)->default_value(args.knobs.ls_every),

@@ -5,6 +5,8 @@
 #include <cstring>
 #include <fstream>
 #include <random>
+#include <algorithm>
+#include <numeric>
 #include <mudock/batch.hpp>
 #include <mudock/csv_logger.hpp>
 #include <mudock/chem/autodock_grid_types.hpp>
@@ -50,8 +52,9 @@ namespace mudock {
 
       batch_ligands = batch.num_ligands;
       batch_atoms   = batch.batch_max_atoms;
-      const int individuals_per_ligand = std::max(1, static_cast<int>((*this->scratch).configuration.population_number));
-      
+      individuals_per_ligand = std::max(1, static_cast<int>((*this->scratch).configuration.population_number));
+      local_search_rate = (*this->scratch).configuration.lsrate;
+
       auto &gradient_b = (*this->scratch).template get<buffer_data_type::GRADIENTS>();
       const size_t gradient_count = static_cast<size_t>(batch_ligands) * static_cast<size_t>(individuals_per_ligand);
       if (!gradient_b.is_valid() || gradient_b.num_elements() != gradient_count) {
@@ -91,7 +94,7 @@ namespace mudock {
       std::vector<int> active_init(gradient_count);
       
       std::mt19937 rng((*this->scratch).configuration.seed.value_or(std::random_device{}()));
-      std::bernoulli_distribution dist(static_cast<double>((*this->scratch).configuration.lsrate / fp_type{100}));
+      std::bernoulli_distribution dist(static_cast<double>(local_search_rate / fp_type{100}));
 
       for (size_t i = 0; i < gradient_count; ++i) {
         active_init[i] = dist(rng);
@@ -110,17 +113,17 @@ namespace mudock {
       auto q = (*this->scratch).get_queue();
 
       adadelta_krnl = std::make_unique<adadelta_kernel<queue_type>>(individuals_per_ligand,
-                                                                  batch_ligands,
-                                                                  batch_atoms,
-                                                                  gradients_b,
-                                                                  population_b,
-                                                                  num_rotamers_p,
-                                                                  adadelta_e_g2,
-                                                                  adadelta_e_dw2,
-                                                                  active_individuals,
-                                                                  q,
-                                                                  RHO,
-                                                                  EPSILON);
+                                                                    batch_ligands,
+                                                                    batch_atoms,
+                                                                    gradients_b,
+                                                                    population_b,
+                                                                    num_rotamers_p,
+                                                                    adadelta_e_g2,
+                                                                    adadelta_e_dw2,
+                                                                    active_individuals,
+                                                                    q,
+                                                                    RHO,
+                                                                    EPSILON);
 
       this->standalone_local_search = ((*this->scratch).configuration.population_number == 1) &&
                                 ((*this->scratch).configuration.num_generations == 1);
@@ -191,8 +194,11 @@ namespace mudock {
     }
 
   private:
-    int  batch_ligands;
-    int  batch_atoms;
+    int batch_ligands;
+    int batch_atoms;
+    int individuals_per_ligand;
+    fp_type local_search_rate;
+
     std::unique_ptr<adadelta_kernel<queue_type>> adadelta_krnl;
     geometric<queue_type> geom_trans;
 
@@ -219,11 +225,49 @@ namespace mudock {
     }
 
     void run_as_lga_step() {
+      // Mark top n individuals based on lsrate
+      auto& scores_b             = (*this->scratch).template get<buffer_data_type::SCORES>();
+      auto& active_individuals_b = (*this->scratch).template get<buffer_data_type::ACTIVE_INDIVIDUALS>();
+      fp_type* __restrict__ scores_p              = scores_b.dev_pointer();
+      int* __restrict__ active_individuals_p  = active_individuals_b.dev_pointer();
+      for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
+        int     *__restrict__ active_individuals_l = active_individuals_p + ligand_index * individuals_per_ligand;
+        fp_type *__restrict__ scores_l             = scores_p + ligand_index * individuals_per_ligand;
+        const int n = static_cast<int>((local_search_rate / fp_type{100}) * individuals_per_ligand);
+        markTopNActive(scores_l, active_individuals_l, n, individuals_per_ligand);
+      }
+      // active_individuals_p.copy_host2device();
+
+      // Run local search
       for (std::size_t i = 0; i < this->iterations; ++i) {
         geom_trans();
         (this->score_stage).get()->compute_gradient();
         (*adadelta_krnl)();
       }
+    }
+
+    // scores: input array of length m
+    // active_individuals: output array of length m (must be pre-allocated by caller)
+    // m: length of both arrays
+    // n: how many top scores to mark active
+    template <typename fp_type>
+    void markTopNActive(const fp_type* scores, int* active_individuals, int n, int m) {
+        std::fill(active_individuals, active_individuals + m, 0);
+        if (n <= 0) return;
+        if (n >= m) { std::fill(active_individuals, active_individuals + m, 1); return; }
+
+        // index array on the heap (or use alloca/stack array if m is small/fixed)
+        int* idx = new int[m];
+        std::iota(idx, idx + m, 0);  // idx = [0, 1, 2, ..., m-1]
+
+        std::nth_element(idx, idx + n, idx + m,
+            [scores](int a, int b) { return scores[a] < scores[b]; });
+
+        for (int i = 0; i < n; i++) {
+            active_individuals[idx[i]] = 1;
+        }
+
+        delete[] idx;
     }
 
     void run_standalone() {
