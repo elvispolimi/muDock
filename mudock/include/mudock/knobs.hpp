@@ -15,6 +15,7 @@ namespace mudock {
     std::size_t convergence_window            = 5;
     fp_type variance_threshold                = static_cast<fp_type>(1e-4);
     fp_type lsrate                            = static_cast<fp_type>(50);
+    bool ls_on_best                           = false;
     std::size_t lsit                          = 300;
     std::size_t ls_every                      = 1;
     std::size_t ls_last_gen                   = 0;

@@ -54,6 +54,7 @@ namespace mudock {
       batch_atoms   = batch.batch_max_atoms;
       individuals_per_ligand = std::max(1, static_cast<int>((*this->scratch).configuration.population_number));
       local_search_rate = (*this->scratch).configuration.lsrate;
+      local_search_on_best = (*this->scratch).configuration.ls_on_best;
 
       auto &gradient_b = (*this->scratch).template get<buffer_data_type::GRADIENTS>();
       const size_t gradient_count = static_cast<size_t>(batch_ligands) * static_cast<size_t>(individuals_per_ligand);
@@ -198,6 +199,7 @@ namespace mudock {
     int batch_atoms;
     int individuals_per_ligand;
     fp_type local_search_rate;
+    bool local_search_on_best;
 
     std::unique_ptr<adadelta_kernel<queue_type>> adadelta_krnl;
     geometric<queue_type> geom_trans;
@@ -225,18 +227,19 @@ namespace mudock {
     }
 
     void run_as_lga_step() {
-      // Mark top n individuals based on lsrate
-      auto& scores_b             = (*this->scratch).template get<buffer_data_type::SCORES>();
-      auto& active_individuals_b = (*this->scratch).template get<buffer_data_type::ACTIVE_INDIVIDUALS>();
-      fp_type* __restrict__ scores_p              = scores_b.dev_pointer();
-      int* __restrict__ active_individuals_p  = active_individuals_b.dev_pointer();
-      for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
-        int     *__restrict__ active_individuals_l = active_individuals_p + ligand_index * individuals_per_ligand;
-        fp_type *__restrict__ scores_l             = scores_p + ligand_index * individuals_per_ligand;
-        const int n = static_cast<int>((local_search_rate / fp_type{100}) * individuals_per_ligand);
-        markTopNActive(scores_l, active_individuals_l, n, individuals_per_ligand);
+      if (local_search_on_best) {
+        // Mark top n individuals based on lsrate
+        auto& scores_b             = (*this->scratch).template get<buffer_data_type::SCORES>();
+        auto& active_individuals_b = (*this->scratch).template get<buffer_data_type::ACTIVE_INDIVIDUALS>();
+        fp_type* __restrict__ scores_p              = scores_b.dev_pointer();
+        int* __restrict__ active_individuals_p  = active_individuals_b.dev_pointer();
+        for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
+          int     *__restrict__ active_individuals_l = active_individuals_p + ligand_index * individuals_per_ligand;
+          fp_type *__restrict__ scores_l             = scores_p + ligand_index * individuals_per_ligand;
+          const int n = static_cast<int>((local_search_rate / fp_type{100}) * individuals_per_ligand);
+          markTopNActive(scores_l, active_individuals_l, n, individuals_per_ligand);
+        }
       }
-      // active_individuals_p.copy_host2device();
 
       // Run local search
       for (std::size_t i = 0; i < this->iterations; ++i) {
