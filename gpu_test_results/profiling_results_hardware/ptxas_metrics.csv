@@ -1,0 +1,7 @@
+Backend,Kernel,Registers,Cmem,Lmem,Smem
+Alpaka CUDA,adt_score,72,552,0,0
+Alpaka CUDA,genetic,62,416,0,0
+Alpaka CUDA,geom_transform,48,488,0,0
+CUDA Native,adt_score,64,512,0,0
+CUDA Native,genetic,64,408,0,0
+CUDA Native,geom_transform,72,472,0,0

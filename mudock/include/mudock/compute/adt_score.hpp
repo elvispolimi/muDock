@@ -77,8 +77,7 @@ namespace mudock {
         prot_index_x.copy_host2device();
         prot_index_xy.copy_host2device();
         prot_index_xyz.copy_host2device();
-        // On CPU is not required and on GPUS we have probably to laod texture memory etc...
-        // prot_grid_maps.copy_host2device();
+        prot_grid_maps.copy_host2device();
       }
     }
 
@@ -199,9 +198,9 @@ namespace mudock {
       const fp_type *nonbond_cB_b = nonbond_cB.dev_pointer();
       const int *nonbond_xB_b     = nonbond_xB.dev_pointer();
 
-      // Use host pointer as on CPP you can use it, on GPU they will load their own memory
+      // Pass GPU device pointer for GPU backends so kernels access GPU VRAM
       const fp_type *grid_maps =
-          (*device_scratch).template get<buffer_data_type::PROT_GRID_MAPS>().host_pointer();
+          (*device_scratch).template get<buffer_data_type::PROT_GRID_MAPS>().dev_pointer();
       const fp_type *minimum = (*device_scratch).template get<buffer_data_type::PROT_MIN>().dev_pointer();
       const fp_type *maximum = (*device_scratch).template get<buffer_data_type::PROT_MAX>().dev_pointer();
       const fp_type *center  = (*device_scratch).template get<buffer_data_type::PROT_CENTER>().dev_pointer();

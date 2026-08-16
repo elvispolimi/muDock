@@ -27,5 +27,5 @@ namespace mudock::alpaka_backend {
 #endif
 
   using dev_acc = alpaka::Dev<acc>;
-  using queue_acc = alpaka::Queue<acc, alpaka::Blocking>;
+  using queue_acc = alpaka::Queue<acc, alpaka::NonBlocking>;
 } // namespace mudock::alpaka_backend

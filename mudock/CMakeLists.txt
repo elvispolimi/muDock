@@ -141,7 +141,7 @@ if(MUDOCK_ENABLE_MPI)
     "${header_path}/${header_prefix}/mpi_implementation/distributed_ranges.hpp"
     "${header_path}/${header_prefix}/mpi_implementation/utilities.hpp"
     )
-endif()    
+endif()
 
 if(MUDOCK_ENABLE_GH)
   list(APPEND source_files
@@ -245,15 +245,19 @@ if(MUDOCK_ENABLE_ALPAKA)
       "${source_path}/alpaka_implementation/geom_transform_alpaka.cpp")
   set(alpaka_queue_source
       "${source_path}/alpaka_implementation/queue_alpaka.cpp")
+  set(alpaka_random_source
+      "${source_path}/alpaka_implementation/alpaka_random.cpp")
   list(
     APPEND
     header_files
     "${header_path}/${header_prefix}/alpaka_implementation/adt_score_alpaka.hpp"
     "${header_path}/${header_prefix}/alpaka_implementation/alpaka_implementation.hpp"
+    "${header_path}/${header_prefix}/alpaka_implementation/alpaka_random.hpp"
     "${header_path}/${header_prefix}/alpaka_implementation/alpaka_types.hpp"
     "${header_path}/${header_prefix}/alpaka_implementation/genetic_alpaka.hpp"
     "${header_path}/${header_prefix}/alpaka_implementation/geom_transform_alpaka.hpp"
     "${header_path}/${header_prefix}/alpaka_implementation/invoke_kernel_alpaka.hpp"
+    "${header_path}/${header_prefix}/alpaka_implementation/mutate_alpaka.hpp"
     "${header_path}/${header_prefix}/alpaka_implementation/queue_alpaka.hpp"
     )
   list(
@@ -263,6 +267,7 @@ if(MUDOCK_ENABLE_ALPAKA)
     "${alpaka_genetic_source}"
     "${alpaka_geom_transform_source}"
     "${alpaka_queue_source}"
+    "${alpaka_random_source}"
   )
 endif()
 
@@ -308,6 +313,7 @@ if(MUDOCK_ENABLE_ALPAKA)
     set_source_files_properties("${alpaka_geom_transform_source}" PROPERTIES LANGUAGE CUDA)
     set_source_files_properties("${alpaka_queue_source}" PROPERTIES LANGUAGE CUDA)
     set_source_files_properties("${tbb_pipeline_source}" PROPERTIES LANGUAGE CUDA)
+    set_source_files_properties("${alpaka_random_source}" PROPERTIES LANGUAGE CUDA)
   elseif(MUDOCK_ALPAKA_BACKEND STREQUAL "hip" AND CMAKE_HIP_COMPILER)
     set_source_files_properties("${alpaka_adt_score_source}" PROPERTIES LANGUAGE HIP)
     set_source_files_properties("${alpaka_genetic_source}" PROPERTIES LANGUAGE HIP)
@@ -483,6 +489,9 @@ endif()
 # check if we need to activate the compilation flag that signals CUDA
 if(MUDOCK_ENABLE_CUDA)
   target_compile_definitions(libmudock PUBLIC MUDOCK_USE_CUDA)
+endif()
+
+if(MUDOCK_ENABLE_CUDA_LANGUAGE)
   if(CMAKE_BUILD_TYPE STREQUAL "Release")
     # CUDA_SEPARABLE_COMPILATION ON required for constant memory to be shared
     # across translation unit
@@ -566,19 +575,19 @@ endif()
 if(MUDOCK_ENABLE_ALPAKA)
   target_compile_definitions(libmudock PUBLIC MUDOCK_USE_ALPAKA)
   if(MUDOCK_ALPAKA_BACKEND STREQUAL "serial")
-    target_compile_definitions(libmudock PUBLIC MUDOCK_ALPAKA_BACKEND_SERIAL)
+    target_compile_definitions(libmudock PUBLIC MUDOCK_ALPAKA_BACKEND_SERIAL MUDOCK_ALPAKA_BLOCK_SIZE=1)
   elseif(MUDOCK_ALPAKA_BACKEND STREQUAL "threads")
-    target_compile_definitions(libmudock PUBLIC MUDOCK_ALPAKA_BACKEND_THREADS)
+    target_compile_definitions(libmudock PUBLIC MUDOCK_ALPAKA_BACKEND_THREADS MUDOCK_ALPAKA_BLOCK_SIZE=1)
   elseif(MUDOCK_ALPAKA_BACKEND STREQUAL "tbb")
-    target_compile_definitions(libmudock PUBLIC MUDOCK_ALPAKA_BACKEND_TBB)
+    target_compile_definitions(libmudock PUBLIC MUDOCK_ALPAKA_BACKEND_TBB MUDOCK_ALPAKA_BLOCK_SIZE=1)
   elseif(MUDOCK_ALPAKA_BACKEND STREQUAL "omp2")
-    target_compile_definitions(libmudock PUBLIC MUDOCK_ALPAKA_BACKEND_OMP2)
+    target_compile_definitions(libmudock PUBLIC MUDOCK_ALPAKA_BACKEND_OMP2 MUDOCK_ALPAKA_BLOCK_SIZE=1)
   elseif(MUDOCK_ALPAKA_BACKEND STREQUAL "cuda")
-    target_compile_definitions(libmudock PUBLIC MUDOCK_ALPAKA_BACKEND_CUDA)
+    target_compile_definitions(libmudock PUBLIC MUDOCK_ALPAKA_BACKEND_CUDA MUDOCK_ALPAKA_BLOCK_SIZE=32)
   elseif(MUDOCK_ALPAKA_BACKEND STREQUAL "hip")
-    target_compile_definitions(libmudock PUBLIC MUDOCK_ALPAKA_BACKEND_HIP)
+    target_compile_definitions(libmudock PUBLIC MUDOCK_ALPAKA_BACKEND_HIP MUDOCK_ALPAKA_BLOCK_SIZE=32)
   elseif(MUDOCK_ALPAKA_BACKEND STREQUAL "sycl")
-    target_compile_definitions(libmudock PUBLIC MUDOCK_ALPAKA_BACKEND_SYCL)
+    target_compile_definitions(libmudock PUBLIC MUDOCK_ALPAKA_BACKEND_SYCL MUDOCK_ALPAKA_BLOCK_SIZE=32)
   endif()
   target_link_libraries(libmudock PUBLIC alpaka::alpaka)
 endif()
