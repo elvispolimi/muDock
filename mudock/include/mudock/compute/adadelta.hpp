@@ -147,23 +147,33 @@ namespace mudock {
       }
     }
 
-    // TODO L Important: this was copied from genetic.hpp code, but not sure if it must be adapted 
     static std::size_t get_shared_ligand_mem(const int max_atoms, const knobs conf) {
+      (void) max_atoms;
+      (void) conf;
       return 0;
     }
 
     static std::size_t get_private_ligand_mem(const int max_atoms, const knobs conf) {
       std::size_t mem{0};
-      const int individuals_per_ligand = std::max(1, static_cast<int>(conf.population_number));
 
+      const int individuals_per_ligand =
+          std::max(1, static_cast<int>(conf.population_number));
+
+      // Memory required by the scoring stage for one ligand.
       mem += scoring_t<queue_type>::get_ligand_mem(max_atoms, conf);
 
-      // One gradient per individual per ligand
+      // One gradient per individual.
       mem += sizeof(gradient) * individuals_per_ligand;
-      // AdaDelta state buffers for each individual
-      mem += sizeof(chromosome) * individuals_per_ligand; // E[g^2]
-      mem += sizeof(chromosome) * individuals_per_ligand; // E[delta_w^2]
-      mem += sizeof(int)        * individuals_per_ligand; // active flag
+
+      // One AdaDelta E[g^2] state per individual.
+      mem += sizeof(chromosome) * individuals_per_ligand;
+
+      // One AdaDelta E[delta_w^2] state per individual.
+      mem += sizeof(chromosome) * individuals_per_ligand;
+
+      // One active flag per individual.
+      mem += sizeof(int) * individuals_per_ligand;
+
       return mem;
     }
 
@@ -236,7 +246,7 @@ namespace mudock {
         for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
           int     *__restrict__ active_individuals_l = active_individuals_p + ligand_index * individuals_per_ligand;
           fp_type *__restrict__ scores_l             = scores_p + ligand_index * individuals_per_ligand;
-          const int n = static_cast<int>((local_search_rate / fp_type{100}) * individuals_per_ligand);
+          const int n = static_cast<int>(local_search_rate * static_cast<fp_type>(individuals_per_ligand) / fp_type{100});
           markTopNActive(scores_l, active_individuals_l, n, individuals_per_ligand);
         }
       }
