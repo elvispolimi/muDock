@@ -48,6 +48,7 @@ namespace mudock {
       std::memcpy(pose.y(), y_scratch_b.host_pointer(), num_atoms * sizeof(fp_type));
       std::memcpy(pose.z(), z_scratch_b.host_pointer(), num_atoms * sizeof(fp_type));
 
+      // TODO L if there is no (dump) directory, it doesn't save the pose. fix it.
       const std::string filename = "dump/pose_" + std::to_string(i) + ".mol2";
       std::ofstream ofs(filename, std::ios::out);
       writer<supported_format::MOL2>(pose, ofs);

@@ -37,7 +37,7 @@ namespace mudock {
     ADADELTA_E_G2,
     ADADELTA_E_DW2,
     ACTIVE_INDIVIDUALS,
-    CONVERGED_LIGANDS,
+    CONVERGED_LIGANDS, // IMPORTANT: store 0 if ligand NOT converged, otherwise store the number of generations to reach convergence
     HISTORY,
     HISTORY_HEADS,
     HISTORY_SIZES

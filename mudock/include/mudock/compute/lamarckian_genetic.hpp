@@ -135,9 +135,29 @@ namespace mudock {
       fp_type* __restrict__ best_scores_p         = this->best_scores.dev_pointer();
       chromosome* __restrict__ best_chromosomes_p = this->best_chromosomes.dev_pointer();
       int* __restrict__ converged_ligands_p       = converged_ligands.dev_pointer();
-      fp_type* __restrict__ history_p                 = history_b.dev_pointer();
+      fp_type* __restrict__ history_p             = history_b.dev_pointer();
       int* __restrict__ history_head_p            = history_head_b.dev_pointer();
       int* __restrict__ history_size_p            = history_size_b.dev_pointer();
+
+      // Lorenzo: Ligand properties for experiments
+      for (int index{0}; index < this->batch_ligands; ++index) {
+        auto& ligand = *batch.molecules[index];
+        const int num_rotamers = num_rotamers_p[index];
+        const fp_type local_search_rate = configuration.lsrate;
+        const int local_search_iterations = static_cast<int>(configuration.lsit);
+
+        // TODO L check if this estimate is correct. WARNING: this depends on the local search implementation. 
+        // This is for adadelta for example (not counting the effect of ls_last_gen and ls_every)
+        // +1 comes from the scores, the remaining from the gradients
+        // TODO L this is not correct: if autostop is on, it should count the actual number of generations at convergence.
+        // It would be better to have a counter at each evaluation to be sure (pay attention to race conditions)
+        const int num_evalualtions = this->num_generations * population_number * (static_cast<int>(local_search_rate * static_cast<fp_type>(local_search_iterations) / fp_type{100}) + 1);
+                
+        ligand.properties.assign(property_type::SEED, std::to_string(seed));
+        ligand.properties.assign(property_type::NUM_ROT, std::to_string(num_rotamers));
+        ligand.properties.assign(property_type::NUM_EVALS, std::to_string(num_evalualtions));
+      }
+
 
       this->lamarckian_kernel = std::make_unique<lamarckian_genetic_kernel<queue_t>>(this->batch_ligands,
                                                                                     population_number,
@@ -307,11 +327,13 @@ namespace mudock {
       assert(batch.num_ligands == this->batch_ligands && "Lamarckian-Genetic algorithm received different batch for teardown");
 
       this->best_scores.copy_device2host();
+      this->converged_ligands.copy_device2host();
       (*this->scratch).get_queue()->synchronize();
 
       for (int index{0}; index < this->batch_ligands; ++index) {
         auto& ligand = *batch.molecules[index];
         ligand.properties.assign(property_type::SCORE, std::to_string(this->best_scores()[index]));
+        ligand.properties.assign(property_type::GEN, std::to_string(this->converged_ligands()[index]));
       }
     }
   }; // namespace mudock

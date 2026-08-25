@@ -27,6 +27,17 @@ namespace mudock {
       buf += ligand.properties.get(property_type::NAME);
       buf += ' ';
       buf += ligand.properties.get(property_type::SCORE);
+      buf += ' ';
+      buf += ligand.properties.get(property_type::GEN);
+      buf += ' ';
+      buf += ligand.properties.get(property_type::NUM_ATOMS);
+      buf += ' ';
+      buf += ligand.properties.get(property_type::NUM_ROT);
+      buf += ' ';
+      buf += ligand.properties.get(property_type::NUM_EVALS);
+      buf += ' ';
+      buf += ligand.properties.get(property_type::SEED);
+      buf += ' ';
       buf += '\n';
     }
   } // namespace detail
@@ -64,7 +75,7 @@ namespace mudock {
         }
       }
       if (!buf.empty())
-        std::cout << buf;
+        std::cout << "Experiment " << buf;
     });
 
     threadpool pool;

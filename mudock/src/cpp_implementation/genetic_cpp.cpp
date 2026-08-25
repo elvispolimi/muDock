@@ -114,7 +114,7 @@ namespace mudock {
                     const bool autostop,
                     int* __restrict__ converged_ligands) {
     for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
-      if (!converged_ligands[ligand_index]) {
+      if (converged_ligands[ligand_index] == 0) {
         std::uniform_real_distribution<fp_type> dist{fp_type{0.0}, fp_type{1.0}};
         const int num_rotamers                     = num_rotamers_b[ligand_index];
         chromosome* __restrict__ population_l      = population + population_number * ligand_index;
@@ -166,7 +166,7 @@ namespace mudock {
 
             if (var < variance_threshold) {
               // mark ligand as converged
-              converged_ligands[ligand_index] = 1;
+              converged_ligands[ligand_index] = generation;
             }
           }
         }
@@ -267,7 +267,7 @@ namespace mudock {
                                                 convergence_window,
                                                 variance_threshold,
                                                 autostop,
-                                                converged_ligands);
+                                                converged_ligands_b);
     ++current_generation;
   }
   template<>

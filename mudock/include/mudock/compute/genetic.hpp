@@ -38,7 +38,7 @@ namespace mudock {
                    const int convergence_window_,
                    const fp_type variance_threshold_,
                    const bool autostop_,
-                   int* __restrict__ converged_ligands_,
+                   int* __restrict__ converged_ligands_b_,
                    fp_type* __restrict__ history_b_,
                    int* __restrict__ history_head_b_,
                    int* __restrict__ history_size_b_,
@@ -58,7 +58,7 @@ namespace mudock {
           convergence_window(convergence_window_),
           variance_threshold(variance_threshold_),
           autostop(autostop_),
-          converged_ligands(converged_ligands_),
+          converged_ligands_b(converged_ligands_b_),
           history_b(history_b_),
           history_head_b(history_head_b_),
           history_size_b(history_size_b_),
@@ -90,7 +90,7 @@ namespace mudock {
     int convergence_window;
     fp_type variance_threshold;  
     bool autostop;
-    int* __restrict__ converged_ligands;
+    int* __restrict__ converged_ligands_b;
     fp_type* __restrict__ history_b;
     int* __restrict__ history_head_b;
     int* __restrict__ history_size_b;
@@ -121,7 +121,8 @@ namespace mudock {
           geom_trans(_scratch, protein),
           next_population(_scratch->get_queue()),
           best_chromosomes(_scratch->get_queue()),
-          best_scores(_scratch->get_queue()) {};
+          best_scores(_scratch->get_queue()),
+          converged_ligands(_scratch->get_queue()) {};
     void prepare(batch<static_molecule>& batch) {
       const knobs& configuration   = (*this->scratch).configuration;
       batch_ligands                = batch.num_ligands;
@@ -133,7 +134,7 @@ namespace mudock {
       auto& num_rotamers_b    = (*this->scratch).template get<buffer_data_type::NUM_ROTAMERS>();
       auto& chromosomes_b     = (*this->scratch).template get<buffer_data_type::CHROMOSOMES>();
       auto& scores_b          = (*this->scratch).template get<buffer_data_type::SCORES>();
-      auto& converged_ligands = (*this->scratch).template get<buffer_data_type::CONVERGED_LIGANDS>();
+      // auto& converged_ligands = (*this->scratch).template get<buffer_data_type::CONVERGED_LIGANDS>();
       auto& history_b         = (*this->scratch).template get<buffer_data_type::HISTORY>();
       auto& history_head_b    = (*this->scratch).template get<buffer_data_type::HISTORY_HEADS>();
       auto& history_size_b    = (*this->scratch).template get<buffer_data_type::HISTORY_SIZES>();
@@ -162,9 +163,23 @@ namespace mudock {
       fp_type* __restrict__ best_scores_p         = best_scores.dev_pointer();
       chromosome* __restrict__ best_chromosomes_p = best_chromosomes.dev_pointer();
       int* __restrict__ converged_ligands_p       = converged_ligands.dev_pointer();
-      fp_type* __restrict__ history_p                 = history_b.dev_pointer();
+      fp_type* __restrict__ history_p             = history_b.dev_pointer();
       int* __restrict__ history_head_p            = history_head_b.dev_pointer();
       int* __restrict__ history_size_p            = history_size_b.dev_pointer();
+
+      // Lorenzo: Ligand properties for experiments
+      for (int index{0}; index < batch_ligands; ++index) {
+        auto& ligand = *batch.molecules[index];
+        const int num_rotamers = num_rotamers_p[index];
+        // TODO L check if this estimate is correct
+        // TODO L this is not correct: if autostop is on, it should count the actual number of generations at convergence.
+        // It would be better to have a counter at each evaluation to be sure (pay attention to race conditions)
+        const int num_evalualtions = num_generations * population_number;
+                
+        ligand.properties.assign(property_type::SEED, std::to_string(seed));
+        ligand.properties.assign(property_type::NUM_ROT, std::to_string(num_rotamers));
+        ligand.properties.assign(property_type::NUM_EVALS, std::to_string(num_evalualtions));
+      }
 
       kernel = std::make_unique<genetic_kernel<queue_t>>(batch_ligands,
                                                          population_number,
@@ -326,11 +341,13 @@ namespace mudock {
       // score_stage.teardown(batch);
   
       best_scores.copy_device2host();
+      converged_ligands.copy_device2host();
       (*this->scratch).get_queue()->synchronize();
   
       for (int index{0}; index < batch_ligands; ++index) {
         auto& ligand = *batch.molecules[index];
         ligand.properties.assign(property_type::SCORE, std::to_string(best_scores()[index]));
+        ligand.properties.assign(property_type::GEN, std::to_string(converged_ligands()[index]));
       }
     }
     
@@ -343,6 +360,7 @@ namespace mudock {
     buffer_vector<chromosome, queue_t> next_population;
     buffer_vector<chromosome, queue_t> best_chromosomes;
     buffer_vector<fp_type, queue_t> best_scores;
+    buffer_vector<int, queue_t> converged_ligands;
 
   }; // namespace mudock
 #endif
