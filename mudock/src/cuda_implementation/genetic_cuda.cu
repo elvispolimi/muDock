@@ -12,7 +12,7 @@ namespace mudock {
   static constexpr fp_type angle_step{4};
 
   template<typename T>
-  __device__ __forceinline__ const T random_gen_cuda(curandState& state, const T min, const T max) {
+  __device__ __forceinline__ const T random_gen_cuda(curandStatePhilox4_32_10_t& state, const T min, const T max) {
     fp_type value;
     if constexpr (is_debug()) {
       // TODO value here for debug
@@ -23,26 +23,26 @@ namespace mudock {
     return static_cast<T>((value * static_cast<fp_type>(max - min)) + min);
   }
 
-  __device__ __forceinline__ int get_selection_distribution(curandState& state,
+  __device__ __forceinline__ int get_selection_distribution(curandStatePhilox4_32_10_t& state,
                                                             const int* population_number) {
     return random_gen_cuda<int>(state, 0, *population_number - 1);
   };
 
-  __device__ __forceinline__ fp_type get_init_change_distribution(curandState& state) {
+  __device__ __forceinline__ fp_type get_init_change_distribution(curandStatePhilox4_32_10_t& state) {
     return random_gen_cuda<fp_type>(state, -45, 45);
   }
-  __device__ __forceinline__ fp_type get_mutation_change_distribution(curandState& state) {
+  __device__ __forceinline__ fp_type get_mutation_change_distribution(curandStatePhilox4_32_10_t& state) {
     return random_gen_cuda<fp_type>(state, -10, 10);
   };
-  __device__ __forceinline__ fp_type get_mutation_coin_distribution(curandState& state) {
+  __device__ __forceinline__ fp_type get_mutation_coin_distribution(curandStatePhilox4_32_10_t& state) {
     return random_gen_cuda<fp_type>(state, 0, 1);
   };
   // TODO check what happens if max num_rotamers is reached, read for split index could go out of bound
-  __device__ __forceinline__ int get_crossover_distribution(curandState& state, const int* num_rotamers) {
+  __device__ __forceinline__ int get_crossover_distribution(curandStatePhilox4_32_10_t& state, const int* num_rotamers) {
     return random_gen_cuda<int>(state, 0, 6 + *num_rotamers);
   };
 
-  __device__ __forceinline__ int tournament_selection_cuda(curandState& state,
+  __device__ __forceinline__ int tournament_selection_cuda(curandStatePhilox4_32_10_t& state,
                                                            const int tournament_length,
                                                            const int chromosome_number,
                                                            const fp_type* __restrict__ scores) {
@@ -60,7 +60,7 @@ namespace mudock {
   __global__ void initialize_gpu(const int chromosome_number,
                                  const int* __restrict__ ligand_num_rotamers,
                                  chromosome* __restrict__ chromosomes,
-                                 curandState* __restrict__ state,
+                                 curandStatePhilox4_32_10_t* __restrict__ state,
                                  fp_type* __restrict__ ligand_scores) {
     const int ligand_id        = blockIdx.x;
     const int local_thread_id  = threadIdx.x;
@@ -70,7 +70,7 @@ namespace mudock {
     const int num_rotamers       = ligand_num_rotamers[ligand_id];
     chromosome* l_chromosomes    = chromosomes + ligand_id * chromosome_number;
     fp_type* __restrict__ scores = ligand_scores + chromosome_number * ligand_id;
-    curandState l_state          = (state[global_thread_id]);
+    curandStatePhilox4_32_10_t l_state          = (state[global_thread_id]);
 
     // Shared memory
     // extern __shared__ fp_type shared_data[];
@@ -103,7 +103,7 @@ namespace mudock {
                               const int* __restrict__ ligand_num_rotamers,
                               chromosome* __restrict__ chromosomes,
                               chromosome* __restrict__ next_chromosomes,
-                              curandState* __restrict__ state,
+                              curandStatePhilox4_32_10_t* __restrict__ state,
                               fp_type* __restrict__ ligand_scores) {
     const int ligand_id        = blockIdx.x;
     const int local_thread_id  = threadIdx.x;
@@ -113,7 +113,7 @@ namespace mudock {
     const int num_rotamers                      = ligand_num_rotamers[ligand_id];
     chromosome* __restrict__ l_chromosomes      = chromosomes + ligand_id * chromosome_number;
     chromosome* __restrict__ l_next_chromosomes = next_chromosomes + ligand_id * chromosome_number;
-    curandState l_state                         = (state[global_thread_id]);
+    curandStatePhilox4_32_10_t l_state                         = (state[global_thread_id]);
     const fp_type* __restrict__ scores          = ligand_scores + chromosome_number * ligand_id;
 
     // Generate the new population

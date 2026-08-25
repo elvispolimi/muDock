@@ -1,0 +1,4 @@
+==PROF== Connected to process 552281 (/work/onedina/muDock_ON/build/cuda/application/muDock)
+1fkb_ligand 17.604963
+==PROF== Disconnected from process 552281
+==WARNING== No kernels were profiled.

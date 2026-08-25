@@ -1,0 +1,7 @@
+Time (%),Total Time (ns),Instances,Avg (ns),Med (ns),Min (ns),Max (ns),StdDev (ns),Name
+93.2,10354648229,1000,10354648.2,10364959.0,10255247,12043563,140409.8,"void mudock::calc_energy<(int)256>(int, int, const float *, const float *, const float *, const float *, const float *, const float *, const int *, const int *, const int *, const int *, const int *, const float *, const float *, const int *, int, int, int, const float *, const int *, float *)"
+6.2,693377925,1000,693377.9,692255.0,692190,795359,8953.7,"void mudock::apply_cuda<(int)256>(int, int, const float *, const float *, const float *, float *, float *, float *, const std::array<float, (unsigned long)516> *, const int *, const int *, const int *, const int *, const int *, const int *, const int *)"
+0.5,56550468,1000,56550.5,56640.0,51424,65280,1455.5,"mudock::iterate_gpu(int, float, int, const int *, std::array<float, (unsigned long)516> *, std::array<float, (unsigned long)516> *, curandStatePhilox4_32_10 *, float *)"
+0.0,10719,1,10719.0,10719.0,10719,10719,0.0,"mudock::initialize_gpu(int, const int *, std::array<float, (unsigned long)516> *, curandStatePhilox4_32_10 *, float *)"
+0.0,2976,1,2976.0,2976.0,2976,2976,0.0,"mudock::finalize_gpu(int, const int *, float *, float *, std::array<float, (unsigned long)516> *, std::array<float, (unsigned long)516> *)"
+0.0,2336,1,2336.0,2336.0,2336,2336,0.0,"mudock::init_curand(curandStatePhilox4_32_10 *, long, int)"
