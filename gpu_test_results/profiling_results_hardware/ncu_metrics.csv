@@ -1,0 +1,25 @@
+Backend,Kernel,Metric,Value
+Alpaka CUDA,adt_score,Achieved Occupancy (%),1.56
+Alpaka CUDA,adt_score,Memory Bandwidth (%),0.03
+Alpaka CUDA,adt_score,Registers / Thread,72.0
+Alpaka CUDA,adt_score,SM Compute Throughput (%),0.03
+Alpaka CUDA,genetic,Achieved Occupancy (%),1.56
+Alpaka CUDA,genetic,Memory Bandwidth (%),0.105
+Alpaka CUDA,genetic,Registers / Thread,46.0
+Alpaka CUDA,genetic,SM Compute Throughput (%),0.025
+Alpaka CUDA,geom_transform,Achieved Occupancy (%),1.56
+Alpaka CUDA,geom_transform,Memory Bandwidth (%),0.04
+Alpaka CUDA,geom_transform,Registers / Thread,48.0
+Alpaka CUDA,geom_transform,SM Compute Throughput (%),0.05
+CUDA Native,adt_score,Achieved Occupancy (%),1.56
+CUDA Native,adt_score,Memory Bandwidth (%),0.03
+CUDA Native,adt_score,Registers / Thread,64.0
+CUDA Native,adt_score,SM Compute Throughput (%),0.03
+CUDA Native,genetic,Achieved Occupancy (%),1.58
+CUDA Native,genetic,Memory Bandwidth (%),0.12
+CUDA Native,genetic,Registers / Thread,47.0
+CUDA Native,genetic,SM Compute Throughput (%),0.02
+CUDA Native,geom_transform,Achieved Occupancy (%),1.56
+CUDA Native,geom_transform,Memory Bandwidth (%),0.04
+CUDA Native,geom_transform,Registers / Thread,72.0
+CUDA Native,geom_transform,SM Compute Throughput (%),0.04

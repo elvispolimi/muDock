@@ -84,6 +84,7 @@ list(
   "${header_path}/${header_prefix}/tbb_implementation/runtime_services.hpp"
   "${header_path}/${header_prefix}/tbb_implementation/tbb_pipeline.hpp"
   "${header_path}/${header_prefix}/batch.hpp"
+  "${header_path}/${header_prefix}/alpaka_implementation.hpp"
   "${header_path}/${header_prefix}/chem.hpp"
   "${header_path}/${header_prefix}/compute.hpp"
   "${header_path}/${header_prefix}/format.hpp"
@@ -98,6 +99,7 @@ list(
 
 # sources
 set(source_path "${CMAKE_CURRENT_SOURCE_DIR}/src")
+set(tbb_pipeline_source "${source_path}/tbb_implementation/tbb_pipeline.cpp")
 list(
   APPEND
   source_files
@@ -248,6 +250,41 @@ if(MUDOCK_ENABLE_SYCL)
   )
 endif()
 
+if(MUDOCK_ENABLE_ALPAKA)
+  set(alpaka_adt_score_source
+      "${source_path}/alpaka_implementation/adt_score_alpaka.cpp")
+  set(alpaka_genetic_source
+      "${source_path}/alpaka_implementation/genetic_alpaka.cpp")
+  set(alpaka_geom_transform_source
+      "${source_path}/alpaka_implementation/geom_transform_alpaka.cpp")
+  set(alpaka_queue_source
+      "${source_path}/alpaka_implementation/queue_alpaka.cpp")
+  set(alpaka_random_source
+      "${source_path}/alpaka_implementation/alpaka_random.cpp")
+  list(
+    APPEND
+    header_files
+    "${header_path}/${header_prefix}/alpaka_implementation/adt_score_alpaka.hpp"
+    "${header_path}/${header_prefix}/alpaka_implementation/alpaka_implementation.hpp"
+    "${header_path}/${header_prefix}/alpaka_implementation/alpaka_random.hpp"
+    "${header_path}/${header_prefix}/alpaka_implementation/alpaka_types.hpp"
+    "${header_path}/${header_prefix}/alpaka_implementation/genetic_alpaka.hpp"
+    "${header_path}/${header_prefix}/alpaka_implementation/geom_transform_alpaka.hpp"
+    "${header_path}/${header_prefix}/alpaka_implementation/invoke_kernel_alpaka.hpp"
+    "${header_path}/${header_prefix}/alpaka_implementation/mutate_alpaka.hpp"
+    "${header_path}/${header_prefix}/alpaka_implementation/queue_alpaka.hpp"
+    )
+  list(
+    APPEND
+    source_files
+    "${alpaka_adt_score_source}"
+    "${alpaka_genetic_source}"
+    "${alpaka_geom_transform_source}"
+    "${alpaka_queue_source}"
+    "${alpaka_random_source}"
+  )
+endif()
+
 # declare the OpenMP sources
 if(MUDOCK_ENABLE_OMP_OFFLOAD)
   list(
@@ -283,6 +320,22 @@ endif()
 find_package(TBB REQUIRED)
 add_library(libmudock STATIC ${source_files} ${header_files})
 add_library(mudock::libmudock ALIAS libmudock)
+if(MUDOCK_ENABLE_ALPAKA)
+  if(MUDOCK_ALPAKA_BACKEND STREQUAL "cuda" AND CMAKE_CUDA_COMPILER)
+    set_source_files_properties("${alpaka_adt_score_source}" PROPERTIES LANGUAGE CUDA)
+    set_source_files_properties("${alpaka_genetic_source}" PROPERTIES LANGUAGE CUDA)
+    set_source_files_properties("${alpaka_geom_transform_source}" PROPERTIES LANGUAGE CUDA)
+    set_source_files_properties("${alpaka_queue_source}" PROPERTIES LANGUAGE CUDA)
+    set_source_files_properties("${tbb_pipeline_source}" PROPERTIES LANGUAGE CUDA)
+    set_source_files_properties("${alpaka_random_source}" PROPERTIES LANGUAGE CUDA)
+  elseif(MUDOCK_ALPAKA_BACKEND STREQUAL "hip" AND CMAKE_HIP_COMPILER)
+    set_source_files_properties("${alpaka_adt_score_source}" PROPERTIES LANGUAGE HIP)
+    set_source_files_properties("${alpaka_genetic_source}" PROPERTIES LANGUAGE HIP)
+    set_source_files_properties("${alpaka_geom_transform_source}" PROPERTIES LANGUAGE HIP)
+    set_source_files_properties("${alpaka_queue_source}" PROPERTIES LANGUAGE HIP)
+    set_source_files_properties("${tbb_pipeline_source}" PROPERTIES LANGUAGE HIP)
+  endif()
+endif()
 set_target_properties(libmudock PROPERTIES PUBLIC_HEADER "${headers}")
 target_include_directories(libmudock PUBLIC "${header_path}")
 target_include_directories(libmudock SYSTEM PUBLIC ${OpenBabel3_INCLUDE_DIRS})
@@ -293,7 +346,22 @@ set_target_properties(
              CXX_STANDARD_REQUIRED ON
              CXX_EXTENSIONS OFF
              POSITION_INDEPENDENT_CODE ON)
-target_link_libraries(libmudock PUBLIC Boost::graph ${OpenBabel3_LIBRARIES} TBB::tbb)
+if(CMAKE_CUDA_COMPILER)
+  set_target_properties(
+    libmudock
+    PROPERTIES CUDA_STANDARD 20
+               CUDA_STANDARD_REQUIRED ON
+               CUDA_EXTENSIONS OFF)
+endif()
+if(CMAKE_HIP_COMPILER)
+  set_target_properties(
+    libmudock
+    PROPERTIES HIP_STANDARD 20
+               HIP_STANDARD_REQUIRED ON)
+endif()
+target_link_libraries(libmudock PUBLIC Boost::graph
+                                       ${OpenBabel3_LIBRARIES} TBB::tbb)
+target_include_directories(libmudock SYSTEM PRIVATE ${Boost_INCLUDE_DIR})
 if(NOT MUDOCK_ENABLE_OMP)
   target_compile_options(libmudock PRIVATE -Wno-unknown-pragmas)
 endif()
@@ -330,6 +398,11 @@ elseif(MUDOCK_GENETIC_BUCKET_COMBINE STREQUAL "LCM")
   target_compile_definitions(libmudock PUBLIC MUDOCK_GENETIC_BUCKET_COMBINE_LCM)
 elseif(NOT MUDOCK_GENETIC_BUCKET_COMBINE STREQUAL "MIN")
   message(FATAL_ERROR "MUDOCK_GENETIC_BUCKET_COMBINE must be one of: MIN, SCORE_ONLY, GEOM_ONLY, LCM")
+endif()
+if(MUDOCK_STAGE_BUCKET_POLICY STREQUAL "MAX_UTILIZATION")
+  target_compile_definitions(libmudock PUBLIC MUDOCK_STAGE_BUCKET_POLICY_MAX_UTILIZATION)
+elseif(MUDOCK_STAGE_BUCKET_POLICY STREQUAL "SM_ALIGNED")
+  target_compile_definitions(libmudock PUBLIC MUDOCK_STAGE_BUCKET_POLICY_SM_ALIGNED)
 endif()
 if(NOT MUDOCK_UNROLL_FACTOR STREQUAL "")
   target_compile_definitions(libmudock PUBLIC MUDOCK_UNROLL_FACTOR=${MUDOCK_UNROLL_FACTOR})
@@ -430,6 +503,9 @@ endif()
 # check if we need to activate the compilation flag that signals CUDA
 if(MUDOCK_ENABLE_CUDA)
   target_compile_definitions(libmudock PUBLIC MUDOCK_USE_CUDA)
+endif()
+
+if(MUDOCK_ENABLE_CUDA_LANGUAGE)
   if(CMAKE_BUILD_TYPE STREQUAL "Release")
     # CUDA_SEPARABLE_COMPILATION ON required for constant memory to be shared
     # across translation unit
@@ -508,6 +584,26 @@ if(MUDOCK_ENABLE_SYCL)
   add_dependencies(libmudock sycl_targets)
   target_link_directories(libmudock PUBLIC "${LLVM_LIBRARY_DIRS}")
   target_link_libraries(libmudock PRIVATE sycl)
+endif()
+
+if(MUDOCK_ENABLE_ALPAKA)
+  target_compile_definitions(libmudock PUBLIC MUDOCK_USE_ALPAKA)
+  if(MUDOCK_ALPAKA_BACKEND STREQUAL "serial")
+    target_compile_definitions(libmudock PUBLIC MUDOCK_ALPAKA_BACKEND_SERIAL MUDOCK_ALPAKA_BLOCK_SIZE=1)
+  elseif(MUDOCK_ALPAKA_BACKEND STREQUAL "threads")
+    target_compile_definitions(libmudock PUBLIC MUDOCK_ALPAKA_BACKEND_THREADS MUDOCK_ALPAKA_BLOCK_SIZE=1)
+  elseif(MUDOCK_ALPAKA_BACKEND STREQUAL "tbb")
+    target_compile_definitions(libmudock PUBLIC MUDOCK_ALPAKA_BACKEND_TBB MUDOCK_ALPAKA_BLOCK_SIZE=1)
+  elseif(MUDOCK_ALPAKA_BACKEND STREQUAL "omp2")
+    target_compile_definitions(libmudock PUBLIC MUDOCK_ALPAKA_BACKEND_OMP2 MUDOCK_ALPAKA_BLOCK_SIZE=1)
+  elseif(MUDOCK_ALPAKA_BACKEND STREQUAL "cuda")
+    target_compile_definitions(libmudock PUBLIC MUDOCK_ALPAKA_BACKEND_CUDA MUDOCK_ALPAKA_BLOCK_SIZE=32)
+  elseif(MUDOCK_ALPAKA_BACKEND STREQUAL "hip")
+    target_compile_definitions(libmudock PUBLIC MUDOCK_ALPAKA_BACKEND_HIP MUDOCK_ALPAKA_BLOCK_SIZE=32)
+  elseif(MUDOCK_ALPAKA_BACKEND STREQUAL "sycl")
+    target_compile_definitions(libmudock PUBLIC MUDOCK_ALPAKA_BACKEND_SYCL MUDOCK_ALPAKA_BLOCK_SIZE=32)
+  endif()
+  target_link_libraries(libmudock PUBLIC alpaka::alpaka)
 endif()
 
 if(MUDOCK_ENABLE_OMP)

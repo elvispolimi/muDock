@@ -3,7 +3,7 @@
 #include <mudock/cuda_implementation/cuda_utils.cuh>
 
 namespace mudock {
-  __global__ void init_curand(curandState *state, const long seed, const int num_elements) {
+  __global__ void init_curand(curandStatePhilox4_32_10_t *state, const long seed, const int num_elements) {
     const int id     = threadIdx.x + blockIdx.x * blockDim.x;
     const int stride = gridDim.x * blockDim.x;
     for (int index = id; index < num_elements; index += stride) {
