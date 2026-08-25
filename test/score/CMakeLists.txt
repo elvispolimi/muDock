@@ -19,6 +19,37 @@ function(add_adt_tests dir)
 endfunction()
 add_adt_tests("${CMAKE_SOURCE_DIR}/data")
 
+# X-Score tests: compare muDock's four ported terms and the affinity they predict against
+# values from the original XScore v1.3 (see script/gen_xscore_reference.sh).
+#
+# Called on two directories.
+# `data` (AutoDock tests, which contain extra files).
+# `data_xscore` added purely for X-Score coverage (no need for extra test files, would fail if run on AutoDock's tests).
+# A complex without a <name>_xscore.ref is reported as skipped, not failed.
+function(add_x_score_tests dir)
+  file(
+    GLOB directories
+    LIST_DIRECTORIES true
+    ${dir}/*)
+
+  foreach(subdir ${directories})
+    if(IS_DIRECTORY ${subdir})
+      get_filename_component(subdir_name ${subdir} NAME)
+      add_test(
+        NAME test_score_x_${subdir_name}
+        COMMAND
+          test_score_x -p ${subdir}/${subdir_name}_protein.pdb -l
+          ${subdir}/${subdir_name}_ligand.mol2 -r
+          ${subdir}/${subdir_name}_xscore.ref)
+      set_tests_properties(test_score_x_${subdir_name}
+                           PROPERTIES SKIP_RETURN_CODE ${MUDOCK_CTEST_SKIP_RETURN_CODE})
+    endif()
+  endforeach()
+endfunction()
+
+add_x_score_tests("${CMAKE_SOURCE_DIR}/data")
+add_x_score_tests("${CMAKE_SOURCE_DIR}/data_xscore")
+
 function(add_tests dir backend device id)
   # List all subdirectories in the given directory
   file(
