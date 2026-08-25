@@ -1,0 +1,2 @@
+cmake -S . -B ./build -DCMAKE_INSTALL_PREFIX=./install -DCMAKE_BUILD_TYPE=Debug -DMUDOCK_ENABLE_TEST=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+cmake --build ./build

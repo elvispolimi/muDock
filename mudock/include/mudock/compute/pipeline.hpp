@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <memory>
 #include <mudock/compute/adt_score.hpp>
+#include <mudock/compute/x_score.hpp>
 #include <mudock/compute/algorithm.hpp>
 #include <mudock/compute/bucket_size.hpp>
 #include <mudock/compute/genetic.hpp>
@@ -73,9 +74,36 @@ namespace mudock {
     }
   };
 
+  struct x_score_pipeline: pipeline {
+    using pipeline::pipeline;
+
+    template<typename queue_type>
+    x_score<queue_type> get_pipeline(const knobs& conf,
+                                     const int id,
+                                     const device_type dev_type,
+                                     std::shared_ptr<scratchpad<queue_type>> device_scratch) {
+      return mudock::x_score<queue_type>(
+          std::make_shared<mudock::scratchpad<queue_type>>(conf, id, dev_type),
+          device_scratch,
+          *protein);
+    }
+
+    template<typename queue_type>
+    static int get_batch_size(const int atoms,
+                              std::shared_ptr<queue_type> q,
+                              const knobs& conf,
+                              const size_t max_mem = 1000000000) {
+      const size_t mem_per_ligand =
+          static_cast<size_t>(mudock::x_score<queue_type>::get_ligand_mem(atoms, conf));
+      const size_t max_bucket_size = std::max<size_t>(1, max_mem / mem_per_ligand);
+      return get_x_score_batch<queue_type>(atoms, q, max_bucket_size);
+    }
+  };
+
   template<template<typename> typename scoring_t>
   struct genetic_scoring_pipeline: pipeline {
     using pipeline::pipeline;
+
 
     template<typename queue_type>
     genetic<queue_type, scoring_t> get_pipeline(const knobs& conf,

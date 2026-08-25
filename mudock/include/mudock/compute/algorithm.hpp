@@ -5,7 +5,7 @@
 namespace mudock {
 
   enum class search_algorithm : int { NONE = 0, GENETIC };
-  enum class scoring_function : int { ADT = 0 };
+  enum class scoring_function : int { ADT = 0, XSCORE = 1};
 
   struct search_algorithm_description {
     search_algorithm value;
@@ -20,8 +20,8 @@ namespace mudock {
   inline constexpr std::array<search_algorithm_description, 2> SEARCH_ALGORITHM_DICT = {
       {{search_algorithm::NONE, "none"}, {search_algorithm::GENETIC, "genetic"}}};
 
-  inline constexpr std::array<scoring_function_description, 1> SCORING_FUNCTION_DICT = {
-      {{scoring_function::ADT, "adt"}}};
+  inline constexpr std::array<scoring_function_description, 2> SCORING_FUNCTION_DICT = {
+      {{scoring_function::ADT, "adt"}, {scoring_function::XSCORE, "xscore"}}};
 
   [[nodiscard]] search_algorithm parse_search_algorithm(std::string_view token);
   [[nodiscard]] scoring_function parse_scoring_function(std::string_view token);

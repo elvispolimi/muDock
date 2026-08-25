@@ -102,10 +102,16 @@ cmake --build /path/to/muDock/build
 
 ## Running
 
-Main application:
+Main application (default uses AutoDock 4.0 scoring and Genetic Algorithm search):
 
 ```bash
 ./build/application/muDock --protein /path/to/protein.pdb --ligand /path/to/ligands.mol2 --use CPP:CPU:0
+```
+
+To use the X-Score scoring function instead (supported for scoring only, no search):
+
+```bash
+./build/application/muDock --protein /path/to/protein.pdb --ligand /path/to/ligands.mol2 --use CPP:CPU:0 --search none --score xscore
 ```
 
 The `--use` flag maps implementations to devices using:

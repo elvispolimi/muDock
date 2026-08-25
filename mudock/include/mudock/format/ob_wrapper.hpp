@@ -2,6 +2,8 @@
 
 #include <mudock/chem/autodock_parameters.hpp>
 #include <mudock/chem/autodock_types.hpp>
+#include <mudock/chem/residue.hpp>
+#include <mudock/chem/x_score_xtool_types.hpp>
 #include <mudock/chem/residue_types.hpp>
 #include <mudock/chem/sybyl_atom_types.hpp>
 #include <mudock/format/ob_helper.hpp>
@@ -14,6 +16,7 @@
 #include <openbabel/mol.h>
 #include <openbabel/obconversion.h>
 #include <openbabel/oberror.h>
+#include <openbabel/residue.h>
 
 namespace mudock {
 
@@ -114,6 +117,22 @@ namespace mudock {
       dest.charge(mudock_atom_index)      = static_cast<fp_type>(atom->GetPartialCharge());
       dest.is_aromatic(mudock_atom_index) = atom->IsAromatic();
       // }
+
+			// parsing residue for proteins
+      if constexpr (std::same_as<std::remove_cvref_t<molecule_type>, dynamic_molecule>) {
+        if (OpenBabel::OBResidue* ob_res = atom->GetResidue()) {
+          std::string res_name = ob_res->GetName();
+          std::string atom_name = ob_res->GetAtomID(atom);
+          dest.residue_types(mudock_atom_index) = parse_residue_name(res_name);
+          // remove spaces from atom name, e.g. " CA " -> "CA"
+          atom_name.erase(std::remove(atom_name.begin(), atom_name.end(), ' '), atom_name.end());
+          dest.atom_name(mudock_atom_index) = atom_name;
+        } else {
+          dest.residue_types(mudock_atom_index) = residue::UNKNOWN;
+          dest.atom_name(mudock_atom_index) = "UNKNOWN";
+        }
+      }
+
       index_translator.emplace(atom_id, mudock_atom_index);
       ++mudock_atom_index;
       max_atom_index = std::max(max_atom_index, atom_id);

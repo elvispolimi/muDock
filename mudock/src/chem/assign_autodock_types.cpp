@@ -224,6 +224,7 @@ namespace mudock {
         default: throw std::runtime_error("Unknown element, internal error");
       };
     };
+    
     const auto [vertex_begin, vertex_end] = boost::vertices(graph);
     for (auto it = vertex_begin; it != vertex_end; ++it) {
       types[graph[*it].atom_index] = elements2autodock(*it);

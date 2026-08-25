@@ -25,6 +25,8 @@ include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/mudock.cmake")
 # ##############################################################################
 # ### Define the compile options
 # ##############################################################################
+# add the flag -g for IDE debugging
+add_compile_options(-g) #-O0 to be tested but takes a lot of time
 # Accelerator
 set(MUDOCK_GPU_ARCHITECTURES
     "none"

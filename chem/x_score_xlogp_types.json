@@ -1,0 +1,677 @@
+{
+  "ff_type": 
+  [
+    {
+        "value": "C_3_h3_pi_eq_0",
+        "name": "C_3_h3_pi_eq_0",
+        "hbond": "H",
+        "hydrophobic_scale": "0.528"
+    },
+    {
+        "value": "C_3_h3_pi_eq_1",
+        "name": "C_3_h3_pi_eq_1",
+        "hbond": "H",
+        "hydrophobic_scale": "0.267"
+    },
+    {
+        "value": "C_3_h3_x",
+        "name": "C_3_h3_x",
+        "hbond": "P",
+        "hydrophobic_scale": "-0.032"
+    },
+    {
+        "value": "C_3_h2_pi_eq_0",
+        "name": "C_3_h2_pi_eq_0",
+        "hbond": "H",
+        "hydrophobic_scale": "0.358"
+    },
+    {
+        "value": "C_3_h2_pi_eq_1",
+        "name": "C_3_h2_pi_eq_1",
+        "hbond": "H",
+        "hydrophobic_scale": "-0.008"
+    },
+    {
+        "value": "C_3_h2_pi_eq_2",
+        "name": "C_3_h2_pi_eq_2",
+        "hbond": "P",
+        "hydrophobic_scale": "-0.185"
+    },
+    {
+        "value": "C_3_h2_x_pi_eq_0",
+        "name": "C_3_h2_x_pi_eq_0",
+        "hbond": "P",
+        "hydrophobic_scale": "-0.137"
+    },
+    {
+        "value": "C_3_h2_x_pi_eq_1",
+        "name": "C_3_h2_x_pi_eq_1",
+        "hbond": "P",
+        "hydrophobic_scale": "-0.303"
+    },
+    {
+        "value": "C_3_h2_x_pi_eq_2",
+        "name": "C_3_h2_x_pi_eq_2",
+        "hbond": "P",
+        "hydrophobic_scale": "-0.815"
+    },
+    {
+        "value": "C_3_h_pi_eq_0",
+        "name": "C_3_h_pi_eq_0",
+        "hbond": "H",
+        "hydrophobic_scale": "0.127"
+    },
+    {
+        "value": "C_3_h_pi_eq_1",
+        "name": "C_3_h_pi_eq_1",
+        "hbond": "H",
+        "hydrophobic_scale": "-0.243"
+    },
+    {
+        "value": "C_3_h_pi_gt_1",
+        "name": "C_3_h_pi_gt_1",
+        "hbond": "P",
+        "hydrophobic_scale": "-0.499"
+    },
+    {
+        "value": "C_3_h_x_pi_eq_0",
+        "name": "C_3_h_x_pi_eq_0",
+        "hbond": "P",
+        "hydrophobic_scale": "-0.205"
+    },
+    {
+        "value": "C_3_h_x_pi_eq_1",
+        "name": "C_3_h_x_pi_eq_1",
+        "hbond": "P",
+        "hydrophobic_scale": "-0.305"
+    },
+    {
+        "value": "C_3_h_x_pi_gt_1",
+        "name": "C_3_h_x_pi_gt_1",
+        "hbond": "P",
+        "hydrophobic_scale": "-0.709"
+    },
+    {
+        "value": "C_3_pi_eq_0",
+        "name": "C_3_pi_eq_0",
+        "hbond": "H",
+        "hydrophobic_scale": "-0.006"
+    },
+    {
+        "value": "C_3_pi_eq_1",
+        "name": "C_3_pi_eq_1",
+        "hbond": "H",
+        "hydrophobic_scale": "-0.570"
+    },
+    {
+        "value": "C_3_pi_gt_1",
+        "name": "C_3_pi_gt_1",
+        "hbond": "P",
+        "hydrophobic_scale": "-0.317"
+    },
+    {
+        "value": "C_3_x_pi_eq_0",
+        "name": "C_3_x_pi_eq_0",
+        "hbond": "P",
+        "hydrophobic_scale": "-0.316"
+    },
+    {
+        "value": "C_3_x_pi_gt_0",
+        "name": "C_3_x_pi_gt_0",
+        "hbond": "P",
+        "hydrophobic_scale": "-0.723"
+    },
+    {
+        "value": "C_3_unknown",
+        "name": "C_3_unknown",
+        "hbond": "P",
+        "hydrophobic_scale": "0.528"
+    },
+    {
+        "value": "C_2_h2",
+        "name": "C_2_h2",
+        "hbond": "H",
+        "hydrophobic_scale": "0.420"
+    },
+    {
+        "value": "C_2_h_pi_eq_0",
+        "name": "C_2_h_pi_eq_0",
+        "hbond": "H",
+        "hydrophobic_scale": "0.466"
+    },
+    {
+        "value": "C_2_h_pi_eq_1",
+        "name": "C_2_h_pi_eq_1",
+        "hbond": "H",
+        "hydrophobic_scale": "0.136"
+    },
+    {
+        "value": "C_2_h_x_pi_eq_0",
+        "name": "C_2_h_x_pi_eq_0",
+        "hbond": "P",
+        "hydrophobic_scale": "0.001"
+    },
+    {
+        "value": "C_2_h_x_pi_eq_1",
+        "name": "C_2_h_x_pi_eq_1",
+        "hbond": "P",
+        "hydrophobic_scale": "-0.310"
+    },
+    {
+        "value": "C_2_pi_eq_0",
+        "name": "C_2_pi_eq_0",
+        "hbond": "H",
+        "hydrophobic_scale": "0.050"
+    },
+    {
+        "value": "C_2_pi_gt_0",
+        "name": "C_2_pi_gt_0",
+        "hbond": "H",
+        "hydrophobic_scale": "0.013"
+    },
+    {
+        "value": "C_2_x_pi_eq_0",
+        "name": "C_2_x_pi_eq_0",
+        "hbond": "P",
+        "hydrophobic_scale": "-0.030"
+    },
+    {
+        "value": "C_2_x_pi_gt_0",
+        "name": "C_2_x_pi_gt_0",
+        "hbond": "P",
+        "hydrophobic_scale": "-0.027"
+    },
+    {
+        "value": "C_2_x2_pi_eq_0",
+        "name": "C_2_x2_pi_eq_0",
+        "hbond": "P",
+        "hydrophobic_scale": "0.005"
+    },
+    {
+        "value": "C_2_x2_pi_gt_0",
+        "name": "C_2_x2_pi_gt_0",
+        "hbond": "P",
+        "hydrophobic_scale": "-0.315"
+    },
+    {
+        "value": "C_2_unknown",
+        "name": "C_2_unknown",
+        "hbond": "P",
+        "hydrophobic_scale": "0.050"
+    },
+    {
+        "value": "C_ar_h",
+        "name": "C_ar_h",
+        "hbond": "H",
+        "hydrophobic_scale": "0.337"
+    },
+    {
+        "value": "C_ar_h_X",
+        "name": "C_ar_h_X",
+        "hbond": "H",
+        "hydrophobic_scale": "0.126"
+    },
+    {
+        "value": "C_ar",
+        "name": "C_ar",
+        "hbond": "H",
+        "hydrophobic_scale": "0.296"
+    },
+    {
+        "value": "C_ar_x",
+        "name": "C_ar_x",
+        "hbond": "P",
+        "hydrophobic_scale": "-0.151"
+    },
+    {
+        "value": "C_ar_X",
+        "name": "C_ar_X",
+        "hbond": "H",
+        "hydrophobic_scale": "0.174"
+    },
+    {
+        "value": "C_ar_X_x",
+        "name": "C_ar_X_x",
+        "hbond": "H",
+        "hydrophobic_scale": "0.366"
+    },
+    {
+        "value": "C_ar_unknown",
+        "name": "C_ar_unknown",
+        "hbond": "P",
+        "hydrophobic_scale": "0.296"
+    },
+    {
+        "value": "C_1_h",
+        "name": "C_1_h",
+        "hbond": "H",
+        "hydrophobic_scale": "0.209"
+    },
+    {
+        "value": "C_1",
+        "name": "C_1",
+        "hbond": "H",
+        "hydrophobic_scale": "0.330"
+    },
+    {
+        "value": "C_1_eq_eq",
+        "name": "C_1_eq_eq",
+        "hbond": "H",
+        "hydrophobic_scale": "2.073"
+    },
+    {
+        "value": "C_1_unknown",
+        "name": "C_1_unknown",
+        "hbond": "H",
+        "hydrophobic_scale": "0.330"
+    },
+    {
+        "value": "C_cat",
+        "name": "C_cat",
+        "hbond": "P",
+        "hydrophobic_scale": "-0.315"
+    },
+    {
+        "value": "N_3_h2_pi_eq_0",
+        "name": "N_3_h2_pi_eq_0",
+        "hbond": "D",
+        "hydrophobic_scale": "-0.534"
+    },
+    {
+        "value": "N_3_h2_pi_eq_1",
+        "name": "N_3_h2_pi_eq_1",
+        "hbond": "D",
+        "hydrophobic_scale": "-0.329"
+    },
+    {
+        "value": "N_3_h2_x",
+        "name": "N_3_h2_x",
+        "hbond": "D",
+        "hydrophobic_scale": "-1.082"
+    },
+    {
+        "value": "N_3_h_pi_eq_0",
+        "name": "N_3_h_pi_eq_0",
+        "hbond": "D",
+        "hydrophobic_scale": "-0.112"
+    },
+    {
+        "value": "N_3_h_pi_gt_0",
+        "name": "N_3_h_pi_gt_0",
+        "hbond": "D",
+        "hydrophobic_scale": "0.166"
+    },
+    {
+        "value": "N_3_h_ring",
+        "name": "N_3_h_ring",
+        "hbond": "D",
+        "hydrophobic_scale": "0.545"
+    },
+    {
+        "value": "N_3_h_x",
+        "name": "N_3_h_x",
+        "hbond": "D",
+        "hydrophobic_scale": "0.324"
+    },
+    {
+        "value": "N_3_h_x_ring",
+        "name": "N_3_h_x_ring",
+        "hbond": "D",
+        "hydrophobic_scale": "0.153"
+    },
+    {
+        "value": "N_3_pi_eq_0",
+        "name": "N_3_pi_eq_0",
+        "hbond": "P",
+        "hydrophobic_scale": "0.159"
+    },
+    {
+        "value": "N_3_pi_gt_0",
+        "name": "N_3_pi_gt_0",
+        "hbond": "P",
+        "hydrophobic_scale": "0.761"
+    },
+    {
+        "value": "N_3_ring",
+        "name": "N_3_ring",
+        "hbond": "P",
+        "hydrophobic_scale": "0.881"
+    },
+    {
+        "value": "N_3_x",
+        "name": "N_3_x",
+        "hbond": "P",
+        "hydrophobic_scale": "-0.239"
+    },
+    {
+        "value": "N_3_x_ring",
+        "name": "N_3_x_ring",
+        "hbond": "P",
+        "hydrophobic_scale": "-0.010"
+    },
+    {
+        "value": "N_3_unknown",
+        "name": "N_3_unknown",
+        "hbond": "P",
+        "hydrophobic_scale": "0.159"
+    },
+    {
+        "value": "N_am_h2",
+        "name": "N_am_h2",
+        "hbond": "D",
+        "hydrophobic_scale": "-0.646"
+    },
+    {
+        "value": "N_am_h",
+        "name": "N_am_h",
+        "hbond": "D",
+        "hydrophobic_scale": "-0.096"
+    },
+    {
+        "value": "N_am_h_x",
+        "name": "N_am_h_x",
+        "hbond": "D",
+        "hydrophobic_scale": "-0.044"
+    },
+    {
+        "value": "N_am",
+        "name": "N_am",
+        "hbond": "P",
+        "hydrophobic_scale": "0.078"
+    },
+    {
+        "value": "N_am_x",
+        "name": "N_am_x",
+        "hbond": "P",
+        "hydrophobic_scale": "-0.118"
+    },
+    {
+        "value": "N_am_unknown",
+        "name": "N_am_unknown",
+        "hbond": "P",
+        "hydrophobic_scale": "0.078"
+    },
+    {
+        "value": "N_2_eq_C_pi_eq_0",
+        "name": "N_2_eq_C_pi_eq_0",
+        "hbond": "A",
+        "hydrophobic_scale": "0.007"
+    },
+    {
+        "value": "N_2_eq_C_pi_eq_1",
+        "name": "N_2_eq_C_pi_eq_1",
+        "hbond": "A",
+        "hydrophobic_scale": "-0.275"
+    },
+    {
+        "value": "N_2_eq_C_x_pi_eq_0",
+        "name": "N_2_eq_C_x_pi_eq_0",
+        "hbond": "A",
+        "hydrophobic_scale": "0.366"
+    },
+    {
+        "value": "N_2_eq_C_x_pi_eq_1",
+        "name": "N_2_eq_C_x_pi_eq_1",
+        "hbond": "A",
+        "hydrophobic_scale": "0.251"
+    },
+    {
+        "value": "N_2_eq_N",
+        "name": "N_2_eq_N",
+        "hbond": "A",
+        "hydrophobic_scale": "0.536"
+    },
+    {
+        "value": "N_2_eq_N_x",
+        "name": "N_2_eq_N_x",
+        "hbond": "A",
+        "hydrophobic_scale": "-0.597"
+    },
+    {
+        "value": "N_2_o",
+        "name": "N_2_o",
+        "hbond": "P",
+        "hydrophobic_scale": "0.427"
+    },
+    {
+        "value": "N_2_o2",
+        "name": "N_2_o2",
+        "hbond": "P",
+        "hydrophobic_scale": "1.178"
+    },
+    {
+        "value": "N_2_unknown",
+        "name": "N_2_unknown",
+        "hbond": "P",
+        "hydrophobic_scale": "0.007"
+    },
+    {
+        "value": "N_ar",
+        "name": "N_ar",
+        "hbond": "A",
+        "hydrophobic_scale": "-0.493"
+    },
+    {
+        "value": "N_1",
+        "name": "N_1",
+        "hbond": "A",
+        "hydrophobic_scale": "-0.566"
+    },
+    {
+        "value": "N_4",
+        "name": "N_4",
+        "hbond": "D",
+        "hydrophobic_scale": "-0.534"
+    },
+    {
+        "value": "O_3_h_pi_eq_0",
+        "name": "O_3_h_pi_eq_0",
+        "hbond": "DA",
+        "hydrophobic_scale": "-0.467"
+    },
+    {
+        "value": "O_3_h_pi_eq_1",
+        "name": "O_3_h_pi_eq_1",
+        "hbond": "DA",
+        "hydrophobic_scale": "0.082"
+    },
+    {
+        "value": "O_3_h_x",
+        "name": "O_3_h_x",
+        "hbond": "DA",
+        "hydrophobic_scale": "-0.522"
+    },
+    {
+        "value": "O_3_pi_eq_0",
+        "name": "O_3_pi_eq_0",
+        "hbond": "A",
+        "hydrophobic_scale": "0.084"
+    },
+    {
+        "value": "O_3_pi_gt_0",
+        "name": "O_3_pi_gt_0",
+        "hbond": "A",
+        "hydrophobic_scale": "0.435"
+    },
+    {
+        "value": "O_3_x",
+        "name": "O_3_x",
+        "hbond": "A",
+        "hydrophobic_scale": "0.105"
+    },
+    {
+        "value": "O_3_unknown",
+        "name": "O_3_unknown",
+        "hbond": "P",
+        "hydrophobic_scale": "0.084"
+    },
+    {
+        "value": "O_2",
+        "name": "O_2",
+        "hbond": "A",
+        "hydrophobic_scale": "-0.399"
+    },
+    {
+        "value": "O_co2",
+        "name": "O_co2",
+        "hbond": "DA",
+        "hydrophobic_scale": "-0.399"
+    },
+    {
+        "value": "S_3_h",
+        "name": "S_3_h",
+        "hbond": "H",
+        "hydrophobic_scale": "0.419"
+    },
+    {
+        "value": "S_3",
+        "name": "S_3",
+        "hbond": "H",
+        "hydrophobic_scale": "0.255"
+    },
+    {
+        "value": "S_3_unknown",
+        "name": "S_3_unknown",
+        "hbond": "H",
+        "hydrophobic_scale": "0.255"
+    },
+    {
+        "value": "S_2",
+        "name": "S_2",
+        "hbond": "P",
+        "hydrophobic_scale": "-0.148"
+    },
+    {
+        "value": "S_o",
+        "name": "S_o",
+        "hbond": "P",
+        "hydrophobic_scale": "-1.375"
+    },
+    {
+        "value": "S_o2",
+        "name": "S_o2",
+        "hbond": "P",
+        "hydrophobic_scale": "-0.168"
+    },
+    {
+        "value": "P_3_eq_O",
+        "name": "P_3_eq_O",
+        "hbond": "P",
+        "hydrophobic_scale": "-0.447"
+    },
+    {
+        "value": "P_3_eq_S",
+        "name": "P_3_eq_S",
+        "hbond": "P",
+        "hydrophobic_scale": "1.253"
+    },
+    {
+        "value": "P_3_unknown",
+        "name": "P_3_unknown",
+        "hbond": "P",
+        "hydrophobic_scale": "-0.447"
+    },
+    {
+        "value": "F_pi_eq_0",
+        "name": "F_pi_eq_0",
+        "hbond": "H",
+        "hydrophobic_scale": "0.375"
+    },
+    {
+        "value": "F_pi_eq_1",
+        "name": "F_pi_eq_1",
+        "hbond": "H",
+        "hydrophobic_scale": "0.202"
+    },
+    {
+        "value": "F_unknown",
+        "name": "F_unknown",
+        "hbond": "H",
+        "hydrophobic_scale": "0.375"
+    },
+    {
+        "value": "Cl_pi_eq_0",
+        "name": "Cl_pi_eq_0",
+        "hbond": "H",
+        "hydrophobic_scale": "0.512"
+    },
+    {
+        "value": "Cl_pi_eq_1",
+        "name": "Cl_pi_eq_1",
+        "hbond": "H",
+        "hydrophobic_scale": "0.663"
+    },
+    {
+        "value": "Cl_unknown",
+        "name": "Cl_unknown",
+        "hbond": "H",
+        "hydrophobic_scale": "0.512"
+    },
+    {
+        "value": "Br_pi_eq_0",
+        "name": "Br_pi_eq_0",
+        "hbond": "H",
+        "hydrophobic_scale": "0.850"
+    },
+    {
+        "value": "Br_pi_eq_1",
+        "name": "Br_pi_eq_1",
+        "hbond": "H",
+        "hydrophobic_scale": "0.839"
+    },
+    {
+        "value": "Br_unknown",
+        "name": "Br_unknown",
+        "hbond": "H",
+        "hydrophobic_scale": "0.850"
+    },
+    {
+        "value": "I_pi_eq_0",
+        "name": "I_pi_eq_0",
+        "hbond": "H",
+        "hydrophobic_scale": "1.050"
+    },
+    {
+        "value": "I_pi_eq_1",
+        "name": "I_pi_eq_1",
+        "hbond": "H",
+        "hydrophobic_scale": "1.109"
+    },
+    {
+        "value": "I_unknown",
+        "name": "I_unknown",
+        "hbond": "H",
+        "hydrophobic_scale": "1.050"
+    },
+    {
+        "value": "H",
+        "name": "H",
+        "hbond": "N",
+        "hydrophobic_scale": "0.000"
+    },
+    {
+        "value": "H_hb",
+        "name": "H_hb",
+        "hbond": "DH",
+        "hydrophobic_scale": "0.000"
+    },
+    {
+        "value": "Si",
+        "name": "Si",
+        "hbond": "N",
+        "hydrophobic_scale": "0.000"
+    },
+    {
+        "value": "Un",
+        "name": "Un",
+        "hbond": "N",
+        "hydrophobic_scale": "0.000"
+    },
+    {
+        "value": "Du",
+        "name": "Du",
+        "hbond": "N",
+        "hydrophobic_scale": "0.000"
+    }
+  ]
+}

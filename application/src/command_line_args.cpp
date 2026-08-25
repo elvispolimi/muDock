@@ -41,7 +41,7 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
                                       "Search algorithm to apply: none|genetic");
   arguments_description.add_options()("score",
                                       po::value(&score_name)->default_value(score_name),
-                                      "Scoring function to apply: adt");
+                                      "Scoring function to apply: adt|xscore");
   // define the knobs command line arguments
   po::options_description knobs_description("Virtual Screening Knobs");
   knobs_description.add_options()(
@@ -86,7 +86,7 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
     std::cout << std::endl;
     std::cout << "USAGE: " << argv[0] << " --protein|-p " << args.protein_path << " --ligand|-l "
               << args.ligand_path << " --use " << use_cpu_conf
-              << " [--search none|genetic] [--score adt] [MORE_CONFIGS...] [KNOBS] " << std::endl;
+              << " [--search none|genetic] [--score adt|xscore] [MORE_CONFIGS...] [KNOBS] " << std::endl;
     std::cout << std::endl;
     std::cout << arguments_description << std::endl;
     std::cout << std::endl;
@@ -94,7 +94,9 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
     std::cout << std::endl;
     std::cout << "Pipeline selection:" << std::endl
               << "  --search none --score adt      adt scoring only" << std::endl
-              << "  --search genetic --score adt   genetic + adt" << std::endl;
+              << "  --search genetic --score adt   genetic + adt" << std::endl
+              << "  --search none --score xscore   x-score scoring only"
+              << std::endl;
     std::cout << std::endl;
     std::cout << "The use flag accepts one or more configurations that describe which implementation"
               << std::endl
