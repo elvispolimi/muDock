@@ -30,14 +30,13 @@ namespace mudock {
       buf += ' ';
       buf += ligand.properties.get(property_type::GEN);
       buf += ' ';
-      buf += ligand.properties.get(property_type::NUM_ATOMS);
+      buf += ligand.properties.get(property_type::SEED);
       buf += ' ';
       buf += ligand.properties.get(property_type::NUM_ROT);
       buf += ' ';
+      buf += ligand.properties.get(property_type::NUM_ATOMS);
+      buf += ' ';
       buf += ligand.properties.get(property_type::NUM_EVALS);
-      buf += ' ';
-      buf += ligand.properties.get(property_type::SEED);
-      buf += ' ';
       buf += '\n';
     }
   } // namespace detail
