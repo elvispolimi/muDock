@@ -251,6 +251,7 @@ namespace mudock {
       mem += sizeof(chromosome) * std::max(1, static_cast<int>(conf.population_number)); // next population
       mem += sizeof(chromosome);                                                         // best chromosomes
       mem += sizeof(fp_type);                                                            // best scores
+      mem += sizeof(int);                                                                // converged ligands
       mem += scoring_t<queue_t>::get_private_ligand_mem(max_atoms, conf);
       mem += geometric<queue_t>::get_private_ligand_mem(max_atoms, conf);
       return mem;

@@ -106,7 +106,7 @@ namespace mudock {
       auto& num_rotamers_b = (*this->scratch).template get<buffer_data_type::NUM_ROTAMERS>();
       auto& chromosomes_b  = (*this->scratch).template get<buffer_data_type::CHROMOSOMES>();
       auto& scores_b       = (*this->scratch).template get<buffer_data_type::SCORES>();
-      auto& converged_ligands = (*this->scratch).template get<buffer_data_type::CONVERGED_LIGANDS>();
+      // auto& converged_ligands = (*this->scratch).template get<buffer_data_type::CONVERGED_LIGANDS>();
       auto& history_b         = (*this->scratch).template get<buffer_data_type::HISTORY>();
       auto& history_head_b    = (*this->scratch).template get<buffer_data_type::HISTORY_HEADS>();
       auto& history_size_b    = (*this->scratch).template get<buffer_data_type::HISTORY_SIZES>();
@@ -117,7 +117,7 @@ namespace mudock {
       scores_b.alloc(population_number * this->batch_ligands);
       this->best_scores.alloc(this->batch_ligands);
       this->best_chromosomes.alloc(this->batch_ligands);
-      converged_ligands.alloc(this->batch_ligands);
+      this->converged_ligands.alloc(this->batch_ligands);
       history_b.alloc(this->batch_ligands * convergence_window);
       history_head_b.alloc(this->batch_ligands);
       history_size_b.alloc(this->batch_ligands);
@@ -134,7 +134,7 @@ namespace mudock {
       fp_type* __restrict__ scores_p              = scores_b.dev_pointer();
       fp_type* __restrict__ best_scores_p         = this->best_scores.dev_pointer();
       chromosome* __restrict__ best_chromosomes_p = this->best_chromosomes.dev_pointer();
-      int* __restrict__ converged_ligands_p       = converged_ligands.dev_pointer();
+      int* __restrict__ converged_ligands_p       = this->converged_ligands.dev_pointer();
       fp_type* __restrict__ history_p             = history_b.dev_pointer();
       int* __restrict__ history_head_p            = history_head_b.dev_pointer();
       int* __restrict__ history_size_p            = history_size_b.dev_pointer();
@@ -240,6 +240,7 @@ namespace mudock {
       mem += sizeof(chromosome) * std::max(1, static_cast<int>(conf.population_number)); // next population
       mem += sizeof(chromosome);                                                         // best chromosomes
       mem += sizeof(fp_type);                                                            // best scores
+      mem += sizeof(int);                                                                // converged ligands
       mem += scoring_t<queue_t>::get_private_ligand_mem(max_atoms, conf);
       mem += geometric<queue_t>::get_private_ligand_mem(max_atoms, conf);
       mem += local_search_t<queue_t, scoring_t>::get_private_ligand_mem(max_atoms, conf);
