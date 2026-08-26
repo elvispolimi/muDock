@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-set -euo pipefail
-
 # ids=("1fkb" "1hii" "2ya6" "3udd" "4few" "5cst" "5uez" "5wuk")
 # lsrates=("10" "25" "50" "75" "100")
 # lsits=("50" "100" "150" "200" "250" "300")
@@ -12,25 +10,28 @@ set -euo pipefail
 # for LSIT in "${lsits[@]}"; do
 # for SEED in "${seeds[@]}"; do
 
+MAX_JOBS=8
+
 POPULATION=100
-GENERATIONS=500
+GENERATIONS=100
 
 ids=("5uez")
-seeds=("11111" "22222" "33333")
-lsrates=("10" "25" "50")
-lsits=("50" "100" "200")
+lsrates=("10" "50" "100")
+lsits=("10" "150" "300")
+seeds=("11111" "22222" "33333" "44444" "55555")
 
 for PDBID in "${ids[@]}"; do
     PROTEIN="./data/${PDBID}/${PDBID}_protein.pdb"
     LIGAND="./data/${PDBID}/${PDBID}_ligand.adtmol2"
-    OUT_PATH="./script/experiments/results.txt"
     for LSRATE in "${lsrates[@]}"; do
         for LSIT in "${lsits[@]}"; do
             for SEED in "${seeds[@]}"; do
-
+                
                 echo "=== Running ligand=${PDBID}, lsrate=${LSRATE}, lsit=${LSIT}, seed=${SEED} ==="
 
-                ./builds/omp/application/muDock \
+                OUT_PATH="./script/experiments/test/${PDBID}_${LSRATE}_${LSIT}_${SEED}.txt"
+
+                ./builds/vanilla/application/muDock \
                     --protein "$PROTEIN" \
                     --ligand "$LIGAND" \
                     --seed "$SEED" \
@@ -41,11 +42,20 @@ for PDBID in "${ids[@]}"; do
                     --lsrate "$LSRATE" \
                     --lsit "$LSIT" \
                     --use CPP:CPU:0 \
-                    # 2>&1 | grep Exp | sed "s/$/ $POPULATION $LSRATE $LSIT/" >> "$OUT_PATH"
+                    2>&1 | grep Exp | sed "s/$/ $POPULATION $LSRATE $LSIT/" >> "$OUT_PATH" \
+                    &
+                
+                if [ "$(jobs -rp | wc -l)" -ge "$MAX_JOBS" ]; then
+                    wait -n
+                fi
             
             done
         done
     done
 done
+
+wait
+
+cat ./script/experiments/test/* > ./script/experiments/results.txt
 
 echo "Done."
