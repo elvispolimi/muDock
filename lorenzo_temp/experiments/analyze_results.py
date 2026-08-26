@@ -83,16 +83,12 @@ def summarize_runs(df: pd.DataFrame) -> pd.DataFrame:
     ligand/configuration.
 
     Each group is identified by:
-
         ligand_id
         ls_rate
         ls_iter
 
-    The resulting dataframe contains:
-        - mean generations
-        - standard deviation
-        - median
-        - number of runs
+    The resulting dataframe contains statistics for both
+    generations and score.
     """
 
     group_columns = [
@@ -104,11 +100,21 @@ def summarize_runs(df: pd.DataFrame) -> pd.DataFrame:
     summary = (
         df.groupby(group_columns)
         .agg(
+            # Generations
             mean_generations=("generations", "mean"),
             std_generations=("generations", "std"),
             median_generations=("generations", "median"),
             min_generations=("generations", "min"),
             max_generations=("generations", "max"),
+
+            # Score
+            mean_score=("score", "mean"),
+            std_score=("score", "std"),
+            median_score=("score", "median"),
+            min_score=("score", "min"),
+            max_score=("score", "max"),
+
+            # Number of runs
             n_runs=("generations", "count"),
         )
         .reset_index()
@@ -210,7 +216,9 @@ def plot_heatmap(
     heatmap_data: pd.DataFrame,
     ligand_id: str,
     title: str,
+    colorbar_label: str,
     output_path: str | Path | None = None,
+    value_format: str = ".1f",
 ):
     """
     Plot a heatmap from a dataframe.
@@ -252,7 +260,7 @@ def plot_heatmap(
     ax.set_title(title)
 
     colorbar = fig.colorbar(image, ax=ax)
-    colorbar.set_label("Mean generations")
+    colorbar.set_label(colorbar_label)
 
     # Write values inside cells.
     for i in range(len(heatmap_data.index)):
@@ -263,7 +271,7 @@ def plot_heatmap(
                 ax.text(
                     j,
                     i,
-                    f"{value:.1f}",
+                    f"{value:{value_format}}",
                     ha="center",
                     va="center",
                 )
@@ -393,6 +401,18 @@ def main():
     )
     print(heatmap_data)
 
+    score_heatmap_data = get_heatmap_data(
+        summary,
+        args.ligand,
+        value="mean_score",
+    )
+
+    print(
+        f"\nMean score heatmap data "
+        f"for {args.ligand}:"
+    )
+    print(score_heatmap_data)
+
     # -----------------------------------------------------------------------
     # Speedup
     # -----------------------------------------------------------------------
@@ -421,16 +441,16 @@ def main():
     )
 
     # -----------------------------------------------------------------------
-    # Plot
+    # Plot mean generations heatmap
     # -----------------------------------------------------------------------
 
     if args.output is None:
-        output_path = (
+        generations_output_path = (
             input_path.parent
-            / f"{input_path.stem}_{args.ligand}_heatmap.png"
+            / f"{input_path.stem}_{args.ligand}_generations_heatmap.png"
         )
     else:
-        output_path = args.output
+        generations_output_path = args.output
 
     plot_heatmap(
         heatmap_data,
@@ -439,7 +459,29 @@ def main():
             f"{args.ligand} - "
             "Mean GA convergence generations"
         ),
-        output_path=output_path,
+        colorbar_label="Mean generations",
+        output_path=generations_output_path,
+    )
+
+
+    # -----------------------------------------------------------------------
+    # Plot mean score heatmap
+    # -----------------------------------------------------------------------
+
+    score_output_path = (
+        input_path.parent
+        / f"{input_path.stem}_{args.ligand}_score_heatmap.png"
+    )
+
+    plot_heatmap(
+        score_heatmap_data,
+        args.ligand,
+        title=(
+            f"{args.ligand} - "
+            "Mean final score"
+        ),
+        colorbar_label="Mean score",
+        output_path=score_output_path,
     )
 
 
