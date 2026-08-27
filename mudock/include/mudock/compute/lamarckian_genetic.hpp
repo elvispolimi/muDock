@@ -95,28 +95,15 @@ namespace mudock {
       this->kernel->finalize();
     }
 
-    // TODO L Important: this was copied from genetic.hpp code, but not sure if it must be adapted 
     static std::size_t get_shared_ligand_mem(const int max_atoms, const knobs conf) {
-      const int chromosomes_per_ligand = std::max(1, static_cast<int>(conf.population_number));
       std::size_t mem{0};
-      mem += sizeof(int);                                              // num_atoms
-      mem += sizeof(int);                                              // num_rotamers
-      mem += sizeof(int);                                              // converged_ligands
-      mem += sizeof(chromosome) * chromosomes_per_ligand;              // chromosomes
-      mem += sizeof(fp_type) * chromosomes_per_ligand;                 // scores
-      mem += 3 * sizeof(fp_type) * max_atoms;                          // coords
-      mem += 3 * sizeof(fp_type) * max_atoms * chromosomes_per_ligand; // coord scratch
+      mem += genetic<queue_t, scoring_t>::get_shared_ligand_mem(max_atoms, conf);
       return mem;
     }
 
     static std::size_t get_private_ligand_mem(const int max_atoms, const knobs conf) {
       std::size_t mem{0};
-      mem += sizeof(chromosome) * std::max(1, static_cast<int>(conf.population_number)); // next population
-      mem += sizeof(chromosome);                                                         // best chromosomes
-      mem += sizeof(fp_type);                                                            // best scores
-      mem += sizeof(int);                                                                // converged ligands
-      mem += scoring_t<queue_t>::get_private_ligand_mem(max_atoms, conf);
-      mem += geometric<queue_t>::get_private_ligand_mem(max_atoms, conf);
+      mem += genetic<queue_t, scoring_t>::get_private_ligand_mem(max_atoms, conf);
       mem += local_search_t<queue_t, scoring_t>::get_private_ligand_mem(max_atoms, conf);
       return mem;
     }
@@ -124,72 +111,6 @@ namespace mudock {
     static int get_ligand_mem(const int max_atoms, const knobs conf) {
       return static_cast<int>(get_shared_ligand_mem(max_atoms, conf) +
                               get_private_ligand_mem(max_atoms, conf));
-    }
-
-    // TODO L Important: this was copied from genetic.hpp code, but not sure if it must be adapted 
-    static batch_multiple get_batch_size(const int atoms,
-                                         std::shared_ptr<queue_t> q,
-                                         const knobs& conf,
-                                         const size_t max_bucket_size) {
-      (void) max_bucket_size;
-      const auto score_bucket_info =
-          normalize_batch_multiple(scoring_t<queue_t>::get_batch_size(atoms, q, conf, max_bucket_size));
-      const auto geom_bucket_info =
-          normalize_batch_multiple(geometric<queue_t>::get_batch_size(atoms, q, conf, max_bucket_size));
-      const int score_total = score_bucket_info.total_multiple();
-      const int geom_total  = geom_bucket_info.total_multiple();
-
-      batch_multiple selected_info{};
-      const char* combine_policy = "MIN";
-  #ifdef MUDOCK_GENETIC_BUCKET_COMBINE_SCORE_ONLY
-      selected_info  = score_bucket_info;
-      combine_policy = "SCORE_ONLY";
-  #elif defined(MUDOCK_GENETIC_BUCKET_COMBINE_GEOM_ONLY)
-      selected_info  = geom_bucket_info;
-      combine_policy = "GEOM_ONLY";
-  #elif defined(MUDOCK_GENETIC_BUCKET_COMBINE_LCM)
-      {
-        const long long lcm_total =
-            std::lcm(static_cast<long long>(score_total), static_cast<long long>(geom_total));
-        if (lcm_total <= 0 || lcm_total > static_cast<long long>(std::numeric_limits<int>::max())) {
-          throw std::runtime_error("LAMARCKIAN GENETIC stage LCM combine overflowed int range");
-        }
-        // LCM is a pure combined multiplicity; represent it as total x 1.
-        selected_info = batch_multiple{static_cast<int>(lcm_total), 1};
-      }
-      combine_policy = "LCM";
-  #else
-      if (score_total <= geom_total) {
-        selected_info = score_bucket_info;
-      } else {
-        selected_info = geom_bucket_info;
-      }
-  #endif
-      selected_info = normalize_batch_multiple(selected_info);
-      mudock::stage_bucket_trace("LAMARCKIAN GENETIC stage combine for ",
-                                 atoms,
-                                 " atoms: score_multiple=",
-                                 score_total,
-                                 " (",
-                                 score_bucket_info.active_blocks_per_sm,
-                                 "x",
-                                 score_bucket_info.num_sms,
-                                 "), geom_multiple=",
-                                 geom_total,
-                                 " (",
-                                 geom_bucket_info.active_blocks_per_sm,
-                                 "x",
-                                 geom_bucket_info.num_sms,
-                                 ") policy=",
-                                 combine_policy,
-                                 " -> selected_plain_multiple=",
-                                 selected_info.total_multiple(),
-                                 " (",
-                                 selected_info.active_blocks_per_sm,
-                                 "x",
-                                 selected_info.num_sms,
-                                 ")");
-      return selected_info;
     }
 
   private:
