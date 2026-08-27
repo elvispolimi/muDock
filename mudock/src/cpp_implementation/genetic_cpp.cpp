@@ -3,7 +3,6 @@
 #include <cstring>
 #include <mudock/compute/buffer.hpp>
 #include <mudock/compute/devices_memory.hpp>
-#include <mudock/csv_logger.hpp>
 #include <mudock/compute/genetic.hpp>
 #include <mudock/cpp_implementation/center_of_mass.hpp>
 #include <mudock/cpp_implementation/chromosome.hpp>
@@ -124,8 +123,6 @@ namespace mudock {
         int& head                                  = history_head_b[ligand_index];
         int& size                                  = history_size_b[ligand_index];
 
-        csv_logger score_logger("genetic.csv", {"ligand", "generation", "genetic_score"});
-
         // print best score
         fp_type best = scores[0];
         for(int i = 0; i < population_number; ++i){
@@ -135,8 +132,6 @@ namespace mudock {
         }
         printf("Gen %d -- Best score: %f\n", generation, double(best));
         // end print best score 
-
-        score_logger.log(ligand_index, generation, best);
 
         // TODO L move autostop logic inside genetic.hpp maybe as separated stage, maybe doing it every n generations instead of doing it every generation
         if(autostop){
