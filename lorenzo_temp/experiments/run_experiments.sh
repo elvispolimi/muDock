@@ -29,7 +29,7 @@ for PDBID in "${ids[@]}"; do
                 
                 echo "=== Running ligand=${PDBID}, lsrate=${LSRATE}, lsit=${LSIT}, seed=${SEED} ==="
 
-                OUT_PATH="./script/experiments/test/${PDBID}_${LSRATE}_${LSIT}_${SEED}.txt"
+                OUT_PATH="./lorenzo_temp/experiments/test/${PDBID}_${LSRATE}_${LSIT}_${SEED}.txt"
 
                 ./builds/vanilla/application/muDock \
                     --protein "$PROTEIN" \
@@ -56,6 +56,6 @@ done
 
 wait
 
-cat ./script/experiments/test/* > ./script/experiments/results.txt
+cat ./lorenzo_temp/experiments/test/* > ./lorenzo_temp/experiments/results.txt
 
 echo "Done."
