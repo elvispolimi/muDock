@@ -10,7 +10,7 @@
 # for LSIT in "${lsits[@]}"; do
 # for SEED in "${seeds[@]}"; do
 
-MAX_JOBS=8
+MAX_JOBS=12
 
 BUILD=omp
 
@@ -61,7 +61,10 @@ for PDBID in "${ids[@]}"; do
                 if [ "$(jobs -rp | wc -l)" -ge "$MAX_JOBS" ]; then
                     wait -n
                     COMPLETED_RUNS=$((COMPLETED_RUNS + 1))
-                    echo "Progress: $COMPLETED_RUNS/$TOTAL_RUNS"
+                    printf "\rProgress: [%d/%d] %3d%%" \
+                        "$COMPLETED_RUNS" \
+                        "$TOTAL_RUNS" \
+                        "$((COMPLETED_RUNS * 100 / TOTAL_RUNS))"
                 fi
             
             done
@@ -72,9 +75,12 @@ done
 while [ "$(jobs -rp | wc -l)" -gt 0 ]; do
     wait -n
     COMPLETED_RUNS=$((COMPLETED_RUNS + 1))
-    echo "Progress: $COMPLETED_RUNS/$TOTAL_RUNS"
+    printf "\rProgress: [%d/%d] %3d%%" \
+        "$COMPLETED_RUNS" \
+        "$TOTAL_RUNS" \
+        "$((COMPLETED_RUNS * 100 / TOTAL_RUNS))"
 done
 
 cat ./lorenzo_temp/experiments/test/* > ./lorenzo_temp/experiments/results.txt
 
-echo "Done."
+printf "\nDone.\n"
