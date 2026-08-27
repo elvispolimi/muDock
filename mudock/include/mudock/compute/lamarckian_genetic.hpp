@@ -21,67 +21,6 @@
 
 namespace mudock {
 
-  template<typename queue_type>
-    requires std::derived_from<queue_type, queue>
-  struct lamarckian_genetic_kernel : public genetic_kernel<queue_type> {
-    static constexpr char finalize_region_name[]   = "lamarckian_genetic_finalize";
-    static constexpr char iterate_region_name[]    = "lamarckian_genetic_iterate";
-    static constexpr char initialize_region_name[] = "lamarckian_genetic_initialize";
-
-    lamarckian_genetic_kernel(const int batch_ligands_,
-                              const int population_number_,
-                              const int num_generations_,
-                              const int convergence_window_,
-                              const fp_type variance_threshold_,
-                              const fp_type crystal_score_,
-                              const fp_type crystal_tolerance_,
-                              const bool autostop_,
-                              int* __restrict__ converged_ligands_,
-                              fp_type* __restrict__ history_b_,
-                              int* __restrict__ history_head_b_,
-                              int* __restrict__ history_size_b_,
-                              const int tournament_length_,
-                              const fp_type mutation_prob_,
-                              const size_t seed_,
-                              chromosome* population_,
-                              chromosome* next_population_,
-                              int* __restrict__ num_rotamers_b_,
-                              fp_type* __restrict__ scores_b_,
-                              fp_type* __restrict__ best_scores_b_,
-                              chromosome* __restrict__ best_chromosomes_b_,
-                              std::shared_ptr<queue_type> q_)
-        : genetic_kernel<queue_type>(batch_ligands_,
-                                     population_number_,
-                                     num_generations_,
-                                     convergence_window_,
-                                     variance_threshold_,
-                                     crystal_score_,
-                                     crystal_tolerance_,
-                                     autostop_,
-                                     converged_ligands_,
-                                     history_b_,
-                                     history_head_b_,
-                                     history_size_b_,
-                                     tournament_length_,
-                                     mutation_prob_,
-                                     seed_,
-                                     population_,
-                                     next_population_,
-                                     num_rotamers_b_,
-                                     scores_b_,
-                                     best_scores_b_,
-                                     best_chromosomes_b_,
-                                     q_) {};
-    lamarckian_genetic_kernel() {};
-
-    void operator()() { genetic_kernel<queue_type>::operator()(); }
-    void initialize() { genetic_kernel<queue_type>::initialize(); }
-    void finalize() { genetic_kernel<queue_type>::finalize(); }
-    inline void set_population_buffers(chromosome* population_, chromosome* next_population_) { genetic_kernel<queue_type>::set_population_buffers(population_, next_population_); }
-
-  private:
-  };
-
 #if !defined(__CUDACC__) && !defined(__HIPCC__)
   template<typename queue_t, template<typename> typename scoring_t, template<typename, template<typename> typename> typename local_search_t>
     requires std::derived_from<queue_t, queue> 
@@ -98,55 +37,15 @@ namespace mudock {
           local_search_stage(std::move(_local_search)){};
 
     void prepare(batch<static_molecule>& batch) override {
+      genetic<queue_t, scoring_t>::prepare(batch);
       const knobs& configuration  = (*this->scratch).configuration;
-      this->batch_ligands         = batch.num_ligands;
-      this->num_generations       = static_cast<int>(configuration.num_generations);
       const int population_number = static_cast<int>(configuration.population_number);
       ls_every                    = static_cast<int>(configuration.ls_every);
       ls_last_gen                 = static_cast<int>(configuration.ls_last_gen);
-      const int convergence_window = static_cast<int>(configuration.convergence_window);
-      auto q                      = (*this->scratch).get_queue();
-
-      auto& num_rotamers_b = (*this->scratch).template get<buffer_data_type::NUM_ROTAMERS>();
-      auto& chromosomes_b  = (*this->scratch).template get<buffer_data_type::CHROMOSOMES>();
-      auto& scores_b       = (*this->scratch).template get<buffer_data_type::SCORES>();
-      // auto& converged_ligands = (*this->scratch).template get<buffer_data_type::CONVERGED_LIGANDS>();
-      auto& history_b         = (*this->scratch).template get<buffer_data_type::HISTORY>();
-      auto& history_head_b    = (*this->scratch).template get<buffer_data_type::HISTORY_HEADS>();
-      auto& history_size_b    = (*this->scratch).template get<buffer_data_type::HISTORY_SIZES>();
-
-      num_rotamers_b.alloc(this->batch_ligands);
-      chromosomes_b.alloc(population_number * this->batch_ligands);
-      this->next_population.alloc(population_number * this->batch_ligands);
-      scores_b.alloc(population_number * this->batch_ligands);
-      this->best_scores.alloc(this->batch_ligands);
-      this->best_chromosomes.alloc(this->batch_ligands);
-      this->converged_ligands.alloc(this->batch_ligands);
-      history_b.alloc(this->batch_ligands * convergence_window);
-      history_head_b.alloc(this->batch_ligands);
-      history_size_b.alloc(this->batch_ligands);
-
-      load_num_rotamers<queue_t>(batch, this->scratch);
-      initialize_converged_ligands<queue_t>(batch, this->scratch);
-
-      const auto seed =
-          configuration.seed.has_value()
-              ? configuration.seed.value()
-              : static_cast<size_t>(std::chrono::high_resolution_clock::now().time_since_epoch().count());
-
-      int* __restrict__ num_rotamers_p            = num_rotamers_b.dev_pointer();
-      fp_type* __restrict__ scores_p              = scores_b.dev_pointer();
-      fp_type* __restrict__ best_scores_p         = this->best_scores.dev_pointer();
-      chromosome* __restrict__ best_chromosomes_p = this->best_chromosomes.dev_pointer();
-      int* __restrict__ converged_ligands_p       = this->converged_ligands.dev_pointer();
-      fp_type* __restrict__ history_p             = history_b.dev_pointer();
-      int* __restrict__ history_head_p            = history_head_b.dev_pointer();
-      int* __restrict__ history_size_p            = history_size_b.dev_pointer();
-
+      
       // Lorenzo: Ligand properties for experiments
       for (int index{0}; index < this->batch_ligands; ++index) {
         auto& ligand = *batch.molecules[index];
-        const int num_rotamers = num_rotamers_p[index];
         const fp_type local_search_rate = configuration.lsrate;
         const int local_search_iterations = static_cast<int>(configuration.lsit);
 
@@ -156,42 +55,11 @@ namespace mudock {
         // TODO L this is not correct: if autostop is on, it should count the actual number of generations at convergence.
         // It would be better to have a counter at each evaluation to be sure (pay attention to race conditions)
         const int num_evalualtions = this->num_generations * population_number * (static_cast<int>(local_search_rate * static_cast<fp_type>(local_search_iterations) / fp_type{100}) + 1);
-                
-        ligand.properties.assign(property_type::SEED, std::to_string(seed));
-        ligand.properties.assign(property_type::NUM_ROT, std::to_string(num_rotamers));
         ligand.properties.assign(property_type::NUM_EVALS, std::to_string(num_evalualtions));
       }
-
-
-      this->lamarckian_kernel = std::make_unique<lamarckian_genetic_kernel<queue_t>>(this->batch_ligands,
-                                                                                    population_number,
-                                                                                    configuration.num_generations,
-                                                                                    configuration.convergence_window,
-                                                                                    configuration.variance_threshold,
-                                                                                    configuration.crystal_score,
-                                                                                    configuration.crystal_tolerance,
-                                                                                    configuration.autostop,
-                                                                                    converged_ligands_p,
-                                                                                    history_p,
-                                                                                    history_head_p,
-                                                                                    history_size_p,
-                                                                                    configuration.tournament_length,
-                                                                                    configuration.mutation_prob,
-                                                                                    seed,
-                                                                                    chromosomes_b.dev_pointer(),
-                                                                                    this->next_population.dev_pointer(),
-                                                                                    num_rotamers_p,
-                                                                                    scores_p,
-                                                                                    best_scores_p,
-                                                                                    best_chromosomes_p,
-                                                                                    q);
-
-      this->geom_trans.prepare(batch);
+      
       local_search_stage.prepare(batch);  
-      (this->score_stage).get()->prepare(batch);
-      // TODO L at the moment this prepare() call order must be kept
-      // (ls and then score) in order to initialize correctly active population also in score. Try to make it independent
-      // maybe moving it here in LGA
+
     };
 
     void operator()() override {
@@ -199,10 +67,10 @@ namespace mudock {
       chromosome* current_population_p = chromosomes_b.dev_pointer();
       chromosome* next_population_p    = this->next_population.dev_pointer();
       
-      assert(this->lamarckian_kernel && "lamarckian_kernel method not yet prepared");
-      this->lamarckian_kernel->set_population_buffers(current_population_p, next_population_p);
+      assert(this->kernel && "lamarckian_kernel method not yet prepared");
+      this->kernel->set_population_buffers(current_population_p, next_population_p);
       this->geom_trans.set_chromosomes_buffer(current_population_p);
-      this->lamarckian_kernel->initialize();
+      this->kernel->initialize();
 
       printf("Running LGA...\n");
       for (int generation = 1; generation <= this->num_generations; ++generation) {
@@ -214,17 +82,17 @@ namespace mudock {
           local_search_stage();
         }
 
-        (*this->lamarckian_kernel)();
+        (*this->kernel)();
 
         // Avoid full device-to-device copy by ping-ponging population buffers.
         if (generation < this->num_generations) {
           std::swap(current_population_p, next_population_p);
-          this->lamarckian_kernel->set_population_buffers(current_population_p, next_population_p);
+          this->kernel->set_population_buffers(current_population_p, next_population_p);
           this->geom_trans.set_chromosomes_buffer(current_population_p);
         }
       }
-      this->lamarckian_kernel->set_population_buffers(current_population_p, next_population_p);
-      this->lamarckian_kernel->finalize();
+      this->kernel->set_population_buffers(current_population_p, next_population_p);
+      this->kernel->finalize();
     }
 
     // TODO L Important: this was copied from genetic.hpp code, but not sure if it must be adapted 
@@ -326,7 +194,6 @@ namespace mudock {
 
   private:
     local_search_t<queue_t, scoring_t> local_search_stage;
-    std::unique_ptr<lamarckian_genetic_kernel<queue_t>> lamarckian_kernel;
     int ls_every;
     int ls_last_gen;
 

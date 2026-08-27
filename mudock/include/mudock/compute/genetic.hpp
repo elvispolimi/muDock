@@ -177,7 +177,9 @@ namespace mudock {
       for (int index{0}; index < batch_ligands; ++index) {
         auto& ligand = *batch.molecules[index];
         const int num_rotamers = num_rotamers_p[index];
-        // TODO L check if this estimate is correct
+        // TODO L check if this estimate is correct. WARNING: this depends on the local search implementation. 
+        // This is for adadelta for example (not counting the effect of ls_last_gen and ls_every)
+        // +1 comes from the scores, the remaining from the gradients
         // TODO L this is not correct: if autostop is on, it should count the actual number of generations at convergence.
         // It would be better to have a counter at each evaluation to be sure (pay attention to race conditions)
         const int num_evalualtions = num_generations * population_number;
@@ -336,7 +338,6 @@ namespace mudock {
     }
 
   private:
-    std::unique_ptr<genetic_kernel<queue_t>> kernel;
     
     void teardown_impl(batch<static_molecule>& batch) {
       assert(batch.num_ligands == batch_ligands && "Genetic algorithm received different batch for teardown");
@@ -361,6 +362,7 @@ namespace mudock {
     }
     
   protected:
+    std::unique_ptr<genetic_kernel<queue_t>> kernel;
     std::shared_ptr<scoring_t<queue_t>> score_stage;
     geometric<queue_t> geom_trans;
 
