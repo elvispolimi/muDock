@@ -118,19 +118,6 @@ namespace mudock {
     int ls_every;
     int ls_last_gen;
 
-    void teardown_impl(batch<static_molecule>& batch) {
-      assert(batch.num_ligands == this->batch_ligands && "Lamarckian-Genetic algorithm received different batch for teardown");
-
-      this->best_scores.copy_device2host();
-      this->converged_ligands.copy_device2host();
-      (*this->scratch).get_queue()->synchronize();
-
-      for (int index{0}; index < this->batch_ligands; ++index) {
-        auto& ligand = *batch.molecules[index];
-        ligand.properties.assign(property_type::SCORE, std::to_string(this->best_scores()[index]));
-        ligand.properties.assign(property_type::GEN, std::to_string(this->converged_ligands()[index]));
-      }
-    }
   }; // namespace mudock
 #endif
 } // namespace mudock

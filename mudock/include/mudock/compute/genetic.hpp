@@ -183,7 +183,8 @@ namespace mudock {
         // TODO L this is not correct: if autostop is on, it should count the actual number of generations at convergence.
         // It would be better to have a counter at each evaluation to be sure (pay attention to race conditions)
         const int num_evalualtions = num_generations * population_number;
-                
+
+        ligand.properties.assign(property_type::GEN, std::to_string(num_generations));
         ligand.properties.assign(property_type::SEED, std::to_string(seed));
         ligand.properties.assign(property_type::NUM_ROT, std::to_string(num_rotamers));
         ligand.properties.assign(property_type::NUM_EVALS, std::to_string(num_evalualtions));
@@ -336,9 +337,20 @@ namespace mudock {
                                  ")");
       return selected_info;
     }
-
-  private:
     
+  protected:
+   
+    std::unique_ptr<genetic_kernel<queue_t>> kernel;
+    std::shared_ptr<scoring_t<queue_t>> score_stage;
+    geometric<queue_t> geom_trans;
+
+    int batch_ligands;
+    int num_generations;
+    buffer_vector<chromosome, queue_t> next_population;
+    buffer_vector<chromosome, queue_t> best_chromosomes;
+    buffer_vector<fp_type, queue_t> best_scores;
+    buffer_vector<int, queue_t> converged_ligands;
+
     void teardown_impl(batch<static_molecule>& batch) {
       assert(batch.num_ligands == batch_ligands && "Genetic algorithm received different batch for teardown");
   
@@ -357,21 +369,13 @@ namespace mudock {
       for (int index{0}; index < batch_ligands; ++index) {
         auto& ligand = *batch.molecules[index];
         ligand.properties.assign(property_type::SCORE, std::to_string(best_scores()[index]));
-        ligand.properties.assign(property_type::GEN, std::to_string(converged_ligands()[index]));
+
+        const int convergence_generation = converged_ligands()[index];
+        if (convergence_generation != 0){
+          ligand.properties.assign(property_type::GEN, std::to_string(convergence_generation));
+        }
       }
     }
-    
-  protected:
-    std::unique_ptr<genetic_kernel<queue_t>> kernel;
-    std::shared_ptr<scoring_t<queue_t>> score_stage;
-    geometric<queue_t> geom_trans;
-
-    int batch_ligands;
-    int num_generations;
-    buffer_vector<chromosome, queue_t> next_population;
-    buffer_vector<chromosome, queue_t> best_chromosomes;
-    buffer_vector<fp_type, queue_t> best_scores;
-    buffer_vector<int, queue_t> converged_ligands;
 
   }; // namespace mudock
 #endif
