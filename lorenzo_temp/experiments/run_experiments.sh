@@ -12,14 +12,25 @@
 
 MAX_JOBS=8
 
+BUILD=omp
+
+SEARCH=genetic
 POPULATION=100
-GENERATIONS=100
+GENERATIONS=50
+AUTOSTOP=0
+NUM_SEEDS=8
 
-ids=("5uez")
-lsrates=("10" "50" "100")
-lsits=("10" "150" "300")
-seeds=("11111" "22222" "33333" "44444" "55555")
+ids=("1fkb")
+lsrates=("50")
+lsits=("300")
+seeds=($(seq 1 "$NUM_SEEDS"))
 
+TOTAL_RUNS=$((${#ids[@]} * ${#lsrates[@]} * ${#lsits[@]} * ${#seeds[@]}))
+COMPLETED_RUNS=0
+
+rm ./lorenzo_temp/experiments/test/*
+
+echo "Docking..."
 for PDBID in "${ids[@]}"; do
     PROTEIN="./data/${PDBID}/${PDBID}_protein.pdb"
     LIGAND="./data/${PDBID}/${PDBID}_ligand.adtmol2"
@@ -27,16 +38,14 @@ for PDBID in "${ids[@]}"; do
         for LSIT in "${lsits[@]}"; do
             for SEED in "${seeds[@]}"; do
                 
-                echo "=== Running ligand=${PDBID}, lsrate=${LSRATE}, lsit=${LSIT}, seed=${SEED} ==="
-
                 OUT_PATH="./lorenzo_temp/experiments/test/${PDBID}_${LSRATE}_${LSIT}_${SEED}.txt"
 
-                ./builds/vanilla/application/muDock \
+                ./builds/"$BUILD"/application/muDock \
                     --protein "$PROTEIN" \
                     --ligand "$LIGAND" \
                     --seed "$SEED" \
-                    --search lga \
-                    --autostop 1 \
+                    --search "$SEARCH" \
+                    --autostop "$AUTOSTOP" \
                     --generations "$GENERATIONS" \
                     --population "$POPULATION" \
                     --lsrate "$LSRATE" \
@@ -47,6 +56,8 @@ for PDBID in "${ids[@]}"; do
                 
                 if [ "$(jobs -rp | wc -l)" -ge "$MAX_JOBS" ]; then
                     wait -n
+                    COMPLETED_RUNS=$((COMPLETED_RUNS + 1))
+                    echo "Progress: $COMPLETED_RUNS/$TOTAL_RUNS"
                 fi
             
             done
@@ -54,7 +65,11 @@ for PDBID in "${ids[@]}"; do
     done
 done
 
-wait
+while [ "$(jobs -rp | wc -l)" -gt 0 ]; do
+    wait -n
+    COMPLETED_RUNS=$((COMPLETED_RUNS + 1))
+    echo "Progress: $COMPLETED_RUNS/$TOTAL_RUNS"
+done
 
 cat ./lorenzo_temp/experiments/test/* > ./lorenzo_temp/experiments/results.txt
 
