@@ -37,6 +37,8 @@ namespace mudock {
                    const int num_generations_,
                    const int convergence_window_,
                    const fp_type variance_threshold_,
+                   const fp_type crystal_score_,
+                   const fp_type crystal_tolerance_,
                    const bool autostop_,
                    int* __restrict__ converged_ligands_b_,
                    fp_type* __restrict__ history_b_,
@@ -57,6 +59,8 @@ namespace mudock {
           num_generations(num_generations_),
           convergence_window(convergence_window_),
           variance_threshold(variance_threshold_),
+          crystal_score(crystal_score_),
+          crystal_tolerance(crystal_tolerance_),
           autostop(autostop_),
           converged_ligands_b(converged_ligands_b_),
           history_b(history_b_),
@@ -89,13 +93,15 @@ namespace mudock {
     fp_type* __restrict__ convergence_history;
     int convergence_window;
     fp_type variance_threshold;  
+    fp_type crystal_score;
+    fp_type crystal_tolerance;
     bool autostop;
     int* __restrict__ converged_ligands_b;
     fp_type* __restrict__ history_b;
     int* __restrict__ history_head_b;
     int* __restrict__ history_size_b;
     int tournament_length;
-    int current_generation = 0;
+    int current_generation = 1;
     fp_type mutation_prob;
     chromosome* __restrict__ population;
     chromosome* __restrict__ next_population;
@@ -186,6 +192,8 @@ namespace mudock {
                                                          configuration.num_generations,
                                                          configuration.convergence_window,
                                                          configuration.variance_threshold,
+                                                         configuration.crystal_score,
+                                                         configuration.crystal_tolerance,
                                                          configuration.autostop,
                                                          converged_ligands_p,
                                                          history_p,

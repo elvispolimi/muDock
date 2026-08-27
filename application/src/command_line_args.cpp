@@ -83,7 +83,7 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
   knobs_description.add_options()(
       "autostop",
       po::value(&args.knobs.autostop)->default_value(args.knobs.autostop),
-      "Enable early stopping when per-ligand convergence is reached");
+      "Enable early stopping when per-ligand convergence or crystal (if specified) is reached");
   knobs_description.add_options()(
       "convergence_window",
       po::value(&args.knobs.convergence_window)->default_value(args.knobs.convergence_window),
@@ -92,7 +92,18 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
       "variance_threshold",
       po::value(&args.knobs.variance_threshold)->default_value(args.knobs.variance_threshold),
       "Variance threshold for convergence of per-ligand best scores");
-  knobs_description.add_options()("seed", po::value(&seed), "Seed for random values generators");
+  knobs_description.add_options()(
+      "crystal_score",
+      po::value(&args.knobs.crystal_score)->default_value(args.knobs.crystal_score),
+      "If autostop is on, it also checks if the crystal is found at the value specified");
+  knobs_description.add_options()(
+      "crystal_tolerance",
+      po::value(&args.knobs.crystal_tolerance)->default_value(args.knobs.crystal_tolerance),
+      "Tolerance value around crystal_score");
+  knobs_description.add_options()(
+      "seed",
+      po::value(&seed),
+      "Seed for random values generators");
   knobs_description.add_options()(
       "tokens",
       po::value(&args.knobs.max_tbb_tokens)->default_value(args.knobs.max_tbb_tokens),

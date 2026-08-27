@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <mudock/type_alias.hpp>
+#include <mudock/utils.hpp>
 #include <optional>
 
 namespace mudock {
@@ -14,6 +15,8 @@ namespace mudock {
     bool autostop                             = false;
     std::size_t convergence_window            = 5;
     fp_type variance_threshold                = static_cast<fp_type>(1e-4);
+    fp_type crystal_score                     = small_bound<fp_type>();
+    fp_type crystal_tolerance                 = static_cast<fp_type>(0.5);
     fp_type lsrate                            = static_cast<fp_type>(100);
     bool ls_on_best                           = false;
     std::size_t lsit                          = 300;

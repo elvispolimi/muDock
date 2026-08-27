@@ -69,3 +69,8 @@ constexpr T big_bound() {
     return T(1e300);
   return std::numeric_limits<T>::max() / T(4); // fallback
 }
+
+template <class T>
+constexpr T small_bound() {
+    return -big_bound<T>();
+}

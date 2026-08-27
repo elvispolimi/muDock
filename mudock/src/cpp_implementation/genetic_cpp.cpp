@@ -111,6 +111,8 @@ namespace mudock {
                     const int convergence_window,
                     const fp_type variance_threshold,
                     const bool autostop,
+                    const fp_type crystal_score,
+                    const fp_type crystal_tolerance,
                     int* __restrict__ converged_ligands) {
     for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
       if (converged_ligands[ligand_index] == 0) {
@@ -159,7 +161,7 @@ namespace mudock {
             }
             var /= static_cast<fp_type>(convergence_window);
 
-            if (var < variance_threshold) {
+            if (var < variance_threshold || best < (crystal_score + crystal_tolerance)) {
               // mark ligand as converged
               converged_ligands[ligand_index] = generation;
             }
@@ -262,6 +264,8 @@ namespace mudock {
                                                 convergence_window,
                                                 variance_threshold,
                                                 autostop,
+                                                crystal_score,
+                                                crystal_tolerance,
                                                 converged_ligands_b);
     ++current_generation;
   }
