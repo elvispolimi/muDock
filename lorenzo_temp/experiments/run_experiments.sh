@@ -14,15 +14,17 @@ MAX_JOBS=8
 
 BUILD=omp
 
-SEARCH=genetic
+SEARCH=lga
 POPULATION=100
-GENERATIONS=50
-AUTOSTOP=0
+GENERATIONS=100
+AUTOSTOP=1
+VARIANCE_TH=0
+CRYSCO=-3.826046
 NUM_SEEDS=8
 
-ids=("1fkb")
-lsrates=("50")
-lsits=("300")
+ids=("5cst")
+lsrates=("0" "50" "100")
+lsits=("50" "150" "300")
 seeds=($(seq 1 "$NUM_SEEDS"))
 
 TOTAL_RUNS=$((${#ids[@]} * ${#lsrates[@]} * ${#lsits[@]} * ${#seeds[@]}))
@@ -46,6 +48,8 @@ for PDBID in "${ids[@]}"; do
                     --seed "$SEED" \
                     --search "$SEARCH" \
                     --autostop "$AUTOSTOP" \
+                    --variance_threshold "$VARIANCE_TH" \
+                    --crystal_score "$CRYSCO" \
                     --generations "$GENERATIONS" \
                     --population "$POPULATION" \
                     --lsrate "$LSRATE" \
