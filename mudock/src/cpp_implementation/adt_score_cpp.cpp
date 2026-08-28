@@ -66,8 +66,13 @@ namespace mudock {
                    const int map_index_x,
                    const int map_index_xy,
                    const int map_index_xyz,
-                   fp_type *__restrict__ scores_b) {
+                   fp_type *__restrict__ scores_b,
+                   int *__restrict__ converged_ligands_b) {
     for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
+      const int converged_ligand = converged_ligands_b[ligand_index];
+      if (converged_ligand) {
+        continue;
+      }
       const int atom_stride  = ligand_index * batch_atoms;
       const int num_atoms    = num_atoms_b[ligand_index];
       const int num_nonbonds = num_nonbonds_b[ligand_index + 1] - num_nonbonds_b[ligand_index];
@@ -254,8 +259,13 @@ namespace mudock {
                             const int map_index_xy,
                             const int map_index_xyz,
                             gradient *__restrict__ gradients_b,
-                            int *__restrict__ active_individuals_b) {
+                            int *__restrict__ active_individuals_b,
+                            int *__restrict__ converged_ligands_b) {
     for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
+      const int converged_ligand = converged_ligands_b[ligand_index];
+      if (converged_ligand) {
+        continue;
+      }
       const int atom_stride                  = ligand_index * batch_atoms;
       const int num_atoms                    = num_atoms_b[ligand_index];
       const int num_nonbonds                 = num_nonbonds_b[ligand_index + 1] - num_nonbonds_b[ligand_index];
@@ -279,6 +289,7 @@ namespace mudock {
       const int* frag_stop_indices           = frag_stop_indices_b + frag_indices_start_b[ligand_index];
       gradient *__restrict__ gradients_l     = gradients_b + ligand_index * individuals_per_ligand;
       int *__restrict__ active_individuals_l = active_individuals_b + ligand_index * individuals_per_ligand;
+
       
       std::vector<point3D> dE_dX(batch_atoms);
       std::vector<fp_type> grad(6 + batch_rotamers);         // gradient = dE/dx, dE/dy, dE/dz, dE/dalpha, dE/dbeta, dE/dgamma, dE/d_tors_1, ..., dE/d_tors_n
@@ -571,7 +582,8 @@ namespace mudock {
                                       map_index_x,
                                       map_index_xy,
                                       map_index_xyz,
-                                      scores_b);
+                                      scores_b,
+                                      converged_ligands_b);
   }
 
   template<>
@@ -609,7 +621,8 @@ namespace mudock {
                                             map_index_xy,
                                             map_index_xyz,
                                             gradients_b,
-                                            active_individuals_b
+                                            active_individuals_b,
+                                            converged_ligands_b
     );
   }
 } // namespace mudock

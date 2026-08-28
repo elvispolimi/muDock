@@ -293,6 +293,15 @@ namespace mudock {
 
       fp_type *scores_b = score_b.dev_pointer();
 
+
+      auto &converged_ligands_b = (*this->scratch).template get<buffer_data_type::CONVERGED_LIGANDS>();
+      if (!converged_ligands_b.is_valid() || converged_ligands_b.num_elements() != static_cast<size_t>(batch_ligands)) {
+        converged_ligands_b.alloc(batch_ligands);
+        converged_ligands_b.set_valid();
+      }
+      converged_ligands_b.copy_host2device();
+      int *converged_ligands = converged_ligands_b.dev_pointer();
+
       score_kernel = std::make_unique<adt_score_kernel<queue_type>>(scores_per_ligand,
                                                               batch_ligands,
                                                               batch_atoms,
@@ -319,6 +328,7 @@ namespace mudock {
                                                               map_index_xy,
                                                               map_index_xyz,
                                                               scores_b,
+                                                              converged_ligands,
                                                               q);
 
       gradient *gradients_b = gradient_b.dev_pointer();
@@ -363,6 +373,7 @@ namespace mudock {
                                                               map_index_xyz,
                                                               gradients_b,
                                                               active_individuals,
+                                                              converged_ligands,
                                                               q);
     }
 

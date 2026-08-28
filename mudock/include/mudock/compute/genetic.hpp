@@ -127,8 +127,7 @@ namespace mudock {
           geom_trans(_scratch, protein),
           next_population(_scratch->get_queue()),
           best_chromosomes(_scratch->get_queue()),
-          best_scores(_scratch->get_queue()),
-          converged_ligands(_scratch->get_queue()) {};
+          best_scores(_scratch->get_queue()) {};
     void prepare(batch<static_molecule>& batch) {
       const knobs& configuration   = (*this->scratch).configuration;
       batch_ligands                = batch.num_ligands;
@@ -137,13 +136,13 @@ namespace mudock {
       const int convergence_window = static_cast<int>(configuration.convergence_window);
       auto q                       = (*this->scratch).get_queue();
 
-      auto& num_rotamers_b    = (*this->scratch).template get<buffer_data_type::NUM_ROTAMERS>();
-      auto& chromosomes_b     = (*this->scratch).template get<buffer_data_type::CHROMOSOMES>();
-      auto& scores_b          = (*this->scratch).template get<buffer_data_type::SCORES>();
-      // auto& converged_ligands = (*this->scratch).template get<buffer_data_type::CONVERGED_LIGANDS>();
-      auto& history_b         = (*this->scratch).template get<buffer_data_type::HISTORY>();
-      auto& history_head_b    = (*this->scratch).template get<buffer_data_type::HISTORY_HEADS>();
-      auto& history_size_b    = (*this->scratch).template get<buffer_data_type::HISTORY_SIZES>();
+      auto& num_rotamers_b      = (*this->scratch).template get<buffer_data_type::NUM_ROTAMERS>();
+      auto& chromosomes_b       = (*this->scratch).template get<buffer_data_type::CHROMOSOMES>();
+      auto& scores_b            = (*this->scratch).template get<buffer_data_type::SCORES>();
+      auto& converged_ligands_b = (*this->scratch).template get<buffer_data_type::CONVERGED_LIGANDS>();
+      auto& history_b           = (*this->scratch).template get<buffer_data_type::HISTORY>();
+      auto& history_head_b      = (*this->scratch).template get<buffer_data_type::HISTORY_HEADS>();
+      auto& history_size_b      = (*this->scratch).template get<buffer_data_type::HISTORY_SIZES>();
 
       num_rotamers_b.alloc(batch_ligands);
       chromosomes_b.alloc(population_number * batch_ligands);
@@ -151,7 +150,7 @@ namespace mudock {
       scores_b.alloc(population_number * batch_ligands);
       best_scores.alloc(batch_ligands);
       best_chromosomes.alloc(batch_ligands);
-      converged_ligands.alloc(batch_ligands);
+      converged_ligands_b.alloc(batch_ligands);
       history_b.alloc(batch_ligands * convergence_window);
       history_head_b.alloc(batch_ligands);
       history_size_b.alloc(batch_ligands);
@@ -168,7 +167,7 @@ namespace mudock {
       fp_type* __restrict__ scores_p              = scores_b.dev_pointer();
       fp_type* __restrict__ best_scores_p         = best_scores.dev_pointer();
       chromosome* __restrict__ best_chromosomes_p = best_chromosomes.dev_pointer();
-      int* __restrict__ converged_ligands_p       = converged_ligands.dev_pointer();
+      int* __restrict__ converged_ligands_p       = converged_ligands_b.dev_pointer();
       fp_type* __restrict__ history_p             = history_b.dev_pointer();
       int* __restrict__ history_head_p            = history_head_b.dev_pointer();
       int* __restrict__ history_size_p            = history_size_b.dev_pointer();
@@ -349,7 +348,7 @@ namespace mudock {
     buffer_vector<chromosome, queue_t> next_population;
     buffer_vector<chromosome, queue_t> best_chromosomes;
     buffer_vector<fp_type, queue_t> best_scores;
-    buffer_vector<int, queue_t> converged_ligands;
+    // buffer_vector<int, queue_t> converged_ligands;
 
     void teardown_impl(batch<static_molecule>& batch) {
       assert(batch.num_ligands == batch_ligands && "Genetic algorithm received different batch for teardown");
@@ -361,16 +360,16 @@ namespace mudock {
       // score_stage();
       // geom_trans.teardown(batch);
       // score_stage.teardown(batch);
-  
+      auto &converged_ligands_b = (*this->scratch).template get<buffer_data_type::CONVERGED_LIGANDS>();
       best_scores.copy_device2host();
-      converged_ligands.copy_device2host();
+      converged_ligands_b.copy_device2host();
       (*this->scratch).get_queue()->synchronize();
   
       for (int index{0}; index < batch_ligands; ++index) {
         auto& ligand = *batch.molecules[index];
         ligand.properties.assign(property_type::SCORE, std::to_string(best_scores()[index]));
 
-        const int convergence_generation = converged_ligands()[index];
+        const int convergence_generation = converged_ligands_b()[index];
         if (convergence_generation != 0){
           ligand.properties.assign(property_type::GEN, std::to_string(convergence_generation));
         }
