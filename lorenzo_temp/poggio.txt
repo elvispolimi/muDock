@@ -1,0 +1,66 @@
+rm -rf builds/build && cmake -S . -B builds/build -DENABLE_ASAN=ON && cmake --build builds/build -j8
+
+rm -rf builds/omp && cmake -S . -B builds/omp -DMUDOCK_ENABLE_OMP=ON && cmake --build builds/omp -j8
+
+rm -rf builds/vanilla && cmake -S . -B builds/vanilla && cmake --build builds/vanilla -j8
+
+rm -rf builds/debug && cmake -S . -B builds/debug -DCMAKE_BUILD_TYPE=Debug && cmake --build builds/debug -j8
+
+rm -rf builds/old && cmake -S . -B builds/old -DMUDOCK_ENABLE_OMP=ON && cmake --build builds/old -j8
+
+
+# LOCAL VERSION
+rm -rf builds/cuda && \
+cmake -S . -B builds/cuda \
+    -DMUDOCK_ENABLE_CUDA=ON \
+    -DMUDOCK_GPU_ARCHITECTURES=cuda:sm_80 \
+    -DCMAKE_CUDA_HOST_COMPILER=/usr/bin/g++-15 \
+    -DCMAKE_C_COMPILER=/usr/bin/gcc-15 \
+    -DCMAKE_CXX_COMPILER=/usr/bin/g++-15 \
+    -DCMAKE_BUILD_TYPE=Release && \
+cmake --build builds/cuda -j8
+
+# SPACK VERSION FOR ACCENTO
+rm -rf builds/cuda && \
+cmake -S . -B builds/cuda \
+    -DMUDOCK_ENABLE_OMP=ON \
+    -DMUDOCK_ENABLE_CUDA=ON \
+    -DMUDOCK_GPU_ARCHITECTURES=cuda:sm_80 \
+    -DCMAKE_BUILD_TYPE=Release &&\
+cmake --build builds/cuda -j8
+
+rm -rf builds/debug_cuda && \
+cmake -S . -B builds/debug_cuda \
+    -DMUDOCK_ENABLE_OMP=ON \
+    -DMUDOCK_ENABLE_CUDA=ON \
+    -DMUDOCK_GPU_ARCHITECTURES=cuda:sm_80 \
+    -DCMAKE_BUILD_TYPE=Debug &&\
+cmake --build builds/debug_cuda -j8
+
+
+
+################################
+
+
+load /home/lorenzo/thesis/muDock/dump/pose_1.mol2, ligand_1
+for i in range(2,301):cmd.load(f"/home/lorenzo/thesis/muDock/dump/pose_{i}.mol2", "ligand_1", state=i)
+set movie_fps, 30
+
+
+###################################
+
+NUM_ROTAMERS:
+1fkb -> 6   | --cristal -15.79722
+1hii -> 19  | --cristal 
+2ya6 -> 6   | --cristal 
+3fv3 -> xxx | --cristal 
+3udd -> 7   | --cristal 
+4few -> 2   | --cristal 
+5cst -> 6   | --cristal 
+5uez -> 4   | --cristal 
+5wuk -> 5   | --cristal 
+
+
+##########################################
+RESULTS FORMAT:
+name, score, gen, seed, rot, atoms, evals, population, rate, iteration
