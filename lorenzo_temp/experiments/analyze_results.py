@@ -401,6 +401,18 @@ def main():
     )
     print(heatmap_data)
 
+    median_heatmap_data = get_heatmap_data(
+        summary,
+        args.ligand,
+        value="median_generations",
+    )
+
+    print(
+        f"\nMedian generations heatmap data "
+        f"for {args.ligand}:"
+    )
+    print(median_heatmap_data)
+
     score_heatmap_data = get_heatmap_data(
         summary,
         args.ligand,
@@ -412,6 +424,18 @@ def main():
         f"for {args.ligand}:"
     )
     print(score_heatmap_data)
+
+    median_score_heatmap_data = get_heatmap_data(
+        summary,
+        args.ligand,
+        value="median_score",
+    )
+
+    print(
+        f"\nMedian score heatmap data "
+        f"for {args.ligand}:"
+    )
+    print(median_score_heatmap_data)
 
     # -----------------------------------------------------------------------
     # Speedup
@@ -463,6 +487,28 @@ def main():
         output_path=generations_output_path,
     )
 
+    # -----------------------------------------------------------------------
+    # Plot median generations heatmap
+    # -----------------------------------------------------------------------
+
+    if args.output is None:
+        median_generations_output_path = (
+            input_path.parent
+            / f"{input_path.stem}_{args.ligand}_median_generations_heatmap.png"
+        )
+    else:
+        median_generations_output_path = args.output
+
+    plot_heatmap(
+        median_heatmap_data,
+        args.ligand,
+        title=(
+            f"{args.ligand} - "
+            "Median GA convergence generations"
+        ),
+        colorbar_label="Median generations",
+        output_path=median_generations_output_path,
+    )
 
     # -----------------------------------------------------------------------
     # Plot mean score heatmap
@@ -482,6 +528,26 @@ def main():
         ),
         colorbar_label="Mean score",
         output_path=score_output_path,
+    )
+
+    # -----------------------------------------------------------------------
+    # Plot median score heatmap
+    # -----------------------------------------------------------------------
+
+    median_score_output_path = (
+        input_path.parent
+        / f"{input_path.stem}_{args.ligand}_median_score_heatmap.png"
+    )
+
+    plot_heatmap(
+        median_score_heatmap_data,
+        args.ligand,
+        title=(
+            f"{args.ligand} - "
+            "Median final score"
+        ),
+        colorbar_label="Median score",
+        output_path=median_score_output_path,
     )
 
 
