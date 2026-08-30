@@ -49,6 +49,10 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
       po::value(&args.knobs.population_number)->default_value(args.knobs.population_number),
       "Number of individual(s) in the GA (or LGA) population");
   knobs_description.add_options()(
+      "elite_size",
+      po::value(&args.knobs.elite_size)->default_value(args.knobs.elite_size),
+      "Number of elite individual(s) in the GA (or LGA) population");
+      knobs_description.add_options()(
       "generations",
       po::value(&args.knobs.num_generations)->default_value(args.knobs.num_generations),
       "Number of generations that GA (or LGA) simulates");

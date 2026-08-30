@@ -98,6 +98,7 @@ namespace mudock {
 
   void iterate_impl(const int batch_ligands,
                     const int population_number,
+                    const int elite_size,
                     const int tournament_length,
                     const fp_type mutation_prob,
                     chromosome* population,
@@ -138,6 +139,34 @@ namespace mudock {
       printf("Gen %d -- Best score: %f\n", generation, double(best));
       // end print best score 
 
+      // Elitism: preserve the best elite_size individuals
+      // elite_indices[k] contains the index in population_l of the k-th best individual
+      std::vector<int> elite_indices(elite_size, -1);
+
+      for (int i = 0; i < population_number; ++i) {
+        for (int e = 0; e < elite_size; ++e) {
+          if (elite_indices[e] == -1 || scores[i] < scores[elite_indices[e]]) {
+
+            // shift worse elites to the right
+            for (int shift = elite_size - 1; shift > e; --shift) {
+              elite_indices[shift] = elite_indices[shift - 1];
+            }
+
+            elite_indices[e] = i;
+            break;
+          }
+        }
+      }
+
+      for (int e = 0; e < elite_size; ++e) {
+        if (elite_indices[e] == -1)
+          break;
+
+        std::copy(std::begin(population_l[elite_indices[e]]),
+                  std::end(population_l[elite_indices[e]]),
+                  std::begin(next_population_l[e]));
+      }
+
       // TODO L move autostop logic inside genetic.hpp maybe as separated stage, maybe doing it every n generations instead of doing it every generation
       if(autostop){
         // Insert newest best score
@@ -173,7 +202,7 @@ namespace mudock {
 
 
       // Generate the new population
-      for (int element_index = 0; element_index < population_number; ++element_index) {
+      for (int element_index = elite_size; element_index < population_number; ++element_index) {
         auto& next_individual = next_population_l[element_index];
         // select the parent
         auto best_individual_1 = get_selection_distribution(rand_device(), dist, population_number);
@@ -254,6 +283,7 @@ namespace mudock {
     q->invoke_kernel<this->iterate_region_name>(iterate_impl,
                                                 batch_ligands,
                                                 population_number,
+                                                elite_size,
                                                 tournament_length,
                                                 mutation_prob,
                                                 population,

@@ -35,6 +35,7 @@ namespace mudock {
     genetic_kernel(const int batch_ligands_,
                    const int population_number_,
                    const int num_generations_,
+                   const int elite_size_,
                    const int convergence_window_,
                    const fp_type variance_threshold_,
                    const fp_type crystal_score_,
@@ -57,6 +58,7 @@ namespace mudock {
         : batch_ligands(batch_ligands_),
           population_number(population_number_),
           num_generations(num_generations_),
+          elite_size(elite_size_),
           convergence_window(convergence_window_),
           variance_threshold(variance_threshold_),
           crystal_score(crystal_score_),
@@ -90,6 +92,7 @@ namespace mudock {
     int batch_ligands;
     int population_number;
     int num_generations;
+    int elite_size;
     fp_type* __restrict__ convergence_history;
     int convergence_window;
     fp_type variance_threshold;  
@@ -192,6 +195,7 @@ namespace mudock {
       kernel = std::make_unique<genetic_kernel<queue_t>>(batch_ligands,
                                                          population_number,
                                                          configuration.num_generations,
+                                                         configuration.elite_size,
                                                          configuration.convergence_window,
                                                          configuration.variance_threshold,
                                                          configuration.crystal_score,
