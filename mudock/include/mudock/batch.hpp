@@ -10,7 +10,9 @@ namespace mudock {
   // allocation. For this reason we have a maximum number of ligands in a batch, and the actual size
   template<class T>
   struct batch {
-    static constexpr auto max_batch_size = int{20000};
+    // Keep enough static capacity for the largest memory-guided buckets used
+    // in the experiments while preserving the no-dynamic-allocation design.
+    static constexpr auto max_batch_size = int{65536};
 
     std::array<std::unique_ptr<T>, max_batch_size> molecules;
     int num_ligands        = 0;
