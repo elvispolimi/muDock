@@ -41,8 +41,6 @@ namespace mudock {
                                    const int num_atoms,
                                    sycl::nd_item<3> it) { // compute the angles sine and cosine
     // compute the molecule center of mass
-    const auto& sub_group = it.get_sub_group();
-
     fp_type c_x{0}, c_y{0}, c_z{0};
     MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
     for (int i = static_cast<int>(it.get_local_id(0)); i < MAX_ATOMS; i += MUDOCK_SYCL_WG_SIZE) {
@@ -52,9 +50,9 @@ namespace mudock {
         c_z += z[i];
       }
     }
-    c_x = sycl::reduce_over_group(sub_group, c_x, sycl::plus<fp_type>()) / static_cast<fp_type>(num_atoms);
-    c_y = sycl::reduce_over_group(sub_group, c_y, sycl::plus<fp_type>()) / static_cast<fp_type>(num_atoms);
-    c_z = sycl::reduce_over_group(sub_group, c_z, sycl::plus<fp_type>()) / static_cast<fp_type>(num_atoms);
+    c_x = sycl::reduce_over_group(it.get_group(), c_x, sycl::plus<fp_type>()) / static_cast<fp_type>(num_atoms);
+    c_y = sycl::reduce_over_group(it.get_group(), c_y, sycl::plus<fp_type>()) / static_cast<fp_type>(num_atoms);
+    c_z = sycl::reduce_over_group(it.get_group(), c_z, sycl::plus<fp_type>()) / static_cast<fp_type>(num_atoms);
 
     const auto rad_x = deg_to_rad(*angle_x), rad_y = deg_to_rad(*angle_y), rad_z = deg_to_rad(*angle_z);
     const auto cx = sycl::cos(rad_x), sx = sycl::sin(rad_x);

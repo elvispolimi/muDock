@@ -85,7 +85,6 @@ namespace mudock {
       const int workgroup_id         = static_cast<int>(it.get_group(0));
       const int ligand_id            = static_cast<int>(workgroup_id);
       const int workitem_id_in_group = static_cast<int>(it.get_local_id(0));
-      const auto sub_group           = it.get_sub_group();
       assert(it.get_local_range(0) == MUDOCK_SYCL_WG_SIZE &&
              "SYCL WG size and the number of thread per block does not coincide");
 
@@ -245,7 +244,9 @@ namespace mudock {
           }
         fp_type total_energy = emap_total_eintcal + elect_total_eintcal + dmap_total_eintcal +
                                emap_total_trilinear + elect_total_trilinear + dmap_total_trilinear;
-        total_energy         = sycl::reduce_over_group(sub_group, total_energy, std::plus<fp_type>());
+        // Reduce across the complete work-group. A subgroup reduction would
+        // omit contributions when the device uses narrower subgroups.
+        total_energy = sycl::reduce_over_group(it.get_group(), total_energy, std::plus<fp_type>());
 
         if (workitem_id_in_group == 0) {
           const fp_type tors_free_energy =
