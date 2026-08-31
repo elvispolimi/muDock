@@ -145,4 +145,22 @@ namespace mudock {
     } else
       return false;
   };
+
+  template<typename queue_type>
+    requires std::derived_from<queue_type, queue>
+  bool initialize_for_how_long_best(batch<static_molecule> &batch, std::shared_ptr<scratchpad<queue_type>> scratch) {
+    const auto batch_ligands = batch.num_ligands;
+
+    auto &for_how_long_best_b = (*scratch).template get<buffer_data_type::FOR_HOW_LONG_BEST>();
+
+    if (!for_how_long_best_b.is_valid()) {
+      for_how_long_best_b.alloc(batch_ligands);
+      for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
+        for_how_long_best_b()[ligand_index] = static_cast<int>(0);
+      }
+      for_how_long_best_b.copy_host2device();
+      return true;
+    } else
+      return false;
+  };
 } // namespace mudock

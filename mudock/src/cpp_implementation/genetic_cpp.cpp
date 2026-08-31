@@ -12,6 +12,7 @@
 #include <mudock/likwid_utils.hpp>
 #include <mudock/utils.hpp>
 #include <random>
+#include <algorithm>
 
 namespace mudock {
   static constexpr auto coordinate_step = static_cast<fp_type>(0.2);
@@ -112,15 +113,28 @@ namespace mudock {
   // 1. it's not considering the crystal
   // 2. best_score_improved has a window of 1, maybe too rigid
   // 3. not sure about population_is_diverse criterion, seems too stupid for convergence
-  bool has_converged(const fp_type best_so_far, 
+  // 4. we should store the best position of all generations, especially if the convergence criterion is based on all time best score
+  bool has_converged(const int ligand_index,
+                     int* __restrict__ for_how_long_best_b,
+                     const int tolerance_window,
+                     const fp_type best_so_far, 
                      const fp_type this_gen_best,
                      const fp_type best_score_diff_thld,
                      fp_type* __restrict__ scores,
                      const int population_size,
                      const fp_type score_variance_thld) {
-    // Criterion 1: best score so far has not improved
+    // Criterion 1: best score so far has not improved (significantly)
     bool best_score_not_improved = (best_so_far - this_gen_best < best_score_diff_thld) ? true : false;
-    if (best_score_not_improved) printf("Convergence due to best score not improving\n");
+
+    if (best_score_not_improved) {
+      for_how_long_best_b[ligand_index] += 1;
+    } else {
+      for_how_long_best_b[ligand_index] = 0;
+      printf("Reset tolerance window\n");
+    }
+
+    bool best_score_not_improved_for_too_long = (for_how_long_best_b[ligand_index] >= tolerance_window) ? true : false;
+    if (best_score_not_improved_for_too_long) printf("Convergence due to best score not improving for too long\n");
 
     // Criterion 2: population score is diverse
     fp_type mean = 0.0;
@@ -154,7 +168,7 @@ namespace mudock {
     // if (rmsd_is_low) printf("Convergence due to low rmsd\n");
 
     // If something is triggered -> converge
-    return best_score_not_improved || population_score_is_similar;
+    return best_score_not_improved_for_too_long || population_score_is_similar;
   }
 
   void initialize_impl(const int batch_ligands,
@@ -192,6 +206,8 @@ namespace mudock {
                     int* __restrict__ num_rotamers_b,
                     fp_type* __restrict__ scores_b,
                     fp_type* __restrict__ best_so_far_b,
+                    int* __restrict__ for_how_long_best_b,
+                    const int tolerance_window,
                     const int generation,
                     const fp_type score_variance_thld,
                     const fp_type best_score_diff_thld,
@@ -209,7 +225,6 @@ namespace mudock {
       chromosome* __restrict__ population_l      = population + population_number * ligand_index;
       chromosome* __restrict__ next_population_l = next_population + population_number * ligand_index;
       fp_type* __restrict__ scores               = scores_b + population_number * ligand_index;
-      const fp_type best_so_far                  = best_so_far_b[ligand_index];
 
       // print best score
       fp_type best = scores[0];
@@ -218,20 +233,19 @@ namespace mudock {
           best = scores[i];
         }
       }
-      printf("Gen %d --- Best of this gen: %f --- Best so far: %f\n", generation, double(best), double(best_so_far));
+      printf("Gen %d --- Best of this gen: %f --- Best so far: %f\n", generation, double(best), double(best_so_far_b[ligand_index]));
       // end print best score 
 
 
       // TODO L move autostop logic inside genetic.hpp maybe as separated stage, maybe doing it every n generations instead of doing it every generation
       // Check convergence 
-      if (autostop && has_converged(best_so_far, best, best_score_diff_thld, scores, population_number, score_variance_thld)) {
+      if (autostop && has_converged(ligand_index, for_how_long_best_b, tolerance_window, best_so_far_b[ligand_index], best, best_score_diff_thld, scores, population_number, score_variance_thld)) {
         converged_ligands_b[ligand_index] = generation;
       }
 
       // Update best so far
-      if (best < best_so_far) {
-        best_so_far_b[ligand_index] = best;
-      }
+      best_so_far_b[ligand_index] = std::min(best_so_far_b[ligand_index], best);
+
 
       // Elitism: preserve the best elite_size individuals
       // elite_indices[k] contains the index in population_l of the k-th best individual
@@ -351,6 +365,8 @@ namespace mudock {
                                                 num_rotamers_b,
                                                 scores_b,
                                                 best_so_far_b,
+                                                for_how_long_best_b,
+                                                tolerance_window,
                                                 current_generation,
                                                 score_variance_thld,
                                                 best_score_diff_thld,

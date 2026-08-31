@@ -43,6 +43,8 @@ namespace mudock {
                    const bool autostop_,
                    int* __restrict__ converged_ligands_b_,
                    fp_type* __restrict__ best_so_far_b_,
+                   int* __restrict__ for_how_long_best_b_,
+                   const int tolerance_window_,
                    const int tournament_length_,
                    const fp_type mutation_prob_,
                    const size_t seed_,
@@ -64,6 +66,8 @@ namespace mudock {
           autostop(autostop_),
           converged_ligands_b(converged_ligands_b_),
           best_so_far_b(best_so_far_b_),
+          for_how_long_best_b(for_how_long_best_b_),
+          tolerance_window(tolerance_window_),
           tournament_length(tournament_length_),
           mutation_prob(mutation_prob_),
           population(population_),
@@ -96,6 +100,8 @@ namespace mudock {
     bool autostop;
     int* __restrict__ converged_ligands_b;
     fp_type* __restrict__ best_so_far_b;
+    int* __restrict__ for_how_long_best_b;
+    int tolerance_window;
     int tournament_length;
     int current_generation = 1;
     fp_type mutation_prob;
@@ -131,11 +137,12 @@ namespace mudock {
       const int population_number  = static_cast<int>(configuration.population_number);
       auto q                       = (*this->scratch).get_queue();
 
-      auto& num_rotamers_b      = (*this->scratch).template get<buffer_data_type::NUM_ROTAMERS>();
-      auto& chromosomes_b       = (*this->scratch).template get<buffer_data_type::CHROMOSOMES>();
-      auto& scores_b            = (*this->scratch).template get<buffer_data_type::SCORES>();
-      auto& converged_ligands_b = (*this->scratch).template get<buffer_data_type::CONVERGED_LIGANDS>();
-      auto& best_so_far_b       = (*this->scratch).template get<buffer_data_type::BEST_SO_FAR>();
+      auto& num_rotamers_b            = (*this->scratch).template get<buffer_data_type::NUM_ROTAMERS>();
+      auto& chromosomes_b             = (*this->scratch).template get<buffer_data_type::CHROMOSOMES>();
+      auto& scores_b                  = (*this->scratch).template get<buffer_data_type::SCORES>();
+      auto& converged_ligands_b       = (*this->scratch).template get<buffer_data_type::CONVERGED_LIGANDS>();
+      auto& best_so_far_b             = (*this->scratch).template get<buffer_data_type::BEST_SO_FAR>();
+      auto& for_how_long_best_b       = (*this->scratch).template get<buffer_data_type::FOR_HOW_LONG_BEST>();
 
       num_rotamers_b.alloc(batch_ligands);
       chromosomes_b.alloc(population_number * batch_ligands);
@@ -145,22 +152,26 @@ namespace mudock {
       best_chromosomes.alloc(batch_ligands);
       converged_ligands_b.alloc(batch_ligands);
       best_so_far_b.alloc(batch_ligands);
+      for_how_long_best_b.alloc(batch_ligands);
 
       load_num_rotamers<queue_t>(batch, this->scratch);
       initialize_converged_ligands<queue_t>(batch, this->scratch);
       initialize_best_so_far<queue_t>(batch, this->scratch);
+      initialize_for_how_long_best<queue_t>(batch, this->scratch);
 
       const auto seed =
           configuration.seed.has_value()
               ? configuration.seed.value()
               : static_cast<size_t>(std::chrono::high_resolution_clock::now().time_since_epoch().count());
 
-      int* __restrict__ num_rotamers_p            = num_rotamers_b.dev_pointer();
-      fp_type* __restrict__ scores_p              = scores_b.dev_pointer();
-      fp_type* __restrict__ best_scores_p         = best_scores.dev_pointer();
-      chromosome* __restrict__ best_chromosomes_p = best_chromosomes.dev_pointer();
-      int* __restrict__ converged_ligands_p       = converged_ligands_b.dev_pointer();
+      int* __restrict__ num_rotamers_p                = num_rotamers_b.dev_pointer();
+      fp_type* __restrict__ scores_p                  = scores_b.dev_pointer();
+      fp_type* __restrict__ best_scores_p             = best_scores.dev_pointer();
+      chromosome* __restrict__ best_chromosomes_p     = best_chromosomes.dev_pointer();
+      int* __restrict__ converged_ligands_p           = converged_ligands_b.dev_pointer();
       fp_type* __restrict__ best_so_far_p             = best_so_far_b.dev_pointer();
+      int* __restrict__ for_how_long_best_p           = for_how_long_best_b.dev_pointer();
+      
 
       // Lorenzo: Ligand properties for experiments
       for (int index{0}; index < batch_ligands; ++index) {
@@ -190,6 +201,8 @@ namespace mudock {
                                                          configuration.autostop,
                                                          converged_ligands_p,
                                                          best_so_far_p,
+                                                         for_how_long_best_p,
+                                                         configuration.tolerance_window,
                                                          configuration.tournament_length,
                                                          configuration.mutation_prob,
                                                          seed,

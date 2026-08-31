@@ -89,6 +89,10 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
       po::value(&args.knobs.autostop)->default_value(args.knobs.autostop),
       "Enable early stopping when per-ligand convergence or crystal (if specified) is reached");
   knobs_description.add_options()(
+      "tolerance_window",
+      po::value(&args.knobs.tolerance_window)->default_value(args.knobs.tolerance_window),
+      "Relative to autostop, for how many generation the best score so far must not improve to declare convergence");
+  knobs_description.add_options()(
       "score_variance_thld",
       po::value(&args.knobs.score_variance_thld)->default_value(args.knobs.score_variance_thld),
       "Relative to autostop, score variance threshold of a population");
