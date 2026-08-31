@@ -41,7 +41,8 @@ constexpr void constexpr_switch_bucket(F&& f, T value, V* values) {
 #endif
 #define MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, STEP) (((MAX_ATOMS) + (STEP)-1) / (STEP))
 #ifdef MUDOCK_DISABLE_UNROLL
-  #define MUDOCK_PRAGMA_UNROLL(factor) _Pragma("unroll 1")
+  // Leave the loop untouched so each backend compiler can choose its strategy.
+  #define MUDOCK_PRAGMA_UNROLL(factor)
 #else
   #define MUDOCK_PRAGMA_UNROLL(factor) _Pragma(MUDOCK_STRINGIFY(unroll factor))
 #endif

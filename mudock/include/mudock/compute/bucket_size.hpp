@@ -17,6 +17,7 @@ namespace mudock {
                                        const size_t mem_per_ligand_bytes,
                                        const bool honors_stage_bucket_policy,
                                        get_multiple_t&& get_default_multiple) {
+    (void) honors_stage_bucket_policy;
 #ifdef MUDOCK_STAGE_BUCKET_OVERRIDE
     (void) get_default_multiple;
 #endif
@@ -52,6 +53,9 @@ namespace mudock {
     int bucket_size             = 1;
 
   #ifdef MUDOCK_STAGE_BUCKET_MULTIPLE_OVERRIDE
+    // An explicit multiplier is an operator-selected override. Do not replace
+    // it with an automatically derived value; the automatic memory cap below
+    // applies only when no multiplier override is provided.
     static_assert(MUDOCK_STAGE_BUCKET_MULTIPLE_OVERRIDE > 0,
                   "MUDOCK_STAGE_BUCKET_MULTIPLE_OVERRIDE must be > 0.");
     const double override_multiplier = static_cast<double>(MUDOCK_STAGE_BUCKET_MULTIPLE_OVERRIDE);
@@ -92,6 +96,30 @@ namespace mudock {
     bucket_size = static_cast<int>((max_bucket_size / static_cast<size_t>(per_sm_multiple)) *
                                    static_cast<size_t>(per_sm_multiple));
     if (bucket_size <= 0) {
+      bucket_size = 1;
+    }
+    effective_multiplier =
+        static_cast<double>(bucket_size) / static_cast<double>(base_multiple);
+  #elif defined(MUDOCK_STAGE_BUCKET_POLICY_DEVICE_ALIGNED)
+    // Without an explicit multiplier, prefer the largest whole-GPU multiple
+    // that fits the memory assigned to this worker. If no whole-GPU multiple
+    // fits, fall back to the largest SM-aligned multiple before using an
+    // unaligned memory-safe bucket.
+    const int gpu_multiple = std::max(1, base_multiple);
+    const size_t aligned_size =
+        (max_bucket_size / static_cast<size_t>(gpu_multiple)) *
+        static_cast<size_t>(gpu_multiple);
+    const int sm_multiple = std::max(1, base_multiple_info.active_blocks_per_sm);
+    const size_t sm_aligned_size =
+        (max_bucket_size / static_cast<size_t>(sm_multiple)) *
+        static_cast<size_t>(sm_multiple);
+    const size_t selected_size =
+        aligned_size > 0 ? aligned_size
+                         : (sm_aligned_size > 0 ? sm_aligned_size : max_bucket_size);
+    bucket_size = static_cast<int>(std::min(
+        std::max<size_t>(1, selected_size),
+        static_cast<size_t>(std::numeric_limits<int>::max())));
+    if (bucket_size <= 0) {
       // If budget is smaller than one alignment unit, keep minimum legal batch.
       bucket_size = 1;
     }
@@ -110,6 +138,10 @@ namespace mudock {
     alignment_label = honors_stage_bucket_policy ? "max-utilization" : "device-aligned fallback";
   #elif defined(MUDOCK_STAGE_BUCKET_POLICY_SM_ALIGNED)
     alignment_label = "sm-aligned";
+  #elif defined(MUDOCK_STAGE_BUCKET_POLICY_DEVICE_ALIGNED)
+    alignment_label = aligned_size > 0
+                          ? "device-aligned"
+                          : (sm_aligned_size > 0 ? "sm-aligned fallback" : "max-size fallback");
   #endif
     mudock::stage_bucket_trace(stage_name,
                  " stage bucket for ",
