@@ -1,11 +1,15 @@
-#include <chrono>
+#include <time.h>
 #include <mudock/log.hpp>
 
 namespace mudock {
 
   namespace log_details {
 
-    std::chrono::steady_clock::time_point timer::start = std::chrono::steady_clock::now();
+    timespec timer::start = [] {
+      timespec value{};
+      clock_gettime(CLOCK_MONOTONIC, &value);
+      return value;
+    }();
 
   } // namespace log_details
 } // namespace mudock
