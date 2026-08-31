@@ -36,15 +36,13 @@ namespace mudock {
                    const int population_number_,
                    const int num_generations_,
                    const int elite_size_,
-                   const int convergence_window_,
-                   const fp_type variance_threshold_,
+                   const fp_type score_variance_thld_,
+                   const fp_type best_score_diff_thld_,
                    const fp_type crystal_score_,
                    const fp_type crystal_tolerance_,
                    const bool autostop_,
                    int* __restrict__ converged_ligands_b_,
-                   fp_type* __restrict__ history_b_,
-                   int* __restrict__ history_head_b_,
-                   int* __restrict__ history_size_b_,
+                   fp_type* __restrict__ best_so_far_b_,
                    const int tournament_length_,
                    const fp_type mutation_prob_,
                    const size_t seed_,
@@ -59,15 +57,13 @@ namespace mudock {
           population_number(population_number_),
           num_generations(num_generations_),
           elite_size(elite_size_),
-          convergence_window(convergence_window_),
-          variance_threshold(variance_threshold_),
+          score_variance_thld(score_variance_thld_),
+          best_score_diff_thld(best_score_diff_thld_),
           crystal_score(crystal_score_),
           crystal_tolerance(crystal_tolerance_),
           autostop(autostop_),
           converged_ligands_b(converged_ligands_b_),
-          history_b(history_b_),
-          history_head_b(history_head_b_),
-          history_size_b(history_size_b_),
+          best_so_far_b(best_so_far_b_),
           tournament_length(tournament_length_),
           mutation_prob(mutation_prob_),
           population(population_),
@@ -93,16 +89,13 @@ namespace mudock {
     int population_number;
     int num_generations;
     int elite_size;
-    fp_type* __restrict__ convergence_history;
-    int convergence_window;
-    fp_type variance_threshold;  
+    fp_type score_variance_thld;  
+    fp_type best_score_diff_thld;  
     fp_type crystal_score;
     fp_type crystal_tolerance;
     bool autostop;
     int* __restrict__ converged_ligands_b;
-    fp_type* __restrict__ history_b;
-    int* __restrict__ history_head_b;
-    int* __restrict__ history_size_b;
+    fp_type* __restrict__ best_so_far_b;
     int tournament_length;
     int current_generation = 1;
     fp_type mutation_prob;
@@ -136,16 +129,13 @@ namespace mudock {
       batch_ligands                = batch.num_ligands;
       num_generations              = static_cast<int>(configuration.num_generations);
       const int population_number  = static_cast<int>(configuration.population_number);
-      const int convergence_window = static_cast<int>(configuration.convergence_window);
       auto q                       = (*this->scratch).get_queue();
 
       auto& num_rotamers_b      = (*this->scratch).template get<buffer_data_type::NUM_ROTAMERS>();
       auto& chromosomes_b       = (*this->scratch).template get<buffer_data_type::CHROMOSOMES>();
       auto& scores_b            = (*this->scratch).template get<buffer_data_type::SCORES>();
       auto& converged_ligands_b = (*this->scratch).template get<buffer_data_type::CONVERGED_LIGANDS>();
-      auto& history_b           = (*this->scratch).template get<buffer_data_type::HISTORY>();
-      auto& history_head_b      = (*this->scratch).template get<buffer_data_type::HISTORY_HEADS>();
-      auto& history_size_b      = (*this->scratch).template get<buffer_data_type::HISTORY_SIZES>();
+      auto& best_so_far_b       = (*this->scratch).template get<buffer_data_type::BEST_SO_FAR>();
 
       num_rotamers_b.alloc(batch_ligands);
       chromosomes_b.alloc(population_number * batch_ligands);
@@ -154,12 +144,11 @@ namespace mudock {
       best_scores.alloc(batch_ligands);
       best_chromosomes.alloc(batch_ligands);
       converged_ligands_b.alloc(batch_ligands);
-      history_b.alloc(batch_ligands * convergence_window);
-      history_head_b.alloc(batch_ligands);
-      history_size_b.alloc(batch_ligands);
+      best_so_far_b.alloc(batch_ligands);
 
       load_num_rotamers<queue_t>(batch, this->scratch);
       initialize_converged_ligands<queue_t>(batch, this->scratch);
+      initialize_best_so_far<queue_t>(batch, this->scratch);
 
       const auto seed =
           configuration.seed.has_value()
@@ -171,9 +160,7 @@ namespace mudock {
       fp_type* __restrict__ best_scores_p         = best_scores.dev_pointer();
       chromosome* __restrict__ best_chromosomes_p = best_chromosomes.dev_pointer();
       int* __restrict__ converged_ligands_p       = converged_ligands_b.dev_pointer();
-      fp_type* __restrict__ history_p             = history_b.dev_pointer();
-      int* __restrict__ history_head_p            = history_head_b.dev_pointer();
-      int* __restrict__ history_size_p            = history_size_b.dev_pointer();
+      fp_type* __restrict__ best_so_far_p             = best_so_far_b.dev_pointer();
 
       // Lorenzo: Ligand properties for experiments
       for (int index{0}; index < batch_ligands; ++index) {
@@ -196,15 +183,13 @@ namespace mudock {
                                                          population_number,
                                                          configuration.num_generations,
                                                          configuration.elite_size,
-                                                         configuration.convergence_window,
-                                                         configuration.variance_threshold,
+                                                         configuration.score_variance_thld,
+                                                         configuration.best_score_diff_thld,
                                                          configuration.crystal_score,
                                                          configuration.crystal_tolerance,
                                                          configuration.autostop,
                                                          converged_ligands_p,
-                                                         history_p,
-                                                         history_head_p,
-                                                         history_size_p,
+                                                         best_so_far_p,
                                                          configuration.tournament_length,
                                                          configuration.mutation_prob,
                                                          seed,

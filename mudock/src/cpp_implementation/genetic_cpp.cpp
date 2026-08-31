@@ -71,6 +71,92 @@ namespace mudock {
     return population[best_individual].genes;
   }
 
+  // template <typename fp_type>
+  // std::vector<int>
+  // get_indices_of_n_best(const fp_type* scores, int population_size, int n_best){
+  //
+  //   // Indices [0, 1, ..., population_size-1]
+  //   std::vector<int> indices(population_size);
+  //   std::iota(indices.begin(), indices.end(), 0);
+  // 
+  //   // Put the n_best lowest scores at the beginning.
+  //   std::nth_element(
+  //     indices.begin(),
+  //     indices.begin() + n_best,
+  //     indices.end(),
+  //     [scores](int a, int b) {
+  //         return scores[a] < scores[b];
+  //     }
+  //   );
+  // 
+  //   indices.resize(n_best);
+  // 
+  //   // Keep only the best 10%.
+  //   indices.resize(n_best);
+  // 
+  //   return {std::move(indices)};
+  // }
+  // 
+  // fp_type calculate_rmsd(chromosome first_individual, 
+  //                        chromosome second_individual,
+  //                        const int num_atoms) {
+  //   fp_type rmsd = 0.0;
+  //   for (int i = 0; i < num_atoms; ++i) {
+  //     fp_type d2 = pow((first_individual[0]-second_individual[0]), 2) +
+  //                 pow((first_individual[1]-second_individual[1]), 2) +
+  //                 pow((first_individual[2]-second_individual[2]), 2)
+  //   }
+  // }
+
+  // TODO L 
+  // 1. it's not considering the crystal
+  // 2. best_score_improved has a window of 1, maybe too rigid
+  // 3. not sure about population_is_diverse criterion, seems too stupid for convergence
+  bool has_converged(const fp_type best_so_far, 
+                     const fp_type this_gen_best,
+                     const fp_type best_score_diff_thld,
+                     fp_type* __restrict__ scores,
+                     const int population_size,
+                     const fp_type score_variance_thld) {
+    // Criterion 1: best score so far has not improved
+    bool best_score_not_improved = (best_so_far - this_gen_best < best_score_diff_thld) ? true : false;
+    if (best_score_not_improved) printf("Convergence due to best score not improving\n");
+
+    // Criterion 2: population score is diverse
+    fp_type mean = 0.0;
+    for (int i = 0; i < population_size; ++i)
+      mean += scores[i];
+    mean /= static_cast<fp_type>(population_size);
+
+    fp_type var = 0.0;
+    for (int i = 0; i < population_size; ++i) {
+      const fp_type d = scores[i] - mean;
+      var += d * d;
+    }
+    var /= static_cast<fp_type>(population_size);
+    
+    bool population_score_is_similar = (var < score_variance_thld) ? true : false;
+    if (population_score_is_similar) printf("Convergence due to population score not diverse\n");
+
+    // WARNING: didn't implement this criterion because i don't have the atoms' coordinates here (x/y/z_scratch)
+    // Criterion 3: RMSD of best 10%
+    // const int n_best = std::max(1, population_size / 10);
+    // std::vector<int> indices = get_indices_of_n_best(scores, population_size, n_best);
+    // int similars = 0;
+    // for (int i : indices) {
+    //   const fp_type rmsd = calculate_rmsd(population[best_index], population[i], num_atoms);
+    //   if (rmsd < rmsd_thld) {
+    //     similars++;
+    //   }
+    // }
+    // const fp_type fraction =  static_cast<fp_type>(similar) / n_best;
+    // bool rmsd_is_low = (fraction >= 0.8) ? true : false;
+    // if (rmsd_is_low) printf("Convergence due to low rmsd\n");
+
+    // If something is triggered -> converge
+    return best_score_not_improved || population_score_is_similar;
+  }
+
   void initialize_impl(const int batch_ligands,
                        const int population_number,
                        const int seed,
@@ -105,18 +191,16 @@ namespace mudock {
                     chromosome* next_population,
                     int* __restrict__ num_rotamers_b,
                     fp_type* __restrict__ scores_b,
-                    fp_type* __restrict__ history_b,
-                    int* __restrict__ history_head_b,
-                    int* __restrict__ history_size_b,
+                    fp_type* __restrict__ best_so_far_b,
                     const int generation,
-                    const int convergence_window,
-                    const fp_type variance_threshold,
+                    const fp_type score_variance_thld,
+                    const fp_type best_score_diff_thld,
                     const bool autostop,
                     const fp_type crystal_score,
                     const fp_type crystal_tolerance,
-                    int* __restrict__ converged_ligands) {
+                    int* __restrict__ converged_ligands_b) {
     for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
-      const int converged_ligand = converged_ligands[ligand_index];
+      const int converged_ligand = converged_ligands_b[ligand_index];
       if (converged_ligand) {
         continue;
       }
@@ -125,9 +209,7 @@ namespace mudock {
       chromosome* __restrict__ population_l      = population + population_number * ligand_index;
       chromosome* __restrict__ next_population_l = next_population + population_number * ligand_index;
       fp_type* __restrict__ scores               = scores_b + population_number * ligand_index;
-      fp_type* __restrict__ history              = history_b + convergence_window * ligand_index;
-      int& head                                  = history_head_b[ligand_index];
-      int& size                                  = history_size_b[ligand_index];
+      const fp_type best_so_far                  = best_so_far_b[ligand_index];
 
       // print best score
       fp_type best = scores[0];
@@ -136,8 +218,20 @@ namespace mudock {
           best = scores[i];
         }
       }
-      printf("Gen %d -- Best score: %f\n", generation, double(best));
+      printf("Gen %d --- Best of this gen: %f --- Best so far: %f\n", generation, double(best), double(best_so_far));
       // end print best score 
+
+
+      // TODO L move autostop logic inside genetic.hpp maybe as separated stage, maybe doing it every n generations instead of doing it every generation
+      // Check convergence 
+      if (autostop && has_converged(best_so_far, best, best_score_diff_thld, scores, population_number, score_variance_thld)) {
+        converged_ligands_b[ligand_index] = generation;
+      }
+
+      // Update best so far
+      if (best < best_so_far) {
+        best_so_far_b[ligand_index] = best;
+      }
 
       // Elitism: preserve the best elite_size individuals
       // elite_indices[k] contains the index in population_l of the k-th best individual
@@ -166,40 +260,6 @@ namespace mudock {
                   std::end(population_l[elite_indices[e]]),
                   std::begin(next_population_l[e]));
       }
-
-      // TODO L move autostop logic inside genetic.hpp maybe as separated stage, maybe doing it every n generations instead of doing it every generation
-      if(autostop){
-        // Insert newest best score
-        history[head] = best;
-
-        // Advance circular index
-        head = (head + 1) % convergence_window;
-
-        // Grow until the buffer is full
-        if (size < convergence_window)
-          ++size;
-
-        // Only test convergence once the window is full
-        if (size == convergence_window) {
-          fp_type mean = 0.0;
-          for (int i = 0; i < convergence_window; ++i)
-            mean += history[i];
-          mean /= static_cast<fp_type>(convergence_window);
-
-          fp_type var = 0.0;
-          for (int i = 0; i < convergence_window; ++i) {
-            const fp_type d = history[i] - mean;
-            var += d * d;
-          }
-          var /= static_cast<fp_type>(convergence_window);
-
-          if (var < variance_threshold || best < (crystal_score + crystal_tolerance)) {
-            // mark ligand as converged
-            converged_ligands[ligand_index] = generation;
-          }
-        }
-      }
-
 
       // Generate the new population
       for (int element_index = elite_size; element_index < population_number; ++element_index) {
@@ -290,12 +350,10 @@ namespace mudock {
                                                 next_population,
                                                 num_rotamers_b,
                                                 scores_b,
-                                                history_b,
-                                                history_head_b,
-                                                history_size_b,
+                                                best_so_far_b,
                                                 current_generation,
-                                                convergence_window,
-                                                variance_threshold,
+                                                score_variance_thld,
+                                                best_score_diff_thld,
                                                 autostop,
                                                 crystal_score,
                                                 crystal_tolerance,

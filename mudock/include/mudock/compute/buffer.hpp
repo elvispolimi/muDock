@@ -38,9 +38,7 @@ namespace mudock {
     ADADELTA_E_DW2,
     ACTIVE_INDIVIDUALS,
     CONVERGED_LIGANDS, // IMPORTANT: store 0 if ligand NOT converged, otherwise store the number of generations to reach convergence
-    HISTORY,
-    HISTORY_HEADS,
-    HISTORY_SIZES
+    BEST_SO_FAR
   };
 
   using buffer_type_list = std::tuple<fp_type, int, chromosome>;
@@ -153,16 +151,8 @@ namespace mudock {
     using type = buffer_type_traits_impl<buffer_data_type::CONVERGED_LIGANDS, int>::type;
   };
   template<>
-  struct buffer_type_traits<buffer_data_type::HISTORY> {
-    using type = buffer_type_traits_impl<buffer_data_type::HISTORY, fp_type>::type;
-  };
-  template<>
-  struct buffer_type_traits<buffer_data_type::HISTORY_HEADS> {
-    using type = buffer_type_traits_impl<buffer_data_type::HISTORY_HEADS, int>::type;
-  };
-  template<>
-  struct buffer_type_traits<buffer_data_type::HISTORY_SIZES> {
-    using type = buffer_type_traits_impl<buffer_data_type::HISTORY_SIZES, int>::type;
+  struct buffer_type_traits<buffer_data_type::BEST_SO_FAR> {
+    using type = buffer_type_traits_impl<buffer_data_type::BEST_SO_FAR, fp_type>::type;
   };
 
   template<template<class...> class container_type, typename T, class queue_t, class... args>

@@ -89,13 +89,13 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
       po::value(&args.knobs.autostop)->default_value(args.knobs.autostop),
       "Enable early stopping when per-ligand convergence or crystal (if specified) is reached");
   knobs_description.add_options()(
-      "convergence_window",
-      po::value(&args.knobs.convergence_window)->default_value(args.knobs.convergence_window),
-      "Number of generations used to evaluate convergence");
+      "score_variance_thld",
+      po::value(&args.knobs.score_variance_thld)->default_value(args.knobs.score_variance_thld),
+      "Relative to autostop, score variance threshold of a population");
   knobs_description.add_options()(
-      "variance_threshold",
-      po::value(&args.knobs.variance_threshold)->default_value(args.knobs.variance_threshold),
-      "Variance threshold for convergence of per-ligand best scores");
+      "best_score_diff_thld",
+      po::value(&args.knobs.best_score_diff_thld)->default_value(args.knobs.best_score_diff_thld),
+      "Relative to autostop, difference threshold between best score of all times and current generation");
   knobs_description.add_options()(
       "crystal_score",
       po::value(&args.knobs.crystal_score)->default_value(args.knobs.crystal_score),

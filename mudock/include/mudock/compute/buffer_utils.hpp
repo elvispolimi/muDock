@@ -5,6 +5,7 @@
 #include <mudock/compute/queue.hpp>
 #include <mudock/compute/scratchpad.hpp>
 #include <mudock/molecule.hpp>
+#include <mudock/utils.hpp>
 
 namespace mudock {
 
@@ -122,6 +123,24 @@ namespace mudock {
         converged_ligands()[ligand_index] = static_cast<int>(0);
       }
       converged_ligands.copy_host2device();
+      return true;
+    } else
+      return false;
+  };
+
+  template<typename queue_type>
+    requires std::derived_from<queue_type, queue>
+  bool initialize_best_so_far(batch<static_molecule> &batch, std::shared_ptr<scratchpad<queue_type>> scratch) {
+    const auto batch_ligands = batch.num_ligands;
+
+    auto &best_so_far_b = (*scratch).template get<buffer_data_type::BEST_SO_FAR>();
+
+    if (!best_so_far_b.is_valid()) {
+      best_so_far_b.alloc(batch_ligands);
+      for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
+        best_so_far_b()[ligand_index] = big_bound<fp_type>();
+      }
+      best_so_far_b.copy_host2device();
       return true;
     } else
       return false;
