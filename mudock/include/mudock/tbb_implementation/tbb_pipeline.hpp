@@ -25,17 +25,17 @@ namespace mudock {
   namespace detail {
     inline void append_ligand(std::string& buf, const static_molecule& ligand) {
       buf += ligand.properties.get(property_type::NAME);
-      buf += ' ';
+      buf += ',';
       buf += ligand.properties.get(property_type::SCORE);
-      buf += ' ';
+      buf += ',';
       buf += ligand.properties.get(property_type::GEN);
-      buf += ' ';
+      buf += ',';
       buf += ligand.properties.get(property_type::SEED);
-      buf += ' ';
+      buf += ',';
       buf += ligand.properties.get(property_type::NUM_ROT);
-      buf += ' ';
+      buf += ',';
       buf += ligand.properties.get(property_type::NUM_ATOMS);
-      buf += ' ';
+      buf += ',';
       buf += ligand.properties.get(property_type::NUM_EVALS);
       buf += '\n';
     }
@@ -74,7 +74,7 @@ namespace mudock {
         }
       }
       if (!buf.empty())
-        std::cout << "Experiment " << buf;
+        std::cout << "Experiment," << buf;
     });
 
     threadpool pool;

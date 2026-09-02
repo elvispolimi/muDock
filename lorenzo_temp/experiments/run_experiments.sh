@@ -10,7 +10,7 @@
 # for LSIT in "${lsits[@]}"; do
 # for SEED in "${seeds[@]}"; do
 
-MAX_JOBS=12
+MAX_JOBS=$(nproc)
 
 BUILD=omp
 
@@ -48,14 +48,14 @@ for PDBID in "${ids[@]}"; do
                     --seed "$SEED" \
                     --search "$SEARCH" \
                     --autostop "$AUTOSTOP" \
-                    --variance_threshold "$VARIANCE_TH" \
+                    --score_variance_thld "$VARIANCE_TH" \
                     --crystal_score "$CRYSCO" \
                     --generations "$GENERATIONS" \
                     --population "$POPULATION" \
                     --lsrate "$LSRATE" \
                     --lsit "$LSIT" \
                     --use CPP:CPU:0 \
-                    2>&1 | grep Exp | sed "s/$/ $POPULATION $LSRATE $LSIT/" >> "$OUT_PATH" \
+                    2>&1 | grep Exp | sed "s/$/,$POPULATION,$LSRATE,$LSIT/" >> "$OUT_PATH" \
                     &
                 
                 if [ "$(jobs -rp | wc -l)" -ge "$MAX_JOBS" ]; then
@@ -81,6 +81,6 @@ while [ "$(jobs -rp | wc -l)" -gt 0 ]; do
         "$((COMPLETED_RUNS * 100 / TOTAL_RUNS))"
 done
 
-cat ./lorenzo_temp/experiments/test/* > ./lorenzo_temp/experiments/results.txt
+cat ./lorenzo_temp/experiments/test/* > ./lorenzo_temp/experiments/results.csv
 
 printf "\nDone.\n"
