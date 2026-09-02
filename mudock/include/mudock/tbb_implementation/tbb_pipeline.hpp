@@ -37,6 +37,12 @@ namespace mudock {
       buf += ligand.properties.get(property_type::NUM_ATOMS);
       buf += ',';
       buf += ligand.properties.get(property_type::NUM_EVALS);
+      buf += ',';
+      buf += ligand.properties.get(property_type::POP);
+      buf += ',';
+      buf += ligand.properties.get(property_type::RATE);
+      buf += ',';
+      buf += ligand.properties.get(property_type::ITER);
       buf += '\n';
     }
   } // namespace detail

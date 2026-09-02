@@ -22,9 +22,9 @@ VARIANCE_TH=0
 CRYSCO=-3.826046
 NUM_SEEDS=8
 
-ids=("5cst")
-lsrates=("0" "50" "100")
-lsits=("50" "150" "300")
+ids=("1fkb")
+lsrates=("0")
+lsits=("50")
 seeds=($(seq 1 "$NUM_SEEDS"))
 
 TOTAL_RUNS=$((${#ids[@]} * ${#lsrates[@]} * ${#lsits[@]} * ${#seeds[@]}))
@@ -55,7 +55,7 @@ for PDBID in "${ids[@]}"; do
                     --lsrate "$LSRATE" \
                     --lsit "$LSIT" \
                     --use CPP:CPU:0 \
-                    2>&1 | grep Exp | sed "s/$/,$POPULATION,$LSRATE,$LSIT/" >> "$OUT_PATH" \
+                    2>&1 | grep Exp >> "$OUT_PATH" \
                     &
                 
                 if [ "$(jobs -rp | wc -l)" -ge "$MAX_JOBS" ]; then

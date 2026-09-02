@@ -56,6 +56,8 @@ namespace mudock {
         // It would be better to have a counter at each evaluation to be sure (pay attention to race conditions)
         const int num_evalualtions = this->num_generations * population_number * (static_cast<int>(local_search_rate * static_cast<fp_type>(local_search_iterations) / fp_type{100}) + 1);
         ligand.properties.assign(property_type::NUM_EVALS, std::to_string(num_evalualtions));
+        ligand.properties.assign(property_type::RATE, std::to_string(local_search_rate));
+        ligand.properties.assign(property_type::ITER, std::to_string(local_search_iterations));
       }
       
       local_search_stage.prepare(batch);  

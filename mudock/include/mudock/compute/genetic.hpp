@@ -185,9 +185,11 @@ namespace mudock {
         const int num_evalualtions = num_generations * population_number;
 
         ligand.properties.assign(property_type::GEN, std::to_string(num_generations));
+        ligand.properties.assign(property_type::POP, std::to_string(population_number));
         ligand.properties.assign(property_type::SEED, std::to_string(seed));
         ligand.properties.assign(property_type::NUM_ROT, std::to_string(num_rotamers));
         ligand.properties.assign(property_type::NUM_EVALS, std::to_string(num_evalualtions));
+
       }
 
       kernel = std::make_unique<genetic_kernel<queue_t>>(batch_ligands,
