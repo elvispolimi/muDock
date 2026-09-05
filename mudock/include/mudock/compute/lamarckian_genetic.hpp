@@ -78,13 +78,12 @@ namespace mudock {
       for (int generation = 1; generation <= this->num_generations; ++generation) {
         this->geom_trans();
         (*this->score_stage)();
+        (*this->kernel)();
 
         // Limit LS runs: balance speed and results
         if (generation % ls_every == 0 || generation > (this->num_generations - ls_last_gen)) {
           local_search_stage();
         }
-
-        (*this->kernel)();
 
         // Avoid full device-to-device copy by ping-ponging population buffers.
         if (generation < this->num_generations) {
