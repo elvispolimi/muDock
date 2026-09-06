@@ -134,7 +134,7 @@ namespace mudock {
       const knobs& configuration   = (*this->scratch).configuration;
       batch_ligands                = batch.num_ligands;
       num_generations              = static_cast<int>(configuration.num_generations);
-      const int population_number  = static_cast<int>(configuration.population_number);
+      population_number            = static_cast<int>(configuration.population_number);
       auto q                       = (*this->scratch).get_queue();
 
       auto& num_rotamers_b            = (*this->scratch).template get<buffer_data_type::NUM_ROTAMERS>();
@@ -182,14 +182,9 @@ namespace mudock {
         // +1 comes from the scores, the remaining from the gradients
         // TODO L this is not correct: if autostop is on, it should count the actual number of generations at convergence.
         // It would be better to have a counter at each evaluation to be sure (pay attention to race conditions)
-        const int num_evalualtions = num_generations * population_number;
-
-        ligand.properties.assign(property_type::GEN, std::to_string(num_generations));
         ligand.properties.assign(property_type::POP, std::to_string(population_number));
         ligand.properties.assign(property_type::SEED, std::to_string(seed));
         ligand.properties.assign(property_type::NUM_ROT, std::to_string(num_rotamers));
-        ligand.properties.assign(property_type::NUM_EVALS, std::to_string(num_evalualtions));
-
       }
 
       kernel = std::make_unique<genetic_kernel<queue_t>>(batch_ligands,
@@ -349,6 +344,7 @@ namespace mudock {
 
     int batch_ligands;
     int num_generations;
+    int population_number;
     buffer_vector<chromosome, queue_t> next_population;
     buffer_vector<chromosome, queue_t> best_chromosomes;
     buffer_vector<fp_type, queue_t> best_scores;
@@ -374,9 +370,15 @@ namespace mudock {
         ligand.properties.assign(property_type::SCORE, std::to_string(best_scores()[index]));
 
         const int convergence_generation = converged_ligands_b()[index];
+        int past_generations = 0;
         if (convergence_generation != 0){
-          ligand.properties.assign(property_type::GEN, std::to_string(convergence_generation));
+          past_generations = convergence_generation;
+        } else {
+          past_generations = num_generations;
         }
+        const int num_evaluations = past_generations * population_number;
+        ligand.properties.assign(property_type::GEN, std::to_string(past_generations));
+        ligand.properties.assign(property_type::NUM_EVALS, std::to_string(num_evaluations));
       }
     }
 
