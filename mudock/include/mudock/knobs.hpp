@@ -19,8 +19,8 @@ namespace mudock {
     fp_type best_score_diff_thld              = static_cast<fp_type>(0.001);
     // fp_type crystal_score                     = small_bound<fp_type>();
     // fp_type crystal_tolerance                 = static_cast<fp_type>(0.5);
-    fp_type lsrate                            = static_cast<fp_type>(100);
     bool ls_on_best                           = false;
+    std::size_t lsrate                        = 100;
     std::size_t lsit                          = 300;
     std::size_t ls_every                      = 1;
     std::size_t ls_last_gen                   = 0;

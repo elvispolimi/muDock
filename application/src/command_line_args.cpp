@@ -67,7 +67,7 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
  knobs_description.add_options()(
       "lsrate",
       po::value(&args.knobs.lsrate)->default_value(args.knobs.lsrate),
-      "Percentage of population affected by local search for LGA");
+      "Percentage of population affected by local search for LGA (must be integer)");
  knobs_description.add_options()(
       "ls_on_best",
       po::value(&args.knobs.ls_on_best)->default_value(args.knobs.ls_on_best),

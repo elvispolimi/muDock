@@ -38,11 +38,11 @@ namespace mudock {
 
     void prepare(batch<static_molecule>& batch) override {
       genetic<queue_t, scoring_t>::prepare(batch);
-      const knobs& configuration  = (*this->scratch).configuration;
-      ls_every                    = static_cast<int>(configuration.ls_every);
-      ls_last_gen                 = static_cast<int>(configuration.ls_last_gen);
-      local_search_rate = configuration.lsrate;
-      local_search_iterations = static_cast<int>(configuration.lsit);
+      const knobs& configuration = (*this->scratch).configuration;
+      ls_every                   = static_cast<int>(configuration.ls_every);
+      ls_last_gen                = static_cast<int>(configuration.ls_last_gen);
+      local_search_rate          = static_cast<int>(configuration.lsrate);
+      local_search_iterations    = static_cast<int>(configuration.lsit);
       
       // Lorenzo: Ligand properties for experiments
       for (int index{0}; index < this->batch_ligands; ++index) {
@@ -127,7 +127,8 @@ namespace mudock {
         // +1 comes from the scores, the remaining from the gradients
         // TODO L this is not correct: if autostop is on, it should count the actual number of generations at convergence.
         // It would be better to have a counter at each evaluation to be sure (pay attention to race conditions)
-        const int num_evaluations = past_generations * this->population_number * (static_cast<int>(local_search_rate * static_cast<fp_type>(local_search_iterations) / fp_type{100}) + 1);
+        const int num_local_search_individuals = this->population_number * local_search_rate / 100;
+        const int num_evaluations = past_generations * this->population_number + past_generations * num_local_search_individuals * local_search_iterations; // GA contribution + LS contribution
         ligand.properties.assign(property_type::NUM_EVALS, std::to_string(num_evaluations));
       }
     }
@@ -135,7 +136,7 @@ namespace mudock {
     local_search_t<queue_t, scoring_t> local_search_stage;
     int ls_every;
     int ls_last_gen;
-    fp_type local_search_rate;
+    int local_search_rate;
     int local_search_iterations;
   }; // namespace mudock
 #endif

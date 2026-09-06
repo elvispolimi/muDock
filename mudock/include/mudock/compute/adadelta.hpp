@@ -53,7 +53,7 @@ namespace mudock {
       batch_ligands = batch.num_ligands;
       batch_atoms   = batch.batch_max_atoms;
       individuals_per_ligand = std::max(1, static_cast<int>((*this->scratch).configuration.population_number));
-      local_search_rate = (*this->scratch).configuration.lsrate;
+      local_search_rate = static_cast<int>((*this->scratch).configuration.lsrate);
       local_search_on_best = (*this->scratch).configuration.ls_on_best;
 
       auto &gradient_b = (*this->scratch).template get<buffer_data_type::GRADIENTS>();
@@ -95,7 +95,7 @@ namespace mudock {
       std::vector<int> active_init(gradient_count);
       
       std::mt19937 rng((*this->scratch).configuration.seed.value_or(std::random_device{}()));
-      std::bernoulli_distribution dist(static_cast<double>(local_search_rate / fp_type{100}));
+      std::bernoulli_distribution dist(static_cast<double>(static_cast<fp_type>(local_search_rate) / fp_type{100}));
 
       for (size_t i = 0; i < gradient_count; ++i) {
         active_init[i] = dist(rng);
@@ -208,7 +208,7 @@ namespace mudock {
     int batch_ligands;
     int batch_atoms;
     int individuals_per_ligand;
-    fp_type local_search_rate;
+    int local_search_rate;
     bool local_search_on_best;
 
     std::unique_ptr<adadelta_kernel<queue_type>> adadelta_krnl;
@@ -246,7 +246,7 @@ namespace mudock {
         for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
           int     *__restrict__ active_individuals_l = active_individuals_p + ligand_index * individuals_per_ligand;
           fp_type *__restrict__ scores_l             = scores_p + ligand_index * individuals_per_ligand;
-          const int n = static_cast<int>(local_search_rate * static_cast<fp_type>(individuals_per_ligand) / fp_type{100});
+          const int n = static_cast<int>(static_cast<fp_type>(local_search_rate) * static_cast<fp_type>(individuals_per_ligand) / fp_type{100});
           markTopNActive(scores_l, active_individuals_l, n, individuals_per_ligand);
         }
       }
