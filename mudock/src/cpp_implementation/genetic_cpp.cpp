@@ -212,8 +212,8 @@ namespace mudock {
                     const fp_type score_variance_thld,
                     const fp_type best_score_diff_thld,
                     const bool autostop,
-                    const fp_type crystal_score,
-                    const fp_type crystal_tolerance,
+                    // const fp_type crystal_score,
+                    // const fp_type crystal_tolerance,
                     int* __restrict__ converged_ligands_b) {
     for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
       const int converged_ligand = converged_ligands_b[ligand_index];
@@ -371,8 +371,8 @@ namespace mudock {
                                                 score_variance_thld,
                                                 best_score_diff_thld,
                                                 autostop,
-                                                crystal_score,
-                                                crystal_tolerance,
+                                                // crystal_score,
+                                                // crystal_tolerance,
                                                 converged_ligands_b);
     ++current_generation;
   }

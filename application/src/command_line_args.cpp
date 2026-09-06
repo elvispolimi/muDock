@@ -93,21 +93,21 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
       po::value(&args.knobs.tolerance_window)->default_value(args.knobs.tolerance_window),
       "Relative to autostop, for how many generation the best score so far must not improve to declare convergence");
   knobs_description.add_options()(
+      "best_score_diff_thld",
+      po::value(&args.knobs.best_score_diff_thld)->default_value(args.knobs.best_score_diff_thld),
+      "Relative to autostop, difference threshold between best score of all times and current generation to consider as improved");
+  knobs_description.add_options()(
       "score_variance_thld",
       po::value(&args.knobs.score_variance_thld)->default_value(args.knobs.score_variance_thld),
       "Relative to autostop, score variance threshold of a population");
-  knobs_description.add_options()(
-      "best_score_diff_thld",
-      po::value(&args.knobs.best_score_diff_thld)->default_value(args.knobs.best_score_diff_thld),
-      "Relative to autostop, difference threshold between best score of all times and current generation");
-  knobs_description.add_options()(
-      "crystal_score",
-      po::value(&args.knobs.crystal_score)->default_value(args.knobs.crystal_score),
-      "If autostop is on, it also checks if the crystal is found at the value specified");
-  knobs_description.add_options()(
-      "crystal_tolerance",
-      po::value(&args.knobs.crystal_tolerance)->default_value(args.knobs.crystal_tolerance),
-      "Tolerance value around crystal_score");
+//   knobs_description.add_options()(
+//       "crystal_score",
+//       po::value(&args.knobs.crystal_score)->default_value(args.knobs.crystal_score),
+//       "If autostop is on, it also checks if the crystal is found at the value specified");
+//   knobs_description.add_options()(
+//       "crystal_tolerance",
+//       po::value(&args.knobs.crystal_tolerance)->default_value(args.knobs.crystal_tolerance),
+//       "Tolerance value around crystal_score");
   knobs_description.add_options()(
       "seed",
       po::value(&seed),

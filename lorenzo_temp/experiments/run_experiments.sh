@@ -10,22 +10,23 @@
 # for LSIT in "${lsits[@]}"; do
 # for SEED in "${seeds[@]}"; do
 
+IGNORE_TOKEN="Experiment"
+
 MAX_JOBS=$(nproc)
+
 
 BUILD=omp
 
-SEARCH=lga
+SEARCH=genetic
 POPULATION=100
-GENERATIONS=100
-AUTOSTOP=1
-VARIANCE_TH=0
-CRYSCO=-3.826046
-NUM_SEEDS=8
+GENERATIONS=500
+AUTOSTOP=0
+NUM_SEEDS=4
+ids=("1fkb" "5cst")
 
-ids=("1fkb")
 lsrates=("0")
-lsits=("50")
-seeds=($(seq 1 "$NUM_SEEDS"))
+lsits=("0")
+seeds=($(seq 0 $((NUM_SEEDS - 1))))
 
 TOTAL_RUNS=$((${#ids[@]} * ${#lsrates[@]} * ${#lsits[@]} * ${#seeds[@]}))
 COMPLETED_RUNS=0
@@ -48,14 +49,12 @@ for PDBID in "${ids[@]}"; do
                     --seed "$SEED" \
                     --search "$SEARCH" \
                     --autostop "$AUTOSTOP" \
-                    --score_variance_thld "$VARIANCE_TH" \
-                    --crystal_score "$CRYSCO" \
                     --generations "$GENERATIONS" \
                     --population "$POPULATION" \
                     --lsrate "$LSRATE" \
                     --lsit "$LSIT" \
                     --use CPP:CPU:0 \
-                    2>&1 | grep Exp >> "$OUT_PATH" \
+                    2>&1 | grep "$IGNORE_TOKEN" >> "$OUT_PATH" \
                     &
                 
                 if [ "$(jobs -rp | wc -l)" -ge "$MAX_JOBS" ]; then
@@ -81,6 +80,8 @@ while [ "$(jobs -rp | wc -l)" -gt 0 ]; do
         "$((COMPLETED_RUNS * 100 / TOTAL_RUNS))"
 done
 
-cat ./lorenzo_temp/experiments/test/* > ./lorenzo_temp/experiments/results.csv
+# cat ./lorenzo_temp/experiments/test/* > ./lorenzo_temp/experiments/results.csv
+sed 's/^Experiment,//' ./lorenzo_temp/experiments/test/* > ./lorenzo_temp/experiments/results.csv
+python3 lorenzo_temp/experiments/notify.py
 
 printf "\nDone.\n"
