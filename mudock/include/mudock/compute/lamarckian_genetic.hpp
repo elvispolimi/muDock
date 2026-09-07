@@ -109,11 +109,13 @@ namespace mudock {
       assert(batch.num_ligands == batch_ligands && "Genetic algorithm received different batch for teardown");
 
       auto &converged_ligands_b = (*this->scratch).template get<buffer_data_type::CONVERGED_LIGANDS>();
+      this->best_scores.copy_device2host();
       converged_ligands_b.copy_device2host();
       (*this->scratch).get_queue()->synchronize();
   
       for (int index{0}; index < this->batch_ligands; ++index) {
         auto& ligand = *batch.molecules[index];
+        ligand.properties.assign(property_type::SCORE, std::to_string(this->best_scores()[index]));
 
         const int convergence_generation = converged_ligands_b()[index];
         int past_generations = 0;
@@ -129,6 +131,7 @@ namespace mudock {
         // It would be better to have a counter at each evaluation to be sure (pay attention to race conditions)
         const int num_local_search_individuals = this->population_number * local_search_rate / 100;
         const int num_evaluations = past_generations * this->population_number + past_generations * num_local_search_individuals * local_search_iterations; // GA contribution + LS contribution
+        ligand.properties.assign(property_type::GEN, std::to_string(past_generations));
         ligand.properties.assign(property_type::NUM_EVALS, std::to_string(num_evaluations));
       }
     }
