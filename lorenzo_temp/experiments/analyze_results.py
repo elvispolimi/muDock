@@ -38,20 +38,24 @@ NUMERIC_COLUMNS = [
 ]
 
 
+
 # ---------------------------------------------------------------------------
 # Loading
 # ---------------------------------------------------------------------------
 
-def load_results(path: str | Path) -> pd.DataFrame:
+def load_results(path: str | Path) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
     Load experiment results from a whitespace-separated file.
 
-    Expected format:
+    Positive-score entries are removed from the returned dataframe.
 
-        Experiment ligand_id score generations seed num_rotamers
-        num_atoms num_evaluations population_size ls_rate ls_iter
+    Returns:
+        df:
+            Results with positive-score entries removed.
 
-    The input file has no header.
+        positive_counts:
+            Number of positive-score entries for each
+            (ligand_id, ls_rate, ls_iter) configuration.
     """
 
     df = pd.read_csv(
@@ -70,14 +74,43 @@ def load_results(path: str | Path) -> pd.DataFrame:
         errors="raise",
     )
 
-    return df
+    # Configuration identifying a set of runs.
+    group_columns = [
+        "ligand_id",
+        "ls_rate",
+        "ls_iter",
+    ]
+
+    # -----------------------------------------------------------------------
+    # Count positive scores per configuration BEFORE removing them.
+    # -----------------------------------------------------------------------
+
+    positive_counts = (
+        df.assign(
+            is_positive=df["score"] > 0
+        )
+        .groupby(group_columns)["is_positive"]
+        .sum()
+        .reset_index(name="n_positive_scores")
+    )
+
+    # -----------------------------------------------------------------------
+    # Remove positive-score entries.
+    # -----------------------------------------------------------------------
+
+    df = df[df["score"] <= 0].reset_index(drop=True)
+
+    return df, positive_counts
 
 
 # ---------------------------------------------------------------------------
 # Statistics across random seeds
 # ---------------------------------------------------------------------------
 
-def summarize_runs(df: pd.DataFrame) -> pd.DataFrame:
+def summarize_runs(
+    df: pd.DataFrame,
+    positive_counts: pd.DataFrame,
+) -> pd.DataFrame:
     """
     Aggregate different random-seed runs belonging to the same
     ligand/configuration.
@@ -87,8 +120,13 @@ def summarize_runs(df: pd.DataFrame) -> pd.DataFrame:
         ls_rate
         ls_iter
 
-    The resulting dataframe contains statistics for both
-    generations and score.
+    Positive-score runs have already been removed.
+
+    n_runs:
+        Number of valid runs used for the statistics.
+
+    n_positive_scores:
+        Number of runs discarded because their score was positive.
     """
 
     group_columns = [
@@ -114,10 +152,27 @@ def summarize_runs(df: pd.DataFrame) -> pd.DataFrame:
             min_score=("score", "min"),
             max_score=("score", "max"),
 
-            # Number of runs
+            # Number of valid runs
             n_runs=("generations", "count"),
         )
         .reset_index()
+    )
+
+    # Add number of discarded positive-score runs.
+    summary = summary.merge(
+        positive_counts,
+        on=group_columns,
+        how="outer",
+    )
+
+    # Configurations containing only positive-score runs will not be present
+    # in the statistics above, so n_runs is zero for those configurations.
+    summary["n_runs"] = summary["n_runs"].fillna(0).astype(int)
+
+    summary["n_positive_scores"] = (
+        summary["n_positive_scores"]
+        .fillna(0)
+        .astype(int)
     )
 
     return summary
@@ -320,12 +375,17 @@ def main():
     # Load
     # -----------------------------------------------------------------------
 
-    df = load_results(args.input)
+    df, positive_counts = load_results(args.input)
 
-    print("\nLoaded results:")
+    print("\nResults after removing positive scores:")
     print(df)
 
-    print("\nNumber of rows:", len(df))
+    print("\nNumber of valid rows:", len(df))
+
+    print("\nPositive-score entries per configuration:")
+    print(
+        positive_counts.to_string(index=False)
+)
 
     # -----------------------------------------------------------------------
     # Show available ligands
@@ -343,7 +403,10 @@ def main():
     # Summarize stochastic runs
     # -----------------------------------------------------------------------
 
-    summary = summarize_runs(df)
+    summary = summarize_runs(
+        df,
+        positive_counts,
+    )
 
     print("\nSummary across seeds:")
     print(summary.to_string(index=False))

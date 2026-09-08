@@ -7,17 +7,17 @@
 ############################
 # MUDOCK
 ############################
-./builds/omp/application/muDock -p ./data/1fkb/1fkb_protein.pdb -l ./data/1fkb/1fkb_ligand.adtmol2 --use CPP:CPU:0 --seed 0 --search lga
-./builds/omp/application/muDock -p ./data/1hii/1hii_protein.pdb -l ./data/1hii/1hii_ligand.adtmol2 --use CPP:CPU:0 --seed 0 --search lga
-./builds/omp/application/muDock -p ./data/2ya6/2ya6_protein.pdb -l ./data/2ya6/2ya6_ligand.adtmol2 --use CPP:CPU:0 --seed 0 --search lga
-./builds/omp/application/muDock -p ./data/3fv3/3fv3_protein.pdb -l ./data/3fv3/3fv3_ligand.adtmol2 --use CPP:CPU:0 --seed 0 --search lga
-./builds/omp/application/muDock -p ./data/3udd/3udd_protein.pdb -l ./data/3udd/3udd_ligand.adtmol2 --use CPP:CPU:0 --seed 0 --search lga
-./builds/omp/application/muDock -p ./data/4few/4few_protein.pdb -l ./data/4few/4few_ligand.adtmol2 --use CPP:CPU:0 --seed 0 --search lga
-./builds/omp/application/muDock -p ./data/5cst/5cst_protein.pdb -l ./data/5cst/5cst_ligand.adtmol2 --use CPP:CPU:0 --seed 0 --search lga
-./builds/omp/application/muDock -p ./data/5uez/5uez_protein.pdb -l ./data/5uez/5uez_ligand.adtmol2 --use CPP:CPU:0 --seed 0 --search lga
-./builds/omp/application/muDock -p ./data/5wuk/5wuk_protein.pdb -l ./data/5wuk/5wuk_ligand.adtmol2 --use CPP:CPU:0 --seed 0 --search lga
-./builds/omp/application/muDock -p ./data/4q90/protein.pdb      -l ./data/4q90/crystal.adtmol2 --use CPP:CPU:0     --seed 0 --search lga
-./builds/omp/application/muDock -p ./data/1a99/protein.pdb      -l ./data/1a99/crystal.adtmol2 --use CPP:CPU:0     --seed 0 --search lga  
+./builds/omp/application/muDock -p ./data/1fkb/1fkb_protein.pdb -l ./data/1fkb/1fkb_ligand.adtmol2 --seed 0 --search lga
+./builds/omp/application/muDock -p ./data/1hii/1hii_protein.pdb -l ./data/1hii/1hii_ligand.adtmol2 --seed 0 --search lga
+./builds/omp/application/muDock -p ./data/2ya6/2ya6_protein.pdb -l ./data/2ya6/2ya6_ligand.adtmol2 --seed 0 --search lga
+./builds/omp/application/muDock -p ./data/3fv3/3fv3_protein.pdb -l ./data/3fv3/3fv3_ligand.adtmol2 --seed 0 --search lga
+./builds/omp/application/muDock -p ./data/3udd/3udd_protein.pdb -l ./data/3udd/3udd_ligand.adtmol2 --seed 0 --search lga
+./builds/omp/application/muDock -p ./data/4few/4few_protein.pdb -l ./data/4few/4few_ligand.adtmol2 --seed 0 --search lga
+./builds/omp/application/muDock -p ./data/5cst/5cst_protein.pdb -l ./data/5cst/5cst_ligand.adtmol2 --seed 0 --search lga
+./builds/omp/application/muDock -p ./data/5uez/5uez_protein.pdb -l ./data/5uez/5uez_ligand.adtmol2 --seed 0 --search lga
+./builds/omp/application/muDock -p ./data/5wuk/5wuk_protein.pdb -l ./data/5wuk/5wuk_ligand.adtmol2 --seed 0 --search lga
+./builds/omp/application/muDock -p ./data/4q90/protein.pdb      -l ./data/4q90/crystal.adtmol2     --seed 0 --search lga
+./builds/omp/application/muDock -p ./data/1a99/protein.pdb      -l ./data/1a99/crystal.adtmol2     --seed 0 --search lga  
 
 
 ############################
