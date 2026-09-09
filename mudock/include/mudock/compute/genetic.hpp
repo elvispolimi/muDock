@@ -177,6 +177,7 @@ namespace mudock {
       for (int index{0}; index < batch_ligands; ++index) {
         auto& ligand = *batch.molecules[index];
         const int num_rotamers = num_rotamers_p[index];
+        const int num_atoms = ligand.num_atoms();
         // TODO L check if this estimate is correct. WARNING: this depends on the local search implementation. 
         // This is for adadelta for example (not counting the effect of ls_last_gen and ls_every)
         // +1 comes from the scores, the remaining from the gradients
@@ -185,6 +186,7 @@ namespace mudock {
         ligand.properties.assign(property_type::POP, std::to_string(population_number));
         ligand.properties.assign(property_type::SEED, std::to_string(seed));
         ligand.properties.assign(property_type::NUM_ROT, std::to_string(num_rotamers));
+        ligand.properties.assign(property_type::NUM_ATOMS, std::to_string(num_atoms));
       }
 
       kernel = std::make_unique<genetic_kernel<queue_t>>(batch_ligands,

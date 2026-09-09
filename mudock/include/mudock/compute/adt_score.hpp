@@ -169,9 +169,6 @@ namespace mudock {
         // Atoms and bonds
         const int num_atoms = ligand.num_atoms();
 
-        ligand.properties.assign(property_type::NUM_ATOMS, std::to_string(num_atoms));
-
-
         const auto non_bond_size = adt_ligand.non_bond_size();
         std::memcpy((void *) (nonbond_a1() + num_nonbond()[ligand_index]),
                     adt_ligand.non_bond_A(),
