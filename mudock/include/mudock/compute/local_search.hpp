@@ -53,5 +53,9 @@ namespace mudock {
       std::ofstream ofs(filename, std::ios::out);
       writer<supported_format::MOL2>(pose, ofs);
     }
+
+    bool is_standalone_local_search(const knobs& conf) {
+      return conf.population_number == 1 && conf.num_generations == 1 && conf.lsrate == 100;
+    }
   };
 } // namespace mudock

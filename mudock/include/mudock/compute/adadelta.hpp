@@ -126,8 +126,7 @@ namespace mudock {
                                                                     RHO,
                                                                     EPSILON);
 
-      this->standalone_local_search = ((*this->scratch).configuration.population_number == 1) &&
-                                ((*this->scratch).configuration.num_generations == 1);
+      this->standalone_local_search = this->is_standalone_local_search((*this->scratch).configuration);
       
       // Initialize the scoring kernel buffers
       this->score_stage->prepare(batch); //TODO L se non sbaglio l'ho aggiunto per quando deve fare solo local search nell'eseguibile stand alone
