@@ -1,0 +1,1 @@
+fare una run di GA con tot evaluations e vedere con lo stesso numero di valutazioni di LGA (con combinazioni di rate e iter diverse) come cambia il risultato.

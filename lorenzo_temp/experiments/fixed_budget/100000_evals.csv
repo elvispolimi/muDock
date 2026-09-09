@@ -1,3 +1,4 @@
+name,score,generations,seed,rotamers,atoms,evaluations,population,rate,iteration
 1fkb_ligand,-13.680258,9,0,6,144,90900,100,100,100
 1fkb_ligand,-5.540947,9,10,6,144,90900,100,100,100
 1fkb_ligand,-4.225896,9,11,6,144,90900,100,100,100
