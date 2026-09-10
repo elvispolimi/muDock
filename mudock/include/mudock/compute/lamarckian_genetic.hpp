@@ -71,17 +71,18 @@ namespace mudock {
         (*this->score_stage)();
         (*this->kernel)();
 
-        // Limit LS runs: balance speed and results
-        if (generation % ls_every == 0 || generation > (this->num_generations - ls_last_gen)) {
-          local_search_stage();
-        }
-
         // Avoid full device-to-device copy by ping-ponging population buffers.
         if (generation < this->num_generations) {
           std::swap(current_population_p, next_population_p);
           this->kernel->set_population_buffers(current_population_p, next_population_p);
           this->geom_trans.set_chromosomes_buffer(current_population_p);
         }
+
+        // Limit LS runs: balance speed and results
+        if (generation % ls_every == 0 || generation > (this->num_generations - ls_last_gen)) {
+          local_search_stage();
+        }
+
       }
       this->kernel->set_population_buffers(current_population_p, next_population_p);
       this->kernel->finalize();
