@@ -179,7 +179,7 @@ namespace mudock {
         const int num_rotamers = num_rotamers_p[index];
         const int num_atoms = ligand.num_atoms();
         // TODO L check if this estimate is correct. WARNING: this depends on the local search implementation. 
-        // This is for adadelta for example (not counting the effect of ls_last_gen and ls_every)
+        // This is for adadelta for example (not counting the effect of ls_on_last and ls_every)
         // +1 comes from the scores, the remaining from the gradients
         // TODO L this is not correct: if autostop is on, it should count the actual number of generations at convergence.
         // It would be better to have a counter at each evaluation to be sure (pay attention to race conditions)

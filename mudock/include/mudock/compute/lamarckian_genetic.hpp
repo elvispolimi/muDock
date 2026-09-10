@@ -40,7 +40,7 @@ namespace mudock {
       genetic<queue_t, scoring_t>::prepare(batch);
       const knobs& configuration = (*this->scratch).configuration;
       ls_every                   = static_cast<int>(configuration.ls_every);
-      ls_last_gen                = static_cast<int>(configuration.ls_last_gen);
+      ls_on_last                = static_cast<int>(configuration.ls_on_last);
       local_search_rate          = static_cast<int>(configuration.lsrate);
       local_search_iterations    = static_cast<int>(configuration.lsit);
       
@@ -79,7 +79,7 @@ namespace mudock {
         }
 
         // Limit LS runs: balance speed and results
-        if (generation % ls_every == 0 || generation > (this->num_generations - ls_last_gen)) {
+        if (generation % ls_every == 0 || generation > (this->num_generations - ls_on_last)) {
           local_search_stage();
         }
 
@@ -126,7 +126,7 @@ namespace mudock {
           past_generations = this->num_generations;
         }
         // TODO L check if this estimate is correct. WARNING: this depends on the local search implementation. 
-        // This is for adadelta for example (not counting the effect of ls_last_gen and ls_every)
+        // This is for adadelta for example (not counting the effect of ls_on_last and ls_every)
         // +1 comes from the scores, the remaining from the gradients
         // TODO L this is not correct: if autostop is on, it should count the actual number of generations at convergence.
         // It would be better to have a counter at each evaluation to be sure (pay attention to race conditions)
@@ -139,7 +139,7 @@ namespace mudock {
   private:
     local_search_t<queue_t, scoring_t> local_search_stage;
     int ls_every;
-    int ls_last_gen;
+    int ls_on_last;
     int local_search_rate;
     int local_search_iterations;
   }; // namespace mudock
