@@ -235,6 +235,24 @@ namespace mudock {
       return (current_com - *initial_com).magnitude();
     }
 
+    // TODO L this function, like dump_pose, is valid for only one ligand at a time
+    // WARNING: this function assumes that ligand_template remains constant and not modified (dump_pose modifies it for example)
+    fp_type get_ligand_rmsd() {
+      assert(this->ligand_template.has_value() && "Ligand template not initialized for COM logging");
+
+      auto& x_scratch_b = (*this->scratch).template get<buffer_data_type::X_SCRATCH>();
+      auto& y_scratch_b = (*this->scratch).template get<buffer_data_type::Y_SCRATCH>();
+      auto& z_scratch_b = (*this->scratch).template get<buffer_data_type::Z_SCRATCH>();
+      x_scratch_b.copy_device2host();
+      y_scratch_b.copy_device2host();
+      z_scratch_b.copy_device2host();
+      (*this->scratch).get_queue()->synchronize();
+
+      return compute_rmsd((*this->ligand_template).x(), (*this->ligand_template).y(), (*this->ligand_template).z(),
+                          x_scratch_b.host_pointer(), y_scratch_b.host_pointer(), z_scratch_b.host_pointer(), 
+                          this->ligand_template->num_atoms());
+    }
+
     void run_as_lga_step() {
       if (local_search_on_best) {
         // Mark top n individuals based on lsrate
@@ -287,6 +305,7 @@ namespace mudock {
       // What to log during the local search
       csv_logger score_logger("adadelta_scores.csv", {"ligand", "iteration", "standalone_ls_score"});
       csv_logger com_logger("adadelta_com.csv", {"ligand", "iteration", "com_distance"});
+      csv_logger rmsd_logger("adadelta_rmsd.csv", {"ligand", "iteration", "rmsd"});
       
       auto &scores_b = (*this->scratch).template get<buffer_data_type::SCORES>();
 
@@ -301,8 +320,8 @@ namespace mudock {
         scores_b.copy_device2host();
         (*this->scratch).get_queue()->synchronize();
 
-        // Dump pose for visualization
-        this->dump_pose(iter);
+        // Dump pose for visualization. WARNING: this function modifies the ligand_template's atoms position
+        // this->dump_pose(iter);
         
         // Log scores
         score_logger.log(ligand_name, iter, scores_b()[0]);
@@ -310,6 +329,10 @@ namespace mudock {
         // Log Center Of Mass
         const fp_type com_distance = get_ligand_com_displacement(initial_com);
         com_logger.log(ligand_name, iter, com_distance);
+
+        // Log RMSD
+        const fp_type rmsd = get_ligand_rmsd();
+        rmsd_logger.log(ligand_name, iter, rmsd);
 
         (this->score_stage).get()->compute_gradient();
         (*adadelta_krnl)();

@@ -31,6 +31,7 @@ namespace mudock {
     std::optional<static_molecule> ligand_template;
     
 
+    // TODO L should i check if multiple ligands? i think so
     void dump_pose(std::size_t i) {
       assert(ligand_template.has_value() && "Ligand template was not stored before dump_pose");
 

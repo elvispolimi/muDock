@@ -4,6 +4,7 @@
 #include <mudock/type_alias.hpp>
 #include <numeric>
 #include <span>
+#include <cmath>
 
 namespace mudock {
 
@@ -21,6 +22,26 @@ namespace mudock {
     return {std::accumulate(x, x + num_atoms, fp_type{0}) / static_cast<fp_type>(num_atoms),
             std::accumulate(y, y + num_atoms, fp_type{0}) / static_cast<fp_type>(num_atoms),
             std::accumulate(z, z + num_atoms, fp_type{0}) / static_cast<fp_type>(num_atoms)};
+  }
+
+  inline fp_type
+      compute_rmsd(const fp_type* x_A,
+                   const fp_type* y_A,
+                   const fp_type* z_A,
+                   const fp_type* x_B,
+                   const fp_type* y_B,
+                   const fp_type* z_B,
+                   const int num_atoms) {
+    fp_type sum_sq_dist = 0.0;
+
+    for (int i = 0; i < num_atoms; ++i) {
+      const fp_type dx = x_A[i] - x_B[i];
+      const fp_type dy = y_A[i] - y_B[i];
+      const fp_type dz = z_A[i] - z_B[i];
+      sum_sq_dist += dx * dx + dy * dy + dz * dz;
+    }
+
+    return std::sqrt(sum_sq_dist / static_cast<fp_type>(num_atoms));
   }
 
 } // namespace mudock
