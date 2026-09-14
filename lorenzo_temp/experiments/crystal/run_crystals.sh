@@ -21,8 +21,7 @@ for PDBID in "${ids[@]}"; do
     ./builds/"$BUILD"/application/local_search/local_search \
         --protein "$PROTEIN" \
         --ligand "$LIGAND" \
-        > /dev/null 2>&1 \
-        &
+        > /dev/null 2>&1
     
     if [ "$(jobs -rp | wc -l)" -ge "$MAX_JOBS" ]; then
         wait -n

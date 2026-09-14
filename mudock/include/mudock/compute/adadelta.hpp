@@ -332,22 +332,19 @@ namespace mudock {
           crystal_score = scores_b()[0];
           get_ligand_com_displacement(initial_com); // call needed to set initial com
         }
-
-        if (iter == this->iterations) {
-          final_score = scores_b()[0];
-          rmsd = get_ligand_rmsd(); // WARNING: to not use this function toghether with dump_pose because it modifies the template
-          com = get_ligand_com_displacement(initial_com);
-        }
           
       }
-
-      crystal_experiment_logger.log(ligand_name, crystal_score, final_score, rmsd, com, num_atoms, num_rotamers, this->iterations);
-
+      
       geom_trans();
       (*this->score_stage)();
-
+      
       scores_b.copy_device2host();
       (*this->scratch).get_queue()->synchronize();
+      
+      final_score = scores_b()[0];
+      rmsd = get_ligand_rmsd(); // WARNING: to not use this function toghether with dump_pose because it modifies the template
+      com = get_ligand_com_displacement(initial_com);
+      crystal_experiment_logger.log(ligand_name, crystal_score, final_score, rmsd, com, num_atoms, num_rotamers, this->iterations);
 
     }
 
