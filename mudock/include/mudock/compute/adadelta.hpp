@@ -238,7 +238,7 @@ namespace mudock {
     // TODO L this function, like dump_pose, is valid for only one ligand at a time
     // WARNING: this function assumes that ligand_template remains constant and not modified (dump_pose modifies it for example)
     fp_type get_ligand_rmsd() {
-      assert(this->ligand_template.has_value() && "Ligand template not initialized for COM logging");
+      assert(this->ligand_template.has_value() && "Ligand template not initialized for RMSD logging");
 
       auto& x_scratch_b = (*this->scratch).template get<buffer_data_type::X_SCRATCH>();
       auto& y_scratch_b = (*this->scratch).template get<buffer_data_type::Y_SCRATCH>();
@@ -303,40 +303,46 @@ namespace mudock {
     void run_standalone() {
 
       // What to log during the local search
-      csv_logger score_logger("adadelta_scores.csv", {"ligand", "iteration", "standalone_ls_score"});
-      csv_logger com_logger("adadelta_com.csv", {"ligand", "iteration", "com_distance"});
-      csv_logger rmsd_logger("adadelta_rmsd.csv", {"ligand", "iteration", "rmsd"});
+      // csv_logger score_logger("adadelta_scores.csv", {"ligand", "iteration", "standalone_ls_score"});
+      // csv_logger com_logger("adadelta_com.csv", {"ligand", "iteration", "com_distance"});
+      // csv_logger rmsd_logger("adadelta_rmsd.csv", {"ligand", "iteration", "rmsd"});
+      csv_logger crystal_experiment_logger("adadelta_crystal.csv", {"ligand", "crystal_score", "final_score", "rmsd", "com", "num_atoms", "rotamers", "iterations"});
       
-      auto &scores_b = (*this->scratch).template get<buffer_data_type::SCORES>();
-
       const std::string ligand_name = this->ligand_template ? this->ligand_template->properties.get(property_type::NAME) : std::string{"unknown"};
-      
+      auto &scores_b = (*this->scratch).template get<buffer_data_type::SCORES>();
       std::optional<point3D> initial_com;
+      fp_type crystal_score = 0.0, final_score = 0.0, rmsd = 0.0, com = 0.0;
 
-      for (std::size_t iter = 0; iter < this->iterations; ++iter) {
+      // WARNING: THIS IS VALID ONLY FOR ONE LIGAND AT A TIME
+      // auto &ligand = *batch.molecules[0];
+      // const int num_atoms = ligand.num_atoms();
+      // const long int num_rotamers = ligand.num_rotamers();
+      
+
+      for (std::size_t iter = 1; iter <= this->iterations; ++iter) {
         geom_trans();
         (*this->score_stage)();
-
         scores_b.copy_device2host();
         (*this->scratch).get_queue()->synchronize();
+        (this->score_stage).get()->compute_gradient();
+        (*adadelta_krnl)();
 
         // Dump pose for visualization. WARNING: this function modifies the ligand_template's atoms position
         // this->dump_pose(iter);
-        
-        // Log scores
-        score_logger.log(ligand_name, iter, scores_b()[0]);
+        if (iter == 1) {
+          crystal_score = scores_b()[0];
+          get_ligand_com_displacement(initial_com); // call needed to set initial com
+        }
 
-        // Log Center Of Mass
-        const fp_type com_distance = get_ligand_com_displacement(initial_com);
-        com_logger.log(ligand_name, iter, com_distance);
-
-        // Log RMSD
-        const fp_type rmsd = get_ligand_rmsd();
-        rmsd_logger.log(ligand_name, iter, rmsd);
-
-        (this->score_stage).get()->compute_gradient();
-        (*adadelta_krnl)();
+        if (iter == this->iterations) {
+          final_score = scores_b()[0];
+          rmsd = get_ligand_rmsd(); // WARNING: to not use this function toghether with dump_pose because it modifies the template
+          com = get_ligand_com_displacement(initial_com);
+        }
+          
       }
+
+      crystal_experiment_logger.log(ligand_name, crystal_score, final_score, rmsd, com, 0, 0, this->iterations);
 
       geom_trans();
       (*this->score_stage)();
