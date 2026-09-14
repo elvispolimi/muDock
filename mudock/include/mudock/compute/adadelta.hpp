@@ -306,7 +306,7 @@ namespace mudock {
       // csv_logger score_logger("adadelta_scores.csv", {"ligand", "iteration", "standalone_ls_score"});
       // csv_logger com_logger("adadelta_com.csv", {"ligand", "iteration", "com_distance"});
       // csv_logger rmsd_logger("adadelta_rmsd.csv", {"ligand", "iteration", "rmsd"});
-      csv_logger crystal_experiment_logger("adadelta_crystal.csv", {"ligand", "crystal_score", "final_score", "rmsd", "com", "num_atoms", "rotamers", "iterations"});
+      csv_logger crystal_experiment_logger("adadelta_crystal.csv", {"ligand", "crystal_score", "final_score", "rmsd", "com", "num_atoms", "num_rotamers", "iterations"});
       
       const std::string ligand_name = this->ligand_template ? this->ligand_template->properties.get(property_type::NAME) : std::string{"unknown"};
       auto &scores_b = (*this->scratch).template get<buffer_data_type::SCORES>();
@@ -314,9 +314,8 @@ namespace mudock {
       fp_type crystal_score = 0.0, final_score = 0.0, rmsd = 0.0, com = 0.0;
 
       // WARNING: THIS IS VALID ONLY FOR ONE LIGAND AT A TIME
-      // auto &ligand = *batch.molecules[0];
-      // const int num_atoms = ligand.num_atoms();
-      // const long int num_rotamers = ligand.num_rotamers();
+      const int num_atoms = this->ligand_template->num_atoms();
+      const long int num_rotamers = this->ligand_template->num_rotamers();
       
 
       for (std::size_t iter = 1; iter <= this->iterations; ++iter) {
@@ -342,7 +341,7 @@ namespace mudock {
           
       }
 
-      crystal_experiment_logger.log(ligand_name, crystal_score, final_score, rmsd, com, 0, 0, this->iterations);
+      crystal_experiment_logger.log(ligand_name, crystal_score, final_score, rmsd, com, num_atoms, num_rotamers, this->iterations);
 
       geom_trans();
       (*this->score_stage)();
