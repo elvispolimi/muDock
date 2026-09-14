@@ -348,14 +348,21 @@ namespace mudock {
 
     // TODO L: Implement teardown
     void teardown_impl(batch<static_molecule> &batch) override {
-      auto &scores_b              = (*this->scratch).template get<buffer_data_type::SCORES>();
-      const int scores_per_ligand = static_cast<int>(scores_b.num_elements() / batch_ligands);
-      scores_b.copy_device2host();
-      (*this->scratch).get_queue()->synchronize();
-      for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
-        auto &ligand          = *batch.molecules[ligand_index];
-        const int score_index = ligand_index * scores_per_ligand;
-        ligand.properties.assign(property_type::SCORE, std::to_string(scores_b()[score_index]));
+      if (this->standalone_local_search){
+        auto &scores_b              = (*this->scratch).template get<buffer_data_type::SCORES>();
+        const int scores_per_ligand = static_cast<int>(scores_b.num_elements() / batch_ligands);
+        scores_b.copy_device2host();
+        (*this->scratch).get_queue()->synchronize();
+        for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
+          auto &ligand          = *batch.molecules[ligand_index];
+          const int num_atoms = ligand.num_atoms();
+          const long int num_rotamers = ligand.num_rotamers();
+          const int score_index = ligand_index * scores_per_ligand;
+          ligand.properties.assign(property_type::SCORE, std::to_string(scores_b()[score_index]));
+          ligand.properties.assign(property_type::NUM_ATOMS, std::to_string(num_atoms));
+          ligand.properties.assign(property_type::NUM_ROT, std::to_string(num_rotamers));
+          ligand.properties.assign(property_type::ITER, std::to_string(this->iterations));
+        }
       }
     };
 
