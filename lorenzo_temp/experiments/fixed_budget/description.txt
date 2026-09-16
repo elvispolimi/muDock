@@ -1,3 +1,7 @@
 fare una run di GA con tot evaluations e vedere con lo stesso numero di valutazioni di LGA (con combinazioni di rate e iter diverse) come cambia il risultato.
 
+ids=("1fkb" "1hii" "2ya6" "3udd" "4few" "5cst" "5uez" "5wuk")
+lsrates=("10" "25" "50" "75" "100")
+lsits=("10" "25" "50" "100" "200" "300")
+
 Data: 8 settembre 2026

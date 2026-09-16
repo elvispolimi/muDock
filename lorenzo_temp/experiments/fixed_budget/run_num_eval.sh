@@ -65,7 +65,7 @@ SEARCH=genetic
 
 # done
 
-lsrates=("75" "100")
+lsrates=("10" "25" "50" "75" "100")
 lsits=("10" "25" "50" "100" "200" "300")
 SEARCH=lga
 TOTAL_RUNS_LGA=$((${#ids[@]} * ${#lsrates[@]} * ${#lsits[@]} * ${#seeds[@]}))

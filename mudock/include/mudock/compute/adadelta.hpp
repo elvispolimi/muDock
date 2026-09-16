@@ -321,8 +321,10 @@ namespace mudock {
       for (std::size_t iter = 1; iter <= this->iterations; ++iter) {
         geom_trans();
         (*this->score_stage)();
+        // TODO L maybe these two calls are useless
         scores_b.copy_device2host();
         (*this->scratch).get_queue()->synchronize();
+        // END TODO L
         (this->score_stage).get()->compute_gradient();
         (*adadelta_krnl)();
 
