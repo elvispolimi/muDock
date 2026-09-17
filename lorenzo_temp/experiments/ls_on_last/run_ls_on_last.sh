@@ -79,7 +79,8 @@ for PDBID in "${ids[@]}"; do
                     --generations "$GENERATIONS" \
                     --lsrate "$LSRATE" \
                     --lsit "$LSIT" \
-                    --ls_on_last 1 \
+                    --ls_on_last 2 \
+                    --ls_on_best 1 \
                     --ls_every 99999999 \
                     2>&1 | grep "$IGNORE_TOKEN" >> "$OUT_PATH" \
                     &

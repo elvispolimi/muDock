@@ -1,1 +1,3 @@
-si apprezzano miglioramenti dalle ultime due generazioni in poi 
+- si apprezzano miglioramenti dalle ultime due generazioni in poi. con ls_on_last 1 sembra uguale a senza.
+
+- on best sembra migliorare
