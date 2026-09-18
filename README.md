@@ -4,6 +4,57 @@
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19384509.svg)](https://doi.org/10.5281/zenodo.19384509)
 
+---
+
+> ### 🚧 WIP: migration for end-to-end TBB adoption ------- *temporary banner*
+>
+> This branch introduces a **TBB flow-graph** streaming engine as a temporary-second entry point
+> (`muDock-tbb`) alongside the legacy `parallel_pipeline` (`muDock`).
+> 
+> Currently, the graph pipeline is wired **end-to-end** with real reader, parser, batcher, and writer,
+> plus a **mock scorer** that emits a placeholder `0.0` score.
+> Hopefully, real scoring will replace the mock soon...
+> 
+> #### Done
+>
+> - New target `muDock-tbb` (built alongside `muDock`).
+> - Full flow-graph topology in `mudock/include/mudock/tbb_implementation/stream_engine_graph.hpp`, composed from per-node body classes (`reader_body`, `parser_body`, `batcher_body`, `scorer_body`, `writer_body`) and shared type aliases (`stream_engine_types.hpp`).
+> - Global memory-bound via `limiter_node`, sized by the new knob `knobs.max_ligands_in_flight` (default `100_000`).
+> - Three-phase drain: normal flow, then partial-batch flush from each device's reorder buffer, then writer buffer flush.
+>
+> #### Try it
+>
+> ```bash
+> cmake --preset dev-cpu-debug
+> cmake --build --preset dev-cpu-debug
+> ./build/dev-cpu-debug/application/muDock-tbb \
+>   --protein data/1fkb/1fkb_protein.pdb \
+>   --ligand  data/1fkb/1fkb_ligand.mol2 \
+>   --use CPP:CPU:0
+> ```
+>
+> Expected output: one line `<ligand-name> 0.0` per parsed ligand, plus `INFO` logs.
+>
+> #### Design choices worth flagging
+>
+> - **`global_ligands_limiter` is the only limiter**, which influences backpressure and memory footprint; it is decremented by the writer on successful score, and by the parser on parse-fail (avoid leaks).
+> - **`buffer_node` over `queue_node`** for intermediate hops: muDock has no ligand-ordering requirement and unordered semantics are slightly cheaper.
+> - **`shared_ptr<static_molecule>`** as the graph message type: the libtbb-dev currently shipped with Ubuntu 24.04 (oneTBB 2021.11) has a `buffer_node` that copy-constructs its internal storage, so `unique_ptr` doesn't compile as a message type. If the TBB version bundled with the base image ever bumps to one that supports move-only container messages, switch back to `unique_ptr` end-to-end.
+> - **State/body pattern per node**: each stateful body (writer, batcher) has a co-located `<x>_state` class that outlives TBB's internal body copies, simplifying the three-phase drain. The body is a pure delegate; the state owns the mutable data (buffer, reorder buffer) and hides "when to emit" policy.
+>
+> #### Follow-up...
+>
+> - Aggregate the atomic counters and performance metrics into a cohesive struct (currently scattered across `stream_engine_graph`).
+> - Whole-graph simulation with mock node bodies to probe end-to-end performance, bottlenecks, and memory footprint under controlled loads.
+> - Real scoring (`stage::prepare/operator()/teardown` with per-device scratchpad and W workers parallelism).
+> - Per-device configuration parsing (`IMPL:DEVICE:IDS[:WORKERS][:MEMORY]`).
+> - Device-subgraphs extension with per-device credit limiters, so batches aren't blindly round-robined to already saturated devices.
+> - `stop_requested` propagation, `deadline_timer`, observer.
+> - CLI wiring for `--max_ligands_in_flight` — currently uses the compile-time default.
+> - ...
+
+---
+
 muDock is a compact, Autodock-style docking engine that uses a genetic algorithm and the Autodock 4.0 energy model. It was born as a benchmarking tool for Autodock-style workflows, and today it remains a small, focused codebase for experimenting with performance techniques (kernel porting, vectorization, accelerator backends, and approximation strategies) while staying usable as a docking tool.
 
 The pipeline is intentionally split into clean stages (input parsing, scoring, search, and output), so individual pieces can be swapped or extended. That structure makes it practical to prototype new scoring functions, docking algorithms, or search strategies without rewriting the rest of the system.
