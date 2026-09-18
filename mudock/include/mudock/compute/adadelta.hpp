@@ -37,8 +37,8 @@ namespace mudock {
   template<typename queue_type, template<typename> typename scoring_t>
   struct adadelta: public local_search<queue_type, scoring_t> {
     static constexpr const char stage_name[] = "ADADELTA";
-    static constexpr fp_type RHO     = 0.8f;
-    static constexpr fp_type EPSILON = 1e-2f;
+    static constexpr fp_type RHO     = 0.85f;
+    static constexpr fp_type EPSILON = 1e-6f;
     
     adadelta(std::shared_ptr<scratchpad<queue_type>> _scratch,
              std::shared_ptr<scoring_t<queue_type>> _score) 
@@ -303,8 +303,8 @@ namespace mudock {
     void run_standalone() {
 
       // What to log during the local search
-      // csv_logger score_logger("adadelta_scores.csv", {"ligand", "iteration", "standalone_ls_score"});
-      // csv_logger com_logger("adadelta_com.csv", {"ligand", "iteration", "com_distance"});
+      csv_logger score_logger("adadelta_scores.csv", {"ligand", "iteration", "standalone_ls_score"});
+      csv_logger com_logger("adadelta_com.csv", {"ligand", "iteration", "com_distance"});
       // csv_logger rmsd_logger("adadelta_rmsd.csv", {"ligand", "iteration", "rmsd"});
       csv_logger crystal_experiment_logger("adadelta_crystal.csv", {"ligand", "crystal_score", "final_score", "rmsd", "com", "num_atoms", "num_rotamers", "iterations"});
       
@@ -335,6 +335,10 @@ namespace mudock {
           get_ligand_com_displacement(initial_com); // call needed to set initial com
         }
           
+        score_logger.log(ligand_name, iter, scores_b()[0]);
+        com_logger.log(ligand_name, iter, get_ligand_com_displacement(initial_com));
+
+
       }
       
       geom_trans();

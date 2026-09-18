@@ -3,11 +3,12 @@
 set -euo pipefail
 
 ids=("1fkb" "1hii" "2ya6" "3udd" "4few" "5cst" "5uez" "5wuk")
+# ids=("1fkb")
 
 for PDBID in "${ids[@]}"; do
     PROTEIN="./data/${PDBID}/${PDBID}_protein.pdb"
     LIGAND="./data/${PDBID}/${PDBID}_ligand.adtmol2"
-    OUT_DIR="plots/local_search/${PDBID}"
+    OUT_DIR="./rho95_epsilon6/${PDBID}"
 
     rm -rf "$OUT_DIR"
 
@@ -22,10 +23,10 @@ for PDBID in "${ids[@]}"; do
         --protein "$PROTEIN" \
         --ligand "$LIGAND" \
 
-    python3 plot_metric.py adadelta_scores.csv \
+    python3 ./lorenzo_temp/plots_local_search/plot_metric.py adadelta_scores.csv \
         --out-dir "$OUT_DIR"
 
-    python3 plot_metric.py adadelta_com.csv \
+    python3 ./lorenzo_temp/plots_local_search/plot_metric.py adadelta_com.csv \
         --out-dir "$OUT_DIR"
 
     cp adadelta_scores.csv "${OUT_DIR}/adadelta_scores.csv"
