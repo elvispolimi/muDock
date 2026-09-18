@@ -13,6 +13,10 @@
 
 namespace mudock::stream_engine {
 
+  /**
+   * Input-node body that reads bytes from the stream, splits on format-specific molecule boundaries,
+   * and emits one token at a time; flushes the remainder on EOF, end-position, or stop.
+   */
   template<supported_format format>
   class reader_body {
     const std::size_t max_bytes_per_token_;
@@ -20,6 +24,7 @@ namespace mudock::stream_engine {
     std::size_t end_;
     std::atomic<bool>& stop_requested_;
 
+    // Reader state: mutable because of the TBB input-node `operator() const`.
     mutable std::string buffered_text_;
     mutable type_of_format<format> format_splitter_;
     mutable bool flushed_ = false;

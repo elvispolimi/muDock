@@ -14,18 +14,22 @@
 
 namespace mudock::stream_engine {
 
+  /**
+   * Multifunction-node body that parses one input token into a `static_molecule`;
+   * emits on port 0, or decrements the global limiter if parsing is skipped/aborted.
+   */
   template<supported_format format>
   class parser_body {
-    global_ligands_limiter& global_ligands_limiter_;
+    global_ligands_ln& global_ligands_limiter_;
     std::atomic<std::size_t>& skipped_ligands_;
     std::atomic<bool>& stop_requested_;
 
   public:
-    explicit parser_body(global_ligands_limiter& global_ligands_limiter,
-                         std::atomic<std::size_t>& skipped,
+    explicit parser_body(global_ligands_ln& global_ligands_limiter,
+                         std::atomic<std::size_t>& skipped_ligands,
                          std::atomic<bool>& stop_requested)
         : global_ligands_limiter_(global_ligands_limiter),
-          skipped_ligands_(skipped),
+          skipped_ligands_(skipped_ligands),
           stop_requested_(stop_requested) {}
 
     void operator()(const std::string& token, parser_mfn::output_ports_type& out) const {

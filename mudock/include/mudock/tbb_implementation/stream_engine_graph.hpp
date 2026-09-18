@@ -6,16 +6,15 @@
 #include <memory>
 #include <mudock/format/supported_format.hpp>
 #include <mudock/knobs.hpp>
-#include <mudock/tbb_implementation/batcher_body.hpp>
+#include <mudock/log.hpp>
+#include <mudock/tbb_implementation/backend_subgraph.hpp>
 #include <mudock/tbb_implementation/parser_body.hpp>
 #include <mudock/tbb_implementation/reader_body.hpp>
-#include <mudock/tbb_implementation/scorer_body.hpp>
 #include <mudock/tbb_implementation/stream_engine_types.hpp>
 #include <mudock/tbb_implementation/writer_body.hpp>
 #include <oneapi/tbb/flow_graph.h>
 #include <optional>
 #include <string>
-#include <utility>
 #include <vector>
 
 namespace mudock {
@@ -33,60 +32,42 @@ namespace mudock {
     tbb_flow::graph g;
 
     std::atomic<bool> stop_requested{false};
+    // todo - ^ handle stop_signal
     std::atomic<std::size_t> skipped_ligands{0};
 
+    // --- [SETUP] - Create graph nodes
     reader_in ligand_reader(g, reader_body<format>{knobs.max_bytes_per_token, in, stop_requested, end});
 
-    global_ligands_limiter global_ligands_limiter(g, knobs.max_ligands_in_flight);
+    global_ligands_ln global_ligands_limiter(g, knobs.max_ligands_in_flight);
 
     parser_mfn ligand_parser(g,
                              tbb_flow::unlimited,
                              parser_body<format>{global_ligands_limiter, skipped_ligands, stop_requested});
 
-    parsed_ligands_buf parsed_ligands_buf(g);
+    parsed_ligands_buf parsed_ligands_buffer(g);
+
+    auto backends = build_backend_subgraphs(g, knobs, pipeline, configurations);
 
     writer_state writer_state;
     writer_fn writer(g, tbb_flow::serial, writer_body{writer_state, global_ligands_limiter});
 
-    std::vector<device_subgraph> devices;
-    devices.reserve(configurations.size());
-
-    for (const auto& configuration: configurations) {
-      // todo - properly map "configurations" into subgraph configuration
-
-      auto state = std::make_unique<batcher_state>();
-
-      auto batcher = std::make_unique<batcher_mfn>(g, tbb_flow::serial, batcher_body{*state});
-
-      auto batch_buffer = std::make_unique<batch_buf>(g);
-
-      auto scorer = std::make_unique<scorer_mfn>(g, /*concurrency=*/1, scorer_body{});
-
-      tbb_flow::make_edge(parsed_ligands_buf, *batcher);
-      tbb_flow::make_edge(tbb_flow::output_port<0>(*batcher), *batch_buffer);
-      tbb_flow::make_edge(*batch_buffer, *scorer);
-      tbb_flow::make_edge(tbb_flow::output_port<0>(*scorer), writer);
-
-      devices.push_back({std::move(state), std::move(batcher), std::move(batch_buffer), std::move(scorer)});
-    }
-
+    // --- [SETUP] - Wire graph nodes
     tbb_flow::make_edge(ligand_reader, global_ligands_limiter);
     tbb_flow::make_edge(global_ligands_limiter, ligand_parser);
-    tbb_flow::make_edge(tbb_flow::output_port<0>(ligand_parser), parsed_ligands_buf);
+    tbb_flow::make_edge(tbb_flow::output_port<0>(ligand_parser), parsed_ligands_buffer);
+    for (auto& backend: backends) backend.wire(parsed_ligands_buffer, writer);
 
-    // --- Phase 1: drain raw ligands
+    info("Starting virtual screening ...");
+
+    // --- [SCREENING] - Phase 1: drain raw ligands
     ligand_reader.activate();
     g.wait_for_all();
 
-    // --- Phase 2: flush rob partial batches
-    for (auto& device: devices) {
-      device.state->flush_all([&](lig_batch&& batch) {
-        device.batch_buffer->try_put(std::make_shared<lig_batch>(std::move(batch)));
-      });
-    }
+    // --- [SCREENING] - Phase 2: flush ROBs' partial batches
+    for (auto& backend: backends) backend.flush_batches();
     g.wait_for_all();
 
-    // --- Phase 3: flush writer buffer
+    // --- [SCREENING] - Phase 3: flush writer's buffer
     writer_state.flush();
 
     // todo - observer

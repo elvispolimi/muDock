@@ -11,6 +11,9 @@
 
 namespace mudock::stream_engine {
 
+  /**
+   * Owns the output line buffer and flushes every N lines.
+   */
   class writer_state {
     static constexpr std::size_t flush_every    = 4096;
     static constexpr std::size_t buffer_reserve = 1 << 20;
@@ -37,12 +40,15 @@ namespace mudock::stream_engine {
     }
   };
 
+  /**
+   * Function-node body that appends one ligand to the `writer_state` and releases its global slot.
+   */
   class writer_body {
     writer_state& state_;
-    global_ligands_limiter& global_ligands_limiter_;
+    global_ligands_ln& global_ligands_limiter_;
 
   public:
-    writer_body(writer_state& state, global_ligands_limiter& global_ligands_limiter)
+    writer_body(writer_state& state, global_ligands_ln& global_ligands_limiter)
         : state_(state), global_ligands_limiter_(global_ligands_limiter) {}
 
     tbb_flow::continue_msg operator()(lig_ptr ligand) const {
