@@ -20,14 +20,14 @@ def main():
 
     # Ensure rate and iteration are numeric (NaN for standard GA runs)
     df['rate'] = pd.to_numeric(df['rate'], errors='coerce')
-    df['iteration'] = pd.to_numeric(df['iteration'], errors='coerce')
+    df['iterations'] = pd.to_numeric(df['iterations'], errors='coerce')
 
     # 3. Separate GA runs (baseline) and LGA runs
-    ga_runs = df[df['rate'].isna() & df['iteration'].isna()]
-    lga_runs = df[df['rate'].notna() & df['iteration'].notna()]
+    ga_runs = df[df['rate'].isna() & df['iterations'].isna()]
+    lga_runs = df[df['rate'].notna() & df['iterations'].notna()]
 
     if ga_runs.empty or lga_runs.empty:
-        print("Error: Could not find both GA (N/A rate/iteration) and LGA runs in the dataset.")
+        print("Error: Could not find both GA (N/A rate/iterations) and LGA runs in the dataset.")
         return
 
     # 4. Aggregate the data by ligand (and config) using the chosen metric
@@ -37,8 +37,8 @@ def main():
     ga_baseline = ga_runs.groupby('name')['score'].agg(agg_func).reset_index()
     ga_baseline.rename(columns={'score': 'ga_score'}, inplace=True)
 
-    # LGA scores per ligand, rate, and iteration
-    lga_agg = lga_runs.groupby(['name', 'rate', 'iteration'])['score'].agg(agg_func).reset_index()
+    # LGA scores per ligand, rate, and iterations
+    lga_agg = lga_runs.groupby(['name', 'rate', 'iterations'])['score'].agg(agg_func).reset_index()
 
     # 5. Merge and calculate the difference
     merged_data = pd.merge(lga_agg, ga_baseline, on='name')
@@ -56,8 +56,8 @@ def main():
         ligand_data = merged_data[merged_data['name'] == ligand]
         
         # Pivot the data to create a 2D matrix for the heatmap
-        # Columns = rate (X-axis), Index = iteration (Y-axis)
-        pivot_table = ligand_data.pivot(index='iteration', columns='rate', values='score_diff')
+        # Columns = rate (X-axis), Index = iterations (Y-axis)
+        pivot_table = ligand_data.pivot(index='iterations', columns='rate', values='score_diff')
         
         # Sort the Y-axis so lower iterations are at the bottom (or reverse if preferred)
         pivot_table = pivot_table.sort_index(ascending=False)
