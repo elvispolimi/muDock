@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-MAX_JOBS=4
+MAX_JOBS=6
 
 BUILD=omp
 
@@ -10,7 +10,6 @@ lsits=("10" "25" "50" "100" "200")
 TOTAL_RUNS=$((${#ids[@]} * ${#lsits[@]}))
 COMPLETED_RUNS=0
 
-rm ./lorenzo_temp/experiments/test/*
 
 echo "Docking..."
 for PDBID in "${ids[@]}"; do
