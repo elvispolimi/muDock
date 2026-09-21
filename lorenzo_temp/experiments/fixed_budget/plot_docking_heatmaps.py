@@ -8,8 +8,8 @@ def main():
     # 1. Setup command line arguments
     parser = argparse.ArgumentParser(description="Generate heatmaps for LGA vs GA docking scores.")
     parser.add_argument("csv_file", type=str, help="Path to the results CSV file.")
-    parser.add_argument("--agg", choices=["mean", "median"], default="mean", 
-                        help="Aggregation method to combine seeds (default: mean).")
+    parser.add_argument("--agg", choices=["mean", "median"], default="median", 
+                        help="Aggregation method to combine seeds (default: median).")
     parser.add_argument("--outdir", type=str, default=".", 
                         help="Directory to save the generated heatmaps (default: current directory).")
     args = parser.parse_args()

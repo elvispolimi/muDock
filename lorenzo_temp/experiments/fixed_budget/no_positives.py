@@ -21,8 +21,8 @@ def main():
     parser.add_argument(
         "--agg",
         choices=["mean", "median"],
-        default="mean",
-        help="Aggregation method to combine seeds (default: mean)."
+        default="median",
+        help="Aggregation method to combine seeds (default: median)."
     )
 
     parser.add_argument(
