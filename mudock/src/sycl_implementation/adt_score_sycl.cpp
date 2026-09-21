@@ -127,7 +127,13 @@ namespace mudock {
              atom_index += MUDOCK_SYCL_WG_SIZE) {
           if (atom_index < num_atoms) {
             fp_type coord_tex[3]{ligand_x[atom_index], ligand_y[atom_index], ligand_z[atom_index]};
-            if (coord_tex[0] < minimum[0] || coord_tex[0] > maximum[0] || coord_tex[1] < minimum[1] ||
+            const bool finite_coord = sycl::isfinite(coord_tex[0]) && sycl::isfinite(coord_tex[1]) &&
+                                      sycl::isfinite(coord_tex[2]);
+            if (!finite_coord) {
+              // Do not let NaN reach the integer grid indices below.
+              elect_total_trilinear += EINTCLAMP;
+              emap_total_trilinear += EINTCLAMP;
+            } else if (coord_tex[0] < minimum[0] || coord_tex[0] > maximum[0] || coord_tex[1] < minimum[1] ||
                 coord_tex[1] > maximum[1] || coord_tex[2] < minimum[2] || coord_tex[2] > maximum[2]) {
               // Is outside
               const auto diff_x          = coord_tex[0] - center[0];
@@ -144,18 +150,30 @@ namespace mudock {
               coord_tex[0]            = (coord_tex[0] - minimum[0]) * inv_spacing,
               coord_tex[1]            = (coord_tex[1] - minimum[1]) * inv_spacing;
               coord_tex[2]            = (coord_tex[2] - minimum[2]) * inv_spacing;
+
+              // Trilinear interpolation reads the current cell and its
+              // +x/+y/+z neighbours. A coordinate on the last grid point
+              // would otherwise read one element past the map.
+              const int map_size_y = map_index_xy / map_index_x;
+              const int map_size_z = map_index_xyz / map_index_xy;
+              const fp_type max_u = static_cast<fp_type>(map_index_x - 1);
+              const fp_type max_v = static_cast<fp_type>(map_size_y - 1);
+              const fp_type max_w = static_cast<fp_type>(map_size_z - 1);
+              coord_tex[0] = sycl::min(sycl::max(coord_tex[0], fp_type{0}), max_u);
+              coord_tex[1] = sycl::min(sycl::max(coord_tex[1], fp_type{0}), max_v);
+              coord_tex[2] = sycl::min(sycl::max(coord_tex[2], fp_type{0}), max_w);
               const auto& charge      = l_charge[atom_index];
               const fp_type* atom_map = grid_maps + l_atom_tex_indexes[atom_index];
 
-              const int u0      = static_cast<int>(coord_tex[0]);
+              const int u0      = sycl::min(static_cast<int>(coord_tex[0]), map_index_x - 2);
               const fp_type p0u = coord_tex[0] - static_cast<fp_type>(u0);
               const fp_type p1u = fp_type{1} - p0u;
 
-              const int v0      = static_cast<int>(coord_tex[1]);
+              const int v0      = sycl::min(static_cast<int>(coord_tex[1]), map_size_y - 2);
               const fp_type p0v = coord_tex[1] - static_cast<fp_type>(v0);
               const fp_type p1v = fp_type{1} - p0v;
 
-              const int w0      = static_cast<int>(coord_tex[2]);
+              const int w0      = sycl::min(static_cast<int>(coord_tex[2]), map_size_z - 2);
               const fp_type p0w = coord_tex[2] - static_cast<fp_type>(w0);
               const fp_type p1w = fp_type{1} - p0w;
 
