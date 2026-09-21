@@ -253,12 +253,36 @@ namespace mudock {
                           this->ligand_template->num_atoms());
     }
 
+    fp_type get_ligand_rmsd_experiment(int ligand_index, int individual_index) {
+      auto& x_scratch_b = (*this->scratch).template get<buffer_data_type::X_SCRATCH>();
+      auto& y_scratch_b = (*this->scratch).template get<buffer_data_type::Y_SCRATCH>();
+      auto& z_scratch_b = (*this->scratch).template get<buffer_data_type::Z_SCRATCH>();
+    
+      fp_type *__restrict__ x_scratch_p = x_scratch_b.dev_pointer();
+      fp_type *__restrict__ y_scratch_p = y_scratch_b.dev_pointer();
+      fp_type *__restrict__ z_scratch_p = z_scratch_b.dev_pointer();
+
+      int atom_stride  = ligand_index * batch_atoms;
+
+      fp_type *__restrict__ scratch_x = x_scratch_p + atom_stride * individuals_per_ligand;
+      fp_type *__restrict__ scratch_y = y_scratch_p + atom_stride * individuals_per_ligand;
+      fp_type *__restrict__ scratch_z = z_scratch_p + atom_stride * individuals_per_ligand;
+
+      fp_type *__restrict__ scratch_x_l = scratch_x + individual_index * batch_atoms;
+      fp_type *__restrict__ scratch_y_l = scratch_y + individual_index * batch_atoms;
+      fp_type *__restrict__ scratch_z_l = scratch_z + individual_index * batch_atoms;
+
+      return compute_rmsd((*this->ligand_template).x(), (*this->ligand_template).y(), (*this->ligand_template).z(),
+                          scratch_x_l, scratch_y_l, scratch_z_l, 
+                          this->ligand_template->num_atoms());
+    }
+
     void run_as_lga_step() {
       if (local_search_on_best) {
         // Mark top n individuals based on lsrate
         auto& scores_b             = (*this->scratch).template get<buffer_data_type::SCORES>();
         auto& active_individuals_b = (*this->scratch).template get<buffer_data_type::ACTIVE_INDIVIDUALS>();
-        fp_type* __restrict__ scores_p              = scores_b.dev_pointer();
+        fp_type* __restrict__ scores_p  = scores_b.dev_pointer();
         int* __restrict__ active_individuals_p  = active_individuals_b.dev_pointer();
         for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
           int     *__restrict__ active_individuals_l = active_individuals_p + ligand_index * individuals_per_ligand;
@@ -274,6 +298,24 @@ namespace mudock {
         (this->score_stage).get()->compute_gradient();
         (*adadelta_krnl)();
       }
+
+      ///////////////////////////////////////////////////////////////////////////////////////////
+      // TODO L : Experiments on rmsd, not needed in general for computation of local search
+      // WARNING: GETTING SCORES ASSUMING THERE IS ONLY ONE LIGAND IN THE BATCH
+      fp_type* __restrict__ scores = (*this->scratch).template get<buffer_data_type::SCORES>().dev_pointer();
+      int best_index = 0;
+      for(int i = 0; i < individuals_per_ligand; ++i){
+        if (scores[i] < scores[best_index]){
+          best_index = i;
+        }
+      }
+      fp_type rmsd_from_best_score = get_ligand_rmsd_experiment(0, best_index);
+      printf("Best score rmsd = %f\n", double(rmsd_from_best_score));
+      // fp_type rmsd_lowest_of_population = get_min_rmsd_experiment();
+      // this->dump_best_pose_genetic(0, best_index, individuals_per_ligand, batch_atoms);
+      // remove this code after experiments ^
+      ///////////////////////////////////////////////////////////////////////////////////////////
+
     }
 
     // scores: input array of length m
@@ -303,15 +345,15 @@ namespace mudock {
     void run_standalone() {
 
       // What to log during the local search
-      csv_logger score_logger("adadelta_scores.csv", {"ligand", "iteration", "standalone_ls_score"});
-      csv_logger com_logger("adadelta_com.csv", {"ligand", "iteration", "com_distance"});
+      // csv_logger score_logger("adadelta_scores.csv", {"ligand", "iteration", "standalone_ls_score"});
+      // csv_logger com_logger("adadelta_com.csv", {"ligand", "iteration", "com_distance"});
       // csv_logger rmsd_logger("adadelta_rmsd.csv", {"ligand", "iteration", "rmsd"});
       csv_logger crystal_experiment_logger("adadelta_crystal.csv", {"ligand", "crystal_score", "final_score", "rmsd", "com", "num_atoms", "num_rotamers", "iterations"});
       
       const std::string ligand_name = this->ligand_template ? this->ligand_template->properties.get(property_type::NAME) : std::string{"unknown"};
       auto &scores_b = (*this->scratch).template get<buffer_data_type::SCORES>();
       std::optional<point3D> initial_com;
-      fp_type crystal_score = 0.0, final_score = 0.0, rmsd = 0.0, com = 0.0;
+      fp_type crystal_score = 0.0;
 
       // WARNING: THIS IS VALID ONLY FOR ONE LIGAND AT A TIME
       const int num_atoms = this->ligand_template->num_atoms();
@@ -335,8 +377,8 @@ namespace mudock {
           get_ligand_com_displacement(initial_com); // call needed to set initial com
         }
           
-        score_logger.log(ligand_name, iter, scores_b()[0]);
-        com_logger.log(ligand_name, iter, get_ligand_com_displacement(initial_com));
+        // score_logger.log(ligand_name, iter, scores_b()[0]);
+        // com_logger.log(ligand_name, iter, get_ligand_com_displacement(initial_com));
 
 
       }
@@ -347,9 +389,9 @@ namespace mudock {
       scores_b.copy_device2host();
       (*this->scratch).get_queue()->synchronize();
       
-      final_score = scores_b()[0];
-      rmsd = get_ligand_rmsd(); // WARNING: to not use this function toghether with dump_pose because it modifies the template
-      com = get_ligand_com_displacement(initial_com);
+      fp_type final_score = scores_b()[0];
+      fp_type rmsd = get_ligand_rmsd(); // WARNING: to not use this function toghether with dump_pose because it modifies the template
+      fp_type com = get_ligand_com_displacement(initial_com);
       crystal_experiment_logger.log(ligand_name, crystal_score, final_score, rmsd, com, num_atoms, num_rotamers, this->iterations);
 
     }
