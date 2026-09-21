@@ -107,7 +107,7 @@ namespace mudock {
     }
 
     void teardown_impl(batch<static_molecule>& batch) override {
-      assert(batch.num_ligands == batch_ligands && "Genetic algorithm received different batch for teardown");
+      assert(batch.num_ligands == this->batch_ligands && "Genetic algorithm received different batch for teardown");
 
       auto &converged_ligands_b = (*this->scratch).template get<buffer_data_type::CONVERGED_LIGANDS>();
       this->best_scores.copy_device2host();

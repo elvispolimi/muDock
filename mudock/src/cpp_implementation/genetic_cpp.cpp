@@ -234,7 +234,7 @@ namespace mudock {
         }
       }
       // printf("Gen %d --- Best of this gen: %f --- Best so far: %f\n", generation, double(best), double(best_so_far_b[ligand_index]));
-      printf("Gen %d --- Best: %f            ", generation, double(best));
+      printf("Gen %d --- Best: %f\n", generation, double(best));
       // end print best score 
 
 

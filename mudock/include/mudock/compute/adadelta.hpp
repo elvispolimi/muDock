@@ -236,7 +236,6 @@ namespace mudock {
     }
 
     // TODO L this function, like dump_pose, is valid for only one ligand at a time
-    // WARNING: this function assumes that ligand_template remains constant and not modified (dump_pose modifies it for example)
     fp_type get_ligand_rmsd() {
       assert(this->ligand_template.has_value() && "Ligand template not initialized for RMSD logging");
 
@@ -309,10 +308,12 @@ namespace mudock {
           best_index = i;
         }
       }
+      csv_logger rmsd_logger("lga_rmsd.csv", {"ligand", "rmsd_from_best_score", "best_score"});
+      const std::string ligand_name = this->ligand_template ? this->ligand_template->properties.get(property_type::NAME) : std::string{"unknown"};
       fp_type rmsd_from_best_score = get_ligand_rmsd_experiment(0, best_index);
-      printf("Best score rmsd = %f\n", double(rmsd_from_best_score));
-      // fp_type rmsd_lowest_of_population = get_min_rmsd_experiment();
-      // this->dump_best_pose_genetic(0, best_index, individuals_per_ligand, batch_atoms);
+      // fp_type min_rmsd_of_population = get_min_rmsd_experiment();
+      rmsd_logger.log(ligand_name, rmsd_from_best_score, scores[best_index]);
+      this->dump_best_pose_genetic(0, best_index, individuals_per_ligand, batch_atoms);
       // remove this code after experiments ^
       ///////////////////////////////////////////////////////////////////////////////////////////
 
@@ -370,8 +371,8 @@ namespace mudock {
         (this->score_stage).get()->compute_gradient();
         (*adadelta_krnl)();
 
-        // Dump pose for visualization. WARNING: this function modifies the ligand_template's atoms position
-        // this->dump_pose(iter);
+        // Dump pose for visualization.
+        this->dump_pose(iter);
         if (iter == 1) {
           crystal_score = scores_b()[0];
           get_ligand_com_displacement(initial_com); // call needed to set initial com
@@ -390,7 +391,7 @@ namespace mudock {
       (*this->scratch).get_queue()->synchronize();
       
       fp_type final_score = scores_b()[0];
-      fp_type rmsd = get_ligand_rmsd(); // WARNING: to not use this function toghether with dump_pose because it modifies the template
+      fp_type rmsd = get_ligand_rmsd();
       fp_type com = get_ligand_com_displacement(initial_com);
       crystal_experiment_logger.log(ligand_name, crystal_score, final_score, rmsd, com, num_atoms, num_rotamers, this->iterations);
 
