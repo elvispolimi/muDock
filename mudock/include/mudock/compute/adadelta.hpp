@@ -23,6 +23,7 @@
 #endif
 #include <mudock/molecule.hpp>
 #include <mudock/type_alias.hpp>
+#include <mudock/utils.hpp>
 
 namespace mudock {
 
@@ -276,6 +277,35 @@ namespace mudock {
                           this->ligand_template->num_atoms());
     }
 
+    fp_type get_min_rmsd_experiment(int ligand_index) {
+      auto& x_scratch_b = (*this->scratch).template get<buffer_data_type::X_SCRATCH>();
+      auto& y_scratch_b = (*this->scratch).template get<buffer_data_type::Y_SCRATCH>();
+      auto& z_scratch_b = (*this->scratch).template get<buffer_data_type::Z_SCRATCH>();
+    
+      fp_type *__restrict__ x_scratch_p = x_scratch_b.dev_pointer();
+      fp_type *__restrict__ y_scratch_p = y_scratch_b.dev_pointer();
+      fp_type *__restrict__ z_scratch_p = z_scratch_b.dev_pointer();
+
+      int atom_stride  = ligand_index * batch_atoms;
+
+      fp_type *__restrict__ scratch_x = x_scratch_p + atom_stride * individuals_per_ligand;
+      fp_type *__restrict__ scratch_y = y_scratch_p + atom_stride * individuals_per_ligand;
+      fp_type *__restrict__ scratch_z = z_scratch_p + atom_stride * individuals_per_ligand;
+
+      fp_type min_rmsd = big_bound<fp_type>();
+      fp_type rmsd = big_bound<fp_type>();
+      for (int individual_index = 0; individual_index < individuals_per_ligand; ++individual_index) {
+        fp_type *__restrict__ scratch_x_l = scratch_x + individual_index * batch_atoms;
+        fp_type *__restrict__ scratch_y_l = scratch_y + individual_index * batch_atoms;
+        fp_type *__restrict__ scratch_z_l = scratch_z + individual_index * batch_atoms;
+        rmsd = compute_rmsd((*this->ligand_template).x(), (*this->ligand_template).y(), (*this->ligand_template).z(),
+                              scratch_x_l, scratch_y_l, scratch_z_l, 
+                              this->ligand_template->num_atoms());
+        min_rmsd = std::min(min_rmsd, rmsd);
+      }
+      return min_rmsd;
+    }
+
     void run_as_lga_step() {
       if (local_search_on_best) {
         // Mark top n individuals based on lsrate
@@ -308,11 +338,11 @@ namespace mudock {
           best_index = i;
         }
       }
-      csv_logger rmsd_logger("lga_rmsd.csv", {"ligand", "rmsd_from_best_score", "best_score"});
+      csv_logger rmsd_logger("lga_rmsd.csv", {"ligand", "min_rmsd_of_population", "rmsd_from_best_score", "best_score"});
       const std::string ligand_name = this->ligand_template ? this->ligand_template->properties.get(property_type::NAME) : std::string{"unknown"};
       fp_type rmsd_from_best_score = get_ligand_rmsd_experiment(0, best_index);
-      // fp_type min_rmsd_of_population = get_min_rmsd_experiment();
-      rmsd_logger.log(ligand_name, rmsd_from_best_score, scores[best_index]);
+      fp_type min_rmsd_of_population = get_min_rmsd_experiment(0);
+      rmsd_logger.log(ligand_name, min_rmsd_of_population, rmsd_from_best_score, scores[best_index]);
       this->dump_best_pose_genetic(0, best_index, individuals_per_ligand, batch_atoms);
       // remove this code after experiments ^
       ///////////////////////////////////////////////////////////////////////////////////////////
