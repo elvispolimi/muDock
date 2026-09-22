@@ -260,10 +260,10 @@ namespace mudock {
 
         dump_best_pose_genetic(0, best_index, generation);
         
-        csv_logger rmsd_logger("genetic_rmsd.csv", {"ligand", "generation", "rmsd_best_scoring_pose", "rmsd_min"});
+        // csv_logger rmsd_logger("genetic_rmsd.csv", {"ligand", "generation", "rmsd_best_scoring_pose", "rmsd_min"});
         rmsd_best_scoring_pose = get_rmsd_best_scoring_pose(0, best_index);
         rmsd_min = get_min_rmsd_in_population(0);
-        rmsd_logger.log(0, generation, rmsd_best_scoring_pose, rmsd_min);
+        // rmsd_logger.log(0, generation, rmsd_best_scoring_pose, rmsd_min);
         /////////////////////////////////////////////////////////////////////////////////////
         /////////////////////////////////////////////////////////////////////////////////////
 

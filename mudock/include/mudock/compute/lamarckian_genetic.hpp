@@ -93,10 +93,10 @@ namespace mudock {
 
         this->dump_best_pose_genetic(0, best_index, generation);
 
-        csv_logger rmsd_logger("lga_rmsd.csv", {"ligand", "generation", "rmsd_best_scoring_pose", "rmsd_min"});
+        // csv_logger rmsd_logger("lga_rmsd.csv", {"ligand", "generation", "rmsd_best_scoring_pose", "rmsd_min"});
         this->rmsd_best_scoring_pose = this->get_rmsd_best_scoring_pose(0, best_index);
         this->rmsd_min = this->get_min_rmsd_in_population(0);
-        rmsd_logger.log(0, generation, this->rmsd_best_scoring_pose, this->rmsd_min);
+        // rmsd_logger.log(0, generation, this->rmsd_best_scoring_pose, this->rmsd_min);
         /////////////////////////////////////////////////////////////////////////////////////
         /////////////////////////////////////////////////////////////////////////////////////
 
