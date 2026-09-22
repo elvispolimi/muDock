@@ -21,7 +21,6 @@ namespace mudock {
 
         template<typename... Args>
         void log(Args&&... args) {
-            printf("logging...\n");
             bool first = true;
 
             ((file_ << (std::exchange(first, false) ? "" : ",")
