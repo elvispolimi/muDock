@@ -103,7 +103,7 @@ namespace mudock {
     const std::size_t total_active_work_groups =
         krn.ext_oneapi_get_info<max_num_work_groups>(
             queue,
-            sycl::range<1>{wg_size},
+            sycl::range<3>{wg_size, 1, 1},
             dynamic_local_memory_size);
     if (total_active_work_groups == 0) {
       throw std::runtime_error(
