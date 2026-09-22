@@ -47,7 +47,6 @@ namespace mudock {
       buf += ligand.properties.get(property_type::RMSD_BEST_SCORING_POSE);
       buf += ',';
       buf += ligand.properties.get(property_type::RMSD_MIN);
-      buf += ',';
       buf += '\n';
     }
   } // namespace detail
