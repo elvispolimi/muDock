@@ -288,7 +288,6 @@ namespace mudock {
         }
       }
       // const std::string ligand_name = this->ligand_template ? this->ligand_template->properties.get(property_type::NAME) : std::string{"unknown"};
-      // this->dump_best_pose_genetic(0, best_index, individuals_per_ligand, batch_atoms);
       // remove this code after experiments ^
       ///////////////////////////////////////////////////////////////////////////////////////////
 
