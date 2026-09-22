@@ -92,6 +92,11 @@ namespace mudock {
         }
 
         this->dump_best_pose_genetic(0, best_index, generation);
+
+        csv_logger rmsd_logger("lga_rmsd.csv", {"ligand", "generation", "rmsd_best_scoring_pose", "rmsd_min"});
+        this->rmsd_best_scoring_pose = this->get_rmsd_best_scoring_pose(0, best_index);
+        this->rmsd_min = this->get_min_rmsd_in_population(0);
+        rmsd_logger.log(0, generation, this->rmsd_best_scoring_pose, this->rmsd_min);
         /////////////////////////////////////////////////////////////////////////////////////
         /////////////////////////////////////////////////////////////////////////////////////
 
@@ -158,6 +163,8 @@ namespace mudock {
         const int num_evaluations = past_generations * this->population_number + past_generations * num_local_search_individuals * local_search_iterations; // GA contribution + LS contribution
         ligand.properties.assign(property_type::GEN, std::to_string(past_generations));
         ligand.properties.assign(property_type::NUM_EVALS, std::to_string(num_evaluations));
+        ligand.properties.assign(property_type::RMSD_BEST_SCORING_POSE, std::to_string(this->rmsd_best_scoring_pose));
+        ligand.properties.assign(property_type::RMSD_MIN, std::to_string(this->rmsd_min));
       }
     }
   private:
