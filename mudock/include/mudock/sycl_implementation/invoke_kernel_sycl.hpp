@@ -118,7 +118,7 @@ namespace mudock {
 
     // SYCL reports a device-wide total; do not reinterpret it as
     // active work-groups per compute unit.
-    const batch_multiple value{static_cast<int>(total_active_work_groups), 1};
+    const batch_multiple value{1, static_cast<int>(total_active_work_groups)};
     {
       const std::lock_guard<std::mutex> lock(cache_mutex);
       cache_by_key.emplace(cache_key, value);
