@@ -22,6 +22,7 @@
 #include <mudock/cpp_implementation/chromosome.hpp>
 #include <mudock/log.hpp>
 #include <mudock/molecule.hpp>
+#include <mudock/format/writer.hpp>
 
 namespace mudock {
 
@@ -131,8 +132,12 @@ namespace mudock {
           best_chromosomes(_scratch->get_queue()),
           best_scores(_scratch->get_queue()) {};
     void prepare(batch<static_molecule>& batch) {
+      // TODO L remove this ligand_template, needed for ls experiments in my thesis
+      ligand_template = *batch.molecules[0];
+      // End TODO
       const knobs& configuration   = (*this->scratch).configuration;
       batch_ligands                = batch.num_ligands;
+      batch_atoms                  = batch.batch_max_atoms;
       num_generations              = static_cast<int>(configuration.num_generations);
       population_number            = static_cast<int>(configuration.population_number);
       auto q                       = (*this->scratch).get_queue();
@@ -222,6 +227,11 @@ namespace mudock {
       chromosome* current_population_p = chromosomes_b.dev_pointer();
       chromosome* next_population_p    = next_population.dev_pointer();
 
+      /////////////////////////////////////////////////////////////////////////////////////
+      // TODO L remove this
+      auto& scores_b = (*this->scratch).template get<buffer_data_type::SCORES>();
+      /////////////////////////////////////////////////////////////////////////////////////
+
       assert(kernel && "Kernel method not yet prepared");
       kernel->set_population_buffers(current_population_p, next_population_p);
       geom_trans.set_chromosomes_buffer(current_population_p);
@@ -232,6 +242,24 @@ namespace mudock {
         geom_trans();
         (*score_stage)();
         (*kernel)();
+        /////////////////////////////////////////////////////////////////////////////////////
+        /////////////////////////////////////////////////////////////////////////////////////
+        // TODO L remove this part, needed for experiments
+        scores_b.copy_device2host();
+        (*this->scratch).get_queue()->synchronize();
+
+        const fp_type* scores = scores_b.host_pointer();
+
+        int best_index = 0;
+        for (int i = 1; i < population_number; ++i) {
+            if (scores[i] < scores[best_index]) {
+                best_index = i;
+            }
+        }
+
+        dump_best_pose_genetic(0, best_index, generation);
+        /////////////////////////////////////////////////////////////////////////////////////
+        /////////////////////////////////////////////////////////////////////////////////////
 
         // Avoid full device-to-device copy by ping-ponging population buffers.
         if (generation + 1 < num_generations) {
@@ -345,12 +373,58 @@ namespace mudock {
     geometric<queue_t> geom_trans;
 
     int batch_ligands;
+    int batch_atoms;
     int num_generations;
     int population_number;
     buffer_vector<chromosome, queue_t> next_population;
     buffer_vector<chromosome, queue_t> best_chromosomes;
     buffer_vector<fp_type, queue_t> best_scores;
     // buffer_vector<int, queue_t> converged_ligands;
+
+    // TODO L remove this ligand_template, needed for ls experiments in my thesis
+    std::optional<static_molecule> ligand_template;
+
+    // WARNING valid only for 1 ligand at the time ====> ligand_index must always be 0!!!
+    void dump_best_pose_genetic(int ligand_index, int individual_index, int gen) {
+      if (ligand_index != 0) {
+        mudock::error("dump_best_pose_genetic works with one ligand at a time.");
+      }
+      auto& x_scratch_b = (*this->scratch).template get<buffer_data_type::X_SCRATCH>();
+      auto& y_scratch_b = (*this->scratch).template get<buffer_data_type::Y_SCRATCH>();
+      auto& z_scratch_b = (*this->scratch).template get<buffer_data_type::Z_SCRATCH>();
+      
+      x_scratch_b.copy_device2host();
+      y_scratch_b.copy_device2host();
+      z_scratch_b.copy_device2host();
+      (*this->scratch).get_queue()->synchronize();
+
+      fp_type *__restrict__ x_scratch_p = x_scratch_b.host_pointer();
+      fp_type *__restrict__ y_scratch_p = y_scratch_b.host_pointer();
+      fp_type *__restrict__ z_scratch_p = z_scratch_b.host_pointer();
+
+      int atom_stride  = ligand_index * batch_atoms;
+
+      fp_type *__restrict__ scratch_x = x_scratch_p + atom_stride * population_number;
+      fp_type *__restrict__ scratch_y = y_scratch_p + atom_stride * population_number;
+      fp_type *__restrict__ scratch_z = z_scratch_p + atom_stride * population_number;
+
+      fp_type *__restrict__ scratch_x_l = scratch_x + individual_index * batch_atoms;
+      fp_type *__restrict__ scratch_y_l = scratch_y + individual_index * batch_atoms;
+      fp_type *__restrict__ scratch_z_l = scratch_z + individual_index * batch_atoms;
+      
+      static_molecule pose = *ligand_template;
+      const int num_atoms = pose.num_atoms();
+      std::memcpy(pose.x(), scratch_x_l, num_atoms * sizeof(fp_type));
+      std::memcpy(pose.y(), scratch_y_l, num_atoms * sizeof(fp_type));
+      std::memcpy(pose.z(), scratch_z_l, num_atoms * sizeof(fp_type));
+
+      // TODO L if there is no (dump) directory, it doesn't save the pose. fix it.
+      const std::string filename = "dump_best/lig_" + std::to_string(ligand_index) + "_gen_" + std::to_string(gen) + ".mol2";
+      std::ofstream ofs(filename, std::ios::out);
+      writer<supported_format::MOL2>(pose, ofs);
+    }
+    // End TODO
+
 
     void teardown_impl(batch<static_molecule>& batch) {
       assert(batch.num_ligands == batch_ligands && "Genetic algorithm received different batch for teardown");

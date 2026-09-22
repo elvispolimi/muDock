@@ -343,7 +343,7 @@ namespace mudock {
       fp_type rmsd_from_best_score = get_ligand_rmsd_experiment(0, best_index);
       fp_type min_rmsd_of_population = get_min_rmsd_experiment(0);
       rmsd_logger.log(ligand_name, min_rmsd_of_population, rmsd_from_best_score, scores[best_index]);
-      this->dump_best_pose_genetic(0, best_index, individuals_per_ligand, batch_atoms);
+      // this->dump_best_pose_genetic(0, best_index, individuals_per_ligand, batch_atoms);
       // remove this code after experiments ^
       ///////////////////////////////////////////////////////////////////////////////////////////
 
