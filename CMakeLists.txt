@@ -226,7 +226,7 @@ set(MUDOCK_SYCL_WG_SIZE "" CACHE STRING "SYCL work-group size override for kerne
 set(MUDOCK_STAGE_BUCKET_OVERRIDE "" CACHE STRING
     "Override stage bucket size (optional integer)")
 set(MUDOCK_STAGE_BUCKET_MULTIPLE_OVERRIDE "" CACHE STRING
-    "Override stage bucket scaling factor (optional real > 0)")
+    "Override stage bucket scaling factor (optional real > 0; remains capped by worker memory)")
 set(MUDOCK_STAGE_BUCKET_POLICY "${MUDOCK_DEFAULT_STAGE_BUCKET_POLICY}" CACHE STRING
     "Stage bucket policy: DEVICE_ALIGNED|SM_ALIGNED|MAX_UTILIZATION")
 set_property(CACHE MUDOCK_STAGE_BUCKET_POLICY PROPERTY STRINGS DEVICE_ALIGNED

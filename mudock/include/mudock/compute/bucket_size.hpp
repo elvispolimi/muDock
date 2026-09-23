@@ -57,9 +57,8 @@ namespace mudock {
                                   static_cast<size_t>(std::numeric_limits<int>::max()))));
 
   #ifdef MUDOCK_STAGE_BUCKET_MULTIPLE_OVERRIDE
-    // An explicit multiplier is an operator-selected override. Do not replace
-    // it with an automatically derived value; the automatic memory cap below
-    // applies only when no multiplier override is provided.
+    // An explicit multiplier selects the requested scaling, but the resulting
+    // bucket remains capped by the configured worker memory budget.
     static_assert(MUDOCK_STAGE_BUCKET_MULTIPLE_OVERRIDE > 0,
                   "MUDOCK_STAGE_BUCKET_MULTIPLE_OVERRIDE must be > 0.");
     const double override_multiplier = static_cast<double>(MUDOCK_STAGE_BUCKET_MULTIPLE_OVERRIDE);
@@ -69,9 +68,8 @@ namespace mudock {
       throw std::runtime_error(
           "MUDOCK_STAGE_BUCKET_MULTIPLE_OVERRIDE must produce a finite positive bucket.");
     }
-    bucket_size = requested_bucket >= static_cast<double>(max_bucket)
-                      ? max_bucket
-                      : static_cast<int>(std::llround(requested_bucket));
+    const bool memory_cap_applied = requested_bucket >= static_cast<double>(max_bucket);
+    bucket_size = memory_cap_applied ? max_bucket : static_cast<int>(std::llround(requested_bucket));
     if (bucket_size <= 0)
       bucket_size = 1;
 
@@ -84,8 +82,12 @@ namespace mudock {
                  base_multiple,
                  " with override multiplier ",
                  effective_multiplier,
-                 " -> ",
+                 ", requested bucket ",
+                 requested_bucket,
+                 ", selected bucket ",
                  bucket_size,
+                 ", memory cap applied=",
+                 memory_cap_applied,
                  ", estimated worker batch memory -> ",
                  estimated_mem_bytes,
                  " B (",
