@@ -80,8 +80,9 @@ namespace mudock {
         prot_index_x.copy_host2device();
         prot_index_xy.copy_host2device();
         prot_index_xyz.copy_host2device();
-        // On CPU is not required and on GPUS we have probably to laod texture memory etc...
-        // prot_grid_maps.copy_host2device();
+        prot_grid_maps.copy_host2device();
+        // Workers use this device-shared pointer from their own queues.
+        device_scratch->get_queue()->synchronize();
       }
     }
 
@@ -202,9 +203,10 @@ namespace mudock {
       const fp_type *nonbond_cB_b = nonbond_cB.dev_pointer();
       const int *nonbond_xB_b     = nonbond_xB.dev_pointer();
 
-      // Use host pointer as on CPP you can use it, on GPU they will load their own memory
-      const fp_type *grid_maps =
-          (*device_scratch).template get<buffer_data_type::PROT_GRID_MAPS>().host_pointer();
+      auto &prot_grid_maps = (*device_scratch).template get<buffer_data_type::PROT_GRID_MAPS>();
+      const fp_type *grid_maps = (*device_scratch).get_queue()->obj_required()
+                                     ? prot_grid_maps.dev_pointer()
+                                     : prot_grid_maps.host_pointer();
       const fp_type *minimum = (*device_scratch).template get<buffer_data_type::PROT_MIN>().dev_pointer();
       const fp_type *maximum = (*device_scratch).template get<buffer_data_type::PROT_MAX>().dev_pointer();
       const fp_type *center  = (*device_scratch).template get<buffer_data_type::PROT_CENTER>().dev_pointer();
@@ -244,7 +246,27 @@ namespace mudock {
                                                               map_index_xyz,
                                                               scores_b,
                                                               q);
+      mudock::stage_bucket_trace("ADT memory device=",
+                                 q->get_id(),
+                                 " ligands=",
+                                 batch_ligands,
+                                 " atoms=",
+                                 batch_atoms,
+                                 " theoretical_bytes_per_ligand=",
+                                 get_ligand_mem(batch_atoms, (*this->scratch).configuration),
+                                 " queue_allocated_bytes=",
+                                 q->allocated_bytes(),
+                                 " queue_peak_allocated_bytes=",
+                                 q->peak_allocated_bytes(),
+                                 " device_shared_queue_bytes=",
+                                 device_scratch->get_queue()->allocated_bytes(),
+                                 " device_current_bytes=",
+                                 q->device_allocated_bytes(),
+                                 " device_peak_allocated_bytes=",
+                                 q->device_peak_allocated_bytes());
     }
+
+    [[nodiscard]] auto get_device_shared_queue() const { return device_scratch->get_queue(); }
 
     void operator()() {
       assert(
@@ -256,29 +278,24 @@ namespace mudock {
 
     static std::size_t get_shared_ligand_mem(const int max_atoms, const knobs conf) {
       const int scores_per_ligand = std::max(1, static_cast<int>(conf.population_number));
-      return sizeof(int) + sizeof(int) + sizeof(fp_type) * scores_per_ligand +
-             3 * sizeof(fp_type) * max_atoms * scores_per_ligand;
+      return sizeof(int) * 2 + sizeof(fp_type) * scores_per_ligand +
+             sizeof(fp_type) * 3 * max_atoms * scores_per_ligand;
     }
 
     static std::size_t get_private_ligand_mem(const int max_atoms, const knobs) {
-      const int non_bonds_atoms = max_atoms * max_atoms;
+      const auto non_bonds_atoms = static_cast<std::size_t>(max_atoms) * max_atoms;
       std::size_t mem{0};
-      mem += sizeof(fp_type) * max_atoms;       // vols
-      mem += sizeof(fp_type) * max_atoms;       // solpars
-      mem += sizeof(fp_type) * max_atoms;       // charges
-      mem += sizeof(int) * max_atoms;           // map_offsets
-      mem += sizeof(int);                       // num_nonbond
-      mem += sizeof(int) * non_bonds_atoms;     // nonbond_a1
-      mem += sizeof(int) * non_bonds_atoms;     // nonbond_a2
-      mem += sizeof(fp_type) * non_bonds_atoms; // nonbond_cA
-      mem += sizeof(fp_type) * non_bonds_atoms; // nonbond_cB
-      mem += sizeof(int) * non_bonds_atoms;     // nonbond_xB
+      mem += sizeof(fp_type) * 3 * max_atoms;                         // vols, solpars, charges
+      mem += sizeof(int) * max_atoms;                                 // map_offsets
+      mem += sizeof(int) * (non_bonds_atoms + 1);                     // num_nonbond + sentinel
+      mem += sizeof(int) * 2 * non_bonds_atoms;                       // nonbond_a1, nonbond_a2
+      mem += sizeof(fp_type) * 2 * non_bonds_atoms;                   // nonbond_cA, nonbond_cB
+      mem += sizeof(int) * non_bonds_atoms;                           // nonbond_xB
       return mem;
     }
 
-    static int get_ligand_mem(const int max_atoms, const knobs conf) {
-      return static_cast<int>(get_shared_ligand_mem(max_atoms, conf) +
-                              get_private_ligand_mem(max_atoms, conf));
+    static std::size_t get_ligand_mem(const int max_atoms, const knobs conf) {
+      return get_shared_ligand_mem(max_atoms, conf) + get_private_ligand_mem(max_atoms, conf);
     }
 
     static batch_multiple get_batch_size(const int atoms,

@@ -180,7 +180,6 @@ if(MUDOCK_ENABLE_CUDA)
     "${header_path}/${header_prefix}/cuda_implementation/cuda_random.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/cuda_utils.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/mutate.cuh"
-    "${header_path}/${header_prefix}/cuda_implementation/cuda_texture.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/cuda_implementation.hpp"
     )
   list(
@@ -203,7 +202,6 @@ if(MUDOCK_ENABLE_HIP)
     "${header_path}/${header_prefix}/hip_implementation/adt_score_hip.hpp"
     "${header_path}/${header_prefix}/hip_implementation/genetic_hip.hpp"
     "${header_path}/${header_prefix}/hip_implementation/hip_random.hpp"
-    "${header_path}/${header_prefix}/hip_implementation/hip_texture.hpp"
     "${header_path}/${header_prefix}/hip_implementation/hip_utils.hpp"
     "${header_path}/${header_prefix}/hip_implementation/mutate.hpp"
     "${header_path}/${header_prefix}/hip_implementation/hip_implementation.hpp"
@@ -227,7 +225,6 @@ if(MUDOCK_ENABLE_SYCL)
     header_files_sycl
     "${header_path}/${header_prefix}/sycl_implementation/queue_sycl.hpp"
     "${header_path}/${header_prefix}/sycl_implementation/invoke_kernel_sycl.hpp"
-    "${header_path}/${header_prefix}/sycl_implementation/sycl_texture.hpp"
     "${header_path}/${header_prefix}/sycl_implementation/adt_score_sycl.hpp"
     "${header_path}/${header_prefix}/sycl_implementation/queue_sycl_impl.hpp"
     "${header_path}/${header_prefix}/sycl_implementation/sycl_kernel_lock.hpp"

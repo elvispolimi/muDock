@@ -9,7 +9,6 @@
 #include <mudock/compute/devices_memory.hpp>
 #include <mudock/compute/reorder_buffer.hpp>
 #include <mudock/hip_implementation/adt_score_hip.hpp>
-#include <mudock/hip_implementation/hip_texture.hpp>
 #include <mudock/hip_implementation/hip_utils.hpp>
 #include <mudock/hip_implementation/queue_hip.hpp>
 #include <mudock/log.hpp>
@@ -37,7 +36,6 @@ namespace mudock {
 
   constexpr int k_max_devices = 16;
 
-  device_memory_array<k_max_devices, hip_texture_devices> hip_texture_memory;
   device_memory_array<k_max_devices, fp_type> hip_constant_memory;
 
   void init_device(const int dev,
@@ -46,10 +44,8 @@ namespace mudock {
                    const fp_type* map_center,
                    const int map_index_x,
                    const int map_index_xy,
-                   const int map_index_xyz,
-                   const fp_type* map_grids) {
+                   const int map_index_xyz) {
     // Thread-safe, exactly-once init per device:
-    hip_texture_memory.init(dev, map_index_xyz, num_autodock_grids(), map_grids);
     hip_constant_memory.init(
         dev,
         std::function<std::unique_ptr<fp_type>()>([&]() {
@@ -290,7 +286,7 @@ namespace mudock {
   template<>
   void adt_score_kernel<queue_hip>::operator()() {
     const int dev_id = q->get_id();
-    init_device(dev_id, minimum, maximum, center, map_index_x, map_index_xy, map_index_xyz, grid_maps);
+    init_device(dev_id, minimum, maximum, center, map_index_x, map_index_xy, map_index_xyz);
 
     void* args[] = {(void*) &batch_atoms,    (void*) &scores_per_ligand,
                     (void*) &x_scratch_b,    (void*) &y_scratch_b,
@@ -301,7 +297,7 @@ namespace mudock {
                     (void*) &nonbond_a2_b,   (void*) &nonbond_cA_b,
                     (void*) &nonbond_cB_b,   (void*) &nonbond_xB_b,
                     (void*) &map_index_x,    (void*) &map_index_xy,
-                    (void*) &map_index_xyz,  (void*) &hip_texture_memory.v[dev_id].data->tex_dev,
+                    (void*) &map_index_xyz,  (void*) &grid_maps,
                     (void*) &map_offsets_b,  (void*) &scores_b};
     constexpr_switch_bucket<0, reorder_buffer<static_molecule>::get_num_atom_clusters(), 1>(
         [&](const auto atom_index) {

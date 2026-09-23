@@ -9,7 +9,6 @@
 #include <mudock/compute/devices_memory.hpp>
 #include <mudock/compute/reorder_buffer.hpp>
 #include <mudock/cuda_implementation/adt_score_cuda.cuh>
-#include <mudock/cuda_implementation/cuda_texture.cuh>
 #include <mudock/cuda_implementation/cuda_utils.cuh>
 #include <mudock/molecule.hpp>
 #include <mudock/type_alias.hpp>
@@ -36,17 +35,13 @@ namespace mudock {
 
   constexpr int k_max_devices = 16;
 
-  device_memory_array<k_max_devices, cuda_texture_devices> cuda_texture_memory;
   device_memory_array<k_max_devices, fp_type> cuda_constant_memory;
 
   void init_device(const int dev,
                    const fp_type* map_min,
                    const fp_type* map_max,
-                   const fp_type* map_center,
-                   const int map_index_xyz,
-                   const fp_type* map_grids) {
-    // Thread-safe, exactly-once init per device:
-    cuda_texture_memory.init(dev, map_index_xyz, num_autodock_grids(), map_grids);
+                   const fp_type* map_center) {
+    // Thread-safe, exactly-once initialization of the constant metadata.
     cuda_constant_memory.init(
         dev,
         std::function<std::unique_ptr<fp_type>()>([&]() {
@@ -284,7 +279,7 @@ namespace mudock {
   template<>
   void adt_score_kernel<queue_cuda>::operator()() {
     const int dev_id = q->get_id();
-    init_device(dev_id, minimum, maximum, center, map_index_xyz, grid_maps);
+    init_device(dev_id, minimum, maximum, center);
 
     void* args[] = {(void*) &batch_atoms,
                     (void*) &scores_per_ligand,
@@ -305,7 +300,7 @@ namespace mudock {
                     (void*) &map_index_x,
                     (void*) &map_index_xy,
                     (void*) &map_index_xyz,
-                    (void*) &(*cuda_texture_memory.v[dev_id].data).tex_dev,
+                    (void*) &grid_maps,
                     (void*) &map_offsets_b,
                     (void*) &scores_b};
     constexpr_switch_bucket<0, reorder_buffer<static_molecule>::get_num_atom_clusters(), 1>(

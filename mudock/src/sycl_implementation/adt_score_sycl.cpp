@@ -6,7 +6,6 @@
 #include <mudock/sycl_implementation/adt_score_sycl.hpp>
 #include <mudock/sycl_implementation/invoke_kernel_sycl.hpp>
 #include <mudock/sycl_implementation/queue_sycl.hpp>
-#include <mudock/sycl_implementation/sycl_texture.hpp>
 #include <mudock/sycl_implementation/sycl_utils.hpp>
 #include <mudock/utils.hpp>
 #include <stdexcept>
@@ -36,22 +35,6 @@ namespace mudock {
     value = coeffs[7] * map[1 + map_index_x + map_index_xy] + value;
 
     return value;
-  }
-
-  constexpr int k_max_devices = 16;
-  device_memory_array<k_max_devices, sycl_texture_devices>* get_sycl_texture_memory() {
-    // Intentionally leaked to avoid static destruction after SYCL runtime teardown.
-    static auto* storage = new device_memory_array<k_max_devices, sycl_texture_devices>();
-    return storage;
-  }
-
-  void init_device(const int dev,
-                   const device_type dev_type,
-                   const int map_index_xyz,
-                   const fp_type* map_grids) {
-    // Thread-safe, exactly-once init per device:
-    auto* texture_memory = get_sycl_texture_memory();
-    texture_memory->init(dev, dev_type, map_index_xyz, num_autodock_grids(), map_grids);
   }
 
   template<int MAX_ATOMS>
@@ -275,8 +258,7 @@ namespace mudock {
   template<>
   void adt_score_kernel<queue_sycl>::operator()() {
     const int dev_id    = q->get_id();
-    const auto dev_type = q->get_dev_type();
-    init_device(dev_id, dev_type, map_index_xyz, grid_maps);
+    (void) dev_id;
 
     constexpr_switch_bucket<0, reorder_buffer<static_molecule>::get_num_atom_clusters(), 1>(
         [&](const auto atom_index) {
@@ -305,7 +287,7 @@ namespace mudock {
                                                    map_index_x,
                                                    map_index_xy,
                                                    map_index_xyz,
-                                                   get_sycl_texture_memory()->v[dev_id].data->tex_dev,
+                                                   grid_maps,
                                                    map_offsets_b,
                                                    scores_b);
         },
