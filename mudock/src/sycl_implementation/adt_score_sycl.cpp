@@ -90,6 +90,11 @@ namespace mudock {
 
       const fp_type* electro_map = grid_maps + map_index_xyz * static_cast<int>(autodock_grid_type::ELEC);
       const fp_type* desolv_map  = grid_maps + map_index_xyz * static_cast<int>(autodock_grid_type::DESOLV);
+      const int map_size_y       = map_index_xy / map_index_x;
+      const int map_size_z       = map_index_xyz / map_index_xy;
+      const int last_cell_x      = map_index_x - 2;
+      const int last_cell_y      = map_size_y - 2;
+      const int last_cell_z      = map_size_z - 2;
 
       const int num_atoms    = num_atoms_b[ligand_id];
       const int num_nonbonds = num_nonbonds_b[ligand_id + 1] - num_nonbonds_b[ligand_id];
@@ -154,26 +159,18 @@ namespace mudock {
               // Trilinear interpolation reads the current cell and its
               // +x/+y/+z neighbours. A coordinate on the last grid point
               // would otherwise read one element past the map.
-              const int map_size_y = map_index_xy / map_index_x;
-              const int map_size_z = map_index_xyz / map_index_xy;
-              const fp_type max_u = static_cast<fp_type>(map_index_x - 1);
-              const fp_type max_v = static_cast<fp_type>(map_size_y - 1);
-              const fp_type max_w = static_cast<fp_type>(map_size_z - 1);
-              coord_tex[0] = sycl::min(sycl::max(coord_tex[0], fp_type{0}), max_u);
-              coord_tex[1] = sycl::min(sycl::max(coord_tex[1], fp_type{0}), max_v);
-              coord_tex[2] = sycl::min(sycl::max(coord_tex[2], fp_type{0}), max_w);
               const auto& charge      = l_charge[atom_index];
               const fp_type* atom_map = grid_maps + l_atom_tex_indexes[atom_index];
 
-              const int u0      = sycl::min(static_cast<int>(coord_tex[0]), map_index_x - 2);
+              const int u0      = sycl::max(0, sycl::min(static_cast<int>(coord_tex[0]), last_cell_x));
               const fp_type p0u = coord_tex[0] - static_cast<fp_type>(u0);
               const fp_type p1u = fp_type{1} - p0u;
 
-              const int v0      = sycl::min(static_cast<int>(coord_tex[1]), map_size_y - 2);
+              const int v0      = sycl::max(0, sycl::min(static_cast<int>(coord_tex[1]), last_cell_y));
               const fp_type p0v = coord_tex[1] - static_cast<fp_type>(v0);
               const fp_type p1v = fp_type{1} - p0v;
 
-              const int w0      = sycl::min(static_cast<int>(coord_tex[2]), map_size_z - 2);
+              const int w0      = sycl::max(0, sycl::min(static_cast<int>(coord_tex[2]), last_cell_z));
               const fp_type p0w = coord_tex[2] - static_cast<fp_type>(w0);
               const fp_type p1w = fp_type{1} - p0w;
 
