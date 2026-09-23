@@ -51,6 +51,10 @@ namespace mudock {
 
     double effective_multiplier = 1.0;
     int bucket_size             = 1;
+    const int max_bucket = std::max(
+        1,
+        static_cast<int>(std::min(max_bucket_size,
+                                  static_cast<size_t>(std::numeric_limits<int>::max()))));
 
   #ifdef MUDOCK_STAGE_BUCKET_MULTIPLE_OVERRIDE
     // An explicit multiplier is an operator-selected override. Do not replace
@@ -60,7 +64,14 @@ namespace mudock {
                   "MUDOCK_STAGE_BUCKET_MULTIPLE_OVERRIDE must be > 0.");
     const double override_multiplier = static_cast<double>(MUDOCK_STAGE_BUCKET_MULTIPLE_OVERRIDE);
     effective_multiplier            = override_multiplier;
-    bucket_size = static_cast<int>(std::llround(static_cast<double>(base_multiple) * effective_multiplier));
+    const double requested_bucket = static_cast<double>(base_multiple) * effective_multiplier;
+    if (!std::isfinite(requested_bucket) || requested_bucket <= 0.0) {
+      throw std::runtime_error(
+          "MUDOCK_STAGE_BUCKET_MULTIPLE_OVERRIDE must produce a finite positive bucket.");
+    }
+    bucket_size = requested_bucket >= static_cast<double>(max_bucket)
+                      ? max_bucket
+                      : static_cast<int>(std::llround(requested_bucket));
     if (bucket_size <= 0)
       bucket_size = 1;
 
@@ -83,18 +94,18 @@ namespace mudock {
   #else
   #if defined(MUDOCK_STAGE_BUCKET_POLICY_MAX_UTILIZATION)
     if (honors_stage_bucket_policy) {
-      bucket_size = std::max<int>(1, static_cast<int>(max_bucket_size));
+      bucket_size = max_bucket;
       effective_multiplier =
           static_cast<double>(bucket_size) / static_cast<double>(base_multiple);
     } else {
-      bucket_size = std::max<int>(1, std::min(base_multiple, static_cast<int>(max_bucket_size)));
+      bucket_size = std::min(base_multiple, max_bucket);
       effective_multiplier =
           static_cast<double>(bucket_size) / static_cast<double>(base_multiple);
     }
   #elif defined(MUDOCK_STAGE_BUCKET_POLICY_SM_ALIGNED)
     const int per_sm_multiple = std::max(1, base_multiple_info.active_blocks_per_sm);
-    bucket_size = static_cast<int>((max_bucket_size / static_cast<size_t>(per_sm_multiple)) *
-                                   static_cast<size_t>(per_sm_multiple));
+    const int sm_aligned_size = (max_bucket / per_sm_multiple) * per_sm_multiple;
+    bucket_size = sm_aligned_size;
     if (bucket_size <= 0) {
       bucket_size = 1;
     }
@@ -106,19 +117,12 @@ namespace mudock {
     // fits, fall back to the largest SM-aligned multiple before using an
     // unaligned memory-safe bucket.
     const int gpu_multiple = std::max(1, base_multiple);
-    const size_t aligned_size =
-        (max_bucket_size / static_cast<size_t>(gpu_multiple)) *
-        static_cast<size_t>(gpu_multiple);
+    const int aligned_size = (max_bucket / gpu_multiple) * gpu_multiple;
     const int sm_multiple = std::max(1, base_multiple_info.active_blocks_per_sm);
-    const size_t sm_aligned_size =
-        (max_bucket_size / static_cast<size_t>(sm_multiple)) *
-        static_cast<size_t>(sm_multiple);
-    const size_t selected_size =
-        aligned_size > 0 ? aligned_size
-                         : (sm_aligned_size > 0 ? sm_aligned_size : max_bucket_size);
-    bucket_size = static_cast<int>(std::min(
-        std::max<size_t>(1, selected_size),
-        static_cast<size_t>(std::numeric_limits<int>::max())));
+    const int sm_aligned_size = (max_bucket / sm_multiple) * sm_multiple;
+    const int selected_size = aligned_size > 0 ? aligned_size
+                                               : (sm_aligned_size > 0 ? sm_aligned_size : max_bucket);
+    bucket_size = std::max(1, selected_size);
     if (bucket_size <= 0) {
       // If budget is smaller than one alignment unit, keep minimum legal batch.
       bucket_size = 1;
@@ -126,7 +130,7 @@ namespace mudock {
     effective_multiplier =
         static_cast<double>(bucket_size) / static_cast<double>(base_multiple);
   #else
-    bucket_size = std::max<int>(1, std::min(base_multiple, static_cast<int>(max_bucket_size)));
+    bucket_size = std::min(base_multiple, max_bucket);
     effective_multiplier =
         static_cast<double>(bucket_size) / static_cast<double>(base_multiple);
   #endif
