@@ -37,17 +37,21 @@ namespace mudock {
         in_flight_ligands->fetch_add(b.num_ligands, std::memory_order_relaxed);
       }
 
+      bool batch_succeeded = true;
       try {
         pipeline.prepare(b);
         pipeline();
         pipeline.teardown(b);
-      } catch (const std::runtime_error& e) { error("Unable to virtual screen a batch due to ", e.what()); }
+      } catch (const std::runtime_error& e) {
+        batch_succeeded = false;
+        error("Unable to virtual screen a batch due to ", e.what());
+      }
 
       for (auto& batch_ligand: std::span(b.molecules.data(), b.num_ligands)) {
         output_stack->enqueue(batch_ligand);
       }
 
-      if (batch_completed) {
+      if (batch_succeeded && batch_completed) {
         batch_completed();
       }
 

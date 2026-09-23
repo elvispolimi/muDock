@@ -1,5 +1,6 @@
 #pragma once
 
+#include <charconv>
 #include <concepts>
 #include <functional>
 #include <memory>
@@ -48,10 +49,10 @@ namespace mudock {
       return default_value;
     }
 
+    const auto text = parts[index];
     std::size_t value = 0;
-    try {
-      value = std::stoull(parts[index]);
-    } catch (const std::exception&) {
+    const auto result = std::from_chars(text.data(), text.data() + text.size(), value);
+    if (result.ec != std::errc{} || result.ptr != text.data() + text.size()) {
       throw std::runtime_error(std::string{"Invalid "} + field_name + " value '" + parts[index] + "'.");
     }
     if (value == 0) {
