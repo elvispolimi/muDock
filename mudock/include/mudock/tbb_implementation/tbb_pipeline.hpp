@@ -15,6 +15,7 @@
 #include <mudock/tbb_implementation/runtime_services.hpp>
 #include <mudock/tbb_implementation/stream_filter.hpp>
 #include <oneapi/tbb/parallel_pipeline.h>
+#include <mutex>
 #include <optional>
 #include <string>
 #include <thread>
@@ -51,6 +52,7 @@ namespace mudock {
     std::atomic<bool> timeout_triggered{false};
     std::atomic<bool> stop_requested{false};
     std::atomic<bool> measurement_started{false};
+    std::once_flag measurement_start_once;
     std::atomic<bool> measurement_complete{false};
     std::atomic<bool> measurement_stop_done{false};
     std::atomic<bool> measurement_watcher_exit{false};
@@ -72,7 +74,7 @@ namespace mudock {
     };
 
     const auto complete_if_ready = [&](const std::size_t observed_output_count) {
-      if (!measurement_started.load(std::memory_order_relaxed)) {
+      if (!measurement_started.load(std::memory_order_acquire)) {
         return;
       }
       const auto start_count  = measurement_start_count.load(std::memory_order_relaxed);
@@ -101,9 +103,10 @@ namespace mudock {
            batch_measurement ? std::to_string(*measure_batches) : std::string{"disabled"});
 
       output_queue->set_enqueue_callback([&, complete_if_ready](const std::size_t count) {
+        if (!ligand_measurement || !measurement_started.load(std::memory_order_acquire))
+          return;
         const auto start_count = measurement_start_count.load(std::memory_order_relaxed);
-        if (ligand_measurement && measurement_started.load(std::memory_order_relaxed) && count >= start_count &&
-            count - start_count >= *measure_ligands) {
+        if (count >= start_count && count - start_count >= *measure_ligands) {
           complete_if_ready(count);
         }
       });
@@ -113,19 +116,19 @@ namespace mudock {
       if (!fixed_measurement) {
         return;
       }
-      bool expected = false;
-      if (measurement_started.compare_exchange_strong(expected, true, std::memory_order_relaxed)) {
+      std::call_once(measurement_start_once, [&] {
         measurement_start_count.store(output_queue->get_global_counter(), std::memory_order_relaxed);
         measurement_start_batch_count.store(measurement_batches_completed.load(std::memory_order_relaxed),
                                              std::memory_order_relaxed);
         measurement_start_ns.store(timestamp_ns(), std::memory_order_relaxed);
-      }
+        measurement_started.store(true, std::memory_order_release);
+      });
     };
 
     const auto on_batch_completed = [&] {
       const auto completed = measurement_batches_completed.fetch_add(1, std::memory_order_relaxed) + 1;
       const auto start_batches = measurement_start_batch_count.load(std::memory_order_relaxed);
-      if (batch_measurement && measurement_started.load(std::memory_order_relaxed) && completed >= start_batches &&
+      if (batch_measurement && measurement_started.load(std::memory_order_acquire) && completed >= start_batches &&
           completed - start_batches >= *measure_batches) {
         complete_if_ready(output_queue->get_global_counter());
       }
