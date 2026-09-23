@@ -287,7 +287,7 @@ namespace mudock {
       std::size_t mem{0};
       mem += sizeof(fp_type) * 3 * max_atoms;                         // vols, solpars, charges
       mem += sizeof(int) * max_atoms;                                 // map_offsets
-      mem += sizeof(int) * (non_bonds_atoms + 1);                     // num_nonbond + sentinel
+      mem += sizeof(int);                                           // num_nonbond (plus one fixed batch sentinel)
       mem += sizeof(int) * 2 * non_bonds_atoms;                       // nonbond_a1, nonbond_a2
       mem += sizeof(fp_type) * 2 * non_bonds_atoms;                   // nonbond_cA, nonbond_cB
       mem += sizeof(int) * non_bonds_atoms;                           // nonbond_xB
