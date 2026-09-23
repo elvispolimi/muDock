@@ -109,7 +109,8 @@ namespace mudock {
         parse_positive_size_field(parts, 4, "memory_bytes", static_cast<std::size_t>(1000000000));
 
     for (const auto id: parse_ids(parts[2])) {
-      auto q_b                               = std::make_shared<queue_type>(id, device_type::GPU);
+      auto tracker                            = std::make_shared<device_memory_tracker>();
+      auto q_b                               = std::make_shared<queue_type>(id, device_type::GPU, tracker);
       std::function<int(const int)> get_size = [q_b, &knobs, mem_per_device](const int x) {
         return pipeline_t::template get_batch_size<queue_type>(x, q_b, knobs, mem_per_device);
       };
@@ -121,7 +122,8 @@ namespace mudock {
                    " per device, with ",
                    mem_per_device,
                    " bytes each.");
-      auto device_scratch = std::make_shared<scratchpad<queue_type>>(knobs, id, device_type::GPU);
+      auto device_scratch = std::make_shared<scratchpad<queue_type>>(
+          knobs, id, device_type::GPU, std::move(tracker));
       for (std::size_t i = 0; i < workers_per_device; ++i) {
         pool.add_worker(
             worker(input_molecules,

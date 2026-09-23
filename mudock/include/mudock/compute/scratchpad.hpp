@@ -26,8 +26,11 @@ namespace mudock {
   // struct scratchpad_impl<buffer_type, object_type, std::tuple<Ts...>> {
   template<template<typename, typename> typename buffer_type, typename queue_t, typename... Ts>
   struct scratchpad_impl<buffer_type, queue_t, std::tuple<Ts...>> {
-    scratchpad_impl(const knobs& conf, const int id, const device_type dev_type)
-        : configuration(conf), q(std::make_shared<queue_t>(id, dev_type)) {};
+    scratchpad_impl(const knobs& conf,
+                    const int id,
+                    const device_type dev_type,
+                    std::shared_ptr<device_memory_tracker> tracker = {})
+        : configuration(conf), q(std::make_shared<queue_t>(id, dev_type, std::move(tracker))) {};
 
     template<buffer_data_type bdt>
     buffer_type<typename buffer_type_traits<bdt>::type, queue_t>& get(const int dim = 0) {
@@ -57,6 +60,7 @@ namespace mudock {
     const knobs configuration;
 
     auto get_queue() { return q; }
+    auto get_memory_tracker() const { return q->get_memory_tracker(); }
 
     void invalidate() { invalidate_impl(std::index_sequence_for<Ts...>{}); }
 
