@@ -12,7 +12,7 @@
 
 namespace mudock {
   struct queue_hip: queue {
-    queue_hip(const int _id, const device_type dev_t);
+    queue_hip(const int _id, const device_type dev_t, std::shared_ptr<device_memory_tracker> tracker = {});
     ~queue_hip();
 
     // non-copyable, but movable (optional)
@@ -25,18 +25,21 @@ namespace mudock {
     void launch_kernel(void*, void*[], const index3D, const index3D);
     void launch_kernel(void*, void*[], const int, const int);
 
-    void alloc(void**, const size_t);
-    void free(void**);
-    void set_to_value(void*, const size_t, const char);
-    void copy_host2device(const void*, void*, const size_t);
-    void copy_device2host(const void*, void*, const size_t);
-    void copy_device2device(const void*, void*, const size_t);
-    bool obj_required() { return true; }
+    void alloc(void**, const size_t) override;
+    void free(void**, const size_t bytes) override;
+    void set_to_value(void*, const size_t, const char) override;
+    void copy_host2device(const void*, void*, const size_t) override;
+    void copy_device2host(const void*, void*, const size_t) override;
+    void copy_device2device(const void*, void*, const size_t) override;
+    bool obj_required() override { return true; }
     bool honors_stage_bucket_policy() const override { return true; }
 
-    void operator()();
+    void operator()() override;
 
-    void synchronize();
+    void synchronize() override;
+
+    std::size_t allocated_bytes() const override;
+    std::size_t peak_allocated_bytes() const override;
 
   private:
     struct impl;

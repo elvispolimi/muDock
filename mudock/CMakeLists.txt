@@ -180,7 +180,6 @@ if(MUDOCK_ENABLE_CUDA)
     "${header_path}/${header_prefix}/cuda_implementation/cuda_random.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/cuda_utils.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/mutate.cuh"
-    "${header_path}/${header_prefix}/cuda_implementation/cuda_texture.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/cuda_implementation.hpp"
     )
   list(
@@ -203,7 +202,6 @@ if(MUDOCK_ENABLE_HIP)
     "${header_path}/${header_prefix}/hip_implementation/adt_score_hip.hpp"
     "${header_path}/${header_prefix}/hip_implementation/genetic_hip.hpp"
     "${header_path}/${header_prefix}/hip_implementation/hip_random.hpp"
-    "${header_path}/${header_prefix}/hip_implementation/hip_texture.hpp"
     "${header_path}/${header_prefix}/hip_implementation/hip_utils.hpp"
     "${header_path}/${header_prefix}/hip_implementation/mutate.hpp"
     "${header_path}/${header_prefix}/hip_implementation/hip_implementation.hpp"
@@ -227,7 +225,6 @@ if(MUDOCK_ENABLE_SYCL)
     header_files_sycl
     "${header_path}/${header_prefix}/sycl_implementation/queue_sycl.hpp"
     "${header_path}/${header_prefix}/sycl_implementation/invoke_kernel_sycl.hpp"
-    "${header_path}/${header_prefix}/sycl_implementation/sycl_texture.hpp"
     "${header_path}/${header_prefix}/sycl_implementation/adt_score_sycl.hpp"
     "${header_path}/${header_prefix}/sycl_implementation/queue_sycl_impl.hpp"
     "${header_path}/${header_prefix}/sycl_implementation/sycl_kernel_lock.hpp"
@@ -321,6 +318,8 @@ if(MUDOCK_STAGE_BUCKET_POLICY STREQUAL "MAX_UTILIZATION")
   target_compile_definitions(libmudock PUBLIC MUDOCK_STAGE_BUCKET_POLICY_MAX_UTILIZATION)
 elseif(MUDOCK_STAGE_BUCKET_POLICY STREQUAL "SM_ALIGNED")
   target_compile_definitions(libmudock PUBLIC MUDOCK_STAGE_BUCKET_POLICY_SM_ALIGNED)
+elseif(MUDOCK_STAGE_BUCKET_POLICY STREQUAL "DEVICE_ALIGNED")
+  target_compile_definitions(libmudock PUBLIC MUDOCK_STAGE_BUCKET_POLICY_DEVICE_ALIGNED)
 endif()
 if(MUDOCK_GENETIC_BUCKET_COMBINE STREQUAL "SCORE_ONLY")
   target_compile_definitions(libmudock PUBLIC MUDOCK_GENETIC_BUCKET_COMBINE_SCORE_ONLY)
@@ -403,13 +402,20 @@ if(MUDOCK_ENABLE_HIP)
     PUBLIC
       $<$<AND:$<COMPILE_LANGUAGE:HIP>,$<HIP_COMPILER_ID:NVIDIA>>:--expt-relaxed-constexpr
       -rdc=true -Xptxas -v --resource-usage>)
+  # FIXME in a future release
   target_compile_options(
     libmudock
-    PUBLIC $<$<AND:$<COMPILE_LANGUAGE:HIP>,$<HIP_COMPILER_ID:Clang>>:-fgpu-rdc -Rpass-analysis=kernel-resource-usage>)
+    PUBLIC
+      $<$<AND:$<COMPILE_LANGUAGE:HIP>,$<HIP_COMPILER_ID:Clang>>:
+      -fgpu-rdc
+      -Rpass=loop-unroll
+      -Rpass-missed=loop-unroll
+      -Rpass-analysis=loop-unroll
+      -Rpass-analysis=kernel-resource-usage>)
   target_link_options(
     libmudock PUBLIC
     $<$<AND:$<COMPILE_LANGUAGE:HIP>,$<HIP_COMPILER_ID:Clang>>:-fgpu-rdc
-    --hip-link -Rpass-analysis=kernel-resource-usage>)
+    --hip-link>)
   target_compile_options(
     libmudock
     PUBLIC
@@ -451,8 +457,10 @@ if(MUDOCK_ENABLE_CUDA)
   set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --expt-relaxed-constexpr")
   set(CMAKE_CUDA_FLAGS_RELEASE
       "${CMAKE_CUDA_FLAGS_RELEASE} -use_fast_math -Xptxas -v")
+  # Keep RelWithDebInfo device code optimized while retaining source-line
+  # information for Nsight Compute and other CUDA profilers.
   set(CMAKE_CUDA_FLAGS_RELWITHDEBINFO
-      "${CMAKE_CUDA_FLAGS_RELWITHDEBINFO} -G -Xptxas -v")
+      "${CMAKE_CUDA_FLAGS_RELWITHDEBINFO} -lineinfo -Xptxas -v")
   set(CMAKE_CUDA_FLAGS_DEBUG "${CMAKE_CUDA_FLAGS_DEBUG} -G -Xptxas -v")
 endif()
 

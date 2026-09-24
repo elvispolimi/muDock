@@ -20,7 +20,7 @@ namespace mudock {
     // TODO fix me the noexcept, change the mudock check
     ~object() noexcept(false) {
       if (ptr && q)
-        q->free((void**) &ptr);
+        q->free((void**) &ptr, alloc_size * sizeof(T));
     };
     object& operator=(const object&) = delete;
     object& operator=(object&&)      = delete;
@@ -30,7 +30,7 @@ namespace mudock {
     void alloc(const size_t num_elements) {
       if (num_elements > alloc_size) {
         if (ptr) {
-          q->free((void**) &ptr);
+          q->free((void**) &ptr, alloc_size * sizeof(T));
         }
         q->alloc((void**) &ptr, num_elements * sizeof(T));
         alloc_size = num_elements;

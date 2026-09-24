@@ -16,6 +16,8 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
   std::size_t seed{};
   double time_limit_sec{};
   double observer_sec{};
+  std::size_t measure_ligands{};
+  std::size_t measure_batches{};
   std::string search_name = std::string{to_string(args.search)};
   std::string score_name  = std::string{to_string(args.scoring)};
   arguments_description.add_options()("help,h", "print this help message");
@@ -36,6 +38,14 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
   arguments_description.add_options()("observer",
                                       po::value(&observer_sec),
                                       "Optional throughput observer interval in seconds");
+  arguments_description.add_options()(
+      "measure_ligands",
+      po::value(&measure_ligands),
+      "Optional number of completed ligands to measure from the first submitted batch; stop without output drain when reached");
+  arguments_description.add_options()(
+      "measure_batches",
+      po::value(&measure_batches),
+      "Optional number of completed batches to measure from the first submitted batch; stop without output drain when reached");
   arguments_description.add_options()("search",
                                       po::value(&search_name)->default_value(search_name),
                                       "Search algorithm to apply: none|genetic");
@@ -123,6 +133,18 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
   }
   if (vm.count("observer")) {
     args.observer = std::optional<double>{observer_sec};
+  }
+  if (vm.count("measure_ligands")) {
+    if (measure_ligands == 0) {
+      throw std::invalid_argument("measure_ligands must be greater than zero");
+    }
+    args.measure_ligands = std::optional<std::size_t>{measure_ligands};
+  }
+  if (vm.count("measure_batches")) {
+    if (measure_batches == 0) {
+      throw std::invalid_argument("measure_batches must be greater than zero");
+    }
+    args.measure_batches = std::optional<std::size_t>{measure_batches};
   }
   args.search  = mudock::parse_search_algorithm(search_name);
   args.scoring = mudock::parse_scoring_function(score_name);

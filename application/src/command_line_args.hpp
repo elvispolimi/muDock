@@ -15,6 +15,8 @@ struct command_line_arguments {
   std::vector<std::string> device_confs = {std::string{use_cpu_conf}};
   std::optional<double> time_limit_sec  = std::nullopt;
   std::optional<double> observer        = std::nullopt;
+  std::optional<std::size_t> measure_ligands = std::nullopt;
+  std::optional<std::size_t> measure_batches = std::nullopt;
   mudock::search_algorithm search       = mudock::search_algorithm::NONE;
   mudock::scoring_function scoring      = mudock::scoring_function::ADT;
   mudock::knobs knobs;

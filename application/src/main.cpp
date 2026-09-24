@@ -40,7 +40,9 @@ namespace {
                                                                                  pipe,
                                                                                  range_end,
                                                                                  args.time_limit_sec,
-                                                                                 args.observer);
+                                                                                 args.observer,
+                                                                                 args.measure_ligands,
+                                                                                 args.measure_batches);
                                      },
                                      format);
                                });

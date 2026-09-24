@@ -9,7 +9,6 @@
 #include <mudock/compute/devices_memory.hpp>
 #include <mudock/compute/reorder_buffer.hpp>
 #include <mudock/cuda_implementation/adt_score_cuda.cuh>
-#include <mudock/cuda_implementation/cuda_texture.cuh>
 #include <mudock/cuda_implementation/cuda_utils.cuh>
 #include <mudock/molecule.hpp>
 #include <mudock/type_alias.hpp>
@@ -36,17 +35,13 @@ namespace mudock {
 
   constexpr int k_max_devices = 16;
 
-  device_memory_array<k_max_devices, cuda_texture_devices> cuda_texture_memory;
   device_memory_array<k_max_devices, fp_type> cuda_constant_memory;
 
   void init_device(const int dev,
                    const fp_type* map_min,
                    const fp_type* map_max,
-                   const fp_type* map_center,
-                   const int map_index_xyz,
-                   const fp_type* map_grids) {
-    // Thread-safe, exactly-once init per device:
-    cuda_texture_memory.init(dev, map_index_xyz, num_autodock_grids(), map_grids);
+                   const fp_type* map_center) {
+    // Thread-safe, exactly-once initialization of the constant metadata.
     cuda_constant_memory.init(
         dev,
         std::function<std::unique_ptr<fp_type>()>([&]() {
@@ -109,6 +104,11 @@ namespace mudock {
                               fp_type* __restrict__ scores) {
     const fp_type* electro_map = grid_maps + map_index_xyz * static_cast<int>(autodock_grid_type::ELEC);
     const fp_type* desolv_map  = grid_maps + map_index_xyz * static_cast<int>(autodock_grid_type::DESOLV);
+    const int map_size_y       = map_index_xy / map_index_x;
+    const int map_size_z       = map_index_xyz / map_index_xy;
+    const int last_cell_x      = map_index_x - 2;
+    const int last_cell_y      = map_size_y - 2;
+    const int last_cell_z      = map_size_z - 2;
 
     const int ligand_id       = blockIdx.x;
     const int local_thread_id = threadIdx.x;
@@ -149,7 +149,10 @@ namespace mudock {
         if (atom_index < num_atoms) {
           fp_type coord_tex[3]{ligand_x[atom_index], ligand_y[atom_index], ligand_z[atom_index]};
 
-          if (coord_tex[0] < map_min_const[0] || coord_tex[0] > map_max_const[0] ||
+          if (!isfinite(coord_tex[0]) || !isfinite(coord_tex[1]) || !isfinite(coord_tex[2])) {
+            elect_total_trilinear += EINTCLAMP_CUDA;
+            emap_total_trilinear += EINTCLAMP_CUDA;
+          } else if (coord_tex[0] < map_min_const[0] || coord_tex[0] > map_max_const[0] ||
               coord_tex[1] < map_min_const[1] || coord_tex[1] > map_max_const[1] ||
               coord_tex[2] < map_min_const[2] || coord_tex[2] > map_max_const[2]) {
             // Is outside
@@ -168,15 +171,15 @@ namespace mudock {
             coord_tex[1]       = (coord_tex[1] - map_min_const[1]) * inv_spacing;
             coord_tex[2]       = (coord_tex[2] - map_min_const[2]) * inv_spacing;
             const auto& charge = l_charge[atom_index];
-            const int u0      = coord_tex[0];
+            const int u0      = max(0, min(static_cast<int>(coord_tex[0]), last_cell_x));
             const fp_type p0u = coord_tex[0] - static_cast<fp_type>(u0);
             const fp_type p1u = fp_type{1} - p0u;
 
-            const int v0      = coord_tex[1];
+            const int v0      = max(0, min(static_cast<int>(coord_tex[1]), last_cell_y));
             const fp_type p0v = coord_tex[1] - static_cast<fp_type>(v0);
             const fp_type p1v = fp_type{1} - p0v;
 
-            const int w0      = coord_tex[2];
+            const int w0      = max(0, min(static_cast<int>(coord_tex[2]), last_cell_z));
             const fp_type p0w = coord_tex[2] - static_cast<fp_type>(w0);
             const fp_type p1w = fp_type{1} - p0w;
 
@@ -276,7 +279,7 @@ namespace mudock {
   template<>
   void adt_score_kernel<queue_cuda>::operator()() {
     const int dev_id = q->get_id();
-    init_device(dev_id, minimum, maximum, center, map_index_xyz, grid_maps);
+    init_device(dev_id, minimum, maximum, center);
 
     void* args[] = {(void*) &batch_atoms,
                     (void*) &scores_per_ligand,
@@ -297,7 +300,7 @@ namespace mudock {
                     (void*) &map_index_x,
                     (void*) &map_index_xy,
                     (void*) &map_index_xyz,
-                    (void*) &(*cuda_texture_memory.v[dev_id].data).tex_dev,
+                    (void*) &grid_maps,
                     (void*) &map_offsets_b,
                     (void*) &scores_b};
     constexpr_switch_bucket<0, reorder_buffer<static_molecule>::get_num_atom_clusters(), 1>(

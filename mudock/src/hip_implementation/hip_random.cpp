@@ -1,4 +1,4 @@
-#include <chrono>
+#include <time.h>
 #include <mudock/hip_implementation/hip_random.hpp>
 #include <mudock/hip_implementation/hip_utils.hpp>
 
@@ -25,6 +25,10 @@ namespace mudock {
   };
 
   void hip_random_object::alloc(const std::size_t num_elements) {
-    alloc(num_elements, std::chrono::high_resolution_clock::now().time_since_epoch().count());
+    timespec now{};
+    clock_gettime(CLOCK_REALTIME, &now);
+    const auto seed = static_cast<std::size_t>(now.tv_sec) * 1000000000ULL +
+                      static_cast<std::size_t>(now.tv_nsec);
+    alloc(num_elements, seed);
   };
 } // namespace mudock

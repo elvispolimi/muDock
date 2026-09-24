@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <functional>
 #include <mudock/compute/reorder_buffer.hpp>
 #include <mudock/compute/safe_queue.hpp>
 #include <mudock/compute/stage.hpp>
@@ -25,20 +26,33 @@ namespace mudock {
     // this is the functor tha actually implement the virtual screening
     stage_t pipeline;
     std::atomic<std::size_t>* in_flight_ligands = nullptr;
+    std::function<void()> batch_submitted;
+    std::function<void()> batch_completed;
 
     void process(batch<static_molecule>& b) {
+      if (batch_submitted) {
+        batch_submitted();
+      }
       if (in_flight_ligands != nullptr) {
         in_flight_ligands->fetch_add(b.num_ligands, std::memory_order_relaxed);
       }
 
+      bool batch_succeeded = true;
       try {
         pipeline.prepare(b);
         pipeline();
         pipeline.teardown(b);
-      } catch (const std::runtime_error& e) { error("Unable to virtual screen a batch due to ", e.what()); }
+      } catch (const std::runtime_error& e) {
+        batch_succeeded = false;
+        error("Unable to virtual screen a batch due to ", e.what());
+      }
 
       for (auto& batch_ligand: std::span(b.molecules.data(), b.num_ligands)) {
         output_stack->enqueue(batch_ligand);
+      }
+
+      if (batch_succeeded && batch_completed) {
+        batch_completed();
       }
 
       if (in_flight_ligands != nullptr) {
@@ -52,12 +66,16 @@ namespace mudock {
            std::shared_ptr<reorder_buffer<static_molecule>> rb,
            // const std::size_t cpu_id,
            stage_t&& _pipeline,
-           std::atomic<std::size_t>* active_ligands = nullptr)
+           std::atomic<std::size_t>* active_ligands = nullptr,
+           std::function<void()> on_batch_submitted = {},
+           std::function<void()> on_batch_completed = {})
         : input_stack(input_molecules),
           output_stack(output_molecules),
           rob(rb),
           pipeline(std::move(_pipeline)),
-          in_flight_ligands(active_ligands) {}
+          in_flight_ligands(active_ligands),
+          batch_submitted(std::move(on_batch_submitted)),
+          batch_completed(std::move(on_batch_completed)) {}
 
     void main() {
       // process the input ligands

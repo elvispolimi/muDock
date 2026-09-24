@@ -6,7 +6,6 @@
 #include <mudock/sycl_implementation/adt_score_sycl.hpp>
 #include <mudock/sycl_implementation/invoke_kernel_sycl.hpp>
 #include <mudock/sycl_implementation/queue_sycl.hpp>
-#include <mudock/sycl_implementation/sycl_texture.hpp>
 #include <mudock/sycl_implementation/sycl_utils.hpp>
 #include <mudock/utils.hpp>
 #include <stdexcept>
@@ -36,22 +35,6 @@ namespace mudock {
     value = coeffs[7] * map[1 + map_index_x + map_index_xy] + value;
 
     return value;
-  }
-
-  constexpr int k_max_devices = 16;
-  device_memory_array<k_max_devices, sycl_texture_devices>* get_sycl_texture_memory() {
-    // Intentionally leaked to avoid static destruction after SYCL runtime teardown.
-    static auto* storage = new device_memory_array<k_max_devices, sycl_texture_devices>();
-    return storage;
-  }
-
-  void init_device(const int dev,
-                   const device_type dev_type,
-                   const int map_index_xyz,
-                   const fp_type* map_grids) {
-    // Thread-safe, exactly-once init per device:
-    auto* texture_memory = get_sycl_texture_memory();
-    texture_memory->init(dev, dev_type, map_index_xyz, num_autodock_grids(), map_grids);
   }
 
   template<int MAX_ATOMS>
@@ -85,12 +68,16 @@ namespace mudock {
       const int workgroup_id         = static_cast<int>(it.get_group(0));
       const int ligand_id            = static_cast<int>(workgroup_id);
       const int workitem_id_in_group = static_cast<int>(it.get_local_id(0));
-      const auto sub_group           = it.get_sub_group();
       assert(it.get_local_range(0) == MUDOCK_SYCL_WG_SIZE &&
              "SYCL WG size and the number of thread per block does not coincide");
 
       const fp_type* electro_map = grid_maps + map_index_xyz * static_cast<int>(autodock_grid_type::ELEC);
       const fp_type* desolv_map  = grid_maps + map_index_xyz * static_cast<int>(autodock_grid_type::DESOLV);
+      const int map_size_y       = map_index_xy / map_index_x;
+      const int map_size_z       = map_index_xyz / map_index_xy;
+      const int last_cell_x      = map_index_x - 2;
+      const int last_cell_y      = map_size_y - 2;
+      const int last_cell_z      = map_size_z - 2;
 
       const int num_atoms    = num_atoms_b[ligand_id];
       const int num_nonbonds = num_nonbonds_b[ligand_id + 1] - num_nonbonds_b[ligand_id];
@@ -128,7 +115,13 @@ namespace mudock {
              atom_index += MUDOCK_SYCL_WG_SIZE) {
           if (atom_index < num_atoms) {
             fp_type coord_tex[3]{ligand_x[atom_index], ligand_y[atom_index], ligand_z[atom_index]};
-            if (coord_tex[0] < minimum[0] || coord_tex[0] > maximum[0] || coord_tex[1] < minimum[1] ||
+            const bool finite_coord = sycl::isfinite(coord_tex[0]) && sycl::isfinite(coord_tex[1]) &&
+                                      sycl::isfinite(coord_tex[2]);
+            if (!finite_coord) {
+              // Do not let NaN reach the integer grid indices below.
+              elect_total_trilinear += EINTCLAMP;
+              emap_total_trilinear += EINTCLAMP;
+            } else if (coord_tex[0] < minimum[0] || coord_tex[0] > maximum[0] || coord_tex[1] < minimum[1] ||
                 coord_tex[1] > maximum[1] || coord_tex[2] < minimum[2] || coord_tex[2] > maximum[2]) {
               // Is outside
               const auto diff_x          = coord_tex[0] - center[0];
@@ -145,18 +138,22 @@ namespace mudock {
               coord_tex[0]            = (coord_tex[0] - minimum[0]) * inv_spacing,
               coord_tex[1]            = (coord_tex[1] - minimum[1]) * inv_spacing;
               coord_tex[2]            = (coord_tex[2] - minimum[2]) * inv_spacing;
+
+              // Trilinear interpolation reads the current cell and its
+              // +x/+y/+z neighbours. A coordinate on the last grid point
+              // would otherwise read one element past the map.
               const auto& charge      = l_charge[atom_index];
               const fp_type* atom_map = grid_maps + l_atom_tex_indexes[atom_index];
 
-              const int u0      = static_cast<int>(coord_tex[0]);
+              const int u0      = sycl::max(0, sycl::min(static_cast<int>(coord_tex[0]), last_cell_x));
               const fp_type p0u = coord_tex[0] - static_cast<fp_type>(u0);
               const fp_type p1u = fp_type{1} - p0u;
 
-              const int v0      = static_cast<int>(coord_tex[1]);
+              const int v0      = sycl::max(0, sycl::min(static_cast<int>(coord_tex[1]), last_cell_y));
               const fp_type p0v = coord_tex[1] - static_cast<fp_type>(v0);
               const fp_type p1v = fp_type{1} - p0v;
 
-              const int w0      = static_cast<int>(coord_tex[2]);
+              const int w0      = sycl::max(0, sycl::min(static_cast<int>(coord_tex[2]), last_cell_z));
               const fp_type p0w = coord_tex[2] - static_cast<fp_type>(w0);
               const fp_type p1w = fp_type{1} - p0w;
 
@@ -245,7 +242,9 @@ namespace mudock {
           }
         fp_type total_energy = emap_total_eintcal + elect_total_eintcal + dmap_total_eintcal +
                                emap_total_trilinear + elect_total_trilinear + dmap_total_trilinear;
-        total_energy         = sycl::reduce_over_group(sub_group, total_energy, std::plus<fp_type>());
+        // Reduce across the complete work-group. A subgroup reduction would
+        // omit contributions when the device uses narrower subgroups.
+        total_energy = sycl::reduce_over_group(it.get_group(), total_energy, std::plus<fp_type>());
 
         if (workitem_id_in_group == 0) {
           const fp_type tors_free_energy =
@@ -259,8 +258,7 @@ namespace mudock {
   template<>
   void adt_score_kernel<queue_sycl>::operator()() {
     const int dev_id    = q->get_id();
-    const auto dev_type = q->get_dev_type();
-    init_device(dev_id, dev_type, map_index_xyz, grid_maps);
+    (void) dev_id;
 
     constexpr_switch_bucket<0, reorder_buffer<static_molecule>::get_num_atom_clusters(), 1>(
         [&](const auto atom_index) {
@@ -289,7 +287,7 @@ namespace mudock {
                                                    map_index_x,
                                                    map_index_xy,
                                                    map_index_xyz,
-                                                   get_sycl_texture_memory()->v[dev_id].data->tex_dev,
+                                                   grid_maps,
                                                    map_offsets_b,
                                                    scores_b);
         },

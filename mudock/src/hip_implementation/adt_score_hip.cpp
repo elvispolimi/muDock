@@ -10,10 +10,8 @@
 #include <mudock/compute/reorder_buffer.hpp>
 #include <mudock/hip_implementation/adt_score_hip.hpp>
 #include <mudock/hip_implementation/hip_utils.hpp>
-#include <mudock/log.hpp>
-#include <mudock/hip_implementation/hip_texture.hpp>
-#include <mudock/hip_implementation/hip_utils.hpp>
 #include <mudock/hip_implementation/queue_hip.hpp>
+#include <mudock/log.hpp>
 #include <mudock/molecule.hpp>
 #include <mudock/type_alias.hpp>
 #include <mudock/utils.hpp>
@@ -38,7 +36,6 @@ namespace mudock {
 
   constexpr int k_max_devices = 16;
 
-  device_memory_array<k_max_devices, hip_texture_devices> hip_texture_memory;
   device_memory_array<k_max_devices, fp_type> hip_constant_memory;
 
   void init_device(const int dev,
@@ -47,10 +44,8 @@ namespace mudock {
                    const fp_type* map_center,
                    const int map_index_x,
                    const int map_index_xy,
-                   const int map_index_xyz,
-                   const fp_type* map_grids) {
+                   const int map_index_xyz) {
     // Thread-safe, exactly-once init per device:
-    hip_texture_memory.init(dev, map_index_xyz, num_autodock_grids(), map_grids);
     hip_constant_memory.init(
         dev,
         std::function<std::unique_ptr<fp_type>()>([&]() {
@@ -113,6 +108,11 @@ namespace mudock {
                               fp_type* __restrict__ scores) {
     const fp_type* electro_map = grid_maps + map_index_xyz * static_cast<int>(autodock_grid_type::ELEC);
     const fp_type* desolv_map  = grid_maps + map_index_xyz * static_cast<int>(autodock_grid_type::DESOLV);
+    const int map_size_y       = map_index_xy / map_index_x;
+    const int map_size_z       = map_index_xyz / map_index_xy;
+    const int last_cell_x      = map_index_x - 2;
+    const int last_cell_y      = map_size_y - 2;
+    const int last_cell_z      = map_size_z - 2;
 
     const int ligand_id       = blockIdx.x;
     const int local_thread_id = threadIdx.x;
@@ -148,13 +148,17 @@ namespace mudock {
 
       // Calculate energy
       fp_type elect_total_trilinear = 0, emap_total_trilinear = 0, dmap_total_trilinear = 0;
-MUDOCK_PRAGMA_UNROLL(MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, BLOCK_SIZE))
+// MUDOCK_PRAGMA_UNROLL(MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, BLOCK_SIZE))
+#pragma nounroll
       for (int i = 0; i < MAX_ATOMS; i += BLOCK_SIZE) {
         const int atom_index = i + threadIdx.x;
         if (atom_index < num_atoms) {
           fp_type coord_tex[3]{ligand_x[atom_index], ligand_y[atom_index], ligand_z[atom_index]};
 
-          if (coord_tex[0] < map_min_const[0] || coord_tex[0] > map_max_const[0] ||
+          if (!isfinite(coord_tex[0]) || !isfinite(coord_tex[1]) || !isfinite(coord_tex[2])) {
+            elect_total_trilinear += EINTCLAMP_CUDA;
+            emap_total_trilinear += EINTCLAMP_CUDA;
+          } else if (coord_tex[0] < map_min_const[0] || coord_tex[0] > map_max_const[0] ||
               coord_tex[1] < map_min_const[1] || coord_tex[1] > map_max_const[1] ||
               coord_tex[2] < map_min_const[2] || coord_tex[2] > map_max_const[2]) {
             // Is outside
@@ -176,15 +180,15 @@ MUDOCK_PRAGMA_UNROLL(MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, BLOCK_SIZE))
             const fp_type* atom_map = grid_maps + l_atom_tex_indexes[atom_index];
 
             //  TODO check approximations with in hardware interpolation
-            const int u0      = coord_tex[0];
+            const int u0      = max(0, min(static_cast<int>(coord_tex[0]), last_cell_x));
             const fp_type p0u = coord_tex[0] - static_cast<fp_type>(u0);
             const fp_type p1u = fp_type{1} - p0u;
 
-            const int v0      = coord_tex[1];
+            const int v0      = max(0, min(static_cast<int>(coord_tex[1]), last_cell_y));
             const fp_type p0v = coord_tex[1] - static_cast<fp_type>(v0);
             const fp_type p1v = fp_type{1} - p0v;
 
-            const int w0      = coord_tex[2];
+            const int w0      = max(0, min(static_cast<int>(coord_tex[2]), last_cell_z));
             const fp_type p0w = coord_tex[2] - static_cast<fp_type>(w0);
             const fp_type p1w = fp_type{1} - p0w;
 
@@ -267,7 +271,7 @@ MUDOCK_PRAGMA_UNROLL(MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, BLOCK_SIZE))
       fp_type total_energy = emap_total_eintcal + elect_total_eintcal + dmap_total_eintcal +
                              emap_total_trilinear + elect_total_trilinear + dmap_total_trilinear;
 
-MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
+      MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
       for (int offset = BLOCK_SIZE / 2; offset > 0; offset /= 2) {
         total_energy += SHFL_DOWN(BITLANE_MASK, total_energy, offset, BLOCK_SIZE);
       }
@@ -282,7 +286,7 @@ MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
   template<>
   void adt_score_kernel<queue_hip>::operator()() {
     const int dev_id = q->get_id();
-    init_device(dev_id, minimum, maximum, center, map_index_x, map_index_xy, map_index_xyz, grid_maps);
+    init_device(dev_id, minimum, maximum, center, map_index_x, map_index_xy, map_index_xyz);
 
     void* args[] = {(void*) &batch_atoms,    (void*) &scores_per_ligand,
                     (void*) &x_scratch_b,    (void*) &y_scratch_b,
@@ -293,7 +297,7 @@ MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
                     (void*) &nonbond_a2_b,   (void*) &nonbond_cA_b,
                     (void*) &nonbond_cB_b,   (void*) &nonbond_xB_b,
                     (void*) &map_index_x,    (void*) &map_index_xy,
-                    (void*) &map_index_xyz,  (void*) &hip_texture_memory.v[dev_id].data->tex_dev,
+                    (void*) &map_index_xyz,  (void*) &grid_maps,
                     (void*) &map_offsets_b,  (void*) &scores_b};
     constexpr_switch_bucket<0, reorder_buffer<static_molecule>::get_num_atom_clusters(), 1>(
         [&](const auto atom_index) {
