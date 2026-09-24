@@ -402,6 +402,7 @@ if(MUDOCK_ENABLE_HIP)
     PUBLIC
       $<$<AND:$<COMPILE_LANGUAGE:HIP>,$<HIP_COMPILER_ID:NVIDIA>>:--expt-relaxed-constexpr
       -rdc=true -Xptxas -v --resource-usage>)
+  # FIXME in a future release
   target_compile_options(
     libmudock
     PUBLIC
