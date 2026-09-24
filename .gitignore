@@ -6,3 +6,14 @@ build*/
 *.a
 .codex
 docs/
+
+data/
+env/
+lorenzo_temp/experiments/test/
+lorenzo_temp/reports/
+lorenzo_temp/dump/
+dump_best/
+genetic_rmsd.csv
+lga_rmsd.csv
+
+temp/

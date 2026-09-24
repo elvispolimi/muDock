@@ -63,4 +63,4 @@ NUM_ROTAMERS:
 
 ##########################################
 RESULTS FORMAT:
-name, score, gen, seed, rot, atoms, evals, population, rate, iteration
+name,score,gen,seed,rot,atoms,evals,population,rate,iterations,rmsd_best_scoring_pose,rmsd_min
