@@ -20,6 +20,7 @@ namespace mudock {
                          const fp_type *__restrict__ x_scratch_b,
                          const fp_type *__restrict__ y_scratch_b,
                          const fp_type *__restrict__ z_scratch_b,
+                         fp_type *__restrict__ rmsd_best_pose_b,
                          const fp_type *__restrict__ scores_b) {
     for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
       const int converged_ligand = converged_ligands_b[ligand_index];
@@ -60,18 +61,18 @@ namespace mudock {
       const fp_type *__restrict__ scratch_y_l = scratch_y + best_index * batch_atoms;
       const fp_type *__restrict__ scratch_z_l = scratch_z + best_index * batch_atoms;
 
-      fp_type rmsd_best_scoring_pose = compute_rmsd(template_x_l, template_y_l, template_z_l,
+      rmsd_best_pose_b[ligand_index] = compute_rmsd(template_x_l, template_y_l, template_z_l,
                                                       scratch_x_l, scratch_y_l, scratch_z_l, 
                                                       num_atoms);
       // fp_type rmsd_best_scoring_pose = 0;
-      bool good_rmsd = rmsd_best_scoring_pose < 1 ? true : false;
+      bool good_rmsd = rmsd_best_pose_b[ligand_index] < 1 ? true : false;
 
       //////////////////////////////////////////////////////////////////////////////////////////////////////
       // mark convergence
       //////////////////////////////////////////////////////////////////////////////////////////////////////
       if (good_score || good_rmsd) {
         converged_ligands_b[ligand_index] = *generation;
-        printf("CRYSTAL FOUND! score = %f, rmsd = %f\n", best_score, rmsd_best_scoring_pose);
+        printf("CRYSTAL FOUND! score = %f, rmsd = %f\n", best_score, rmsd_best_pose_b[ligand_index]);
       }
 
     }
@@ -94,6 +95,7 @@ namespace mudock {
                                                             x_scratch_b,
                                                             y_scratch_b,
                                                             z_scratch_b,
+                                                            rmsd_best_pose_b,
                                                             scores_b);
   }
 

@@ -42,7 +42,8 @@ namespace mudock {
     ACTIVE_INDIVIDUALS,
     CONVERGED_LIGANDS, // IMPORTANT: store 0 if ligand NOT converged, otherwise store the number of generations to reach convergence
     BEST_SO_FAR,
-    FOR_HOW_LONG_BEST
+    FOR_HOW_LONG_BEST,
+    RMSD_BEST_POSE
   };
 
   using buffer_type_list = std::tuple<fp_type, int, chromosome>;
@@ -173,6 +174,10 @@ namespace mudock {
   template<>
   struct buffer_type_traits<buffer_data_type::FOR_HOW_LONG_BEST> {
     using type = buffer_type_traits_impl<buffer_data_type::FOR_HOW_LONG_BEST, int>::type;
+  };
+  template<>
+  struct buffer_type_traits<buffer_data_type::RMSD_BEST_POSE> {
+    using type = buffer_type_traits_impl<buffer_data_type::RMSD_BEST_POSE, fp_type>::type;
   };
 
   template<template<class...> class container_type, typename T, class queue_t, class... args>

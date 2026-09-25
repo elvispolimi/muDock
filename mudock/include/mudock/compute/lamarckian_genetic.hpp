@@ -63,7 +63,6 @@ namespace mudock {
       /////////////////////////////////////////////////////////////////////////////////////
       // TODO L remove this
       auto& scores_b = (*this->scratch).template get<buffer_data_type::SCORES>();
-      csv_logger rmsd_logger("lga_rmsd.csv", {"ligand", "generation", "rmsd_best_scoring_pose", "rmsd_min"});
       /////////////////////////////////////////////////////////////////////////////////////
       
       assert(this->kernel && "lamarckian_kernel method not yet prepared");
@@ -93,11 +92,6 @@ namespace mudock {
         }
 
         this->dump_best_pose_genetic(0, best_index, generation);
-
-        // this->rmsd_best_scoring_pose = this->get_rmsd_best_scoring_pose(0, best_index);
-        this->rmsd_best_scoring_pose = 0;        
-        this->rmsd_min = this->get_min_rmsd_in_population(0);
-        rmsd_logger.log(0, generation, this->rmsd_best_scoring_pose, this->rmsd_min);
         /////////////////////////////////////////////////////////////////////////////////////
         /////////////////////////////////////////////////////////////////////////////////////
 
@@ -138,7 +132,7 @@ namespace mudock {
 
     void teardown_impl(batch<static_molecule>& batch) override {
       assert(batch.num_ligands == this->batch_ligands && "Genetic algorithm received different batch for teardown");
-
+      crystal_convergence_stage.teardown(batch);
       auto &converged_ligands_b = (*this->scratch).template get<buffer_data_type::CONVERGED_LIGANDS>();
       this->best_scores.copy_device2host();
       converged_ligands_b.copy_device2host();
@@ -164,8 +158,6 @@ namespace mudock {
         const int num_evaluations = past_generations * this->population_number + past_generations * num_local_search_individuals * local_search_iterations; // GA contribution + LS contribution
         ligand.properties.assign(property_type::GEN, std::to_string(past_generations));
         ligand.properties.assign(property_type::NUM_EVALS, std::to_string(num_evaluations));
-        ligand.properties.assign(property_type::RMSD_BEST_SCORING_POSE, std::to_string(this->rmsd_best_scoring_pose));
-        ligand.properties.assign(property_type::RMSD_MIN, std::to_string(this->rmsd_min));
       }
     }
   private:

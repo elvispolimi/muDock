@@ -40,6 +40,7 @@ namespace mudock {
                 fp_type* __restrict__ x_scratch_b_,
                 fp_type* __restrict__ y_scratch_b_,
                 fp_type* __restrict__ z_scratch_b_,
+                fp_type* __restrict__ rmsd_best_pose_b_,
                 fp_type *__restrict__ scores_b_,
                 std::shared_ptr<queue_type> q_)
         : batch_ligands(batch_ligands_),
@@ -53,6 +54,7 @@ namespace mudock {
           x_scratch_b(x_scratch_b_),
           y_scratch_b(y_scratch_b_),
           z_scratch_b(z_scratch_b_),
+          rmsd_best_pose_b(rmsd_best_pose_b_),
           scores_b(scores_b_),
           q(q_) {}
 
@@ -79,6 +81,7 @@ namespace mudock {
     const fp_type* __restrict__ x_scratch_b;
     const fp_type* __restrict__ y_scratch_b;
     const fp_type* __restrict__ z_scratch_b;
+    fp_type* __restrict__ rmsd_best_pose_b;
     const fp_type *__restrict__ scores_b;
     int current_generation = 0;
     std::shared_ptr<queue_type> q;
@@ -100,14 +103,16 @@ namespace mudock {
 
       load_num_rotamers<queue_t>(batch, this->scratch);
       load_num_atoms<queue_t>(batch, this->scratch);
-      auto& converged_ligands_b       = (*this->scratch).template get<buffer_data_type::CONVERGED_LIGANDS>();
-      auto& x_scratch_b  = (*this->scratch).template get<buffer_data_type::X_SCRATCH>();
-      auto& y_scratch_b  = (*this->scratch).template get<buffer_data_type::Y_SCRATCH>();
-      auto& z_scratch_b  = (*this->scratch).template get<buffer_data_type::Z_SCRATCH>();
-      auto& scores_b     = (*this->scratch).template get<buffer_data_type::SCORES>();
-      auto& template_x_b = (*this->scratch).template get<buffer_data_type::X_TEMPLATE>();
-      auto& template_y_b = (*this->scratch).template get<buffer_data_type::Y_TEMPLATE>();
-      auto& template_z_b = (*this->scratch).template get<buffer_data_type::Z_TEMPLATE>();
+      auto& converged_ligands_b = (*this->scratch).template get<buffer_data_type::CONVERGED_LIGANDS>();
+      auto& x_scratch_b         = (*this->scratch).template get<buffer_data_type::X_SCRATCH>();
+      auto& y_scratch_b         = (*this->scratch).template get<buffer_data_type::Y_SCRATCH>();
+      auto& z_scratch_b         = (*this->scratch).template get<buffer_data_type::Z_SCRATCH>();
+      auto& scores_b            = (*this->scratch).template get<buffer_data_type::SCORES>();
+      auto& template_x_b        = (*this->scratch).template get<buffer_data_type::X_TEMPLATE>();
+      auto& template_y_b        = (*this->scratch).template get<buffer_data_type::Y_TEMPLATE>();
+      auto& template_z_b        = (*this->scratch).template get<buffer_data_type::Z_TEMPLATE>();
+      auto& rmsd_best_pose_b    = (*this->scratch).template get<buffer_data_type::RMSD_BEST_POSE>();
+
       
       converged_ligands_b.alloc(batch_ligands);
       x_scratch_b.alloc(tot_atoms_in_batch * population_number);
@@ -117,6 +122,8 @@ namespace mudock {
       template_x_b.alloc(tot_atoms_in_batch);
       template_y_b.alloc(tot_atoms_in_batch);
       template_z_b.alloc(tot_atoms_in_batch);
+      rmsd_best_pose_b.alloc(batch_ligands);
+
 
       for (int ligand_index = 0; ligand_index < batch_ligands; ++ligand_index) {
         auto& ligand = *batch.molecules[ligand_index];
@@ -132,15 +139,17 @@ namespace mudock {
 
       }
 
-      int* num_atoms_p                       = (*this->scratch).template get<buffer_data_type::NUM_ATOMS>().dev_pointer();
-      int* __restrict__ converged_ligands_p  = converged_ligands_b.dev_pointer();
-      fp_type* x_scratch_p           = x_scratch_b.dev_pointer();
-      fp_type* y_scratch_p           = y_scratch_b.dev_pointer();
-      fp_type* z_scratch_p           = z_scratch_b.dev_pointer();
-      fp_type* __restrict__ scores_p = scores_b.dev_pointer();
-      fp_type* __restrict__ template_x_p = template_x_b.dev_pointer();
-      fp_type* __restrict__ template_y_p = template_y_b.dev_pointer();
-      fp_type* __restrict__ template_z_p = template_z_b.dev_pointer();
+      int* num_atoms_p                      = (*this->scratch).template get<buffer_data_type::NUM_ATOMS>().dev_pointer();
+      int* __restrict__ converged_ligands_p = converged_ligands_b.dev_pointer();
+      fp_type* x_scratch_p                  = x_scratch_b.dev_pointer();
+      fp_type* y_scratch_p                  = y_scratch_b.dev_pointer();
+      fp_type* z_scratch_p                  = z_scratch_b.dev_pointer();
+      fp_type* __restrict__ scores_p        = scores_b.dev_pointer();
+      fp_type* __restrict__ template_x_p    = template_x_b.dev_pointer();
+      fp_type* __restrict__ template_y_p    = template_y_b.dev_pointer();
+      fp_type* __restrict__ template_z_p    = template_z_b.dev_pointer();
+      fp_type* rmsd_best_pose_p             = rmsd_best_pose_b.dev_pointer();
+
 
 
       kernel = std::make_unique<crystal_convergence_kernel<queue_t>>(batch_ligands,
@@ -154,6 +163,7 @@ namespace mudock {
                                                                      x_scratch_p,
                                                                      y_scratch_p,
                                                                      z_scratch_p,
+                                                                     rmsd_best_pose_p,
                                                                      scores_p,
                                                                      q);
     }
@@ -215,9 +225,18 @@ namespace mudock {
     int batch_atoms;
     std::unique_ptr<crystal_convergence_kernel<queue_t>> kernel;
 
-    // TODO fix function
-    void teardown_impl(batch<static_molecule>& batch) {  
-    };
+    void teardown_impl(batch<static_molecule>& batch) override {
+      printf("Calling teardown...\n");
+      assert(batch.num_ligands == batch_ligands && "Convergence stage received different batch for teardown");
+      auto &rmsd_best_pose_b = (*this->scratch).template get<buffer_data_type::RMSD_BEST_POSE>();
+      rmsd_best_pose_b.copy_device2host();
+      (*this->scratch).get_queue()->synchronize();
+      for (int index{0}; index < batch_ligands; ++index) {
+        auto& ligand = *batch.molecules[index];
+        ligand.properties.assign(property_type::RMSD_BEST_SCORING_POSE, std::to_string(rmsd_best_pose_b()[index]));
+        printf("should assing: %f\n", rmsd_best_pose_b()[index]);
+      }
+    }
   };
 #endif
 } // namespace mudock

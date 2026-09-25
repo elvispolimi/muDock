@@ -234,7 +234,6 @@ namespace mudock {
       /////////////////////////////////////////////////////////////////////////////////////
       // TODO L remove this
       auto& scores_b = (*this->scratch).template get<buffer_data_type::SCORES>();
-      csv_logger rmsd_logger("genetic_rmsd.csv", {"ligand", "generation", "rmsd_best_scoring_pose", "rmsd_min"});
       /////////////////////////////////////////////////////////////////////////////////////
 
       assert(kernel && "Kernel method not yet prepared");
@@ -265,10 +264,6 @@ namespace mudock {
 
         dump_best_pose_genetic(0, best_index, generation);
         
-        rmsd_best_scoring_pose = get_rmsd_best_scoring_pose(0, best_index, generation);
-        // rmsd_best_scoring_pose = 0;
-        rmsd_min = get_min_rmsd_in_population(0);
-        rmsd_logger.log(0, generation, rmsd_best_scoring_pose, rmsd_min);
         /////////////////////////////////////////////////////////////////////////////////////
         /////////////////////////////////////////////////////////////////////////////////////
 
@@ -391,13 +386,11 @@ namespace mudock {
     buffer_vector<chromosome, queue_t> next_population;
     buffer_vector<chromosome, queue_t> best_chromosomes;
     buffer_vector<fp_type, queue_t> best_scores;
-    // buffer_vector<int, queue_t> converged_ligands;
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // TODO L remove this ligand_template, needed for ls experiments in my thesis
     std::optional<static_molecule> ligand_template;
-    fp_type rmsd_best_scoring_pose;
-    fp_type rmsd_min;
+
 
 
     // WARNING valid only for 1 ligand at the time ====> ligand_index must always be 0!!!
@@ -440,64 +433,6 @@ namespace mudock {
       writer<supported_format::MOL2>(pose, ofs);
     }
 
-    fp_type get_rmsd_best_scoring_pose(int ligand_index, int individual_index, int generation) {
-      if (ligand_index != 0) {
-        mudock::error("get_rmsd_best_scoring_pose works with one ligand at a time.");
-      }
-      auto& x_scratch_b = (*this->scratch).template get<buffer_data_type::X_SCRATCH>();
-      auto& y_scratch_b = (*this->scratch).template get<buffer_data_type::Y_SCRATCH>();
-      auto& z_scratch_b = (*this->scratch).template get<buffer_data_type::Z_SCRATCH>();
-    
-      fp_type *__restrict__ x_scratch_p = x_scratch_b.dev_pointer();
-      fp_type *__restrict__ y_scratch_p = y_scratch_b.dev_pointer();
-      fp_type *__restrict__ z_scratch_p = z_scratch_b.dev_pointer();
-
-      int atom_stride  = ligand_index * batch_atoms;
-
-      fp_type *__restrict__ scratch_x = x_scratch_p + atom_stride * population_number;
-      fp_type *__restrict__ scratch_y = y_scratch_p + atom_stride * population_number;
-      fp_type *__restrict__ scratch_z = z_scratch_p + atom_stride * population_number;
-
-      fp_type *__restrict__ scratch_x_l = scratch_x + individual_index * batch_atoms;
-      fp_type *__restrict__ scratch_y_l = scratch_y + individual_index * batch_atoms;
-      fp_type *__restrict__ scratch_z_l = scratch_z + individual_index * batch_atoms;
-
-      return compute_rmsd((*this->ligand_template).x(), (*this->ligand_template).y(), (*this->ligand_template).z(),
-                          scratch_x_l, scratch_y_l, scratch_z_l, 
-                          this->ligand_template->num_atoms());
-    }
-
-    fp_type get_min_rmsd_in_population(int ligand_index) {
-      if (ligand_index != 0) {
-        mudock::error("get_min_rmsd_in_population works with one ligand at a time.");
-      }
-      auto& x_scratch_b = (*this->scratch).template get<buffer_data_type::X_SCRATCH>();
-      auto& y_scratch_b = (*this->scratch).template get<buffer_data_type::Y_SCRATCH>();
-      auto& z_scratch_b = (*this->scratch).template get<buffer_data_type::Z_SCRATCH>();
-    
-      fp_type *__restrict__ x_scratch_p = x_scratch_b.dev_pointer();
-      fp_type *__restrict__ y_scratch_p = y_scratch_b.dev_pointer();
-      fp_type *__restrict__ z_scratch_p = z_scratch_b.dev_pointer();
-
-      int atom_stride  = ligand_index * batch_atoms;
-
-      fp_type *__restrict__ scratch_x = x_scratch_p + atom_stride * population_number;
-      fp_type *__restrict__ scratch_y = y_scratch_p + atom_stride * population_number;
-      fp_type *__restrict__ scratch_z = z_scratch_p + atom_stride * population_number;
-
-      fp_type min_rmsd = big_bound<fp_type>();
-      fp_type rmsd = big_bound<fp_type>();
-      for (int individual_index = 0; individual_index < population_number; ++individual_index) {
-        fp_type *__restrict__ scratch_x_l = scratch_x + individual_index * batch_atoms;
-        fp_type *__restrict__ scratch_y_l = scratch_y + individual_index * batch_atoms;
-        fp_type *__restrict__ scratch_z_l = scratch_z + individual_index * batch_atoms;
-        rmsd = compute_rmsd((*this->ligand_template).x(), (*this->ligand_template).y(), (*this->ligand_template).z(),
-                              scratch_x_l, scratch_y_l, scratch_z_l, 
-                              this->ligand_template->num_atoms());
-        min_rmsd = std::min(min_rmsd, rmsd);
-      }
-      return min_rmsd;
-    }
     // End TODO
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -512,6 +447,7 @@ namespace mudock {
       // score_stage();
       // geom_trans.teardown(batch);
       // score_stage.teardown(batch);
+      crystal_convergence_stage.teardown(batch);
       auto &converged_ligands_b = (*this->scratch).template get<buffer_data_type::CONVERGED_LIGANDS>();
       best_scores.copy_device2host();
       converged_ligands_b.copy_device2host();
@@ -531,9 +467,6 @@ namespace mudock {
         const int num_evaluations = past_generations * population_number;
         ligand.properties.assign(property_type::GEN, std::to_string(past_generations));
         ligand.properties.assign(property_type::NUM_EVALS, std::to_string(num_evaluations));
-        ligand.properties.assign(property_type::RMSD_BEST_SCORING_POSE, std::to_string(rmsd_best_scoring_pose));
-        ligand.properties.assign(property_type::RMSD_MIN, std::to_string(rmsd_min));
-
       }
     }
 
