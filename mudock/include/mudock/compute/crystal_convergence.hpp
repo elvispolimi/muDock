@@ -32,6 +32,7 @@ namespace mudock {
     crystal_convergence_kernel(const int batch_ligands_,
                 const int batch_atoms_,
                 const int population_number_,
+                int* __restrict__ converged_ligands_b_,
                 // fp_type* __restrict__ x_scratch_b_,
                 // fp_type* __restrict__ y_scratch_b_,
                 // fp_type* __restrict__ z_scratch_b_,
@@ -40,6 +41,7 @@ namespace mudock {
         : batch_ligands(batch_ligands_),
           batch_atoms(batch_atoms_),
           population_number(population_number_),
+          converged_ligands_b(converged_ligands_b_),
           // x_scratch_b(x_scratch_b_),
           // y_scratch_b(y_scratch_b_),
           // z_scratch_b(z_scratch_b_),
@@ -61,10 +63,12 @@ namespace mudock {
     const int batch_ligands;
     const int batch_atoms;
     const int population_number;
+    int* __restrict__ converged_ligands_b;
     // fp_type* __restrict__ x_scratch_b;
     // fp_type* __restrict__ y_scratch_b;
     // fp_type* __restrict__ z_scratch_b;
     fp_type *__restrict__ scores_b;
+    int current_generation = 1;
     std::shared_ptr<queue_type> q;
   };
 
@@ -84,17 +88,16 @@ namespace mudock {
 
       load_num_rotamers<queue_t>(batch, this->scratch);
       load_num_atoms<queue_t>(batch, this->scratch);
+      auto& converged_ligands_b       = (*this->scratch).template get<buffer_data_type::CONVERGED_LIGANDS>();
       // auto& x_scratch_b = (*this->scratch).template get<buffer_data_type::X_SCRATCH>();
       // auto& y_scratch_b = (*this->scratch).template get<buffer_data_type::Y_SCRATCH>();
       // auto& z_scratch_b = (*this->scratch).template get<buffer_data_type::Z_SCRATCH>();
       auto& scores_b    = (*this->scratch).template get<buffer_data_type::SCORES>();
       
+      converged_ligands_b.alloc(batch_ligands);
       scores_b.alloc(population_number * batch_ligands);
 
-      // Binding
-      int* num_atoms_p    = (*this->scratch).template get<buffer_data_type::NUM_ATOMS>().dev_pointer();
-      int* num_rotamers_p = (*this->scratch).template get<buffer_data_type::NUM_ROTAMERS>().dev_pointer();
-
+      int* __restrict__ converged_ligands_p  = converged_ligands_b.dev_pointer();
       // fp_type* x_scratch_p           = x_scratch_b.dev_pointer();
       // fp_type* y_scratch_p           = y_scratch_b.dev_pointer();
       // fp_type* z_scratch_p           = z_scratch_b.dev_pointer();
@@ -104,6 +107,7 @@ namespace mudock {
       kernel = std::make_unique<crystal_convergence_kernel<queue_t>>(batch_ligands,
                                                                      batch_atoms,
                                                                      population_number,
+                                                                     converged_ligands_p,
                                                                     //  x_scratch_p,
                                                                     //  y_scratch_p,
                                                                     //  z_scratch_p,

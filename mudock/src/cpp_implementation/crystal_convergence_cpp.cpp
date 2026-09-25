@@ -10,9 +10,14 @@
 namespace mudock {
   inline void check_convergence(const int batch_ligands,
                                 const int individuals_per_ligand,
+                                int* generation,
+                                int* __restrict__ converged_ligands_b,
                                 fp_type *__restrict__ scores_b) {
     for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
-      
+      const int converged_ligand = converged_ligands_b[ligand_index];
+      if (converged_ligand) {
+        continue;
+      }
       fp_type *__restrict__ scores_l = scores_b + ligand_index * individuals_per_ligand;
       
       fp_type best_score = scores_l[0];
@@ -22,11 +27,17 @@ namespace mudock {
         }
       }
       
+      // if (autostop && has_converged(ligand_index, for_how_long_best_b, tolerance_window, best_so_far_b[ligand_index], best, best_score_diff_thld, scores, population_number, score_variance_thld)) {
+      //   converged_ligands_b[ligand_index] = generation;
+      // }
+
       if (best_score <= fp_type{-15.0}) {
+        converged_ligands_b[ligand_index] = *generation;
         printf("CRYSTAL FOUND!\n");
       }
 
     }
+    *generation += 1;
   }
 
   
@@ -35,6 +46,8 @@ namespace mudock {
     q->invoke_kernel<this->crystal_convergence_region_name>(check_convergence,
                                                             batch_ligands,
                                                             population_number,
+                                                            &current_generation,
+                                                            converged_ligands_b,
                                                             scores_b);
   }
 
