@@ -221,9 +221,9 @@ namespace mudock {
                                                          best_chromosomes_p,
                                                          q);
 
+      crystal_convergence_stage.prepare(batch);
       geom_trans.prepare(batch);
       score_stage.get()->prepare(batch);
-      crystal_convergence_stage.prepare(batch);
 
     };
     void operator()() {
@@ -265,7 +265,7 @@ namespace mudock {
 
         dump_best_pose_genetic(0, best_index, generation);
         
-        rmsd_best_scoring_pose = get_rmsd_best_scoring_pose(0, best_index);
+        rmsd_best_scoring_pose = get_rmsd_best_scoring_pose(0, best_index, generation);
         // rmsd_best_scoring_pose = 0;
         rmsd_min = get_min_rmsd_in_population(0);
         rmsd_logger.log(0, generation, rmsd_best_scoring_pose, rmsd_min);
@@ -440,7 +440,7 @@ namespace mudock {
       writer<supported_format::MOL2>(pose, ofs);
     }
 
-    fp_type get_rmsd_best_scoring_pose(int ligand_index, int individual_index) {
+    fp_type get_rmsd_best_scoring_pose(int ligand_index, int individual_index, int generation) {
       if (ligand_index != 0) {
         mudock::error("get_rmsd_best_scoring_pose works with one ligand at a time.");
       }

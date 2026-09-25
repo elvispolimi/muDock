@@ -80,7 +80,7 @@ namespace mudock {
     const fp_type* __restrict__ y_scratch_b;
     const fp_type* __restrict__ z_scratch_b;
     const fp_type *__restrict__ scores_b;
-    int current_generation = 1;
+    int current_generation = 0;
     std::shared_ptr<queue_type> q;
   };
 
