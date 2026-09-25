@@ -25,6 +25,9 @@ namespace mudock {
     X_SCRATCH,
     Y_SCRATCH,
     Z_SCRATCH,
+    X_TEMPLATE,
+    Y_TEMPLATE,
+    Z_TEMPLATE,
     NUM_ATOMS,
     NUM_ROTAMERS,
     PROT_MIN,
@@ -98,6 +101,18 @@ namespace mudock {
   template<>
   struct buffer_type_traits<buffer_data_type::Z_SCRATCH> {
     using type = buffer_type_traits_impl<buffer_data_type::Z_SCRATCH, fp_type>::type;
+  };
+  template<>
+  struct buffer_type_traits<buffer_data_type::X_TEMPLATE> {
+    using type = buffer_type_traits_impl<buffer_data_type::X_TEMPLATE, fp_type>::type;
+  };
+  template<>
+  struct buffer_type_traits<buffer_data_type::Y_TEMPLATE> {
+    using type = buffer_type_traits_impl<buffer_data_type::Y_TEMPLATE, fp_type>::type;
+  };
+  template<>
+  struct buffer_type_traits<buffer_data_type::Z_TEMPLATE> {
+    using type = buffer_type_traits_impl<buffer_data_type::Z_TEMPLATE, fp_type>::type;
   };
   template<>
   struct buffer_type_traits<buffer_data_type::NUM_ATOMS> {

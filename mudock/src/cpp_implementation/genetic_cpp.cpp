@@ -211,7 +211,6 @@ namespace mudock {
                     const int generation,
                     const fp_type score_variance_thld,
                     const fp_type best_score_diff_thld,
-                    const bool autostop,
                     // const fp_type crystal_score,
                     // const fp_type crystal_tolerance,
                     int* __restrict__ converged_ligands_b) {
@@ -226,26 +225,13 @@ namespace mudock {
       chromosome* __restrict__ next_population_l = next_population + population_number * ligand_index;
       fp_type* __restrict__ scores               = scores_b + population_number * ligand_index;
 
-      // print best score
-      fp_type best = scores[0];
-      for(int i = 0; i < population_number; ++i){
-        if (scores[i] < best){
-          best = scores[i];
-        }
-      }
-      // printf("Gen %d --- Best of this gen: %f --- Best so far: %f\n", generation, double(best), double(best_so_far_b[ligand_index]));
-      printf("Gen %d --- Best: %f\n", generation, double(best));
-      // end print best score 
-
-
-      // TODO L move autostop logic inside genetic.hpp maybe as separated stage, maybe doing it every n generations instead of doing it every generation
       // Check convergence 
-      if (autostop && has_converged(ligand_index, for_how_long_best_b, tolerance_window, best_so_far_b[ligand_index], best, best_score_diff_thld, scores, population_number, score_variance_thld)) {
-        converged_ligands_b[ligand_index] = generation;
-      }
+      // if (autostop && has_converged(ligand_index, for_how_long_best_b, tolerance_window, best_so_far_b[ligand_index], best, best_score_diff_thld, scores, population_number, score_variance_thld)) {
+      //   converged_ligands_b[ligand_index] = generation;
+      // }
 
       // Update best so far
-      best_so_far_b[ligand_index] = std::min(best_so_far_b[ligand_index], best);
+      // best_so_far_b[ligand_index] = std::min(best_so_far_b[ligand_index], best);
 
 
       // Elitism: preserve the best elite_size individuals
@@ -371,7 +357,6 @@ namespace mudock {
                                                 current_generation,
                                                 score_variance_thld,
                                                 best_score_diff_thld,
-                                                autostop,
                                                 // crystal_score,
                                                 // crystal_tolerance,
                                                 converged_ligands_b);

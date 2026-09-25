@@ -94,7 +94,8 @@ namespace mudock {
 
         this->dump_best_pose_genetic(0, best_index, generation);
 
-        this->rmsd_best_scoring_pose = this->get_rmsd_best_scoring_pose(0, best_index);
+        // this->rmsd_best_scoring_pose = this->get_rmsd_best_scoring_pose(0, best_index);
+        this->rmsd_best_scoring_pose = 0;        
         this->rmsd_min = this->get_min_rmsd_in_population(0);
         rmsd_logger.log(0, generation, this->rmsd_best_scoring_pose, this->rmsd_min);
         /////////////////////////////////////////////////////////////////////////////////////

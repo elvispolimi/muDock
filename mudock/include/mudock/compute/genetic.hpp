@@ -266,6 +266,7 @@ namespace mudock {
         dump_best_pose_genetic(0, best_index, generation);
         
         rmsd_best_scoring_pose = get_rmsd_best_scoring_pose(0, best_index);
+        // rmsd_best_scoring_pose = 0;
         rmsd_min = get_min_rmsd_in_population(0);
         rmsd_logger.log(0, generation, rmsd_best_scoring_pose, rmsd_min);
         /////////////////////////////////////////////////////////////////////////////////////

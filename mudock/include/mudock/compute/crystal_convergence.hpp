@@ -32,19 +32,27 @@ namespace mudock {
     crystal_convergence_kernel(const int batch_ligands_,
                 const int batch_atoms_,
                 const int population_number_,
+                const int* __restrict__ num_atoms_b_,
                 int* __restrict__ converged_ligands_b_,
-                // fp_type* __restrict__ x_scratch_b_,
-                // fp_type* __restrict__ y_scratch_b_,
-                // fp_type* __restrict__ z_scratch_b_,
+                fp_type* __restrict__ template_x_b_,
+                fp_type* __restrict__ template_y_b_,
+                fp_type* __restrict__ template_z_b_,
+                fp_type* __restrict__ x_scratch_b_,
+                fp_type* __restrict__ y_scratch_b_,
+                fp_type* __restrict__ z_scratch_b_,
                 fp_type *__restrict__ scores_b_,
                 std::shared_ptr<queue_type> q_)
         : batch_ligands(batch_ligands_),
           batch_atoms(batch_atoms_),
           population_number(population_number_),
+          num_atoms_b(num_atoms_b_),
           converged_ligands_b(converged_ligands_b_),
-          // x_scratch_b(x_scratch_b_),
-          // y_scratch_b(y_scratch_b_),
-          // z_scratch_b(z_scratch_b_),
+          template_x_b(template_x_b_),
+          template_y_b(template_y_b_),
+          template_z_b(template_z_b_),
+          x_scratch_b(x_scratch_b_),
+          y_scratch_b(y_scratch_b_),
+          z_scratch_b(z_scratch_b_),
           scores_b(scores_b_),
           q(q_) {}
 
@@ -63,11 +71,15 @@ namespace mudock {
     const int batch_ligands;
     const int batch_atoms;
     const int population_number;
+    const int* __restrict__ num_atoms_b;
     int* __restrict__ converged_ligands_b;
-    // fp_type* __restrict__ x_scratch_b;
-    // fp_type* __restrict__ y_scratch_b;
-    // fp_type* __restrict__ z_scratch_b;
-    fp_type *__restrict__ scores_b;
+    const fp_type* __restrict__ template_x_b;
+    const fp_type* __restrict__ template_y_b;
+    const fp_type* __restrict__ template_z_b;
+    const fp_type* __restrict__ x_scratch_b;
+    const fp_type* __restrict__ y_scratch_b;
+    const fp_type* __restrict__ z_scratch_b;
+    const fp_type *__restrict__ scores_b;
     int current_generation = 1;
     std::shared_ptr<queue_type> q;
   };
@@ -89,28 +101,59 @@ namespace mudock {
       load_num_rotamers<queue_t>(batch, this->scratch);
       load_num_atoms<queue_t>(batch, this->scratch);
       auto& converged_ligands_b       = (*this->scratch).template get<buffer_data_type::CONVERGED_LIGANDS>();
-      // auto& x_scratch_b = (*this->scratch).template get<buffer_data_type::X_SCRATCH>();
-      // auto& y_scratch_b = (*this->scratch).template get<buffer_data_type::Y_SCRATCH>();
-      // auto& z_scratch_b = (*this->scratch).template get<buffer_data_type::Z_SCRATCH>();
-      auto& scores_b    = (*this->scratch).template get<buffer_data_type::SCORES>();
+      auto& x_scratch_b  = (*this->scratch).template get<buffer_data_type::X_SCRATCH>();
+      auto& y_scratch_b  = (*this->scratch).template get<buffer_data_type::Y_SCRATCH>();
+      auto& z_scratch_b  = (*this->scratch).template get<buffer_data_type::Z_SCRATCH>();
+      auto& scores_b     = (*this->scratch).template get<buffer_data_type::SCORES>();
+      auto& template_x_b = (*this->scratch).template get<buffer_data_type::X_TEMPLATE>();
+      auto& template_y_b = (*this->scratch).template get<buffer_data_type::Y_TEMPLATE>();
+      auto& template_z_b = (*this->scratch).template get<buffer_data_type::Z_TEMPLATE>();
       
       converged_ligands_b.alloc(batch_ligands);
+      x_scratch_b.alloc(tot_atoms_in_batch * population_number);
+      y_scratch_b.alloc(tot_atoms_in_batch * population_number);
+      z_scratch_b.alloc(tot_atoms_in_batch * population_number);
       scores_b.alloc(population_number * batch_ligands);
+      template_x_b.alloc(tot_atoms_in_batch);
+      template_y_b.alloc(tot_atoms_in_batch);
+      template_z_b.alloc(tot_atoms_in_batch);
 
+      for (int ligand_index = 0; ligand_index < batch_ligands; ++ligand_index) {
+        auto& ligand = *batch.molecules[ligand_index];
+
+        const int num_atoms = ligand.num_atoms();
+
+        const auto x = ligand.x(), y = ligand.y(), z = ligand.z();
+        const int atom_offset = ligand_index * batch_atoms;
+
+        std::memcpy((void *) (template_x_b() + atom_offset), x, num_atoms * sizeof(fp_type));
+        std::memcpy((void *) (template_y_b() + atom_offset), y, num_atoms * sizeof(fp_type));
+        std::memcpy((void *) (template_z_b() + atom_offset), z, num_atoms * sizeof(fp_type));
+
+      }
+
+      int* num_atoms_p                       = (*this->scratch).template get<buffer_data_type::NUM_ATOMS>().dev_pointer();
       int* __restrict__ converged_ligands_p  = converged_ligands_b.dev_pointer();
-      // fp_type* x_scratch_p           = x_scratch_b.dev_pointer();
-      // fp_type* y_scratch_p           = y_scratch_b.dev_pointer();
-      // fp_type* z_scratch_p           = z_scratch_b.dev_pointer();
+      fp_type* x_scratch_p           = x_scratch_b.dev_pointer();
+      fp_type* y_scratch_p           = y_scratch_b.dev_pointer();
+      fp_type* z_scratch_p           = z_scratch_b.dev_pointer();
       fp_type* __restrict__ scores_p = scores_b.dev_pointer();
+      fp_type* __restrict__ template_x_p = template_x_b.dev_pointer();
+      fp_type* __restrict__ template_y_p = template_y_b.dev_pointer();
+      fp_type* __restrict__ template_z_p = template_z_b.dev_pointer();
 
 
       kernel = std::make_unique<crystal_convergence_kernel<queue_t>>(batch_ligands,
                                                                      batch_atoms,
                                                                      population_number,
+                                                                     num_atoms_p,
                                                                      converged_ligands_p,
-                                                                    //  x_scratch_p,
-                                                                    //  y_scratch_p,
-                                                                    //  z_scratch_p,
+                                                                     template_x_p,
+                                                                     template_y_p,
+                                                                     template_z_p,
+                                                                     x_scratch_p,
+                                                                     y_scratch_p,
+                                                                     z_scratch_p,
                                                                      scores_p,
                                                                      q);
     }
