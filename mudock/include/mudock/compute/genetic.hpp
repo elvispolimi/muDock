@@ -16,6 +16,7 @@
   #include <mudock/compute/geometric_transform.hpp>
   #include <mudock/compute/scoring.hpp>
   #include <mudock/compute/scratchpad.hpp>
+  #include <mudock/compute/crystal_convergence.hpp>
 #endif
 #include <mudock/compute/batch_multiple.hpp>
 #include <mudock/compute/queue.hpp>
@@ -129,6 +130,7 @@ namespace mudock {
         : docking<queue_t>(_scratch),
           score_stage(std::move(_scoring)),
           geom_trans(_scratch, protein),
+          crystal_convergence_stage(_scratch),
           next_population(_scratch->get_queue()),
           best_chromosomes(_scratch->get_queue()),
           best_scores(_scratch->get_queue()) {};
@@ -221,6 +223,7 @@ namespace mudock {
 
       geom_trans.prepare(batch);
       score_stage.get()->prepare(batch);
+      crystal_convergence_stage.prepare(batch);
 
     };
     void operator()() {
@@ -244,6 +247,7 @@ namespace mudock {
         geom_trans();
         (*score_stage)();
         (*kernel)();
+        crystal_convergence_stage();
         /////////////////////////////////////////////////////////////////////////////////////
         /////////////////////////////////////////////////////////////////////////////////////
         // TODO L remove this part, needed for experiments
@@ -377,6 +381,7 @@ namespace mudock {
     std::unique_ptr<genetic_kernel<queue_t>> kernel;
     std::shared_ptr<scoring_t<queue_t>> score_stage;
     geometric<queue_t> geom_trans;
+    crystal_convergence<queue_t> crystal_convergence_stage;
 
     int batch_ligands;
     int batch_atoms;

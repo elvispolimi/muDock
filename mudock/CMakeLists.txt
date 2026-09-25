@@ -39,6 +39,8 @@ list(
   "${header_path}/${header_prefix}/compute/scoring.hpp"
   "${header_path}/${header_prefix}/compute/adt_score.hpp"
   "${header_path}/${header_prefix}/compute/adadelta.hpp"
+  "${header_path}/${header_prefix}/compute/crystal_convergence.hpp"
+  "${header_path}/${header_prefix}/compute/convergence.hpp"
   "${header_path}/${header_prefix}/compute/pipeline.hpp"
   "${header_path}/${header_prefix}/compute/docking.hpp"
   "${header_path}/${header_prefix}/compute/genetic.hpp"
@@ -134,6 +136,7 @@ list(
   "${source_path}/cpp_implementation/adt_score_cpp.cpp"
   "${source_path}/cpp_implementation/genetic_cpp.cpp"
   "${source_path}/cpp_implementation/adadelta_cpp.cpp"
+  "${source_path}/cpp_implementation/crystal_convergence_cpp.cpp"
   "${source_path}/tbb_implementation/runtime_services.cpp"
 )
 
