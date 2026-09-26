@@ -64,21 +64,29 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
       "lsit",
       po::value(&args.knobs.lsit)->default_value(args.knobs.lsit),
       "Number of local search iterations for LGA");
- knobs_description.add_options()(
+  knobs_description.add_options()(
       "lsrate",
       po::value(&args.knobs.lsrate)->default_value(args.knobs.lsrate),
       "Percentage of population affected by local search for LGA (must be integer)");
- knobs_description.add_options()(
+  knobs_description.add_options()(
       "ls_on_best",
       po::value(&args.knobs.ls_on_best)->default_value(args.knobs.ls_on_best),
       "If set to 1, lsrate refers to the most promising individuals of each generation");
-      knobs_description.add_options()(
+  knobs_description.add_options()(
       "ls_every",
       po::value(&args.knobs.ls_every)->default_value(args.knobs.ls_every),
       "Run local search every N generations");
- knobs_description.add_options()(
+  knobs_description.add_options()(
       "ls_on_last",
       po::value(&args.knobs.ls_on_last)->default_value(args.knobs.ls_on_last),
+      "Run local search on the last N generations");
+  knobs_description.add_options()(
+      "rho",
+      po::value(&args.knobs.rho)->default_value(args.knobs.rho),
+      "Run local search on the last N generations");
+  knobs_description.add_options()(
+      "epsilon",
+      po::value(&args.knobs.epsilon)->default_value(args.knobs.epsilon),
       "Run local search on the last N generations");
   knobs_description.add_options()(
       "mutation",

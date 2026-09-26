@@ -24,6 +24,8 @@ namespace mudock {
     std::size_t lsit                          = 300;
     std::size_t ls_every                      = 1;
     std::size_t ls_on_last                    = 0;
+    fp_type rho                               = static_cast<fp_type>(0.85);
+    fp_type epsilon                           = static_cast<fp_type>(1e-6);
     std::optional<std::size_t> seed           = std::optional<std::size_t>{};
     std::size_t max_tbb_tokens                = 4;
     std::size_t max_bytes_per_token           = 1048576; // 1 MB

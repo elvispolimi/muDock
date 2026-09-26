@@ -38,8 +38,8 @@ namespace mudock {
   template<typename queue_type, template<typename> typename scoring_t>
   struct adadelta: public local_search<queue_type, scoring_t> {
     static constexpr const char stage_name[] = "ADADELTA";
-    static constexpr fp_type RHO     = 0.85f;
-    static constexpr fp_type EPSILON = 1e-6f;
+    // static constexpr fp_type RHO     = 0.85f;
+    // static constexpr fp_type EPSILON = 1e-6f;
     
     adadelta(std::shared_ptr<scratchpad<queue_type>> _scratch,
              std::shared_ptr<scoring_t<queue_type>> _score) 
@@ -51,11 +51,14 @@ namespace mudock {
       assert(batch.num_ligands == 1 && "AdaDelta dump_pose currently expects a single ligand in the batch");
       this->ligand_template = *batch.molecules[0];
 
+      const knobs& configuration = (*this->scratch).configuration;
       batch_ligands = batch.num_ligands;
       batch_atoms   = batch.batch_max_atoms;
-      individuals_per_ligand = std::max(1, static_cast<int>((*this->scratch).configuration.population_number));
-      local_search_rate = static_cast<int>((*this->scratch).configuration.lsrate);
-      local_search_on_best = (*this->scratch).configuration.ls_on_best;
+      individuals_per_ligand = std::max(1, static_cast<int>(configuration.population_number));
+      local_search_rate = static_cast<int>(configuration.lsrate);
+      local_search_on_best = configuration.ls_on_best;
+      rho = configuration.rho;
+      epsilon = configuration.epsilon;
 
       auto &gradient_b = (*this->scratch).template get<buffer_data_type::GRADIENTS>();
       const size_t gradient_count = static_cast<size_t>(batch_ligands) * static_cast<size_t>(individuals_per_ligand);
@@ -95,7 +98,7 @@ namespace mudock {
       }
       std::vector<int> active_init(gradient_count);
       
-      std::mt19937 rng((*this->scratch).configuration.seed.value_or(std::random_device{}()));
+      std::mt19937 rng(configuration.seed.value_or(std::random_device{}()));
       std::bernoulli_distribution dist(static_cast<double>(static_cast<fp_type>(local_search_rate) / fp_type{100}));
 
       for (size_t i = 0; i < gradient_count; ++i) {
@@ -124,10 +127,10 @@ namespace mudock {
                                                                     adadelta_e_dw2,
                                                                     active_individuals,
                                                                     q,
-                                                                    RHO,
-                                                                    EPSILON);
+                                                                    rho,
+                                                                    epsilon);
 
-      this->standalone_local_search = this->is_standalone_local_search((*this->scratch).configuration);
+      this->standalone_local_search = this->is_standalone_local_search(configuration);
       
       // Initialize the scoring kernel buffers
       this->score_stage->prepare(batch); //TODO L se non sbaglio l'ho aggiunto per quando deve fare solo local search nell'eseguibile stand alone
@@ -210,6 +213,8 @@ namespace mudock {
     int individuals_per_ligand;
     int local_search_rate;
     bool local_search_on_best;
+    fp_type rho;
+    fp_type epsilon;
 
     std::unique_ptr<adadelta_kernel<queue_type>> adadelta_krnl;
     geometric<queue_type> geom_trans;
