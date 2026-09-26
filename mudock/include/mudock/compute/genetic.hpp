@@ -43,7 +43,6 @@ namespace mudock {
                    const fp_type best_score_diff_thld_,
                   //  const fp_type crystal_score_,
                   //  const fp_type crystal_tolerance_,
-                   const bool autostop_,
                    int* __restrict__ converged_ligands_b_,
                    fp_type* __restrict__ best_so_far_b_,
                    int* __restrict__ for_how_long_best_b_,
@@ -66,7 +65,6 @@ namespace mudock {
           best_score_diff_thld(best_score_diff_thld_),
           // crystal_score(crystal_score_),
           // crystal_tolerance(crystal_tolerance_),
-          autostop(autostop_),
           converged_ligands_b(converged_ligands_b_),
           best_so_far_b(best_so_far_b_),
           for_how_long_best_b(for_how_long_best_b_),
@@ -100,7 +98,6 @@ namespace mudock {
     fp_type best_score_diff_thld;  
     // fp_type crystal_score;
     // fp_type crystal_tolerance;
-    bool autostop;
     int* __restrict__ converged_ligands_b;
     fp_type* __restrict__ best_so_far_b;
     int* __restrict__ for_how_long_best_b;
@@ -143,6 +140,7 @@ namespace mudock {
       batch_atoms                  = batch.batch_max_atoms;
       num_generations              = static_cast<int>(configuration.num_generations);
       population_number            = static_cast<int>(configuration.population_number);
+      autostop                     = configuration.autostop;
       auto q                       = (*this->scratch).get_queue();
 
       auto& num_rotamers_b            = (*this->scratch).template get<buffer_data_type::NUM_ROTAMERS>();
@@ -186,11 +184,6 @@ namespace mudock {
         auto& ligand = *batch.molecules[index];
         const int num_rotamers = num_rotamers_p[index];
         const int num_atoms = ligand.num_atoms();
-        // TODO L check if this estimate is correct. WARNING: this depends on the local search implementation. 
-        // This is for adadelta for example (not counting the effect of ls_on_last and ls_every)
-        // +1 comes from the scores, the remaining from the gradients
-        // TODO L this is not correct: if autostop is on, it should count the actual number of generations at convergence.
-        // It would be better to have a counter at each evaluation to be sure (pay attention to race conditions)
         ligand.properties.assign(property_type::POP, std::to_string(population_number));
         ligand.properties.assign(property_type::SEED, std::to_string(seed));
         ligand.properties.assign(property_type::NUM_ROT, std::to_string(num_rotamers));
@@ -205,7 +198,6 @@ namespace mudock {
                                                          configuration.best_score_diff_thld,
                                                         //  configuration.crystal_score,
                                                         //  configuration.crystal_tolerance,
-                                                         configuration.autostop,
                                                          converged_ligands_p,
                                                          best_so_far_p,
                                                          for_how_long_best_p,
@@ -246,7 +238,10 @@ namespace mudock {
         geom_trans();
         (*score_stage)();
         (*kernel)();
-        crystal_convergence_stage();
+        if (autostop) {
+          crystal_convergence_stage();
+        }
+        
         /////////////////////////////////////////////////////////////////////////////////////
         /////////////////////////////////////////////////////////////////////////////////////
         // TODO L remove this part, needed for experiments
@@ -383,6 +378,7 @@ namespace mudock {
     int batch_atoms;
     int num_generations;
     int population_number;
+    bool autostop;
     buffer_vector<chromosome, queue_t> next_population;
     buffer_vector<chromosome, queue_t> best_chromosomes;
     buffer_vector<fp_type, queue_t> best_scores;

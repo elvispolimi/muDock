@@ -75,7 +75,9 @@ namespace mudock {
         this->geom_trans();
         (*this->score_stage)();
         (*this->kernel)();
-        this->crystal_convergence_stage();
+        if (this->autostop) {
+          this->crystal_convergence_stage();
+        }
         /////////////////////////////////////////////////////////////////////////////////////
         /////////////////////////////////////////////////////////////////////////////////////
         // TODO L remove this part, needed for experiments
@@ -152,7 +154,6 @@ namespace mudock {
         // TODO L check if this estimate is correct. WARNING: this depends on the local search implementation. 
         // This is for adadelta for example (not counting the effect of ls_on_last and ls_every)
         // +1 comes from the scores, the remaining from the gradients
-        // TODO L this is not correct: if autostop is on, it should count the actual number of generations at convergence.
         // It would be better to have a counter at each evaluation to be sure (pay attention to race conditions)
         const int num_local_search_individuals = this->population_number * local_search_rate / 100;
         const int num_evaluations = past_generations * this->population_number + past_generations * num_local_search_individuals * local_search_iterations; // GA contribution + LS contribution
