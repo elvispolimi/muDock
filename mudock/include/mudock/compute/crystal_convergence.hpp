@@ -42,6 +42,7 @@ namespace mudock {
                 fp_type* __restrict__ z_scratch_b_,
                 fp_type* __restrict__ rmsd_best_pose_b_,
                 fp_type *__restrict__ scores_b_,
+                const fp_type crystal_score_,
                 std::shared_ptr<queue_type> q_)
         : batch_ligands(batch_ligands_),
           batch_atoms(batch_atoms_),
@@ -56,6 +57,7 @@ namespace mudock {
           z_scratch_b(z_scratch_b_),
           rmsd_best_pose_b(rmsd_best_pose_b_),
           scores_b(scores_b_),
+          crystal_score(crystal_score_),
           q(q_) {}
 
     void operator()();
@@ -83,6 +85,7 @@ namespace mudock {
     const fp_type* __restrict__ z_scratch_b;
     fp_type* __restrict__ rmsd_best_pose_b;
     const fp_type *__restrict__ scores_b;
+    const fp_type crystal_score;
     int current_generation = 0;
     std::shared_ptr<queue_type> q;
   };
@@ -165,6 +168,7 @@ namespace mudock {
                                                                      z_scratch_p,
                                                                      rmsd_best_pose_p,
                                                                      scores_p,
+                                                                     (*this->scratch).configuration.crystal_score,
                                                                      q);
     }
 

@@ -21,7 +21,8 @@ namespace mudock {
                          const fp_type *__restrict__ y_scratch_b,
                          const fp_type *__restrict__ z_scratch_b,
                          fp_type *__restrict__ rmsd_best_pose_b,
-                         const fp_type *__restrict__ scores_b) {
+                         const fp_type *__restrict__ scores_b,
+                         const fp_type crystal_score) {
     for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
       const int converged_ligand = converged_ligands_b[ligand_index];
       if (converged_ligand) {
@@ -49,7 +50,7 @@ namespace mudock {
         }
       }
       printf("Gen %d --- Best: %f\n", *generation, double(best_score));
-      bool good_score = best_score <= fp_type{-15.0} ? true : false;
+      bool good_score = best_score <= (crystal_score + 1) ? true : false;
 
 
       //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -103,7 +104,8 @@ namespace mudock {
                                                             y_scratch_b,
                                                             z_scratch_b,
                                                             rmsd_best_pose_b,
-                                                            scores_b);
+                                                            scores_b,
+                                                            crystal_score);
   }
 
 } // namespace mudock

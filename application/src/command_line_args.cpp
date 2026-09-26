@@ -100,10 +100,10 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
       "score_variance_thld",
       po::value(&args.knobs.score_variance_thld)->default_value(args.knobs.score_variance_thld),
       "Relative to autostop, score variance threshold of a population");
-//   knobs_description.add_options()(
-//       "crystal_score",
-//       po::value(&args.knobs.crystal_score)->default_value(args.knobs.crystal_score),
-//       "If autostop is on, it also checks if the crystal is found at the value specified");
+  knobs_description.add_options()(
+      "crystal_score",
+      po::value(&args.knobs.crystal_score)->default_value(args.knobs.crystal_score),
+      "If autostop is on, it also checks if the crystal is found at the value specified");
 //   knobs_description.add_options()(
 //       "crystal_tolerance",
 //       po::value(&args.knobs.crystal_tolerance)->default_value(args.knobs.crystal_tolerance),

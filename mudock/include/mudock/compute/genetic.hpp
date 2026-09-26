@@ -41,7 +41,6 @@ namespace mudock {
                    const int elite_size_,
                    const fp_type score_variance_thld_,
                    const fp_type best_score_diff_thld_,
-                  //  const fp_type crystal_score_,
                   //  const fp_type crystal_tolerance_,
                    int* __restrict__ converged_ligands_b_,
                    fp_type* __restrict__ best_so_far_b_,
@@ -63,7 +62,6 @@ namespace mudock {
           elite_size(elite_size_),
           score_variance_thld(score_variance_thld_),
           best_score_diff_thld(best_score_diff_thld_),
-          // crystal_score(crystal_score_),
           // crystal_tolerance(crystal_tolerance_),
           converged_ligands_b(converged_ligands_b_),
           best_so_far_b(best_so_far_b_),
@@ -96,7 +94,6 @@ namespace mudock {
     int elite_size;
     fp_type score_variance_thld;  
     fp_type best_score_diff_thld;  
-    // fp_type crystal_score;
     // fp_type crystal_tolerance;
     int* __restrict__ converged_ligands_b;
     fp_type* __restrict__ best_so_far_b;
@@ -196,7 +193,6 @@ namespace mudock {
                                                          configuration.elite_size,
                                                          configuration.score_variance_thld,
                                                          configuration.best_score_diff_thld,
-                                                        //  configuration.crystal_score,
                                                         //  configuration.crystal_tolerance,
                                                          converged_ligands_p,
                                                          best_so_far_p,
