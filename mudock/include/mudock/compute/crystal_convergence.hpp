@@ -25,8 +25,8 @@ namespace mudock {
     return {};
   }
 
-  inline constexpr fp_type SCORE_THRESHOLD = fp_type{1};
-  inline constexpr fp_type RMSD_THRESHOLD = fp_type{1};
+  inline constexpr fp_type SCORE_TOLERANCE = fp_type{1};
+  inline constexpr fp_type RMSD_TOLERANCE = fp_type{1};
 
   template<typename queue_type>
     requires std::derived_from<queue_type, queue>
@@ -46,6 +46,10 @@ namespace mudock {
                 fp_type* __restrict__ rmsd_best_pose_b_,
                 fp_type *__restrict__ scores_b_,
                 const fp_type crystal_score_,
+                fp_type* __restrict__ best_so_far_b_,
+                int* __restrict__ for_how_long_best_b_,
+                const int tolerance_window_,
+                const fp_type best_score_diff_thld_,
                 std::shared_ptr<queue_type> q_)
         : batch_ligands(batch_ligands_),
           batch_atoms(batch_atoms_),
@@ -61,6 +65,10 @@ namespace mudock {
           rmsd_best_pose_b(rmsd_best_pose_b_),
           scores_b(scores_b_),
           crystal_score(crystal_score_),
+          best_so_far_b(best_so_far_b_),
+          for_how_long_best_b(for_how_long_best_b_),
+          tolerance_window(tolerance_window_),
+          best_score_diff_thld(best_score_diff_thld_),
           q(q_) {}
 
     void operator()();
@@ -73,8 +81,6 @@ namespace mudock {
     ~crystal_convergence_kernel() = default;
 
   private:
-  // scores_b for best score to check crystal
-  // x/y/z_scratch_b and ligand_template for rmsd (num_atoms can be retrieved from ligand_template)
     const int batch_ligands;
     const int batch_atoms;
     const int population_number;
@@ -89,6 +95,10 @@ namespace mudock {
     fp_type* __restrict__ rmsd_best_pose_b;
     const fp_type *__restrict__ scores_b;
     const fp_type crystal_score;
+    fp_type* __restrict__ best_so_far_b;
+    int* __restrict__ for_how_long_best_b;
+    int tolerance_window;
+    fp_type best_score_diff_thld;
     int current_generation = 0;
     std::shared_ptr<queue_type> q;
   };
@@ -118,6 +128,8 @@ namespace mudock {
       auto& template_y_b        = (*this->scratch).template get<buffer_data_type::Y_TEMPLATE>();
       auto& template_z_b        = (*this->scratch).template get<buffer_data_type::Z_TEMPLATE>();
       auto& rmsd_best_pose_b    = (*this->scratch).template get<buffer_data_type::RMSD_BEST_POSE>();
+      auto& best_so_far_b             = (*this->scratch).template get<buffer_data_type::BEST_SO_FAR>();
+      auto& for_how_long_best_b       = (*this->scratch).template get<buffer_data_type::FOR_HOW_LONG_BEST>();
 
       
       converged_ligands_b.alloc(batch_ligands);
@@ -129,6 +141,12 @@ namespace mudock {
       template_y_b.alloc(tot_atoms_in_batch);
       template_z_b.alloc(tot_atoms_in_batch);
       rmsd_best_pose_b.alloc(batch_ligands);
+      best_so_far_b.alloc(batch_ligands);
+      for_how_long_best_b.alloc(batch_ligands);
+
+      initialize_converged_ligands<queue_t>(batch, this->scratch);
+      initialize_best_so_far<queue_t>(batch, this->scratch);
+      initialize_for_how_long_best<queue_t>(batch, this->scratch);
 
 
       for (int ligand_index = 0; ligand_index < batch_ligands; ++ligand_index) {
@@ -155,6 +173,8 @@ namespace mudock {
       fp_type* __restrict__ template_y_p    = template_y_b.dev_pointer();
       fp_type* __restrict__ template_z_p    = template_z_b.dev_pointer();
       fp_type* rmsd_best_pose_p             = rmsd_best_pose_b.dev_pointer();
+      fp_type* __restrict__ best_so_far_p             = best_so_far_b.dev_pointer();
+      int* __restrict__ for_how_long_best_p           = for_how_long_best_b.dev_pointer();
 
 
 
@@ -172,6 +192,10 @@ namespace mudock {
                                                                      rmsd_best_pose_p,
                                                                      scores_p,
                                                                      (*this->scratch).configuration.crystal_score,
+                                                                     best_so_far_p,
+                                                                     for_how_long_best_p,
+                                                                     (*this->scratch).configuration.tolerance_window,
+                                                                     (*this->scratch).configuration.best_score_diff_thld,
                                                                      q);
     }
 
@@ -241,7 +265,6 @@ namespace mudock {
       for (int index{0}; index < batch_ligands; ++index) {
         auto& ligand = *batch.molecules[index];
         ligand.properties.assign(property_type::RMSD_BEST_SCORING_POSE, std::to_string(rmsd_best_pose_b()[index]));
-        printf("should assing: %f\n", rmsd_best_pose_b()[index]);
       }
     }
   };

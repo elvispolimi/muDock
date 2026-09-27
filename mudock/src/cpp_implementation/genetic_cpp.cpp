@@ -72,105 +72,6 @@ namespace mudock {
     return population[best_individual].genes;
   }
 
-  // template <typename fp_type>
-  // std::vector<int>
-  // get_indices_of_n_best(const fp_type* scores, int population_size, int n_best){
-  //
-  //   // Indices [0, 1, ..., population_size-1]
-  //   std::vector<int> indices(population_size);
-  //   std::iota(indices.begin(), indices.end(), 0);
-  // 
-  //   // Put the n_best lowest scores at the beginning.
-  //   std::nth_element(
-  //     indices.begin(),
-  //     indices.begin() + n_best,
-  //     indices.end(),
-  //     [scores](int a, int b) {
-  //         return scores[a] < scores[b];
-  //     }
-  //   );
-  // 
-  //   indices.resize(n_best);
-  // 
-  //   // Keep only the best 10%.
-  //   indices.resize(n_best);
-  // 
-  //   return {std::move(indices)};
-  // }
-  // 
-  // fp_type calculate_rmsd(chromosome first_individual, 
-  //                        chromosome second_individual,
-  //                        const int num_atoms) {
-  //   fp_type rmsd = 0.0;
-  //   for (int i = 0; i < num_atoms; ++i) {
-  //     fp_type d2 = pow((first_individual[0]-second_individual[0]), 2) +
-  //                 pow((first_individual[1]-second_individual[1]), 2) +
-  //                 pow((first_individual[2]-second_individual[2]), 2)
-  //   }
-  // }
-
-  // TODO L 
-  // 1. it's not considering the crystal
-  // 2. best_score_improved has a window of 1, maybe too rigid
-  // 3. not sure about population_is_diverse criterion, seems too stupid for convergence
-  // 4. we should store the best position of all generations, especially if the convergence criterion is based on all time best score
-  bool has_converged(const int ligand_index,
-                     int* __restrict__ for_how_long_best_b,
-                     const int tolerance_window,
-                     const fp_type best_so_far, 
-                     const fp_type this_gen_best,
-                     const fp_type best_score_diff_thld,
-                     fp_type* __restrict__ scores,
-                     const int population_size,
-                     const fp_type score_variance_thld) {
-    // Criterion 1: best score so far has not improved (significantly)
-    bool best_score_not_improved = (best_so_far - this_gen_best < best_score_diff_thld) ? true : false;
-
-    if (best_score_not_improved) {
-      for_how_long_best_b[ligand_index] += 1;
-    } else {
-      for_how_long_best_b[ligand_index] = 0;
-      printf("Reset tolerance window\n");
-    }
-
-    bool best_score_not_improved_for_too_long = (for_how_long_best_b[ligand_index] >= tolerance_window) ? true : false;
-    if (best_score_not_improved_for_too_long) printf("Convergence due to best score not improving for too long\n");
-
-    // Criterion 2: population score is diverse
-    fp_type mean = 0.0;
-    for (int i = 0; i < population_size; ++i)
-      mean += scores[i];
-    mean /= static_cast<fp_type>(population_size);
-
-    fp_type var = 0.0;
-    for (int i = 0; i < population_size; ++i) {
-      const fp_type d = scores[i] - mean;
-      var += d * d;
-    }
-    var /= static_cast<fp_type>(population_size);
-    
-    bool population_score_is_similar = (var < score_variance_thld) ? true : false;
-    if (population_score_is_similar) printf("Convergence due to population score not diverse\n");
-
-    // WARNING: didn't implement this criterion because i don't have the atoms' coordinates here (x/y/z_scratch)
-    // Criterion 3: RMSD of best 10%
-    // const int n_best = std::max(1, population_size / 10);
-    // std::vector<int> indices = get_indices_of_n_best(scores, population_size, n_best);
-    // int similars = 0;
-    // for (int i : indices) {
-    //   const fp_type rmsd = calculate_rmsd(population[best_index], population[i], num_atoms);
-    //   if (rmsd < rmsd_thld) {
-    //     similars++;
-    //   }
-    // }
-    // const fp_type fraction =  static_cast<fp_type>(similar) / n_best;
-    // bool rmsd_is_low = (fraction >= 0.8) ? true : false;
-    // if (rmsd_is_low) printf("Convergence due to low rmsd\n");
-
-    // If something is triggered -> converge
-    return best_score_not_improved_for_too_long || population_score_is_similar;
-  }
-
   void initialize_impl(const int batch_ligands,
                        const int population_number,
                        const int seed,
@@ -205,14 +106,6 @@ namespace mudock {
                     chromosome* next_population,
                     int* __restrict__ num_rotamers_b,
                     fp_type* __restrict__ scores_b,
-                    fp_type* __restrict__ best_so_far_b,
-                    int* __restrict__ for_how_long_best_b,
-                    const int tolerance_window,
-                    const int generation,
-                    const fp_type score_variance_thld,
-                    const fp_type best_score_diff_thld,
-                    // const fp_type crystal_score,
-                    // const fp_type crystal_tolerance,
                     int* __restrict__ converged_ligands_b) {
     for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
       const int converged_ligand = converged_ligands_b[ligand_index];
@@ -224,14 +117,6 @@ namespace mudock {
       chromosome* __restrict__ population_l      = population + population_number * ligand_index;
       chromosome* __restrict__ next_population_l = next_population + population_number * ligand_index;
       fp_type* __restrict__ scores               = scores_b + population_number * ligand_index;
-
-      // Check convergence 
-      // if (autostop && has_converged(ligand_index, for_how_long_best_b, tolerance_window, best_so_far_b[ligand_index], best, best_score_diff_thld, scores, population_number, score_variance_thld)) {
-      //   converged_ligands_b[ligand_index] = generation;
-      // }
-
-      // Update best so far
-      // best_so_far_b[ligand_index] = std::min(best_so_far_b[ligand_index], best);
 
 
       // Elitism: preserve the best elite_size individuals
@@ -351,16 +236,7 @@ namespace mudock {
                                                 next_population,
                                                 num_rotamers_b,
                                                 scores_b,
-                                                best_so_far_b,
-                                                for_how_long_best_b,
-                                                tolerance_window,
-                                                current_generation,
-                                                score_variance_thld,
-                                                best_score_diff_thld,
-                                                // crystal_score,
-                                                // crystal_tolerance,
                                                 converged_ligands_b);
-    ++current_generation;
   }
   template<>
   void genetic_kernel<queue_cpp>::initialize() {

@@ -22,7 +22,11 @@ namespace mudock {
                          const fp_type *__restrict__ z_scratch_b,
                          fp_type *__restrict__ rmsd_best_pose_b,
                          const fp_type *__restrict__ scores_b,
-                         const fp_type crystal_score) {
+                         const fp_type crystal_score,
+                         fp_type* __restrict__ best_so_far_b, 
+                         int* __restrict__ for_how_long_best_b,
+                         const int tolerance_window,
+                         const fp_type best_score_diff_thld) {
     for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
       const int converged_ligand = converged_ligands_b[ligand_index];
       if (converged_ligand) {
@@ -53,7 +57,7 @@ namespace mudock {
           best_score = scores_l[individual_index];
         }
       }
-      bool good_score = best_score <= (crystal_score + SCORE_THRESHOLD) ? true : false;
+      bool good_score = best_score <= (crystal_score + SCORE_TOLERANCE) ? true : false;
 
 
       //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -75,7 +79,24 @@ namespace mudock {
       rmsd_best_pose_b[ligand_index] = compute_rmsd(template_x_l, template_y_l, template_z_l,
                                                       scratch_x_l, scratch_y_l, scratch_z_l, 
                                                       num_atoms);
-      bool good_rmsd = rmsd_best_pose_b[ligand_index] < RMSD_THRESHOLD ? true : false;
+      bool good_rmsd = rmsd_best_pose_b[ligand_index] < RMSD_TOLERANCE ? true : false;
+
+      //////////////////////////////////////////////////////////////////////////////////////////////////////
+      // CRITERION 3: best score so far has not improved (significantly)
+      //////////////////////////////////////////////////////////////////////////////////////////////////////
+      bool best_score_not_improved = (best_so_far_b[ligand_index] - best_score < best_score_diff_thld) ? true : false;
+      
+      if (best_score_not_improved) {
+        for_how_long_best_b[ligand_index] += 1;
+      } else {
+        for_how_long_best_b[ligand_index] = 0;
+        printf("Reset tolerance window\n");
+      }
+      
+      bool stale_best_score = (for_how_long_best_b[ligand_index] >= tolerance_window) ? true : false;
+      
+      // Update best so far
+      best_so_far_b[ligand_index] = std::min(best_so_far_b[ligand_index], best_score);
 
       //////////////////////////////////////////////////////////////////////////////////////////////////////
       // LOG progress
@@ -85,10 +106,10 @@ namespace mudock {
       //////////////////////////////////////////////////////////////////////////////////////////////////////
       // Mark convergence
       //////////////////////////////////////////////////////////////////////////////////////////////////////
-      if (good_score || good_rmsd) {
+      if (good_score || good_rmsd || stale_best_score) {
         converged_ligands_b[ligand_index] = *generation;
-        printf("CRYSTAL FOUND! score = %f, rmsd = %f\n", best_score, rmsd_best_pose_b[ligand_index]);
       }
+
 
     }
     *generation += 1;
@@ -112,7 +133,11 @@ namespace mudock {
                                                             z_scratch_b,
                                                             rmsd_best_pose_b,
                                                             scores_b,
-                                                            crystal_score);
+                                                            crystal_score,
+                                                            best_so_far_b, 
+                                                            for_how_long_best_b,
+                                                            tolerance_window,
+                                                            best_score_diff_thld);
   }
 
 } // namespace mudock

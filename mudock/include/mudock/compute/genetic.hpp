@@ -39,13 +39,6 @@ namespace mudock {
                    const int population_number_,
                    const int num_generations_,
                    const int elite_size_,
-                   const fp_type score_variance_thld_,
-                   const fp_type best_score_diff_thld_,
-                  //  const fp_type crystal_tolerance_,
-                   int* __restrict__ converged_ligands_b_,
-                   fp_type* __restrict__ best_so_far_b_,
-                   int* __restrict__ for_how_long_best_b_,
-                   const int tolerance_window_,
                    const int tournament_length_,
                    const fp_type mutation_prob_,
                    const size_t seed_,
@@ -55,18 +48,12 @@ namespace mudock {
                    fp_type* __restrict__ scores_b_,
                    fp_type* __restrict__ best_scores_b_,
                    chromosome* __restrict__ best_chromosomes_b_,
+                   int* __restrict__ converged_ligands_b_,
                    std::shared_ptr<queue_type> q_)
         : batch_ligands(batch_ligands_),
           population_number(population_number_),
           num_generations(num_generations_),
           elite_size(elite_size_),
-          score_variance_thld(score_variance_thld_),
-          best_score_diff_thld(best_score_diff_thld_),
-          // crystal_tolerance(crystal_tolerance_),
-          converged_ligands_b(converged_ligands_b_),
-          best_so_far_b(best_so_far_b_),
-          for_how_long_best_b(for_how_long_best_b_),
-          tolerance_window(tolerance_window_),
           tournament_length(tournament_length_),
           mutation_prob(mutation_prob_),
           population(population_),
@@ -75,6 +62,7 @@ namespace mudock {
           scores_b(scores_b_),
           best_scores_b(best_scores_b_),
           best_chromosomes_b(best_chromosomes_b_),
+          converged_ligands_b(converged_ligands_b_),
           seed(seed_),
           q(q_) {};
     genetic_kernel() {};
@@ -92,15 +80,7 @@ namespace mudock {
     int population_number;
     int num_generations;
     int elite_size;
-    fp_type score_variance_thld;  
-    fp_type best_score_diff_thld;  
-    // fp_type crystal_tolerance;
-    int* __restrict__ converged_ligands_b;
-    fp_type* __restrict__ best_so_far_b;
-    int* __restrict__ for_how_long_best_b;
-    int tolerance_window;
     int tournament_length;
-    int current_generation = 1;
     fp_type mutation_prob;
     chromosome* __restrict__ population;
     chromosome* __restrict__ next_population;
@@ -108,6 +88,7 @@ namespace mudock {
     fp_type* __restrict__ scores_b;
     fp_type* __restrict__ best_scores_b;
     chromosome* __restrict__ best_chromosomes_b;
+    int* __restrict__ converged_ligands_b;
     size_t seed;
     std::shared_ptr<queue_type> q;
   };
@@ -144,8 +125,6 @@ namespace mudock {
       auto& chromosomes_b             = (*this->scratch).template get<buffer_data_type::CHROMOSOMES>();
       auto& scores_b                  = (*this->scratch).template get<buffer_data_type::SCORES>();
       auto& converged_ligands_b       = (*this->scratch).template get<buffer_data_type::CONVERGED_LIGANDS>();
-      auto& best_so_far_b             = (*this->scratch).template get<buffer_data_type::BEST_SO_FAR>();
-      auto& for_how_long_best_b       = (*this->scratch).template get<buffer_data_type::FOR_HOW_LONG_BEST>();
 
       num_rotamers_b.alloc(batch_ligands);
       chromosomes_b.alloc(population_number * batch_ligands);
@@ -154,13 +133,8 @@ namespace mudock {
       best_scores.alloc(batch_ligands);
       best_chromosomes.alloc(batch_ligands);
       converged_ligands_b.alloc(batch_ligands);
-      best_so_far_b.alloc(batch_ligands);
-      for_how_long_best_b.alloc(batch_ligands);
 
       load_num_rotamers<queue_t>(batch, this->scratch);
-      initialize_converged_ligands<queue_t>(batch, this->scratch);
-      initialize_best_so_far<queue_t>(batch, this->scratch);
-      initialize_for_how_long_best<queue_t>(batch, this->scratch);
 
       const auto seed =
           configuration.seed.has_value()
@@ -172,8 +146,6 @@ namespace mudock {
       fp_type* __restrict__ best_scores_p             = best_scores.dev_pointer();
       chromosome* __restrict__ best_chromosomes_p     = best_chromosomes.dev_pointer();
       int* __restrict__ converged_ligands_p           = converged_ligands_b.dev_pointer();
-      fp_type* __restrict__ best_so_far_p             = best_so_far_b.dev_pointer();
-      int* __restrict__ for_how_long_best_p           = for_how_long_best_b.dev_pointer();
       
 
       // Lorenzo: Ligand properties for experiments
@@ -191,13 +163,6 @@ namespace mudock {
                                                          population_number,
                                                          configuration.num_generations,
                                                          configuration.elite_size,
-                                                         configuration.score_variance_thld,
-                                                         configuration.best_score_diff_thld,
-                                                        //  configuration.crystal_tolerance,
-                                                         converged_ligands_p,
-                                                         best_so_far_p,
-                                                         for_how_long_best_p,
-                                                         configuration.tolerance_window,
                                                          configuration.tournament_length,
                                                          configuration.mutation_prob,
                                                          seed,
@@ -207,6 +172,7 @@ namespace mudock {
                                                          scores_p,
                                                          best_scores_p,
                                                          best_chromosomes_p,
+                                                         converged_ligands_p,
                                                          q);
 
       crystal_convergence_stage.prepare(batch);
