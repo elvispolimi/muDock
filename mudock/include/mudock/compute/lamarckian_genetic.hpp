@@ -49,6 +49,8 @@ namespace mudock {
         auto& ligand = *batch.molecules[index];
         ligand.properties.assign(property_type::RATE, std::to_string(local_search_rate));
         ligand.properties.assign(property_type::ITER, std::to_string(local_search_iterations));
+        ligand.properties.assign(property_type::RHO, std::to_string(static_cast<fp_type>(configuration.rho)));
+        ligand.properties.assign(property_type::EPSILON, std::to_string(static_cast<fp_type>(configuration.epsilon)));
       }
       
       local_search_stage.prepare(batch);  

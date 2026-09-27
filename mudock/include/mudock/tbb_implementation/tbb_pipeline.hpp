@@ -45,6 +45,10 @@ namespace mudock {
       buf += ligand.properties.get(property_type::ITER);
       buf += ',';
       buf += ligand.properties.get(property_type::RMSD_BEST_SCORING_POSE);
+      buf += ',';
+      buf += ligand.properties.get(property_type::RHO);
+      buf += ',';
+      buf += ligand.properties.get(property_type::EPSILON);
       buf += '\n';
     }
   } // namespace detail
