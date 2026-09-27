@@ -257,7 +257,6 @@ namespace mudock {
     std::unique_ptr<crystal_convergence_kernel<queue_t>> kernel;
 
     void teardown_impl(batch<static_molecule>& batch) override {
-      printf("Calling teardown...\n");
       assert(batch.num_ligands == batch_ligands && "Convergence stage received different batch for teardown");
       auto &rmsd_best_pose_b = (*this->scratch).template get<buffer_data_type::RMSD_BEST_POSE>();
       rmsd_best_pose_b.copy_device2host();
