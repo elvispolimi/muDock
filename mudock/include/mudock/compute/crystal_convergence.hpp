@@ -25,6 +25,9 @@ namespace mudock {
     return {};
   }
 
+  inline constexpr fp_type SCORE_THRESHOLD = fp_type{1};
+  inline constexpr fp_type RMSD_THRESHOLD = fp_type{1};
+
   template<typename queue_type>
     requires std::derived_from<queue_type, queue>
   struct crystal_convergence_kernel {

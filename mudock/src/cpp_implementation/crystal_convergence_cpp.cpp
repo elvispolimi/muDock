@@ -53,8 +53,7 @@ namespace mudock {
           best_score = scores_l[individual_index];
         }
       }
-      printf("Gen %d --- Best: %f\n", *generation, double(best_score));
-      bool good_score = best_score <= (crystal_score + 1) ? true : false;
+      bool good_score = best_score <= (crystal_score + SCORE_THRESHOLD) ? true : false;
 
 
       //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -76,8 +75,12 @@ namespace mudock {
       rmsd_best_pose_b[ligand_index] = compute_rmsd(template_x_l, template_y_l, template_z_l,
                                                       scratch_x_l, scratch_y_l, scratch_z_l, 
                                                       num_atoms);
-      // fp_type rmsd_best_scoring_pose = 0;
-      bool good_rmsd = rmsd_best_pose_b[ligand_index] < 1 ? true : false;
+      bool good_rmsd = rmsd_best_pose_b[ligand_index] < RMSD_THRESHOLD ? true : false;
+
+      //////////////////////////////////////////////////////////////////////////////////////////////////////
+      // LOG progress
+      //////////////////////////////////////////////////////////////////////////////////////////////////////
+      printf("Gen %d --- Best: %f, rmsd: %f\n", *generation, double(best_score), double(rmsd_best_pose_b[ligand_index]));
 
       //////////////////////////////////////////////////////////////////////////////////////////////////////
       // Mark convergence
