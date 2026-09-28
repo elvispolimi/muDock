@@ -1,19 +1,20 @@
 #!/usr/bin/env bash
 IGNORE_TOKEN="Experiment"
 
-MAX_JOBS=$(nproc)
+# MAX_JOBS=$(nproc)
+MAX_JOBS=12
 
-BUILD=build
+BUILD=omp
 
-DATA_DIR="./data/crystals"
+DATA_DIR="./data/coreset_CASF_2016"
 
 TEST_DIR="./lorenzo_temp/experiments/test"
 
-echo "Docking..."
-TOTAL_RUNS=$(find "$DATA_DIR" -mindepth 1 -maxdepth 1 -type d | wc -l)
 COMPLETED_RUNS=0
+TOTAL_RUNS=$(find "$DATA_DIR" -mindepth 1 -maxdepth 1 -type d | wc -l)
 rm ${TEST_DIR}/*
 
+echo "Docking..."
 for dir in ${DATA_DIR}/*/; do
     PDBID=$(basename "$dir")
 
@@ -22,9 +23,10 @@ for dir in ${DATA_DIR}/*/; do
     
     OUT_PATH="${TEST_DIR}/${PDBID}_crystal.txt"
 
-    ./builds/"$BUILD"/application/muDock \
+    ./builds/"$BUILD"/application/local_search/local_search \
         --protein "$PROTEIN" \
         --ligand "$LIGAND" \
+        --lsit 0 \
         2>&1 | grep "$IGNORE_TOKEN" >> "$OUT_PATH" \
         &
 
@@ -48,9 +50,9 @@ while [ "$(jobs -rp | wc -l)" -gt 0 ]; do
         "$((COMPLETED_RUNS * 100 / TOTAL_RUNS))"
 done
 
-cat ${TEST_DIR}/* > ./lorenzo_temp/experiments/get_crystals/crystals.csv
+# cat ${TEST_DIR}/* > ./lorenzo_temp/experiments/get_crystals/crystals.csv
+sed 's/^Experiment,//' ${TEST_DIR}/* > ./lorenzo_temp/experiments/results.csv
 
-# sed 's/^Experiment,//' ${TEST_DIR}/* > ./lorenzo_temp/experiments/results.csv
 python3 lorenzo_temp/experiments/notify.py
 
 printf "\nDone.\n"

@@ -74,3 +74,4 @@ LIGANDI BISLUNGHI:
 ############################################
 
 pkill -u "$USER" -f '/builds/omp/application/muDock'
+pkill -u "$USER" -f '/builds/omp/application/local_search/local_search'
