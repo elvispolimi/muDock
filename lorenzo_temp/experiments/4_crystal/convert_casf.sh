@@ -3,9 +3,9 @@
 MAX_JOBS=$(nproc)
 
 BUILD=omp
-DATA_DIR="./data/crystals"
+DATA_DIR="./data/coreset_CASF_2016"
 
-for dir in ./data/crystals/*/; do
+for dir in ./data/coreset_CASF_2016/*/; do
     PDBID=$(basename "$dir")
 
     INPUT="${DATA_DIR}/${PDBID}/${PDBID}_ligand.mol2"
