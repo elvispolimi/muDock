@@ -10,6 +10,7 @@
 namespace mudock {
   void check_convergence(const int batch_ligands,
                          const int batch_atoms,
+                         const bool autostop,
                          const int individuals_per_ligand,
                          const int* __restrict__ num_atoms_b,
                          int* generation,
@@ -28,10 +29,7 @@ namespace mudock {
                          const int tolerance_window,
                          const fp_type best_score_diff_thld) {
     for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
-      const int converged_ligand = converged_ligands_b[ligand_index];
-      if (converged_ligand) {
-        continue;
-      }
+      if (converged_ligands_b[ligand_index]) continue;
 
       //////////////////////////////////////////////////////////////////////////////////////////////////////
       // WARNING: CRITERION 1 AND 2 ARE ARTIFICAL CONVERGENCE CRITERION, NOT REAL ONE, BECAUSE THEY ASSUME
@@ -90,7 +88,6 @@ namespace mudock {
         for_how_long_best_b[ligand_index] += 1;
       } else {
         for_how_long_best_b[ligand_index] = 0;
-        printf("Reset tolerance window\n");
       }
       
       bool stale_best_score = (for_how_long_best_b[ligand_index] >= tolerance_window) ? true : false;
@@ -106,10 +103,14 @@ namespace mudock {
       //////////////////////////////////////////////////////////////////////////////////////////////////////
       // Mark convergence
       //////////////////////////////////////////////////////////////////////////////////////////////////////
-      if (good_score || good_rmsd || stale_best_score) {
+      //////////////////////////////////////////////////////////////////////////////////////////////////////
+      // TODO L: i moved autostop parameter here so that in every case we log rmsd, but technically not 
+      //         needed. If autostop is inside genetic and decides if this convergence stage runs or not,
+      //         it may not log it.
+      //////////////////////////////////////////////////////////////////////////////////////////////////////
+      if (autostop && (good_score || good_rmsd || stale_best_score)) {
         converged_ligands_b[ligand_index] = *generation;
       }
-
 
     }
     *generation += 1;
@@ -121,6 +122,7 @@ namespace mudock {
     q->invoke_kernel<this->crystal_convergence_region_name>(check_convergence,
                                                             batch_ligands,
                                                             batch_atoms,
+                                                            autostop,
                                                             population_number,
                                                             num_atoms_b,
                                                             &current_generation,

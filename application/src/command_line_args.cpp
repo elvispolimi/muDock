@@ -95,7 +95,7 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
   knobs_description.add_options()(
       "autostop",
       po::value(&args.knobs.autostop)->default_value(args.knobs.autostop),
-      "Enable early stopping when per-ligand convergence or crystal (if specified) is reached");
+      "Enable early stopping when per-ligand convergence or crystal (if specified, see crystal_score) is reached");
   knobs_description.add_options()(
       "tolerance_window",
       po::value(&args.knobs.tolerance_window)->default_value(args.knobs.tolerance_window),

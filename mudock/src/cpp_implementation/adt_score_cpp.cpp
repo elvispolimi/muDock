@@ -69,10 +69,8 @@ namespace mudock {
                    fp_type *__restrict__ scores_b,
                    int *__restrict__ converged_ligands_b) {
     for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
-      const int converged_ligand = converged_ligands_b[ligand_index];
-      if (converged_ligand) {
-        continue;
-      }
+      if (converged_ligands_b[ligand_index]) continue;
+
       const int atom_stride  = ligand_index * batch_atoms;
       const int num_atoms    = num_atoms_b[ligand_index];
       const int num_nonbonds = num_nonbonds_b[ligand_index + 1] - num_nonbonds_b[ligand_index];
@@ -262,10 +260,8 @@ namespace mudock {
                             int *__restrict__ active_individuals_b,
                             int *__restrict__ converged_ligands_b) {
     for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
-      const int converged_ligand = converged_ligands_b[ligand_index];
-      if (converged_ligand) {
-        continue;
-      }
+      if (converged_ligands_b[ligand_index]) continue;
+      
       const int atom_stride                  = ligand_index * batch_atoms;
       const int num_atoms                    = num_atoms_b[ligand_index];
       const int num_nonbonds                 = num_nonbonds_b[ligand_index + 1] - num_nonbonds_b[ligand_index];

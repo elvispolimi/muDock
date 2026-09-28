@@ -108,10 +108,8 @@ namespace mudock {
                     fp_type* __restrict__ scores_b,
                     int* __restrict__ converged_ligands_b) {
     for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
-      const int converged_ligand = converged_ligands_b[ligand_index];
-      if (converged_ligand) {
-        continue;
-      }
+      if (converged_ligands_b[ligand_index]) continue;
+      
       std::uniform_real_distribution<fp_type> dist{fp_type{0.0}, fp_type{1.0}};
       const int num_rotamers                     = num_rotamers_b[ligand_index];
       chromosome* __restrict__ population_l      = population + population_number * ligand_index;

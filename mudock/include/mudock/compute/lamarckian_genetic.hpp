@@ -77,9 +77,9 @@ namespace mudock {
         this->geom_trans();
         (*this->score_stage)();
         (*this->kernel)();
-        if (this->autostop) {
-          this->crystal_convergence_stage();
-        }
+        // if (this->autostop) {
+        this->crystal_convergence_stage();
+        // }
         /////////////////////////////////////////////////////////////////////////////////////
         /////////////////////////////////////////////////////////////////////////////////////
         // TODO L remove this part, needed for experiments
@@ -136,10 +136,11 @@ namespace mudock {
 
     void teardown_impl(batch<static_molecule>& batch) override {
       assert(batch.num_ligands == this->batch_ligands && "Genetic algorithm received different batch for teardown");
-      this->crystal_convergence_stage.teardown(batch);
       auto &converged_ligands_b = (*this->scratch).template get<buffer_data_type::CONVERGED_LIGANDS>();
+      auto &rmsd_best_pose_b = (*this->scratch).template get<buffer_data_type::RMSD_BEST_POSE>();
       this->best_scores.copy_device2host();
       converged_ligands_b.copy_device2host();
+      rmsd_best_pose_b.copy_device2host();
       (*this->scratch).get_queue()->synchronize();
   
       for (int index{0}; index < this->batch_ligands; ++index) {
@@ -161,6 +162,7 @@ namespace mudock {
         const int num_evaluations = past_generations * this->population_number + past_generations * num_local_search_individuals * local_search_iterations; // GA contribution + LS contribution
         ligand.properties.assign(property_type::GEN, std::to_string(past_generations));
         ligand.properties.assign(property_type::NUM_EVALS, std::to_string(num_evaluations));
+        ligand.properties.assign(property_type::RMSD_BEST_SCORING_POSE, std::to_string(rmsd_best_pose_b()[index]));
       }
     }
   private:

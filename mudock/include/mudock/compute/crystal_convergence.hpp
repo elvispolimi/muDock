@@ -34,6 +34,7 @@ namespace mudock {
     static constexpr char crystal_convergence_region_name[] = "crystal_convergence";
     crystal_convergence_kernel(const int batch_ligands_,
                 const int batch_atoms_,
+                const bool autostop_,
                 const int population_number_,
                 const int* __restrict__ num_atoms_b_,
                 int* __restrict__ converged_ligands_b_,
@@ -53,6 +54,7 @@ namespace mudock {
                 std::shared_ptr<queue_type> q_)
         : batch_ligands(batch_ligands_),
           batch_atoms(batch_atoms_),
+          autostop(autostop_),
           population_number(population_number_),
           num_atoms_b(num_atoms_b_),
           converged_ligands_b(converged_ligands_b_),
@@ -83,6 +85,7 @@ namespace mudock {
   private:
     const int batch_ligands;
     const int batch_atoms;
+    const bool autostop;
     const int population_number;
     const int* __restrict__ num_atoms_b;
     int* __restrict__ converged_ligands_b;
@@ -180,6 +183,7 @@ namespace mudock {
 
       kernel = std::make_unique<crystal_convergence_kernel<queue_t>>(batch_ligands,
                                                                      batch_atoms,
+                                                                     (*this->scratch).configuration.autostop,
                                                                      population_number,
                                                                      num_atoms_p,
                                                                      converged_ligands_p,
@@ -256,16 +260,7 @@ namespace mudock {
     int batch_atoms;
     std::unique_ptr<crystal_convergence_kernel<queue_t>> kernel;
 
-    void teardown_impl(batch<static_molecule>& batch) override {
-      assert(batch.num_ligands == batch_ligands && "Convergence stage received different batch for teardown");
-      auto &rmsd_best_pose_b = (*this->scratch).template get<buffer_data_type::RMSD_BEST_POSE>();
-      rmsd_best_pose_b.copy_device2host();
-      (*this->scratch).get_queue()->synchronize();
-      for (int index{0}; index < batch_ligands; ++index) {
-        auto& ligand = *batch.molecules[index];
-        ligand.properties.assign(property_type::RMSD_BEST_SCORING_POSE, std::to_string(rmsd_best_pose_b()[index]));
-      }
-    }
+    void teardown_impl(batch<static_molecule>& batch) {}
   };
 #endif
 } // namespace mudock

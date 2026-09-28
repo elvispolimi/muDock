@@ -118,7 +118,7 @@ namespace mudock {
       batch_atoms                  = batch.batch_max_atoms;
       num_generations              = static_cast<int>(configuration.num_generations);
       population_number            = static_cast<int>(configuration.population_number);
-      autostop                     = configuration.autostop;
+      // autostop                     = configuration.autostop;
       auto q                       = (*this->scratch).get_queue();
 
       auto& num_rotamers_b            = (*this->scratch).template get<buffer_data_type::NUM_ROTAMERS>();
@@ -200,9 +200,9 @@ namespace mudock {
         geom_trans();
         (*score_stage)();
         (*kernel)();
-        if (autostop) {
-          crystal_convergence_stage();
-        }
+        // if (autostop) {
+        crystal_convergence_stage();
+        // }
         
         /////////////////////////////////////////////////////////////////////////////////////
         /////////////////////////////////////////////////////////////////////////////////////
@@ -340,7 +340,7 @@ namespace mudock {
     int batch_atoms;
     int num_generations;
     int population_number;
-    bool autostop;
+    // bool autostop;
     buffer_vector<chromosome, queue_t> next_population;
     buffer_vector<chromosome, queue_t> best_chromosomes;
     buffer_vector<fp_type, queue_t> best_scores;
@@ -405,10 +405,11 @@ namespace mudock {
       // score_stage();
       // geom_trans.teardown(batch);
       // score_stage.teardown(batch);
-      crystal_convergence_stage.teardown(batch);
       auto &converged_ligands_b = (*this->scratch).template get<buffer_data_type::CONVERGED_LIGANDS>();
+      auto &rmsd_best_pose_b = (*this->scratch).template get<buffer_data_type::RMSD_BEST_POSE>();
       best_scores.copy_device2host();
       converged_ligands_b.copy_device2host();
+      rmsd_best_pose_b.copy_device2host();
       (*this->scratch).get_queue()->synchronize();
   
       for (int index{0}; index < batch_ligands; ++index) {
@@ -425,6 +426,7 @@ namespace mudock {
         const int num_evaluations = past_generations * population_number;
         ligand.properties.assign(property_type::GEN, std::to_string(past_generations));
         ligand.properties.assign(property_type::NUM_EVALS, std::to_string(num_evaluations));
+        ligand.properties.assign(property_type::RMSD_BEST_SCORING_POSE, std::to_string(rmsd_best_pose_b()[index]));
       }
     }
 
