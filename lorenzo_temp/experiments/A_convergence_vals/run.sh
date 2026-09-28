@@ -7,7 +7,7 @@ BUILD=build
 DATA_DIR="./data"
 TEST_DIR="./lorenzo_temp/experiments/test"
 
-ids=(1fkb 1hii 2ya6 3udd 4few 5cst 5uez)
+ids=(1fkb 1hii 2ya6 3udd 4few 5cst 5uez 5wuk)
 # ids=(1fkb)
 
 NUM_SEEDS=20
@@ -16,18 +16,18 @@ SEARCH=genetic
 GENERATIONS=1000
 
 TOLERANCE_WINDOW=30
-BEST_SCORE_THLD=0.0001
+BEST_SCORE_THLD=0.00001
 
 
 echo "Docking..."
 # TOTAL_RUNS=$(find "$DATA_DIR" -mindepth 1 -maxdepth 1 -type d | wc -l)
-TOTAL_RUNS=$((2 * ${#ids[@]} * ${#seeds[@]}))
+TOTAL_RUNS=$((${#ids[@]} * ${#seeds[@]}))
 COMPLETED_RUNS=0
 
 # for dir in ${DATA_DIR}/*/; do
     # PDBID=$(basename "$dir")
 rm ${TEST_DIR}/AS/*
-rm ${TEST_DIR}/NOAS/*
+# rm ${TEST_DIR}/NOAS/*
 AUTOSTOP=1
 for i in "${!ids[@]}"; do
     PDBID="${ids[$i]}"
@@ -103,7 +103,7 @@ done
 
 # cat ${TEST_DIR}/* > ./lorenzo_temp/experiments/A_hyperparam/results.csv
 sed 's/^Experiment,//' ${TEST_DIR}/AS/* > ./lorenzo_temp/experiments/results_${TOLERANCE_WINDOW}_${BEST_SCORE_THLD}_AS.csv
-sed 's/^Experiment,//' ${TEST_DIR}/NOAS/* > ./lorenzo_temp/experiments/results_${TOLERANCE_WINDOW}_${BEST_SCORE_THLD}_NOAS.csv
+# sed 's/^Experiment,//' ${TEST_DIR}/NOAS/* > ./lorenzo_temp/experiments/results_${TOLERANCE_WINDOW}_${BEST_SCORE_THLD}_NOAS.csv
 
 
 python3 lorenzo_temp/experiments/notify.py
