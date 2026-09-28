@@ -26,17 +26,7 @@ namespace mudock {
     inline void append_ligand(std::string& buf, const static_molecule& ligand) {
       buf += ligand.properties.get(property_type::NAME);
       buf += ',';
-      buf += ligand.properties.get(property_type::SCORE);
-      buf += ',';
       buf += ligand.properties.get(property_type::GEN);
-      buf += ',';
-      buf += ligand.properties.get(property_type::SEED);
-      buf += ',';
-      buf += ligand.properties.get(property_type::NUM_ROT);
-      buf += ',';
-      buf += ligand.properties.get(property_type::NUM_ATOMS);
-      buf += ',';
-      buf += ligand.properties.get(property_type::NUM_EVALS);
       buf += ',';
       buf += ligand.properties.get(property_type::POP);
       buf += ',';
@@ -44,11 +34,23 @@ namespace mudock {
       buf += ',';
       buf += ligand.properties.get(property_type::ITER);
       buf += ',';
+      buf += ligand.properties.get(property_type::NUM_EVALS);
+      buf += ',';
+      buf += ligand.properties.get(property_type::SCORE);
+      buf += ',';
+      buf += ligand.properties.get(property_type::CRY_SCORE);
+      buf += ',';
       buf += ligand.properties.get(property_type::RMSD_BEST_SCORING_POSE);
+      buf += ',';
+      buf += ligand.properties.get(property_type::NUM_ROT);
+      buf += ',';
+      buf += ligand.properties.get(property_type::NUM_ATOMS);
       buf += ',';
       buf += ligand.properties.get(property_type::RHO);
       buf += ',';
       buf += ligand.properties.get(property_type::EPSILON);
+      buf += ',';
+      buf += ligand.properties.get(property_type::SEED);
       buf += '\n';
     }
   } // namespace detail

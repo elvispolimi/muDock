@@ -63,8 +63,7 @@ NUM_ROTAMERS:
 
 ##########################################
 RESULTS FORMAT:
-name,score,gen,seed,rot,atoms,evals,population,rate,iterations,rmsd_best_scoring_pose,rho,epsilon
-
+name,gen,pop,rate,iter,evals,score,cry_score,rmsd_best_scoring_pose,rot,atoms,rho,epsilon,seed
 
 ##########################################
 LIGANDI BISLUNGHI:

@@ -157,6 +157,7 @@ namespace mudock {
         ligand.properties.assign(property_type::SEED, std::to_string(seed));
         ligand.properties.assign(property_type::NUM_ROT, std::to_string(num_rotamers));
         ligand.properties.assign(property_type::NUM_ATOMS, std::to_string(num_atoms));
+        ligand.properties.assign(property_type::CRY_SCORE, std::to_string(configuration.crystal_score));
       }
 
       kernel = std::make_unique<genetic_kernel<queue_t>>(batch_ligands,
