@@ -16,7 +16,7 @@ namespace mudock {
     bool autostop                             = false;
     std::size_t tolerance_window              = 50;
     // fp_type score_variance_thld               = static_cast<fp_type>(0.0015);
-    fp_type best_score_diff_thld              = static_cast<fp_type>(0);
+    fp_type best_score_diff_thld              = static_cast<fp_type>(0.0001);
     fp_type crystal_score                     = small_bound<fp_type>();
     bool ls_on_best                           = false;
     std::size_t lsrate                        = 100;
