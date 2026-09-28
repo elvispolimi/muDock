@@ -1,1 +1,2 @@
 total difference: 3499.149549
+no_wuk: 3223.522309
