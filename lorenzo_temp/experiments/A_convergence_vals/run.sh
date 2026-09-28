@@ -3,11 +3,11 @@ IGNORE_TOKEN="Experiment"
 
 MAX_JOBS=12
 
-BUILD=omp
+BUILD=build
 DATA_DIR="./data"
 TEST_DIR="./lorenzo_temp/experiments/test"
 
-ids=(1fkb 1hii 2ya6 3udd 4few 5cst 5uez 5wuk)
+ids=(1fkb 1hii 2ya6 3udd 4few 5cst 5uez)
 # ids=(1fkb)
 
 NUM_SEEDS=20
@@ -15,8 +15,8 @@ seeds=($(seq 0 $((NUM_SEEDS - 1))))
 SEARCH=genetic
 GENERATIONS=1000
 
-TOLERANCE_WINDOW=50
-BEST_SCORE_THLD=0
+TOLERANCE_WINDOW=30
+BEST_SCORE_THLD=0.0001
 
 
 echo "Docking..."
@@ -61,36 +61,36 @@ for i in "${!ids[@]}"; do
     done
 done
 
-AUTOSTOP=0
-for i in "${!ids[@]}"; do
-    PDBID="${ids[$i]}"
-    for SEED in "${seeds[@]}"; do
+# AUTOSTOP=0
+# for i in "${!ids[@]}"; do
+#     PDBID="${ids[$i]}"
+#     for SEED in "${seeds[@]}"; do
 
-        PROTEIN="${DATA_DIR}/${PDBID}/${PDBID}_protein.pdb"
-        LIGAND="${DATA_DIR}/${PDBID}/${PDBID}_ligand.adtmol2"
+#         PROTEIN="${DATA_DIR}/${PDBID}/${PDBID}_protein.pdb"
+#         LIGAND="${DATA_DIR}/${PDBID}/${PDBID}_ligand.adtmol2"
         
-        OUT_PATH="${TEST_DIR}/NOAS/${PDBID}_${SEED}.txt"
+#         OUT_PATH="${TEST_DIR}/NOAS/${PDBID}_${SEED}.txt"
 
-        ./builds/"$BUILD"/application/muDock \
-            --protein "$PROTEIN" \
-            --ligand "$LIGAND" \
-            --seed "$SEED" \
-            --search "$SEARCH" \
-            --generations "$GENERATIONS" \
-            --autostop "$AUTOSTOP" \
-            2>&1 | grep "$IGNORE_TOKEN" >> "$OUT_PATH" \
-            &
+#         ./builds/"$BUILD"/application/muDock \
+#             --protein "$PROTEIN" \
+#             --ligand "$LIGAND" \
+#             --seed "$SEED" \
+#             --search "$SEARCH" \
+#             --generations "$GENERATIONS" \
+#             --autostop "$AUTOSTOP" \
+#             2>&1 | grep "$IGNORE_TOKEN" >> "$OUT_PATH" \
+#             &
 
-        if [ "$(jobs -rp | wc -l)" -ge "$MAX_JOBS" ]; then
-            wait -n
-            COMPLETED_RUNS=$((COMPLETED_RUNS + 1))
-            printf "\rProgress: [%d/%d] %3d%%" \
-                "$COMPLETED_RUNS" \
-                "$TOTAL_RUNS" \
-                "$((COMPLETED_RUNS * 100 / TOTAL_RUNS))"
-        fi
-    done
-done
+#         if [ "$(jobs -rp | wc -l)" -ge "$MAX_JOBS" ]; then
+#             wait -n
+#             COMPLETED_RUNS=$((COMPLETED_RUNS + 1))
+#             printf "\rProgress: [%d/%d] %3d%%" \
+#                 "$COMPLETED_RUNS" \
+#                 "$TOTAL_RUNS" \
+#                 "$((COMPLETED_RUNS * 100 / TOTAL_RUNS))"
+#         fi
+#     done
+# done
 
 while [ "$(jobs -rp | wc -l)" -gt 0 ]; do
     wait -n

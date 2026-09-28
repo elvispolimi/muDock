@@ -1,4 +1,4 @@
-rm -rf builds/build && cmake -S . -B builds/build -DENABLE_ASAN=ON && cmake --build builds/build -j8
+rm -rf builds/build && cmake -S . -B builds/build && cmake --build builds/build -j8
 
 rm -rf builds/omp && cmake -S . -B builds/omp -DMUDOCK_ENABLE_OMP=ON && cmake --build builds/omp -j8
 
@@ -63,4 +63,15 @@ NUM_ROTAMERS:
 
 ##########################################
 RESULTS FORMAT:
-name,score,gen,seed,rot,atoms,evals,population,rate,iterations,rmsd_best_scoring_pose,rmsd_min
+name,score,gen,seed,rot,atoms,evals,population,rate,iterations,rmsd_best_scoring_pose,rho,epsilon
+
+
+##########################################
+LIGANDI BISLUNGHI:
+2ymd_ligand, 2zwz_ligand, 2zx6_ligand, 2zxd_ligand, 3i3b_ligand, 3muz_ligand, 3n7a_ligand, 3n86_ligand, 3nox_ligand, 
+3vd4_ligand, 4gqq_ligand, 4tmn_ligand
+
+
+############################################
+
+pkill -u "$USER" -f '/builds/omp/application/muDock'
