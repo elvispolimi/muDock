@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 IGNORE_TOKEN="Experiment"
 
-MAX_JOBS=$(nproc)
+MAX_JOBS=12
 
 BUILD=build
 DATA_DIR="./data/coreset_CASF_2016"
@@ -20,12 +20,12 @@ COMPLETED_RUNS=0
 
 rm ${TEST_DIR}/*
 echo "Docking..."
-for i in "${!ids[@]}"; do
-    PDBID="${ids[$i]}"
-    CRYSTAL_SCORE="${crystal_scores[$i]}"
-    for RHO in "${rhos[@]}"; do
-        for EPSILON in "${epsilons[@]}"; do
-            for SEED in "${seeds[@]}"; do
+for SEED in "${seeds[@]}"; do
+    for i in "${!ids[@]}"; do
+        PDBID="${ids[$i]}"
+        CRYSTAL_SCORE="${crystal_scores[$i]}"
+        for RHO in "${rhos[@]}"; do
+            for EPSILON in "${epsilons[@]}"; do
 
             PROTEIN="${DATA_DIR}/${PDBID}/${PDBID}_protein.pdb"
             LIGAND="${DATA_DIR}/${PDBID}/${PDBID}_ligand.adtmol2"
@@ -39,8 +39,8 @@ for i in "${!ids[@]}"; do
                 --search lga \
                 --population 100 \
                 --generations 750 \
-                --lsrate 50 \
-                --lsit 150 \
+                --lsrate 100 \
+                --lsit 200 \
                 --autostop 1 \
                 --crystal_score "$CRYSTAL_SCORE" \
                 --tolerance_window 50 \
@@ -73,7 +73,7 @@ while [ "$(jobs -rp | wc -l)" -gt 0 ]; do
         "$((COMPLETED_RUNS * 100 / TOTAL_RUNS))"
 done
 
-sed 's/^Experiment,//' ${TEST_DIR}/* > ./lorenzo_temp/experiments/results_rho_epsilon.csv
+sed 's/^Experiment,//' ${TEST_DIR}/* > ./lorenzo_temp/experiments/results_rho_epsilon_max_ls.csv
 
 python3 lorenzo_temp/experiments/notify.py
 

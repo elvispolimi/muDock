@@ -46,19 +46,3 @@ dentro data_points.csv e da li posso fare i grafici
 
 119:
 - 4ty7 -> manca rho 0.8, epsolon 0.0001, seed 8
-
-./builds/omp/application/muDock \
-    --protein ./data/coreset_CASF_2016/4ty7/4ty7_protein.pdb \
-    --ligand ./data/coreset_CASF_2016/4ty7/4ty7_ligand.adtmol2 \
-    --seed 8 \
-    --search lga \
-    --population 100 \
-    --generations 750 \
-    --lsrate 50 \
-    --lsit 150 \
-    --autostop 1 \
-    --crystal_score -3.464769 \
-    --tolerance_window 50 \
-    --best_score_diff_thld 0.0001 \
-    --epsilon 0.0001 \
-    --rho 0.8

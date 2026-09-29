@@ -5,8 +5,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 
-CSV_FILE = "./lorenzo_temp/experiments/B_hyperparam/res_medians.csv"
-OUTPUT_DIR = "plots_medians"
+CSV_FILE = "./lorenzo_temp/experiments/B_hyperparam/res_avg_on_best.csv"
+OUTPUT_DIR = "plots_avg"
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
@@ -21,11 +21,11 @@ for (rho, epsilon), group in df.groupby(["rho", "epsilon"]):
 
     plt.bar(
         group["name"].astype(str),
-        group["median_gen"]
+        group["avg_gen"]
     )
 
     plt.xlabel("Name (ordered by rot)")
-    plt.ylabel("Median generations")
+    plt.ylabel("Average generations")
     plt.title(f"rho={rho}, epsilon={epsilon}")
 
     plt.xticks(rotation=45, ha="right")
