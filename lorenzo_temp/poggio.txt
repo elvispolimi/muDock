@@ -46,30 +46,9 @@ load /home/lorenzo/thesis/muDock/dump/pose_1.mol2, ligand_1
 for i in range(2,301):cmd.load(f"/home/lorenzo/thesis/muDock/dump/pose_{i}.mol2", "ligand_1", state=i)
 set movie_fps, 30
 
-
-###################################
-
-NUM_ROTAMERS:
-1fkb -> 6   | --cristal -15.79722
-1hii -> 19  | --cristal 
-2ya6 -> 6   | --cristal 
-3fv3 -> xxx | --cristal 
-3udd -> 7   | --cristal 
-4few -> 2   | --cristal 
-5cst -> 6   | --cristal 
-5uez -> 4   | --cristal 
-5wuk -> 5   | --cristal 
-
-
 ##########################################
 RESULTS FORMAT:
 name,gen,pop,rate,iter,evals,score,cry_score,rmsd_best_scoring_pose,rot,atoms,rho,epsilon,seed
-
-##########################################
-LIGANDI BISLUNGHI:
-2ymd_ligand, 2zwz_ligand, 2zx6_ligand, 2zxd_ligand, 3i3b_ligand, 3muz_ligand, 3n7a_ligand, 3n86_ligand, 3nox_ligand, 
-3vd4_ligand, 4gqq_ligand, 4tmn_ligand
-
 
 ############################################
 
@@ -103,7 +82,7 @@ name,cry_score,rot,atoms,prot_size
 
 
 
-(10 ligands version --- circa 5 ore per 20 seeds e 6 rho/epsilon config, con autostop, rate 50 iter 150)
+(10 ligands version)
 name,cry_score,rot,atoms,prot_size
 3gy4	-1.054222	2	20	3269
 3ryj	-3.089948	4	27	4062
