@@ -15,8 +15,6 @@ epsilons=("0.01" "0.0001" )
 NUM_SEEDS=20
 seeds=($(seq 0 $((NUM_SEEDS - 1))))
 
-
-# TOTAL_RUNS=$(find "$DATA_DIR" -mindepth 1 -maxdepth 1 -type d | wc -l)
 TOTAL_RUNS=$((${#ids[@]} * ${#rhos[@]} * ${#epsilons[@]} * ${#seeds[@]}))
 COMPLETED_RUNS=0
 

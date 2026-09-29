@@ -103,7 +103,7 @@ name,cry_score,rot,atoms,prot_size
 
 
 
-(10 ligands version)
+(10 ligands version --- circa 5 ore per 20 seeds e 6 rho/epsilon config, con autostop, rate 50 iter 150)
 name,cry_score,rot,atoms,prot_size
 3gy4	-1.054222	2	20	3269
 3ryj	-3.089948	4	27	4062
