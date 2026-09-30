@@ -71,7 +71,8 @@ namespace mudock {
                                 pipeline_t& pipe,
                                 std::atomic<std::size_t>* in_flight_ligands = nullptr,
                                 const std::function<void()>& on_batch_submitted = {},
-                                const std::function<void()>& on_batch_completed = {}) {
+                                const std::function<void()>& on_batch_completed = {},
+                                std::atomic<std::size_t>* processed_atoms = nullptr) {
     auto device_scratch = std::make_shared<scratchpad<queue_type>>(knobs, 0, device_type::CPU);
     auto q_b            = device_scratch->get_queue();
     std::function<int(const int)> get_size = [q_b, &knobs](const int x) {
@@ -88,7 +89,8 @@ namespace mudock {
                  pipe.template get_pipeline<queue_type>(knobs, id, device_type::CPU, device_scratch),
                  in_flight_ligands,
                  on_batch_submitted,
-                 on_batch_completed));
+                 on_batch_completed,
+                 processed_atoms));
     }
   };
 
@@ -102,7 +104,8 @@ namespace mudock {
                                 pipeline_t& pipe,
                                 std::atomic<std::size_t>* in_flight_ligands = nullptr,
                                 const std::function<void()>& on_batch_submitted = {},
-                                const std::function<void()>& on_batch_completed = {}) {
+                                const std::function<void()>& on_batch_completed = {},
+                                std::atomic<std::size_t>* processed_atoms = nullptr) {
     const std::size_t workers_per_device =
         parse_positive_size_field(parts, 3, "workers_per_device", static_cast<std::size_t>(2));
     const std::size_t mem_per_device =
@@ -132,7 +135,8 @@ namespace mudock {
                    pipe.template get_pipeline<queue_type>(knobs, id, device_type::GPU, device_scratch),
                    in_flight_ligands,
                    on_batch_submitted,
-                   on_batch_completed));
+                   on_batch_completed,
+                   processed_atoms));
       }
     }
   };
@@ -147,7 +151,8 @@ namespace mudock {
                pipeline_t& pipe,
                std::atomic<std::size_t>* in_flight_ligands = nullptr,
                const std::function<void()>& on_batch_submitted = {},
-               const std::function<void()>& on_batch_completed = {}) {
+               const std::function<void()>& on_batch_completed = {},
+               std::atomic<std::size_t>* processed_atoms = nullptr) {
     for (auto& configuration: configurations) {
       const auto parts = parse_worker_configuration(configuration);
       auto dev_t       = get_device_type(parts[1]);
@@ -166,7 +171,8 @@ namespace mudock {
                                                  pipe,
                                                  in_flight_ligands,
                                                  on_batch_submitted,
-                                                 on_batch_completed);
+                                                 on_batch_completed,
+                                                 processed_atoms);
             }
           });
           break;
@@ -184,7 +190,8 @@ namespace mudock {
                                                  pipe,
                                                  in_flight_ligands,
                                                  on_batch_submitted,
-                                                 on_batch_completed);
+                                                 on_batch_completed,
+                                                 processed_atoms);
             }
           });
           break;

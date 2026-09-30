@@ -36,9 +36,6 @@ constexpr void constexpr_switch_bucket(F&& f, T value, V* values) {
 // Unroll control for kernels
 #define MUDOCK_STRINGIFY_INNER(x) #x
 #define MUDOCK_STRINGIFY(x) MUDOCK_STRINGIFY_INNER(x)
-#ifndef MUDOCK_UNROLL_FACTOR
-  #define MUDOCK_UNROLL_FACTOR 8
-#endif
 #define MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, STEP) (((MAX_ATOMS) + (STEP)-1) / (STEP))
 #if defined(__GNUC__) && !defined(__clang__)
   #define MUDOCK_PRAGMA_NOUNROLL _Pragma("GCC unroll 0")
@@ -60,7 +57,8 @@ constexpr void constexpr_switch_bucket(F&& f, T value, V* values) {
   #define MUDOCK_PRAGMA_TEMPLATE_UNROLL(MAX_ATOMS, WORKERS) \
     _Pragma(MUDOCK_STRINGIFY(unroll MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, WORKERS)))
 #else
-  #define MUDOCK_PRAGMA_UNROLL(factor) _Pragma(MUDOCK_STRINGIFY(unroll factor))
+  #define MUDOCK_PRAGMA_UNROLL(...)
+  #define MUDOCK_PRAGMA_TEMPLATE_UNROLL(...)
 #endif
 
 // utility function that reads the whole content of a stream

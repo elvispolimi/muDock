@@ -46,6 +46,10 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
       "measure_batches",
       po::value(&measure_batches),
       "Optional number of completed batches to measure from the first submitted batch; stop without output drain when reached");
+  arguments_description.add_options()(
+      "measure_force_exit",
+      po::bool_switch(&args.measure_force_exit),
+      "Terminate the process immediately when a steady-state measurement target is reached");
   arguments_description.add_options()("search",
                                       po::value(&search_name)->default_value(search_name),
                                       "Search algorithm to apply: none|genetic");
