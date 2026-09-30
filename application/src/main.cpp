@@ -42,7 +42,8 @@ namespace {
                                                                                  args.time_limit_sec,
                                                                                  args.observer,
                                                                                  args.measure_ligands,
-                                                                                 args.measure_batches);
+                                                                                 args.measure_batches,
+                                                                                 args.measure_force_exit);
                                      },
                                      format);
                                });

@@ -12,10 +12,11 @@ namespace mudock {
   struct batch {
     // Keep enough static capacity for the largest memory-guided buckets used
     // in the experiments while preserving the no-dynamic-allocation design.
-    static constexpr auto max_batch_size = int{65536};
+    static constexpr auto max_batch_size = int{131072};
 
     std::array<std::unique_ptr<T>, max_batch_size> molecules;
     int num_ligands        = 0;
+    int num_atoms          = 0;
     int batch_max_atoms    = 0;
     int batch_max_rotamers = 0;
 
@@ -25,6 +26,8 @@ namespace mudock {
       molecules.swap(other.molecules);
       num_ligands        = other.num_ligands;
       other.num_ligands  = 0;
+      num_atoms          = other.num_atoms;
+      other.num_atoms    = 0;
       batch_max_atoms    = other.batch_max_atoms;
       batch_max_rotamers = other.batch_max_rotamers;
     }

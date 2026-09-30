@@ -65,10 +65,10 @@ namespace mudock {
                     const fp_type* __restrict__ grid_maps,
                     const int* __restrict__ map_tex_indexes,
                     fp_type* __restrict__ scores) const {
-      const int workgroup_id         = static_cast<int>(it.get_group(0));
+      const int workgroup_id         = static_cast<int>(it.get_group(2));
       const int ligand_id            = static_cast<int>(workgroup_id);
-      const int workitem_id_in_group = static_cast<int>(it.get_local_id(0));
-      assert(it.get_local_range(0) == MUDOCK_SYCL_WG_SIZE &&
+      const int workitem_id_in_group = static_cast<int>(it.get_local_id(2));
+      assert(it.get_local_range(2) == MUDOCK_SYCL_WG_SIZE &&
              "SYCL WG size and the number of thread per block does not coincide");
 
       const fp_type* electro_map = grid_maps + map_index_xyz * static_cast<int>(autodock_grid_type::ELEC);
@@ -110,7 +110,7 @@ namespace mudock {
         fp_type elect_total_trilinear = 0;
         fp_type emap_total_trilinear  = 0;
         fp_type dmap_total_trilinear  = 0;
-        MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
+        MUDOCK_PRAGMA_TEMPLATE_UNROLL(MAX_ATOMS, MUDOCK_SYCL_WG_SIZE)
         for (int atom_index = workitem_id_in_group; atom_index < MAX_ATOMS;
              atom_index += MUDOCK_SYCL_WG_SIZE) {
           if (atom_index < num_atoms) {

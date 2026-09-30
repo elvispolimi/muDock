@@ -72,9 +72,9 @@ namespace mudock {
                     chromosome* __restrict__ chromosomes,
                     XORWOWState* __restrict__ state,
                     fp_type* __restrict__ ligand_scores) const {
-      const int ligand_id        = static_cast<int>(it.get_group(0));
-      const int local_thread_id  = static_cast<int>(it.get_local_id(0));
-      const int thread_per_block = static_cast<int>(it.get_local_range(0));
+      const int ligand_id        = static_cast<int>(it.get_group(2));
+      const int local_thread_id  = static_cast<int>(it.get_local_id(2));
+      const int thread_per_block = static_cast<int>(it.get_local_range(2));
       const int global_thread_id = local_thread_id + thread_per_block * ligand_id;
 
       const int num_rotamers       = ligand_num_rotamers[ligand_id];
@@ -118,9 +118,9 @@ namespace mudock {
                     chromosome* __restrict__ next_chromosomes,
                     XORWOWState* __restrict__ state,
                     fp_type* __restrict__ ligand_scores) const {
-      const int ligand_id        = static_cast<int>(it.get_group(0));
-      const int local_thread_id  = static_cast<int>(it.get_local_id(0));
-      const int thread_per_block = static_cast<int>(it.get_local_range(0));
+      const int ligand_id        = static_cast<int>(it.get_group(2));
+      const int local_thread_id  = static_cast<int>(it.get_local_id(2));
+      const int thread_per_block = static_cast<int>(it.get_local_range(2));
       const int global_thread_id = local_thread_id + thread_per_block * ligand_id;
 
       const int num_rotamers                      = ligand_num_rotamers[ligand_id];
@@ -173,9 +173,9 @@ namespace mudock {
                     fp_type* __restrict__ ligand_best_scores,
                     chromosome* __restrict__ chromosomes,
                     chromosome* __restrict__ best_chromosomes) const {
-      const int ligand_id        = static_cast<int>(it.get_group(0));
-      const int local_thread_id  = static_cast<int>(it.get_local_id(0));
-      const int thread_per_block = static_cast<int>(it.get_local_range(0));
+      const int ligand_id        = static_cast<int>(it.get_group(2));
+      const int local_thread_id  = static_cast<int>(it.get_local_id(2));
+      const int thread_per_block = static_cast<int>(it.get_local_range(2));
 
       const int num_rotamers                 = ligand_num_rotamers[ligand_id];
       chromosome* __restrict__ l_chromosomes = chromosomes + ligand_id * chromosome_number;

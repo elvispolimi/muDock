@@ -25,7 +25,9 @@ namespace mudock {
 
     // this is the functor tha actually implement the virtual screening
     stage_t pipeline;
+    // fix me why pointer and not refere
     std::atomic<std::size_t>* in_flight_ligands = nullptr;
+    std::atomic<std::size_t>* processed_atoms    = nullptr;
     std::function<void()> batch_submitted;
     std::function<void()> batch_completed;
 
@@ -46,6 +48,11 @@ namespace mudock {
         batch_succeeded = false;
         error("Unable to virtual screen a batch due to ", e.what());
       }
+
+      if (processed_atoms != nullptr) {
+        processed_atoms->fetch_add(static_cast<std::size_t>(b.num_atoms), std::memory_order_relaxed);
+      }
+      info("Batch arrived: ligands=", b.num_ligands, ", atoms=", processed_atoms != nullptr ? processed_atoms->load(std::memory_order_relaxed) : 0);
 
       for (auto& batch_ligand: std::span(b.molecules.data(), b.num_ligands)) {
         output_stack->enqueue(batch_ligand);
@@ -68,12 +75,14 @@ namespace mudock {
            stage_t&& _pipeline,
            std::atomic<std::size_t>* active_ligands = nullptr,
            std::function<void()> on_batch_submitted = {},
-           std::function<void()> on_batch_completed = {})
+           std::function<void()> on_batch_completed = {},
+           std::atomic<std::size_t>* total_processed_atoms = nullptr)
         : input_stack(input_molecules),
           output_stack(output_molecules),
           rob(rb),
           pipeline(std::move(_pipeline)),
           in_flight_ligands(active_ligands),
+          processed_atoms(total_processed_atoms),
           batch_submitted(std::move(on_batch_submitted)),
           batch_completed(std::move(on_batch_completed)) {}
 

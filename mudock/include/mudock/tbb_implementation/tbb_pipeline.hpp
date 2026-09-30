@@ -1,6 +1,8 @@
 #pragma once
 
 #include <atomic>
+#include <cstdio>
+#include <cstdlib>
 #include <chrono>
 #include <cstdint>
 #include <iostream>
@@ -47,7 +49,8 @@ namespace mudock {
                         std::optional<double> time_limit_sec = std::nullopt,
                         std::optional<double> observer_sec = std::nullopt,
                         std::optional<std::size_t> measure_ligands = std::nullopt,
-                        std::optional<std::size_t> measure_batches = std::nullopt) {
+                        std::optional<std::size_t> measure_batches = std::nullopt,
+                        bool measure_force_exit = false) {
     auto input_queue  = std::make_shared<mudock::safe_queue<mudock::static_molecule>>();
     auto output_queue = std::make_shared<mudock::safe_queue<mudock::static_molecule>>();
     input_queue->initialize(knobs.max_tbb_queue_size);
@@ -55,6 +58,7 @@ namespace mudock {
     std::atomic<std::size_t> skipped_ligands{0};
     std::atomic<std::size_t> dropped_by_timeout{0};
     std::atomic<std::size_t> in_flight_ligands{0};
+    std::atomic<std::size_t> processed_atoms{0};
     std::atomic<bool> timeout_triggered{false};
     std::atomic<bool> stop_requested{false};
     detail::measurement_state measurement;
@@ -106,6 +110,13 @@ namespace mudock {
            " s, throughput=",
            throughput,
            " ligands/s; stopped without draining pending output.");
+      if (measure_force_exit) {
+        info("Forced benchmark termination enabled; exiting immediately.");
+        std::cout.flush();
+        std::cerr.flush();
+        std::fflush(nullptr);
+        std::_Exit(EXIT_SUCCESS);
+      }
       stop_without_drain();
     };
 
@@ -167,6 +178,7 @@ namespace mudock {
         const std::size_t now_processed = output_queue->get_global_counter();
         const std::size_t in_backlog    = input_queue->size();
         const std::size_t in_flight     = in_flight_ligands.load(std::memory_order_relaxed);
+        const std::size_t atoms_processed = processed_atoms.load(std::memory_order_relaxed);
 
         const std::chrono::duration<double> dt = now - prev_time;
         const std::size_t delta_processed      = now_processed - prev_processed;
@@ -175,6 +187,9 @@ namespace mudock {
         const std::chrono::duration<double> total = now - start;
         const double avg_throughput =
             total.count() > 0.0 ? static_cast<double>(now_processed) / total.count() : 0.0;
+
+        const double avg_throughput_atoms =
+            total.count() > 0.0 ? static_cast<double>(atoms_processed) / total.count() : 0.0;
 
         info("Observer: processed=",
              now_processed,
@@ -186,7 +201,12 @@ namespace mudock {
              inst_throughput,
              " ligands/s, avg_throughput=",
              avg_throughput,
-             " ligands/s");
+             " ligands/s",
+             ", atoms_processed=",
+             atoms_processed,
+             ", avg_throughput_atoms=",
+             avg_throughput_atoms,
+             " atoms/s");
 
         prev_processed = now_processed;
         prev_time      = now;
@@ -201,10 +221,22 @@ namespace mudock {
         bool expected = false;
         if (measurement.shutdown_started.compare_exchange_strong(expected, true, std::memory_order_relaxed)) {
           timeout_triggered.store(true, std::memory_order_relaxed);
+          const auto processed_at_timeout = output_queue->get_global_counter();
           stop_without_drain();
-          info("Time limit reached: discarded ",
+          info("Time limit reached: processed=",
+               processed_at_timeout,
+               " ligand(s); discarded ",
                dropped_by_timeout.load(std::memory_order_relaxed),
-               " pending ligand(s) from input queue.");
+               " pending ligand(s) from input queue; atoms processed=",
+               processed_atoms.load(std::memory_order_relaxed), 
+               ".");
+          if (measure_force_exit) {
+            info("Forced benchmark termination enabled; exiting immediately.");
+            std::cout.flush();
+            std::cerr.flush();
+            std::fflush(nullptr);
+            std::_Exit(EXIT_SUCCESS);
+          }
         }
       });
     }
@@ -239,7 +271,8 @@ namespace mudock {
               pipeline,
               &in_flight_ligands,
               on_batch_submitted,
-              on_batch_completed);
+              on_batch_completed,
+              &processed_atoms);
       info("Manager done: workers created");
 
       oneapi::tbb::parallel_pipeline(

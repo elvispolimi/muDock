@@ -36,15 +36,24 @@ constexpr void constexpr_switch_bucket(F&& f, T value, V* values) {
 // Unroll control for kernels
 #define MUDOCK_STRINGIFY_INNER(x) #x
 #define MUDOCK_STRINGIFY(x) MUDOCK_STRINGIFY_INNER(x)
-#ifndef MUDOCK_UNROLL_FACTOR
-  #define MUDOCK_UNROLL_FACTOR 8
-#endif
 #define MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, STEP) (((MAX_ATOMS) + (STEP)-1) / (STEP))
-#ifdef MUDOCK_DISABLE_UNROLL
-  // Leave the loop untouched so each backend compiler can choose its strategy.
-  #define MUDOCK_PRAGMA_UNROLL(factor)
+#if defined(MUDOCK_DISABLE_UNROLL) || defined(MUDOCK_UNROLL_NONE)
+  #define MUDOCK_PRAGMA_UNROLL(...)
+  #define MUDOCK_PRAGMA_TEMPLATE_UNROLL(...)
+#elif defined(MUDOCK_UNROLL_HINT)
+  #define MUDOCK_PRAGMA_UNROLL(...) _Pragma("unroll")
+  #define MUDOCK_PRAGMA_TEMPLATE_UNROLL(...) _Pragma("unroll")
+#elif defined(MUDOCK_UNROLL_FIXED)
+  #define MUDOCK_PRAGMA_UNROLL(...) _Pragma(MUDOCK_STRINGIFY(unroll MUDOCK_UNROLL_FACTOR))
+  #define MUDOCK_PRAGMA_TEMPLATE_UNROLL(...) _Pragma(MUDOCK_STRINGIFY(unroll MUDOCK_UNROLL_FACTOR))
+#elif defined(MUDOCK_UNROLL_TEMPLATE)
+  // Generic loops have no template extent; retain a compiler hint for them.
+  #define MUDOCK_PRAGMA_UNROLL(...) _Pragma("unroll")
+  #define MUDOCK_PRAGMA_TEMPLATE_UNROLL(MAX_ATOMS, WORKERS) \
+    _Pragma(MUDOCK_STRINGIFY(unroll MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, WORKERS)))
 #else
-  #define MUDOCK_PRAGMA_UNROLL(factor) _Pragma(MUDOCK_STRINGIFY(unroll factor))
+  #define MUDOCK_PRAGMA_UNROLL(...)
+  #define MUDOCK_PRAGMA_TEMPLATE_UNROLL(...)
 #endif
 
 // utility function that reads the whole content of a stream

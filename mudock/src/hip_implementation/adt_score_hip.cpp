@@ -148,8 +148,7 @@ namespace mudock {
 
       // Calculate energy
       fp_type elect_total_trilinear = 0, emap_total_trilinear = 0, dmap_total_trilinear = 0;
-// MUDOCK_PRAGMA_UNROLL(MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, BLOCK_SIZE))
-#pragma nounroll
+      MUDOCK_PRAGMA_TEMPLATE_UNROLL(MAX_ATOMS, BLOCK_SIZE)
       for (int i = 0; i < MAX_ATOMS; i += BLOCK_SIZE) {
         const int atom_index = i + threadIdx.x;
         if (atom_index < num_atoms) {

@@ -21,8 +21,8 @@ namespace mudock {
     assert(gridDim.size_y() > 0 && blockDim.size_y() > 0);
     assert(gridDim.size_z() > 0 && blockDim.size_z() > 0);
 
-    sycl::range<3> local{(size_t) blockDim.size_x(), (size_t) blockDim.size_y(), (size_t) blockDim.size_z()};
-    sycl::range<3> groups{(size_t) gridDim.size_x(), (size_t) gridDim.size_y(), (size_t) gridDim.size_z()};
+    sycl::range<3> local{1, 1, static_cast<size_t>(blockDim.size_x())};
+    sycl::range<3> groups{1, 1, static_cast<size_t>(gridDim.size_x())};
     sycl::range<3> global = groups * local;
     sycl::nd_range<3> nd{global, local};
 
@@ -103,7 +103,7 @@ namespace mudock {
     const std::size_t total_active_work_groups =
         krn.ext_oneapi_get_info<max_num_work_groups>(
             queue,
-            sycl::range<3>{wg_size, 1, 1},
+            sycl::range<3>{1, 1, wg_size},
             dynamic_local_memory_size);
     if (total_active_work_groups == 0) {
       throw std::runtime_error(

@@ -84,6 +84,7 @@ set(MUDOCK_DEFAULT_ATOM_CLUSTER_LEVEL "OFF")
 set(MUDOCK_DEFAULT_STAGE_BUCKET_POLICY "MAX_UTILIZATION")
 set(MUDOCK_DEFAULT_GENETIC_BUCKET_COMBINE "MIN")
 set(MUDOCK_DEFAULT_UNROLL_FACTOR "8")
+set(MUDOCK_DEFAULT_UNROLL_MODE "FIXED")
 
 set(MUDOCK_ATOM_CLUSTER_LEVEL "${MUDOCK_DEFAULT_ATOM_CLUSTER_LEVEL}" CACHE STRING
     "Ligand atom-cluster granularity: OFF|MEDIUM|LARGE|EXTREME")
@@ -223,10 +224,18 @@ set(MUDOCK_SYCL_EXTRA_LINK_FLAGS "" CACHE STRING "Extra SYCL link flags appended
 set(MUDOCK_SYC_EXTRA_LINK_FLAGS "" CACHE STRING "Deprecated alias for MUDOCK_SYCL_EXTRA_LINK_FLAGS")
 set(MUDOCK_SYCL_WG_SIZE "" CACHE STRING "SYCL work-group size override for kernels (e.g. 32 or 64)")
 
-set(MUDOCK_STAGE_BUCKET_OVERRIDE "" CACHE STRING
-    "Override stage bucket size (optional integer)")
-set(MUDOCK_STAGE_BUCKET_MULTIPLE_OVERRIDE "" CACHE STRING
-    "Override stage bucket scaling factor (optional real > 0; remains capped by worker memory)")
+set(MUDOCK_STAGE_BUCKET_OVERRIDE "NONE" CACHE STRING
+    "Override stage bucket size, or NONE for automatic selection")
+if(MUDOCK_STAGE_BUCKET_OVERRIDE STREQUAL "")
+  set(MUDOCK_STAGE_BUCKET_OVERRIDE "NONE" CACHE STRING
+      "Override stage bucket size, or NONE for automatic selection" FORCE)
+endif()
+set(MUDOCK_STAGE_BUCKET_MULTIPLE_OVERRIDE "NONE" CACHE STRING
+    "Override stage bucket scaling factor, or NONE for automatic selection")
+if(MUDOCK_STAGE_BUCKET_MULTIPLE_OVERRIDE STREQUAL "")
+  set(MUDOCK_STAGE_BUCKET_MULTIPLE_OVERRIDE "NONE" CACHE STRING
+      "Override stage bucket scaling factor, or NONE for automatic selection" FORCE)
+endif()
 set(MUDOCK_STAGE_BUCKET_POLICY "${MUDOCK_DEFAULT_STAGE_BUCKET_POLICY}" CACHE STRING
     "Stage bucket policy: DEVICE_ALIGNED|SM_ALIGNED|MAX_UTILIZATION")
 set_property(CACHE MUDOCK_STAGE_BUCKET_POLICY PROPERTY STRINGS DEVICE_ALIGNED
@@ -238,6 +247,9 @@ option(MUDOCK_ENABLE_STAGE_BUCKET_TRACE
        "Enable detailed runtime logging for stage bucket selection"
        OFF)
 option(MUDOCK_DISABLE_UNROLL "Disable kernel loop unrolling" OFF)
+set(MUDOCK_UNROLL_MODE "${MUDOCK_DEFAULT_UNROLL_MODE}" CACHE STRING
+    "Kernel unrolling mode: NONE|HINT|FIXED|TEMPLATE")
+set_property(CACHE MUDOCK_UNROLL_MODE PROPERTY STRINGS NONE HINT FIXED TEMPLATE)
 set(MUDOCK_UNROLL_FACTOR "${MUDOCK_DEFAULT_UNROLL_FACTOR}" CACHE STRING "Kernel loop unroll factor when unrolling is enabled")
 
 if(MUDOCK_ENABLE_SYCL)
@@ -310,6 +322,12 @@ if(MUDOCK_ENABLE_SYCL)
         list(APPEND sycl_targets "intel_gpu_${VALUE_AFTER_COLON}")
         set(SYCL_BACKEND_FLAGS_COMPILE "${SYCL_BACKEND_FLAGS_LINK}")
       endif()
+      # Emit LLVM optimization remarks for the SYCL device compilation. These
+      # are compile-only flags and are intentionally not added to link flags.
+      list(APPEND SYCL_BACKEND_FLAGS_COMPILE
+           -Rpass=loop-unroll
+           -Rpass-missed=loop-unroll
+           -Rpass-analysis=loop-unroll)
       if(NOT SYCL_BACKEND_FLAGS_COMPILE_USER STREQUAL "")
         separate_arguments(SYCL_BACKEND_FLAGS_COMPILE_USER_LIST UNIX_COMMAND
                            "${SYCL_BACKEND_FLAGS_COMPILE_USER}")
@@ -551,12 +569,26 @@ message(STATUS "//       CONFIGURATION RECAP       //")
 message(STATUS "//===---------------------------===//")
 mudock_print_config("CXX compiler" "${CMAKE_CXX_COMPILER}" "CMAKE_CXX_COMPILER")
 mudock_print_config("Build type" "${CMAKE_BUILD_TYPE}" "CMAKE_BUILD_TYPE")
+string(TOUPPER "${CMAKE_BUILD_TYPE}" _mudock_build_type_upper)
+set(_mudock_cxx_flags "${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_${_mudock_build_type_upper}}")
+set(_mudock_cuda_flags "${CMAKE_CUDA_FLAGS} ${CMAKE_CUDA_FLAGS_${_mudock_build_type_upper}}")
+set(_mudock_hip_flags "${CMAKE_HIP_FLAGS} ${CMAKE_HIP_FLAGS_${_mudock_build_type_upper}}")
+string(STRIP "${_mudock_cxx_flags}" _mudock_cxx_flags)
+string(STRIP "${_mudock_cuda_flags}" _mudock_cuda_flags)
+string(STRIP "${_mudock_hip_flags}" _mudock_hip_flags)
+mudock_print_config("CXX flags" "${_mudock_cxx_flags}" "CMAKE_CXX_FLAGS[_${_mudock_build_type_upper}]")
+if(MUDOCK_ENABLE_CUDA)
+  mudock_print_config("CUDA flags" "${_mudock_cuda_flags}" "CMAKE_CUDA_FLAGS[_${_mudock_build_type_upper}]")
+endif()
+if(MUDOCK_ENABLE_HIP)
+  mudock_print_config("HIP flags" "${_mudock_hip_flags}" "CMAKE_HIP_FLAGS[_${_mudock_build_type_upper}]")
+endif()
 mudock_print_config("Install prefix" "${CMAKE_INSTALL_PREFIX}"
                     "CMAKE_INSTALL_PREFIX")
-if(NOT MUDOCK_ATOM_CLUSTER_LEVEL STREQUAL "${MUDOCK_DEFAULT_ATOM_CLUSTER_LEVEL}")
-  mudock_print_config("Atom cluster level" "${MUDOCK_ATOM_CLUSTER_LEVEL}"
-                      "MUDOCK_ATOM_CLUSTER_LEVEL")
-endif()
+mudock_print_config("Atom cluster level" "${MUDOCK_ATOM_CLUSTER_LEVEL}"
+                    "MUDOCK_ATOM_CLUSTER_LEVEL")
+mudock_print_config("GPU architectures" "${MUDOCK_GPU_ARCHITECTURES}"
+                    "MUDOCK_GPU_ARCHITECTURES")
 mudock_print_config("CPU Architecture" "${MUDOCK_CPU_ARCHITECTURES}"
                     "MUDOCK_CPU_ARCHITECTURES")
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
@@ -567,50 +599,40 @@ if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64")
 endif()
 
 mudock_print_config("Fast mode" "${MUDOCK_ENABLE_FAST}" "MUDOCK_ENABLE_FAST")
-if(OVERRIDE_PRECOMPUTE_OPT)
-  mudock_print_config("Override precompute opt" "${OVERRIDE_PRECOMPUTE_OPT}"
-                      "OVERRIDE_PRECOMPUTE_OPT")
-endif()
+mudock_print_config("Override precompute opt" "${OVERRIDE_PRECOMPUTE_OPT}"
+                    "OVERRIDE_PRECOMPUTE_OPT")
 
-if(MUDOCK_ENABLE_TEST)
-  mudock_print_config("Enable Test" "${MUDOCK_ENABLE_TEST}"
-                      "MUDOCK_ENABLE_TEST")
-endif()
+mudock_print_config("Enable Test" "${MUDOCK_ENABLE_TEST}"
+                    "MUDOCK_ENABLE_TEST")
 
 mudock_print_config("IPO Optimizations" "${MUDOCK_ENABLE_IPO}"
                     "MUDOCK_ENABLE_IPO")
 mudock_print_config("Likwid Profiling" "${MUDOCK_ENABLE_LIKWID}"
                     "MUDOCK_ENABLE_LIKWID")
+mudock_print_config("Disable kernel unrolling" "${MUDOCK_DISABLE_UNROLL}"
+                    "MUDOCK_DISABLE_UNROLL")
+set(_mudock_effective_unroll_mode "${MUDOCK_UNROLL_MODE}")
 if(MUDOCK_DISABLE_UNROLL)
-  mudock_print_config("Disable kernel unrolling" "${MUDOCK_DISABLE_UNROLL}"
-                      "MUDOCK_DISABLE_UNROLL")
-elseif(NOT MUDOCK_UNROLL_FACTOR STREQUAL "${MUDOCK_DEFAULT_UNROLL_FACTOR}")
+  set(_mudock_effective_unroll_mode "NONE")
+endif()
+mudock_print_config("Kernel unroll mode" "${_mudock_effective_unroll_mode}"
+                    "MUDOCK_UNROLL_MODE")
+if(_mudock_effective_unroll_mode STREQUAL "FIXED")
   mudock_print_config("Kernel unroll factor" "${MUDOCK_UNROLL_FACTOR}"
                       "MUDOCK_UNROLL_FACTOR")
 endif()
-if(MUDOCK_ENABLE_STAGE_BUCKET_TRACE)
-  mudock_print_config("Stage bucket trace" "${MUDOCK_ENABLE_STAGE_BUCKET_TRACE}"
-                      "MUDOCK_ENABLE_STAGE_BUCKET_TRACE")
-endif()
-if(NOT MUDOCK_STAGE_BUCKET_OVERRIDE STREQUAL "")
-  mudock_print_config("Stage bucket override" "${MUDOCK_STAGE_BUCKET_OVERRIDE}"
-                      "MUDOCK_STAGE_BUCKET_OVERRIDE")
-endif()
-if(NOT MUDOCK_STAGE_BUCKET_MULTIPLE_OVERRIDE STREQUAL "")
-  mudock_print_config("Stage bucket multiple override"
-                      "${MUDOCK_STAGE_BUCKET_MULTIPLE_OVERRIDE}"
-                      "MUDOCK_STAGE_BUCKET_MULTIPLE_OVERRIDE")
-endif()
-if(NOT MUDOCK_STAGE_BUCKET_POLICY STREQUAL "${MUDOCK_DEFAULT_STAGE_BUCKET_POLICY}")
-  mudock_print_config("Stage bucket policy" "${MUDOCK_STAGE_BUCKET_POLICY}"
-                      "MUDOCK_STAGE_BUCKET_POLICY")
-endif()
-if(NOT MUDOCK_GENETIC_BUCKET_COMBINE STREQUAL
-       "${MUDOCK_DEFAULT_GENETIC_BUCKET_COMBINE}")
-  mudock_print_config("Genetic stage bucket combine"
-                      "${MUDOCK_GENETIC_BUCKET_COMBINE}"
-                      "MUDOCK_GENETIC_BUCKET_COMBINE")
-endif()
+mudock_print_config("Stage bucket trace" "${MUDOCK_ENABLE_STAGE_BUCKET_TRACE}"
+                    "MUDOCK_ENABLE_STAGE_BUCKET_TRACE")
+mudock_print_config("Stage bucket override" "${MUDOCK_STAGE_BUCKET_OVERRIDE}"
+                    "MUDOCK_STAGE_BUCKET_OVERRIDE")
+mudock_print_config("Stage bucket multiple override"
+                    "${MUDOCK_STAGE_BUCKET_MULTIPLE_OVERRIDE}"
+                    "MUDOCK_STAGE_BUCKET_MULTIPLE_OVERRIDE")
+mudock_print_config("Stage bucket policy" "${MUDOCK_STAGE_BUCKET_POLICY}"
+                    "MUDOCK_STAGE_BUCKET_POLICY")
+mudock_print_config("Genetic stage bucket combine"
+                    "${MUDOCK_GENETIC_BUCKET_COMBINE}"
+                    "MUDOCK_GENETIC_BUCKET_COMBINE")
 if(MUDOCK_ENABLE_LIKWID)
   mudock_print_config("Likwid CPP Profiling" "${MUDOCK_LIKWID_CPP}"
                       "MUDOCK_LIKWID_CPP")
@@ -624,10 +646,8 @@ mudock_print_config("Enable XSimd" "${MUDOCK_ENABLE_XSIMD}"
                     "MUDOCK_ENABLE_XSIMD")
 mudock_print_config("Enable CUDA" "${MUDOCK_ENABLE_CUDA}"
                     "MUDOCK_ENABLE_CUDA")
-if(MUDOCK_ENABLE_KERNEL_LOCK)
-  mudock_print_config("Kernel lock" "${MUDOCK_ENABLE_KERNEL_LOCK}"
-                      "MUDOCK_ENABLE_KERNEL_LOCK")
-endif()
+mudock_print_config("Kernel lock" "${MUDOCK_ENABLE_KERNEL_LOCK}"
+                    "MUDOCK_ENABLE_KERNEL_LOCK")
 
 if(MUDOCK_ENABLE_CUDA)
   mudock_print_config("Target CUDA architecture" "${CMAKE_CUDA_ARCHITECTURES}"
@@ -651,15 +671,17 @@ if(MUDOCK_ENABLE_SYCL)
                       "MUDOCK_SYCL_WG_SIZE")
   mudock_print_config("oneAPI Compiler Path" "${LLVM_TOOLS_BINARY_DIR}"
                       "LLVM_TOOLS_BINARY_DIR")
-  if(NOT SYCL_BACKEND_FLAGS_LINK STREQUAL "")
-    string(JOIN " " SYCL_BACKEND_FLAGS_PRINT ${SYCL_BACKEND_FLAGS_LINK})
-    mudock_print_config("oneAPI Backend Flags" "${SYCL_BACKEND_FLAGS_PRINT}"
-                        "SYCL_BACKEND_FLAGS_LINK")
-  endif()
+  string(JOIN " " SYCL_BACKEND_FLAGS_PRINT ${SYCL_BACKEND_FLAGS_LINK})
+  string(JOIN " " SYCL_BACKEND_COMPILE_FLAGS_PRINT ${SYCL_BACKEND_FLAGS_COMPILE})
+  mudock_print_config("oneAPI Backend Flags" "${SYCL_BACKEND_FLAGS_PRINT}"
+                      "SYCL_BACKEND_FLAGS_LINK")
+  mudock_print_config("oneAPI Backend Compile Flags"
+                      "${SYCL_BACKEND_COMPILE_FLAGS_PRINT}"
+                      "SYCL_BACKEND_FLAGS_COMPILE")
   if(NOT SYCL_BACKEND_FLAGS_COMPILE_USER STREQUAL "")
     mudock_print_config("oneAPI User Compile Flags"
                         "${SYCL_BACKEND_FLAGS_COMPILE_USER}"
-                        "SYCL_BACKEND_FLAGS_COMPILE")
+                        "SYCL_BACKEND_FLAGS_COMPILE_USER")
   endif()
   if(NOT MUDOCK_SYCL_EXTRA_FLAGS STREQUAL "")
     mudock_print_config("oneAPI Extra SYCL Flags" "${MUDOCK_SYCL_EXTRA_FLAGS}"
@@ -695,10 +717,7 @@ if(MUDOCK_ENABLE_OMP_OFFLOAD)
   mudock_print_config("Target OpenMP architecture" "${OMP_TARGET}" "OMP_TARGET")
 endif()
 
-message(
-  STATUS
-    "Enable MPI............................: ${MUDOCK_ENABLE_MPI} (MUDOCK_ENABLE_MPI)"
-)
+mudock_print_config("Enable MPI" "${MUDOCK_ENABLE_MPI}" "MUDOCK_ENABLE_MPI")
 
 message(STATUS "//===---------------------------===//")
 message(STATUS "")
