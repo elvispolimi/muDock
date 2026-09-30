@@ -1,19 +1,16 @@
-select rho, epsilon, name, rot, avg (gen) from (select * from results_rho_epsilon where rho = 0.8 and epsilon = 0.0001) group by name ORDER by rot
 
-
-
-create table res_avg_on_best as SELECT
+create table res_avg_max_ls as SELECT
     rho,
     epsilon,
     name,
     rot,
     AVG(gen) AS avg_gen
-FROM results_rho_epsilon_on_best
+FROM results_rho_epsilon_max_ls
 GROUP BY rho, epsilon, name
 ORDER BY rho, epsilon, rot;
 
 
-create table res_medians_on_best as WITH ranked AS (
+create table res_medians_max_ls as WITH ranked AS (
     SELECT
         rho,
         epsilon,
@@ -27,7 +24,7 @@ create table res_medians_on_best as WITH ranked AS (
         COUNT(*) OVER (
             PARTITION BY rho, epsilon, name, rot
         ) AS cnt
-    FROM results_rho_epsilon_on_best
+    FROM results_rho_epsilon_max_ls
 )
 SELECT
     rho,
@@ -47,3 +44,10 @@ select rho, epsilon, sum(avg_gen) as my_sum from r_e_results GROUP by rho, epsil
 
 
 select rho, epsilon, sum(median_gen) as my_sum from res_medians GROUP by rho, epsilon ORDER by my_sum
+
+
+/*select gen median across all runs*/
+SELECT gen
+from results_rho_epsilon_max_ls 
+ORDER by gen 
+LIMIT 1 OFFSET (SELECT count(gen)/2 from (SELECT gen from results_rho_epsilon_max_ls ORDER by gen))

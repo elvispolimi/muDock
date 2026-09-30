@@ -1,34 +1,7 @@
-##############################
-TECNICAMENTE MANCA QUALCHE RUN, CONTROLLARE IL CSV E COMPLETARLE
-##############################
-
-runnato con lsrate 100 e 200 iter
-
-rho   epsilon   sum(median_gen)
-0.8	  0.01	    372.0
-0.9	  0.01	    450.5
-0.95	0.01	    657.0
-0.9	  0.0001	  856.5
-0.8	  0.0001	  896.0
-0.95	0.0001	  958.0
-
-
-rho	  epsilon	 sum(avg_gen)
-0.8	  0.01	   486.490688259109
-0.9	  0.01	   555.226315789474
-0.95	0.01	   815.951857585139
-0.8	  0.0001	 998.781748630626
-0.9	  0.0001	 1013.98333333333
-0.95	0.0001	 1121.09298245614
+#########################
+vince rho 0.8 epsilon 0.01
 
 
 ########################
 MANCANTI:
 4ty7 1 da segfault
-3uri 38
-
-ids=( 3uri)
-crystal_scores=(-4.646878)
-
-./builds/omp/application/muDock -p ./data/coreset_CASF_2016/3o9i/3o9i_protein.pdb -l ./data/coreset_CASF_2016/3o9i/3o9i_ligand.adtmol2 \
---crystal_score -4.736212 --rho 0.95 --epsilon 0.0001 --seed 8 --search lga --population 100 --generations 750 --lsrate 100 --lsit 200 --autostop 1 --tolerance_window 50 --best_score_diff_thld 0.0001
