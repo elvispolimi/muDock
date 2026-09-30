@@ -54,6 +54,8 @@ name,gen,pop,rate,iter,evals,score,cry_score,rmsd_best_scoring_pose,rot,atoms,rh
 
 pkill -u "$USER" -f '/builds/omp/application/muDock'
 pkill -u "$USER" -f '/builds/omp/application/local_search/local_search'
+pkill -u "$USER" -f '/builds/build/application/muDock'
+pkill -u "$USER" -f '/builds/build/application/local_search/local_search'
 
 ############################################
 from casf 2016:
