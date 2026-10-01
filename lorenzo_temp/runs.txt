@@ -17,6 +17,8 @@
 ./builds/omp/application/muDock -p ./data/5uez/5uez_protein.pdb -l ./data/5uez/5uez_ligand.adtmol2 --seed 0 --search lga
 ./builds/omp/application/muDock -p ./data/5wuk/5wuk_protein.pdb -l ./data/5wuk/5wuk_ligand.adtmol2 --seed 0 --search lga
 
+./builds/omp/application/muDock -p ./data/coreset_CASF_2016/2ymd/2ymd_protein.pdb -l ./data/coreset_CASF_2016/2ymd/2ymd_ligand.adtmol2 --seed 0 --search lga
+
 
 ############################
 # LS

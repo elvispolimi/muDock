@@ -5,7 +5,8 @@ MAX_JOBS=12
 
 BUILD=build
 DATA_DIR="./data/coreset_CASF_2016"
-TEST_DIR="./lorenzo_temp/experiments/test"
+EXP_DIR="./lorenzo_temp/experiments"
+TEST_DIR="${EXP_DIR}/test"
 
 ids=(3gy4 3ryj 3ehy 4de1 4lzs 2yki 3oe5 4ty7 3o9i 3uri)
 crystal_scores=(-1.054222 -3.089948 -7.308385 -2.891916 -1.826324 -7.595546 -3.509636 -3.464769 -4.736212 -4.646878)
@@ -47,8 +48,7 @@ for SEED in "${seeds[@]}"; do
                 --best_score_diff_thld 0.0001 \
                 --epsilon "$EPSILON" \
                 --rho "$RHO" \
-                2>&1 | grep "$IGNORE_TOKEN" >> "$OUT_PATH" \
-                &
+                > "$OUT_PATH" 2>&1 &
 
             if [ "$(jobs -rp | wc -l)" -ge "$MAX_JOBS" ]; then
                 wait -n
@@ -73,8 +73,10 @@ while [ "$(jobs -rp | wc -l)" -gt 0 ]; do
         "$((COMPLETED_RUNS * 100 / TOTAL_RUNS))"
 done
 
-sed 's/^Experiment,//' ${TEST_DIR}/* > ./lorenzo_temp/experiments/results_rho_epsilon_max_ls.csv
+grep -h "$IGNORE_TOKEN" "$TEST_DIR"/* |
+    sed 's/^Experiment,//' \
+    > ${EXP_DIR}/results_rho_epsilon_max_ls.csv
 
-python3 lorenzo_temp/experiments/notify.py
+python3 ${EXP_DIR}/notify.py
 
 printf "\nDone.\n"
