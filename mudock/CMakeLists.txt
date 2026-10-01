@@ -416,6 +416,13 @@ if(MUDOCK_ENABLE_HIP)
     libmudock PUBLIC
     $<$<AND:$<COMPILE_LANGUAGE:HIP>,$<HIP_COMPILER_ID:Clang>>:-fgpu-rdc
     --hip-link>)
+  # With relocatable device code, kernel code generation happens during the
+  # final HIP link. COMPILE_LANGUAGE=HIP is not true for the final C++ link
+  # of the executable, so add the resource-usage remark explicitly here.
+  if(CMAKE_HIP_COMPILER_ID STREQUAL "Clang")
+    target_link_options(libmudock PUBLIC
+                        -Rpass-analysis=kernel-resource-usage)
+  endif()
   target_compile_options(
     libmudock
     PUBLIC
