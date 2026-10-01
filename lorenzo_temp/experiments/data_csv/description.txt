@@ -1,0 +1,3 @@
+in casf ci sono quelli che non hanno dato errore con mudock.
+
+nei file small e big ci sono dei subset (distinti) di casf, con uniformità di prot_size e num_rot, inoltre non ho considerato crystals con score > 0
