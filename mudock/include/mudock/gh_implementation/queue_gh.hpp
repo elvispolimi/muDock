@@ -4,6 +4,7 @@
 
 namespace mudock {
   struct queue_gh: public queue_cpp {
-    queue_gh(const int _id, const device_type d_t): queue_cpp(_id, d_t) {};
+    queue_gh(const int _id, const device_type d_t, std::shared_ptr<device_memory_tracker> tracker = {})
+        : queue_cpp(_id, d_t, std::move(tracker)) {};
   };
 } // namespace mudock

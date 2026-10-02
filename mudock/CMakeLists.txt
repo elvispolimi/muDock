@@ -180,7 +180,6 @@ if(MUDOCK_ENABLE_CUDA)
     "${header_path}/${header_prefix}/cuda_implementation/cuda_random.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/cuda_utils.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/mutate.cuh"
-    "${header_path}/${header_prefix}/cuda_implementation/cuda_texture.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/cuda_implementation.hpp"
     )
   list(
@@ -203,7 +202,6 @@ if(MUDOCK_ENABLE_HIP)
     "${header_path}/${header_prefix}/hip_implementation/adt_score_hip.hpp"
     "${header_path}/${header_prefix}/hip_implementation/genetic_hip.hpp"
     "${header_path}/${header_prefix}/hip_implementation/hip_random.hpp"
-    "${header_path}/${header_prefix}/hip_implementation/hip_texture.hpp"
     "${header_path}/${header_prefix}/hip_implementation/hip_utils.hpp"
     "${header_path}/${header_prefix}/hip_implementation/mutate.hpp"
     "${header_path}/${header_prefix}/hip_implementation/hip_implementation.hpp"
@@ -227,7 +225,6 @@ if(MUDOCK_ENABLE_SYCL)
     header_files_sycl
     "${header_path}/${header_prefix}/sycl_implementation/queue_sycl.hpp"
     "${header_path}/${header_prefix}/sycl_implementation/invoke_kernel_sycl.hpp"
-    "${header_path}/${header_prefix}/sycl_implementation/sycl_texture.hpp"
     "${header_path}/${header_prefix}/sycl_implementation/adt_score_sycl.hpp"
     "${header_path}/${header_prefix}/sycl_implementation/queue_sycl_impl.hpp"
     "${header_path}/${header_prefix}/sycl_implementation/sycl_kernel_lock.hpp"
@@ -311,16 +308,18 @@ endif()
 if(MUDOCK_ENABLE_KERNEL_LOCK)
   target_compile_definitions(libmudock PUBLIC MUDOCK_KERNEL_LOCK)
 endif()
-if(NOT MUDOCK_STAGE_BUCKET_OVERRIDE STREQUAL "")
+if(NOT MUDOCK_STAGE_BUCKET_OVERRIDE STREQUAL "NONE")
   target_compile_definitions(libmudock PUBLIC MUDOCK_STAGE_BUCKET_OVERRIDE=${MUDOCK_STAGE_BUCKET_OVERRIDE})
 endif()
-if(NOT MUDOCK_STAGE_BUCKET_MULTIPLE_OVERRIDE STREQUAL "")
+if(NOT MUDOCK_STAGE_BUCKET_MULTIPLE_OVERRIDE STREQUAL "NONE")
   target_compile_definitions(libmudock PUBLIC MUDOCK_STAGE_BUCKET_MULTIPLE_OVERRIDE=${MUDOCK_STAGE_BUCKET_MULTIPLE_OVERRIDE})
 endif()
 if(MUDOCK_STAGE_BUCKET_POLICY STREQUAL "MAX_UTILIZATION")
   target_compile_definitions(libmudock PUBLIC MUDOCK_STAGE_BUCKET_POLICY_MAX_UTILIZATION)
 elseif(MUDOCK_STAGE_BUCKET_POLICY STREQUAL "SM_ALIGNED")
   target_compile_definitions(libmudock PUBLIC MUDOCK_STAGE_BUCKET_POLICY_SM_ALIGNED)
+elseif(MUDOCK_STAGE_BUCKET_POLICY STREQUAL "DEVICE_ALIGNED")
+  target_compile_definitions(libmudock PUBLIC MUDOCK_STAGE_BUCKET_POLICY_DEVICE_ALIGNED)
 endif()
 if(MUDOCK_GENETIC_BUCKET_COMBINE STREQUAL "SCORE_ONLY")
   target_compile_definitions(libmudock PUBLIC MUDOCK_GENETIC_BUCKET_COMBINE_SCORE_ONLY)
@@ -331,11 +330,21 @@ elseif(MUDOCK_GENETIC_BUCKET_COMBINE STREQUAL "LCM")
 elseif(NOT MUDOCK_GENETIC_BUCKET_COMBINE STREQUAL "MIN")
   message(FATAL_ERROR "MUDOCK_GENETIC_BUCKET_COMBINE must be one of: MIN, SCORE_ONLY, GEOM_ONLY, LCM")
 endif()
-if(NOT MUDOCK_UNROLL_FACTOR STREQUAL "")
-  target_compile_definitions(libmudock PUBLIC MUDOCK_UNROLL_FACTOR=${MUDOCK_UNROLL_FACTOR})
-endif()
-if(MUDOCK_DISABLE_UNROLL)
-  target_compile_definitions(libmudock PUBLIC MUDOCK_DISABLE_UNROLL)
+if(MUDOCK_UNROLL_MODE STREQUAL "NONE")
+  target_compile_definitions(libmudock PUBLIC MUDOCK_UNROLL_NONE)
+elseif(MUDOCK_UNROLL_MODE STREQUAL "HINT")
+  target_compile_definitions(libmudock PUBLIC MUDOCK_UNROLL_HINT)
+elseif(MUDOCK_UNROLL_MODE STREQUAL "FIXED")
+  if(MUDOCK_UNROLL_FACTOR STREQUAL "")
+    message(FATAL_ERROR "MUDOCK_UNROLL_FACTOR must be set for FIXED unrolling")
+  endif()
+  target_compile_definitions(libmudock PUBLIC
+                             MUDOCK_UNROLL_FIXED
+                             MUDOCK_UNROLL_FACTOR=${MUDOCK_UNROLL_FACTOR})
+elseif(MUDOCK_UNROLL_MODE STREQUAL "TEMPLATE")
+  target_compile_definitions(libmudock PUBLIC MUDOCK_UNROLL_TEMPLATE)
+else()
+  message(FATAL_ERROR "MUDOCK_UNROLL_MODE must be one of: NONE, HINT, FIXED, TEMPLATE")
 endif()
 if(MUDOCK_ENABLE_STAGE_BUCKET_TRACE)
   target_compile_definitions(libmudock PUBLIC MUDOCK_ENABLE_STAGE_BUCKET_TRACE)
@@ -403,13 +412,27 @@ if(MUDOCK_ENABLE_HIP)
     PUBLIC
       $<$<AND:$<COMPILE_LANGUAGE:HIP>,$<HIP_COMPILER_ID:NVIDIA>>:--expt-relaxed-constexpr
       -rdc=true -Xptxas -v --resource-usage>)
+  # FIXME in a future release
   target_compile_options(
     libmudock
-    PUBLIC $<$<AND:$<COMPILE_LANGUAGE:HIP>,$<HIP_COMPILER_ID:Clang>>:-fgpu-rdc -Rpass-analysis=kernel-resource-usage>)
+    PUBLIC
+      $<$<AND:$<COMPILE_LANGUAGE:HIP>,$<HIP_COMPILER_ID:Clang>>:
+      -fgpu-rdc
+      -Rpass=loop-unroll
+      -Rpass-missed=loop-unroll
+      -Rpass-analysis=loop-unroll
+      -Rpass-analysis=kernel-resource-usage>)
   target_link_options(
     libmudock PUBLIC
     $<$<AND:$<COMPILE_LANGUAGE:HIP>,$<HIP_COMPILER_ID:Clang>>:-fgpu-rdc
-    --hip-link -Rpass-analysis=kernel-resource-usage>)
+    --hip-link>)
+  # With relocatable device code, kernel code generation happens during the
+  # final HIP link. COMPILE_LANGUAGE=HIP is not true for the final C++ link
+  # of the executable, so add the resource-usage remark explicitly here.
+  if(CMAKE_HIP_COMPILER_ID STREQUAL "Clang")
+    target_link_options(libmudock PUBLIC
+                        -Rpass-analysis=kernel-resource-usage)
+  endif()
   target_compile_options(
     libmudock
     PUBLIC
@@ -451,8 +474,10 @@ if(MUDOCK_ENABLE_CUDA)
   set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --expt-relaxed-constexpr")
   set(CMAKE_CUDA_FLAGS_RELEASE
       "${CMAKE_CUDA_FLAGS_RELEASE} -use_fast_math -Xptxas -v")
+  # Keep RelWithDebInfo device code optimized while retaining source-line
+  # information for Nsight Compute and other CUDA profilers.
   set(CMAKE_CUDA_FLAGS_RELWITHDEBINFO
-      "${CMAKE_CUDA_FLAGS_RELWITHDEBINFO} -G -Xptxas -v")
+      "${CMAKE_CUDA_FLAGS_RELWITHDEBINFO} -lineinfo -Xptxas -v")
   set(CMAKE_CUDA_FLAGS_DEBUG "${CMAKE_CUDA_FLAGS_DEBUG} -G -Xptxas -v")
 endif()
 

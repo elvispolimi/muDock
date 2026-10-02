@@ -82,6 +82,7 @@ namespace mudock {
       std::lock_guard lock{mutex};
       const auto cluster_index               = get_flattened_index(new_molecule->num_atoms());
       auto& cluster                          = clusters[cluster_index]; // take a ref (to update it)
+      cluster.num_atoms += new_molecule->num_atoms();
       cluster.molecules[cluster.num_ligands] = std::move(new_molecule);
       ++cluster.num_ligands;
       return cluster.num_ligands < max_sizes[cluster_index] ? std::make_pair(batch<T>{}, false)

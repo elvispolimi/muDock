@@ -4,6 +4,7 @@
 #include <condition_variable>
 #include <cstdint>
 #include <deque>
+#include <functional>
 #include <memory>
 #include <mudock/log.hpp>
 #include <mutex>
@@ -21,6 +22,10 @@ namespace mudock {
 
     // tto signal when to exit
     bool signal_terminate;
+
+    // Optional callback invoked after global_counter is incremented. It is
+    // copied under queue_mutex and called after the mutex is released.
+    std::function<void(std::size_t)> enqueue_callback;
 
     // these variables avoids busy waiting and actually prevent the thread to consume CPU cycles
     mutable std::mutex queue_mutex;
@@ -40,6 +45,11 @@ namespace mudock {
     inline void initialize(const std::size_t max_queue_size) {
       std::unique_lock<std::mutex> lock(queue_mutex);
       max_buffer_size = max_queue_size;
+    }
+
+    inline void set_enqueue_callback(std::function<void(std::size_t)> callback) {
+      std::unique_lock<std::mutex> lock(queue_mutex);
+      enqueue_callback = std::move(callback);
     }
 
     inline std::size_t size(void) const {
@@ -109,21 +119,32 @@ namespace mudock {
     // allowed to dereference the pointer. If the operation fails, i.e. the termination signal is set, the owner
     // of the data is still the caller
     bool enqueue(value_ptr_type &input_data) {
-      // try to enqueue the element (if there is enough space)
-      std::unique_lock<std::mutex> lock(queue_mutex);
-      while (!signal_terminate && (buffer.size() >= max_buffer_size)) { // spourious events might happens!
-        inwork_available.wait(lock); // release lock -> wait for a wake_up -> reaquire lock
+      std::function<void(std::size_t)> callback;
+      std::size_t count = 0;
+      {
+        // Try to enqueue the element (if there is enough space).
+        std::unique_lock<std::mutex> lock(queue_mutex);
+        while (!signal_terminate && (buffer.size() >= max_buffer_size)) { // spourious events might happens!
+          inwork_available.wait(lock); // release lock -> wait for a wake_up -> reaquire lock
+        }
+
+        // If the terminate signal is set, do not enqueue the element.
+        if (signal_terminate) {
+          return false;
+        }
+
+        buffer.emplace_front(std::move(input_data));
+        outwork_available.notify_one();
+        global_counter += 1;
+        count = global_counter;
+        callback = enqueue_callback;
       }
 
-      // if the terminate signal is set, do not enqueue the element
-      if (signal_terminate) {
-        return false;
+      // Do not execute user code while holding queue_mutex. In particular,
+      // measurement callbacks may inspect or close this queue.
+      if (callback) {
+        callback(count);
       }
-
-      // otherwise, store the data in the back of the container
-      buffer.emplace_front(std::move(input_data));
-      outwork_available.notify_one();
-      global_counter += 1;
       return true;
     }
   };

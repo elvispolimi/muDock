@@ -75,7 +75,8 @@ Most useful configuration options:
 - `MUDOCK_SYCL_WG_SIZE` — SYCL work-group size override
 - `MUDOCK_ATOM_CLUSTER_LEVEL` — ligand atom-cluster granularity: `OFF`, `MEDIUM`, `LARGE`, `EXTREME`
 - `MUDOCK_STAGE_BUCKET_POLICY` — stage bucket sizing policy: `DEVICE_ALIGNED`, `SM_ALIGNED`, `MAX_UTILIZATION`
-- `MUDOCK_STAGE_BUCKET_OVERRIDE`, `MUDOCK_STAGE_BUCKET_MULTIPLE_OVERRIDE` — explicit stage bucket overrides
+- `MUDOCK_STAGE_BUCKET_OVERRIDE` — explicit stage bucket size, capped by the worker memory budget
+- `MUDOCK_STAGE_BUCKET_MULTIPLE_OVERRIDE` — explicit stage bucket multiplier, also capped by the worker memory budget
 - `MUDOCK_DISABLE_UNROLL`, `MUDOCK_UNROLL_FACTOR` — control kernel loop unrolling
 - `MUDOCK_ENABLE_STAGE_BUCKET_TRACE` — print stage bucket decisions at runtime
 - `MUDOCK_ENABLE_LIKWID` — LIKWID profiling

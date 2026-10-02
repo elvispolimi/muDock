@@ -10,7 +10,10 @@
 
 namespace mudock {
   struct queue_cpp: queue {
-    queue_cpp(const int _id, [[maybe_unused]] const device_type _dev_type): queue(_id, _dev_type) {
+    queue_cpp(const int _id,
+              [[maybe_unused]] const device_type _dev_type,
+              std::shared_ptr<device_memory_tracker> tracker = {})
+        : queue(_id, _dev_type, std::move(tracker)) {
       assert(dev_type == device_type::CPU && "CPP version supports only CPUs devices");
     };
 
@@ -34,7 +37,7 @@ namespace mudock {
     }
 
     void alloc(void**, const size_t) {}
-    void free(void**) {}
+    void free(void**, const size_t) {}
     void set_to_value(void*, const size_t, const char) {}
     void copy_host2device(const void*, void*, const size_t) {}
     void copy_device2host(const void*, void*, const size_t) {}
@@ -51,5 +54,8 @@ namespace mudock {
     }
 
     void synchronize() {};
+
+    std::size_t allocated_bytes() const override { return 0; }
+    std::size_t peak_allocated_bytes() const override { return 0; }
   };
 } // namespace mudock

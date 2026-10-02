@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cstdlib>
 #include <memory>
 #include <mudock/compute/devices_memory.hpp>
@@ -47,6 +48,8 @@ namespace mudock {
   struct queue_cuda::impl {
     cudaStream_t stream;
     int device_id;
+    std::size_t allocated_bytes{0};
+    std::size_t peak_allocated_bytes{0};
     impl(const int id) {
       device_id = id;
       MUDOCK_CHECK(cudaSetDevice(static_cast<int>(id)));
@@ -55,8 +58,10 @@ namespace mudock {
     ~impl() noexcept(false) { MUDOCK_CHECK(cudaStreamDestroy(stream)); };
   };
 
-  queue_cuda::queue_cuda(const int _id, const device_type _dev_type)
-      : queue(_id, _dev_type), impl_(std::make_unique<impl>(_id)) {
+  queue_cuda::queue_cuda(const int _id,
+                         const device_type _dev_type,
+                         std::shared_ptr<device_memory_tracker> tracker)
+      : queue(_id, _dev_type, std::move(tracker)), impl_(std::make_unique<impl>(_id)) {
     assert(dev_type == device_type::GPU && "CUDA supports only GPUs devices");
   };
   queue_cuda::~queue_cuda() = default; // unique_ptr will destroy Impl
@@ -102,13 +107,17 @@ namespace mudock {
   };
 
   void queue_cuda::alloc(void** ptr, const size_t bytes) {
-    // TOOD check if required
-    queue_cuda::free(ptr);
     MUDOCK_CHECK(cudaMallocAsync(ptr, bytes, impl_->stream));
+    impl_->allocated_bytes += bytes;
+    impl_->peak_allocated_bytes = std::max(impl_->peak_allocated_bytes, impl_->allocated_bytes);
+    memory_tracker->allocate(bytes);
   };
-  void queue_cuda::free(void** ptr) {
+  void queue_cuda::free(void** ptr, const size_t bytes) {
     if (*ptr != nullptr) {
       MUDOCK_CHECK(cudaFreeAsync(*ptr, impl_->stream));
+      assert(impl_->allocated_bytes >= bytes);
+      impl_->allocated_bytes -= bytes;
+      memory_tracker->release(bytes);
       *ptr = nullptr;
     }
   };
@@ -130,5 +139,8 @@ namespace mudock {
   };
 
   void queue_cuda::synchronize() { MUDOCK_CHECK(cudaStreamSynchronize(impl_->stream)); };
+
+  std::size_t queue_cuda::allocated_bytes() const { return impl_->allocated_bytes; }
+  std::size_t queue_cuda::peak_allocated_bytes() const { return impl_->peak_allocated_bytes; }
 
 } // namespace mudock
