@@ -8,11 +8,11 @@ DATA_DIR="./data/coreset_CASF_2016"
 EXP_DIR="./lorenzo_temp/experiments"
 TEST_DIR="${EXP_DIR}/test"
 
-ids=(3gy4 3ryj 3ehy 4de1 4lzs 2yki 3oe5 4ty7 3o9i 3uri)
-crystal_scores=(-1.054222 -3.089948 -7.308385 -2.891916 -1.826324 -7.595546 -3.509636 -3.464769 -4.736212 -4.646878)
+ids=(1mq6 1z95 2cet 3ary 3coz 3dx2 3fur 3gv9 3k5v 3lka 3nw9 3p5o 3qgy 3qqs 4bkt 4dld 4j21 4kz6 4ty7 5tmn)
+crystal_scores=(-8.766284 -4.041984 -0.100647 -0.404427 -1.644277 -2.943025 -1.518824 -0.644809 -0.654886 -4.840909 -7.317592 -2.251232 -1.48791 -5.76047 -3.921186 -5.967893 -8.883362 -0.303014 -3.464769 -10.883055)
 
 rhos=("0.80" "0.90" "0.95" )
-epsilons=("0.01" "0.0001" )
+epsilons=("0.01" "0.000001" )
 NUM_SEEDS=20
 seeds=($(seq 0 $((NUM_SEEDS - 1))))
 
