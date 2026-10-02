@@ -237,7 +237,9 @@ set_property(CACHE MUDOCK_GENETIC_BUCKET_COMBINE PROPERTY STRINGS MIN SCORE_ONLY
 option(MUDOCK_ENABLE_STAGE_BUCKET_TRACE
        "Enable detailed runtime logging for stage bucket selection"
        OFF)
-option(MUDOCK_DISABLE_UNROLL "Disable kernel loop unrolling" OFF)
+set(MUDOCK_UNROLL_MODE "${MUDOCK_DEFAULT_UNROLL_MODE}" CACHE STRING
+    "Kernel unrolling mode: NONE|HINT|FIXED|TEMPLATE")
+set_property(CACHE MUDOCK_UNROLL_MODE PROPERTY STRINGS NONE HINT FIXED TEMPLATE)
 set(MUDOCK_UNROLL_FACTOR "${MUDOCK_DEFAULT_UNROLL_FACTOR}" CACHE STRING "Kernel loop unroll factor when unrolling is enabled")
 
 if(MUDOCK_ENABLE_SYCL)
@@ -581,10 +583,9 @@ mudock_print_config("IPO Optimizations" "${MUDOCK_ENABLE_IPO}"
                     "MUDOCK_ENABLE_IPO")
 mudock_print_config("Likwid Profiling" "${MUDOCK_ENABLE_LIKWID}"
                     "MUDOCK_ENABLE_LIKWID")
-if(MUDOCK_DISABLE_UNROLL)
-  mudock_print_config("Disable kernel unrolling" "${MUDOCK_DISABLE_UNROLL}"
-                      "MUDOCK_DISABLE_UNROLL")
-elseif(NOT MUDOCK_UNROLL_FACTOR STREQUAL "${MUDOCK_DEFAULT_UNROLL_FACTOR}")
+mudock_print_config("Kernel unroll mode" "${MUDOCK_UNROLL_MODE}"
+                    "MUDOCK_UNROLL_MODE")
+if(MUDOCK_UNROLL_MODE STREQUAL "FIXED")
   mudock_print_config("Kernel unroll factor" "${MUDOCK_UNROLL_FACTOR}"
                       "MUDOCK_UNROLL_FACTOR")
 endif()
