@@ -1,7 +1,0 @@
-#########################
-vince rho 0.8 epsilon 0.01
-
-
-########################
-MANCANTI:
-4ty7 1 da segfault

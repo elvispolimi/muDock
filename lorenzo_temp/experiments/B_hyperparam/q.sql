@@ -1,37 +1,37 @@
 
-create table res_avg_max_ls as SELECT
+create table res_avg as SELECT
     rho,
     epsilon,
     name,
     rot,
     AVG(gen) AS avg_gen
-FROM results_rho_epsilon_max_ls
+FROM results_rho_epsilon
 GROUP BY rho, epsilon, name
 ORDER BY rho, epsilon, rot;
 
 
-create table res_medians_max_ls as WITH ranked AS (
+create table res_medians_score as WITH ranked AS (
     SELECT
         rho,
         epsilon,
         name,
         rot,
-        gen,
+        score,
         ROW_NUMBER() OVER (
             PARTITION BY rho, epsilon, name, rot
-            ORDER BY gen
+            ORDER BY score
         ) AS rn,
         COUNT(*) OVER (
             PARTITION BY rho, epsilon, name, rot
         ) AS cnt
-    FROM results_rho_epsilon_max_ls
+    FROM res
 )
 SELECT
     rho,
     epsilon,
     name,
     rot,
-    AVG(gen) AS median_gen
+    AVG(score) AS median_score
 FROM ranked
 WHERE rn IN ((cnt + 1) / 2, (cnt + 2) / 2)
 GROUP BY rho, epsilon, name, rot
