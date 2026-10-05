@@ -19,6 +19,9 @@ namespace mudock {
 #ifdef MUDOCK_USE_SYCL
     static constexpr auto sycl_token = "SYCL";
 #endif
+#ifdef MUDOCK_USE_ALPAKA
+    static constexpr auto alpaka_token = "ALPAKA";
+#endif
   };
 
   enum class implementation_type {
@@ -42,6 +45,10 @@ namespace mudock {
 #ifdef MUDOCK_USE_SYCL
     ,
     SYCL
+#endif
+#ifdef MUDOCK_USE_ALPAKA
+    ,
+    ALPAKA
 #endif
   };
 
@@ -67,6 +74,10 @@ namespace mudock {
 #ifdef MUDOCK_USE_SYCL
     if (impl == implementation_type_desc::sycl_token)
       return implementation_type::SYCL;
+#endif
+#ifdef MUDOCK_USE_ALPAKA
+    if (impl == implementation_type_desc::alpaka_token)
+      return implementation_type::ALPAKA;
 #endif
     throw std::runtime_error("Requested implementation not available");
   };

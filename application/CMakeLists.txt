@@ -15,8 +15,7 @@ list(APPEND source_files "${header_path}/command_line_args.cpp"
 # ### Declare the compile step
 # ##############################################################################
 
-function(mudock_configure_application_target target include_dir)
-  target_include_directories("${target}" PRIVATE "${include_dir}")
+function(mudock_set_application_target_properties target)
   set_target_properties(
     "${target}"
     PROPERTIES CXX_STANDARD 20
@@ -42,12 +41,34 @@ endfunction()
 
 function(mudock_link_application_target target)
   target_link_libraries("${target}" PRIVATE libmudock Boost::program_options)
+
+  if(CMAKE_CUDA_COMPILER)
+    set_target_properties(
+      "${target}"
+      PROPERTIES CUDA_STANDARD 20
+                 CUDA_STANDARD_REQUIRED ON
+                 CUDA_EXTENSIONS OFF)
+  endif()
+endfunction()
+
+function(add_alpaka_application_executable target)
+  if(TARGET alpaka::alpaka
+     AND (MUDOCK_ALPAKA_BACKEND STREQUAL "cuda"
+          OR MUDOCK_ALPAKA_BACKEND STREQUAL "hip"))
+    alpaka_add_executable("${target}" ${ARGN})
+  else()
+    add_executable_mudock("${target}" ${ARGN})
+  endif()
+  target_include_directories("${target}" PRIVATE "${header_path}")
+  mudock_set_application_target_properties("${target}")
+  if(NOT MUDOCK_ENABLE_OMP)
+    target_compile_options("${target}" PRIVATE "$<$<COMPILE_LANGUAGE:CXX>:-Wno-unknown-pragmas>")
+  endif()
 endfunction()
 
 # declare the application executable
-add_executable_mudock("${CMAKE_PROJECT_NAME}" "${header_files}"
-                      "${source_files}")
-mudock_configure_application_target("${CMAKE_PROJECT_NAME}" "${header_path}")
+add_alpaka_application_executable("${CMAKE_PROJECT_NAME}" "${header_files}"
+                                  "${source_files}")
 mudock_link_application_target("${CMAKE_PROJECT_NAME}")
 if(MUDOCK_ENABLE_MPI)
   target_link_libraries("${CMAKE_PROJECT_NAME}" PRIVATE MPI::MPI_CXX)
@@ -70,8 +91,7 @@ endif()
 # ##############################################################################
 # ### Declare the install step
 # ##############################################################################
-add_executable_mudock(converter "${CMAKE_CURRENT_SOURCE_DIR}/src/converter.cpp")
-mudock_configure_application_target(converter "${header_path}")
+add_alpaka_application_executable(converter "${CMAKE_CURRENT_SOURCE_DIR}/src/converter.cpp")
 mudock_link_application_target(converter)
 
 # ##############################################################################

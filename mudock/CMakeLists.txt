@@ -84,6 +84,7 @@ list(
   "${header_path}/${header_prefix}/tbb_implementation/runtime_services.hpp"
   "${header_path}/${header_prefix}/tbb_implementation/tbb_pipeline.hpp"
   "${header_path}/${header_prefix}/batch.hpp"
+  "${header_path}/${header_prefix}/alpaka_implementation.hpp"
   "${header_path}/${header_prefix}/chem.hpp"
   "${header_path}/${header_prefix}/compute.hpp"
   "${header_path}/${header_prefix}/format.hpp"
@@ -98,6 +99,7 @@ list(
 
 # sources
 set(source_path "${CMAKE_CURRENT_SOURCE_DIR}/src")
+set(tbb_pipeline_source "${source_path}/tbb_implementation/tbb_pipeline.cpp")
 list(
   APPEND
   source_files
@@ -138,14 +140,14 @@ set(mudock_precompute_opt_sources
     "${source_path}/chem/autodock_protein.cpp")
 
 if(OVERRIDE_PRECOMPUTE_OPT)
-  foreach(precompute_source IN LISTS mudock_precompute_opt_sources)
-    set_source_files_properties("${precompute_source}"
+    foreach(precompute_source IN LISTS mudock_precompute_opt_sources)
+        set_source_files_properties("${precompute_source}"
                                 PROPERTIES COMPILE_OPTIONS "-O2")
-  endforeach()
+    endforeach()
 endif()
 
 if(MUDOCK_ENABLE_MPI)
-  list(
+    list(
     APPEND
     header_files
     "${header_path}/${header_prefix}/mpi_implementation/byte_range.hpp"
@@ -156,14 +158,14 @@ if(MUDOCK_ENABLE_MPI)
 endif()
 
 if(MUDOCK_ENABLE_GH)
-  list(APPEND source_files
+    list(APPEND source_files
        "${source_path}/gh_implementation/geom_transform_gh.cpp"
        "${source_path}/gh_implementation/mutate_gh.cpp"
        "${source_path}/gh_implementation/adt_score_gh.cpp")
 endif()
 
 if(MUDOCK_ENABLE_XSIMD)
-  list(APPEND source_files
+    list(APPEND source_files
        "${source_path}/xsimd_implementation/geom_transform_xsimd.cpp"
        "${source_path}/xsimd_implementation/mutate_xsimd.cpp"
        "${source_path}/xsimd_implementation/adt_score_xsimd.cpp")
@@ -171,7 +173,7 @@ endif()
 
 # declare the CUDA sources
 if(MUDOCK_ENABLE_CUDA)
-  list(
+    list(
     APPEND
     header_files
     "${header_path}/${header_prefix}/cuda_implementation/queue_cuda.cuh"
@@ -183,7 +185,7 @@ if(MUDOCK_ENABLE_CUDA)
     "${header_path}/${header_prefix}/cuda_implementation/cuda_texture.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/cuda_implementation.hpp"
     )
-  list(
+    list(
     APPEND
     source_files
     "${source_path}/cuda_implementation/queue_cuda.cu"
@@ -196,7 +198,7 @@ endif()
 
 # declare the HIP sources
 if(MUDOCK_ENABLE_HIP)
-  list(
+    list(
     APPEND
     header_files
     "${header_path}/${header_prefix}/hip_implementation/queue_hip.hpp"
@@ -208,7 +210,7 @@ if(MUDOCK_ENABLE_HIP)
     "${header_path}/${header_prefix}/hip_implementation/mutate.hpp"
     "${header_path}/${header_prefix}/hip_implementation/hip_implementation.hpp"
     )
-  set(
+    set(
     hip_source_files
     "${source_path}/hip_implementation/queue_hip.cpp"
     "${source_path}/hip_implementation/adt_score_hip.cpp"
@@ -216,13 +218,13 @@ if(MUDOCK_ENABLE_HIP)
     "${source_path}/hip_implementation/hip_random.cpp"
     "${source_path}/hip_implementation/geom_transform_hip.cpp"
   )
-  list(APPEND source_files ${hip_source_files})
-  set_source_files_properties(${hip_source_files} PROPERTIES LANGUAGE HIP)
+    list(APPEND source_files ${hip_source_files})
+    set_source_files_properties(${hip_source_files} PROPERTIES LANGUAGE HIP)
 endif()
 
 # declare the SYCL sources
 if(MUDOCK_ENABLE_SYCL)
-  list(
+    list(
     APPEND
     header_files_sycl
     "${header_path}/${header_prefix}/sycl_implementation/queue_sycl.hpp"
@@ -237,8 +239,8 @@ if(MUDOCK_ENABLE_SYCL)
     "${header_path}/${header_prefix}/sycl_implementation/geom_transform_sycl.hpp"
     "${header_path}/${header_prefix}/sycl_implementation/genetic_sycl.hpp"
    )
-  list(APPEND header_files "${header_files_sycl}")
-  set(sycl_source_files
+    list(APPEND header_files "${header_files_sycl}")
+    set(sycl_source_files
       "${source_path}/sycl_implementation/queue_sycl.cpp"
       "${source_path}/sycl_implementation/adt_score_sycl.cpp"
       "${source_path}/sycl_implementation/geom_transform_sycl.cpp"
@@ -248,9 +250,44 @@ if(MUDOCK_ENABLE_SYCL)
   )
 endif()
 
+if(MUDOCK_ENABLE_ALPAKA)
+    set(alpaka_adt_score_source
+      "${source_path}/alpaka_implementation/adt_score_alpaka.cpp")
+    set(alpaka_genetic_source
+      "${source_path}/alpaka_implementation/genetic_alpaka.cpp")
+    set(alpaka_geom_transform_source
+      "${source_path}/alpaka_implementation/geom_transform_alpaka.cpp")
+    set(alpaka_queue_source
+      "${source_path}/alpaka_implementation/queue_alpaka.cpp")
+    set(alpaka_random_source
+      "${source_path}/alpaka_implementation/alpaka_random.cpp")
+    list(
+    APPEND
+    header_files
+    "${header_path}/${header_prefix}/alpaka_implementation/adt_score_alpaka.hpp"
+    "${header_path}/${header_prefix}/alpaka_implementation/alpaka_implementation.hpp"
+    "${header_path}/${header_prefix}/alpaka_implementation/alpaka_random.hpp"
+    "${header_path}/${header_prefix}/alpaka_implementation/alpaka_types.hpp"
+    "${header_path}/${header_prefix}/alpaka_implementation/genetic_alpaka.hpp"
+    "${header_path}/${header_prefix}/alpaka_implementation/geom_transform_alpaka.hpp"
+    "${header_path}/${header_prefix}/alpaka_implementation/invoke_kernel_alpaka.hpp"
+    "${header_path}/${header_prefix}/alpaka_implementation/mutate_alpaka.hpp"
+    "${header_path}/${header_prefix}/alpaka_implementation/queue_alpaka.hpp"
+    )
+    list(
+    APPEND
+    source_files
+    "${alpaka_adt_score_source}"
+    "${alpaka_genetic_source}"
+    "${alpaka_geom_transform_source}"
+    "${alpaka_queue_source}"
+    "${alpaka_random_source}"
+  )
+endif()
+
 # declare the OpenMP sources
 if(MUDOCK_ENABLE_OMP_OFFLOAD)
-  list(
+    list(
     APPEND
     header_files
     "${header_path}/${header_prefix}/omp_implementation/omp_manager.hpp"
@@ -264,7 +301,7 @@ if(MUDOCK_ENABLE_OMP_OFFLOAD)
     "${header_path}/${header_prefix}/omp_implementation/omp_batch_sizer.hpp"
     "${header_path}/${header_prefix}/omp_implementation/virtual_screen.hpp"
     "${header_path}/${header_prefix}/omp_implementation/evaluate_fitness.hpp")
-  list(
+    list(
     APPEND
     source_files
     "${source_path}/omp_implementation/omp_manager.cpp"
@@ -283,6 +320,22 @@ endif()
 find_package(TBB REQUIRED)
 add_library(libmudock STATIC ${source_files} ${header_files})
 add_library(mudock::libmudock ALIAS libmudock)
+if(MUDOCK_ENABLE_ALPAKA)
+    if(MUDOCK_ALPAKA_BACKEND STREQUAL "cuda" AND CMAKE_CUDA_COMPILER)
+        set_source_files_properties("${alpaka_adt_score_source}" PROPERTIES LANGUAGE CUDA)
+        set_source_files_properties("${alpaka_genetic_source}" PROPERTIES LANGUAGE CUDA)
+        set_source_files_properties("${alpaka_geom_transform_source}" PROPERTIES LANGUAGE CUDA)
+        set_source_files_properties("${alpaka_queue_source}" PROPERTIES LANGUAGE CUDA)
+        set_source_files_properties("${tbb_pipeline_source}" PROPERTIES LANGUAGE CUDA)
+        set_source_files_properties("${alpaka_random_source}" PROPERTIES LANGUAGE CUDA)
+    elseif(MUDOCK_ALPAKA_BACKEND STREQUAL "hip" AND CMAKE_HIP_COMPILER)
+        set_source_files_properties("${alpaka_adt_score_source}" PROPERTIES LANGUAGE HIP)
+        set_source_files_properties("${alpaka_genetic_source}" PROPERTIES LANGUAGE HIP)
+        set_source_files_properties("${alpaka_geom_transform_source}" PROPERTIES LANGUAGE HIP)
+        set_source_files_properties("${alpaka_queue_source}" PROPERTIES LANGUAGE HIP)
+        set_source_files_properties("${tbb_pipeline_source}" PROPERTIES LANGUAGE HIP)
+    endif()
+endif()
 set_target_properties(libmudock PROPERTIES PUBLIC_HEADER "${headers}")
 target_include_directories(libmudock PUBLIC "${header_path}")
 target_include_directories(libmudock SYSTEM PUBLIC ${OpenBabel3_INCLUDE_DIRS})
@@ -293,9 +346,24 @@ set_target_properties(
              CXX_STANDARD_REQUIRED ON
              CXX_EXTENSIONS OFF
              POSITION_INDEPENDENT_CODE ON)
-target_link_libraries(libmudock PUBLIC Boost::graph ${OpenBabel3_LIBRARIES} TBB::tbb)
+if(CMAKE_CUDA_COMPILER)
+    set_target_properties(
+    libmudock
+    PROPERTIES CUDA_STANDARD 20
+               CUDA_STANDARD_REQUIRED ON
+               CUDA_EXTENSIONS OFF)
+endif()
+if(CMAKE_HIP_COMPILER)
+    set_target_properties(
+    libmudock
+    PROPERTIES HIP_STANDARD 20
+               HIP_STANDARD_REQUIRED ON)
+endif()
+target_link_libraries(libmudock PUBLIC Boost::graph
+                                       ${OpenBabel3_LIBRARIES} TBB::tbb)
+target_include_directories(libmudock SYSTEM PRIVATE ${Boost_INCLUDE_DIR})
 if(NOT MUDOCK_ENABLE_OMP)
-  target_compile_options(libmudock PRIVATE -Wno-unknown-pragmas)
+    target_compile_options(libmudock PRIVATE -Wno-unknown-pragmas)
 endif()
 
 target_compile_options(
@@ -305,214 +373,242 @@ target_compile_options(
 # Ensure cache-driven compile definitions are applied to the target so custom
 # SYCL compile commands can see them via COMPILE_DEFINITIONS.
 if(MUDOCK_ENABLE_MPI)
-  target_compile_definitions(libmudock PUBLIC MUDOCK_USE_MPI)
-  target_link_libraries(libmudock PRIVATE MPI::MPI_CXX)
+    target_compile_definitions(libmudock PUBLIC MUDOCK_USE_MPI)
+    target_link_libraries(libmudock PRIVATE MPI::MPI_CXX)
 endif()
 if(MUDOCK_ENABLE_KERNEL_LOCK)
-  target_compile_definitions(libmudock PUBLIC MUDOCK_KERNEL_LOCK)
+    target_compile_definitions(libmudock PUBLIC MUDOCK_KERNEL_LOCK)
 endif()
 if(NOT MUDOCK_STAGE_BUCKET_OVERRIDE STREQUAL "")
-  target_compile_definitions(libmudock PUBLIC MUDOCK_STAGE_BUCKET_OVERRIDE=${MUDOCK_STAGE_BUCKET_OVERRIDE})
+    target_compile_definitions(libmudock PUBLIC MUDOCK_STAGE_BUCKET_OVERRIDE=${MUDOCK_STAGE_BUCKET_OVERRIDE})
 endif()
 if(NOT MUDOCK_STAGE_BUCKET_MULTIPLE_OVERRIDE STREQUAL "")
-  target_compile_definitions(libmudock PUBLIC MUDOCK_STAGE_BUCKET_MULTIPLE_OVERRIDE=${MUDOCK_STAGE_BUCKET_MULTIPLE_OVERRIDE})
+    target_compile_definitions(libmudock PUBLIC MUDOCK_STAGE_BUCKET_MULTIPLE_OVERRIDE=${MUDOCK_STAGE_BUCKET_MULTIPLE_OVERRIDE})
 endif()
 if(MUDOCK_STAGE_BUCKET_POLICY STREQUAL "MAX_UTILIZATION")
-  target_compile_definitions(libmudock PUBLIC MUDOCK_STAGE_BUCKET_POLICY_MAX_UTILIZATION)
+    target_compile_definitions(libmudock PUBLIC MUDOCK_STAGE_BUCKET_POLICY_MAX_UTILIZATION)
 elseif(MUDOCK_STAGE_BUCKET_POLICY STREQUAL "SM_ALIGNED")
-  target_compile_definitions(libmudock PUBLIC MUDOCK_STAGE_BUCKET_POLICY_SM_ALIGNED)
+    target_compile_definitions(libmudock PUBLIC MUDOCK_STAGE_BUCKET_POLICY_SM_ALIGNED)
 endif()
 if(MUDOCK_GENETIC_BUCKET_COMBINE STREQUAL "SCORE_ONLY")
-  target_compile_definitions(libmudock PUBLIC MUDOCK_GENETIC_BUCKET_COMBINE_SCORE_ONLY)
+    target_compile_definitions(libmudock PUBLIC MUDOCK_GENETIC_BUCKET_COMBINE_SCORE_ONLY)
 elseif(MUDOCK_GENETIC_BUCKET_COMBINE STREQUAL "GEOM_ONLY")
-  target_compile_definitions(libmudock PUBLIC MUDOCK_GENETIC_BUCKET_COMBINE_GEOM_ONLY)
+    target_compile_definitions(libmudock PUBLIC MUDOCK_GENETIC_BUCKET_COMBINE_GEOM_ONLY)
 elseif(MUDOCK_GENETIC_BUCKET_COMBINE STREQUAL "LCM")
-  target_compile_definitions(libmudock PUBLIC MUDOCK_GENETIC_BUCKET_COMBINE_LCM)
+    target_compile_definitions(libmudock PUBLIC MUDOCK_GENETIC_BUCKET_COMBINE_LCM)
 elseif(NOT MUDOCK_GENETIC_BUCKET_COMBINE STREQUAL "MIN")
-  message(FATAL_ERROR "MUDOCK_GENETIC_BUCKET_COMBINE must be one of: MIN, SCORE_ONLY, GEOM_ONLY, LCM")
+    message(FATAL_ERROR "MUDOCK_GENETIC_BUCKET_COMBINE must be one of: MIN, SCORE_ONLY, GEOM_ONLY, LCM")
+endif()
+if(MUDOCK_STAGE_BUCKET_POLICY STREQUAL "MAX_UTILIZATION")
+    target_compile_definitions(libmudock PUBLIC MUDOCK_STAGE_BUCKET_POLICY_MAX_UTILIZATION)
+elseif(MUDOCK_STAGE_BUCKET_POLICY STREQUAL "SM_ALIGNED")
+    target_compile_definitions(libmudock PUBLIC MUDOCK_STAGE_BUCKET_POLICY_SM_ALIGNED)
 endif()
 if(NOT MUDOCK_UNROLL_FACTOR STREQUAL "")
-  target_compile_definitions(libmudock PUBLIC MUDOCK_UNROLL_FACTOR=${MUDOCK_UNROLL_FACTOR})
+    target_compile_definitions(libmudock PUBLIC MUDOCK_UNROLL_FACTOR=${MUDOCK_UNROLL_FACTOR})
 endif()
 if(MUDOCK_DISABLE_UNROLL)
-  target_compile_definitions(libmudock PUBLIC MUDOCK_DISABLE_UNROLL)
+    target_compile_definitions(libmudock PUBLIC MUDOCK_DISABLE_UNROLL)
 endif()
 if(MUDOCK_ENABLE_STAGE_BUCKET_TRACE)
-  target_compile_definitions(libmudock PUBLIC MUDOCK_ENABLE_STAGE_BUCKET_TRACE)
+    target_compile_definitions(libmudock PUBLIC MUDOCK_ENABLE_STAGE_BUCKET_TRACE)
 endif()
 
 if(MUDOCK_ATOM_CLUSTER_LEVEL STREQUAL "EXTREME")
-  target_compile_definitions(libmudock PUBLIC MUDOCK_ATOM_CLUSTER_LEVEL_EXTREME)
+    target_compile_definitions(libmudock PUBLIC MUDOCK_ATOM_CLUSTER_LEVEL_EXTREME)
 elseif(MUDOCK_ATOM_CLUSTER_LEVEL STREQUAL "LARGE")
-  target_compile_definitions(libmudock PUBLIC MUDOCK_ATOM_CLUSTER_LEVEL_LARGE)
+    target_compile_definitions(libmudock PUBLIC MUDOCK_ATOM_CLUSTER_LEVEL_LARGE)
 elseif(MUDOCK_ATOM_CLUSTER_LEVEL STREQUAL "MEDIUM")
-  target_compile_definitions(libmudock PUBLIC MUDOCK_ATOM_CLUSTER_LEVEL_MEDIUM)
+    target_compile_definitions(libmudock PUBLIC MUDOCK_ATOM_CLUSTER_LEVEL_MEDIUM)
 endif()
 
 # Profiling
 if(MUDOCK_ENABLE_LIKWID)
-  target_link_libraries(libmudock PUBLIC likwid::likwid)
-  target_include_directories(libmudock PUBLIC ${LIKWID_INCLUDE_DIR})
-  if(MUDOCK_ENABLE_CUDA)
-    target_compile_definitions(libmudock PUBLIC LIKWID_NVMON)
-    if(MUDOCK_LIKWID_CUDA)
-      target_compile_definitions(libmudock PUBLIC MUDOCK_LIKWID_CUDA)
+    target_link_libraries(libmudock PUBLIC likwid::likwid)
+    target_include_directories(libmudock PUBLIC ${LIKWID_INCLUDE_DIR})
+    if(MUDOCK_ENABLE_CUDA)
+        target_compile_definitions(libmudock PUBLIC LIKWID_NVMON)
+        if(MUDOCK_LIKWID_CUDA)
+            target_compile_definitions(libmudock PUBLIC MUDOCK_LIKWID_CUDA)
+        endif()
     endif()
-  endif()
-  if(MUDOCK_LIKWID_CPP)
-    target_compile_definitions(libmudock PUBLIC MUDOCK_LIKWID_CPP)
-    target_compile_definitions(libmudock PUBLIC LIKWID_PERFMON)
-  endif()
+    if(MUDOCK_LIKWID_CPP)
+        target_compile_definitions(libmudock PUBLIC MUDOCK_LIKWID_CPP)
+        target_compile_definitions(libmudock PUBLIC LIKWID_PERFMON)
+    endif()
 endif()
 
 # Test
 if(MUDOCK_ENABLE_TEST)
-  target_compile_definitions(libmudock PUBLIC MUDOCK_TEST)
+    target_compile_definitions(libmudock PUBLIC MUDOCK_TEST)
 endif()
 
 if(MUDOCK_ENABLE_GH)
-  target_compile_definitions(libmudock PUBLIC MUDOCK_USE_GH)
-  target_link_libraries(libmudock PRIVATE hwy::hwy)
+    target_compile_definitions(libmudock PUBLIC MUDOCK_USE_GH)
+    target_link_libraries(libmudock PRIVATE hwy::hwy)
 endif()
 
 if(MUDOCK_ENABLE_XSIMD)
-  target_compile_definitions(libmudock PUBLIC MUDOCK_USE_XSIMD)
-  target_include_directories(libmudock PUBLIC "${XSIMD_INCLUDE_DIR}")
+    target_compile_definitions(libmudock PUBLIC MUDOCK_USE_XSIMD)
+    target_include_directories(libmudock PUBLIC "${XSIMD_INCLUDE_DIR}")
 endif()
 
 if(MUDOCK_ENABLE_FAST)
-  if(CMAKE_C_COMPILER_ID STREQUAL "GNU" OR CMAKE_C_COMPILER_ID STREQUAL "Clang")
-    target_compile_options(
+    if(CMAKE_C_COMPILER_ID STREQUAL "GNU" OR CMAKE_C_COMPILER_ID STREQUAL "Clang")
+        target_compile_options(
       libmudock PUBLIC $<$<COMPILE_LANGUAGE:CXX>:-fopenmp-simd -ffast-math>)
-  else()
-    message(
+    else()
+        message(
       STATUS
         "MuDock does not optimize SIMD auto-vectorization with ${CMAKE_C_COMPILER_ID}"
     )
-  endif()
+    endif()
 
 endif()
 
 if(MUDOCK_ENABLE_HIP)
-  target_compile_definitions(libmudock PUBLIC MUDOCK_USE_HIP)
-  target_include_directories(
+    target_compile_definitions(libmudock PUBLIC MUDOCK_USE_HIP)
+    target_include_directories(
     libmudock SYSTEM PRIVATE $<$<COMPILE_LANGUAGE:HIP>:${hip_INCLUDE_DIRS}>)
-  target_link_libraries(libmudock PUBLIC hip::hiprand hip::host)
-  target_compile_options(
+    target_link_libraries(libmudock PUBLIC hip::hiprand hip::host)
+    target_compile_options(
     libmudock
     PUBLIC
       $<$<AND:$<COMPILE_LANGUAGE:HIP>,$<HIP_COMPILER_ID:NVIDIA>>:--expt-relaxed-constexpr
       -rdc=true -Xptxas -v --resource-usage>)
-  target_compile_options(
+    target_compile_options(
     libmudock
     PUBLIC $<$<AND:$<COMPILE_LANGUAGE:HIP>,$<HIP_COMPILER_ID:Clang>>:-fgpu-rdc -Rpass-analysis=kernel-resource-usage>)
-  target_link_options(
+    target_link_options(
     libmudock PUBLIC
     $<$<AND:$<COMPILE_LANGUAGE:HIP>,$<HIP_COMPILER_ID:Clang>>:-fgpu-rdc
     --hip-link -Rpass-analysis=kernel-resource-usage>)
-  target_compile_options(
+    target_compile_options(
     libmudock
     PUBLIC
       $<$<AND:$<COMPILE_LANGUAGE:HIP>,$<CONFIG:RELEASE>,$<HIP_COMPILER_ID:NVIDIA>>:
       -use_fast_math>)
-  # FIXME
-  if(HIP_PLATFORM STREQUAL "nvidia")
-    # FIX ME some platform requires -Wl,-rpath to link the correct CUDA rand lib
-    target_link_libraries(libmudock PUBLIC CUDA::curand)
-  elseif(HIP_PLATFORM STREQUAL "amd")
-    if(DEFINED ROCRAND_INCLUDE_DIRS)
-      target_include_directories(libmudock SYSTEM PRIVATE ${ROCRAND_INCLUDE_DIRS})
+    # FIXME
+    if(HIP_PLATFORM STREQUAL "nvidia")
+        # FIX ME some platform requires -Wl,-rpath to link the correct CUDA rand lib
+        target_link_libraries(libmudock PUBLIC CUDA::curand)
+    elseif(HIP_PLATFORM STREQUAL "amd")
+        if(DEFINED ROCRAND_INCLUDE_DIRS)
+            target_include_directories(libmudock SYSTEM PRIVATE ${ROCRAND_INCLUDE_DIRS})
+        endif()
+        target_link_libraries(libmudock PUBLIC rocrand)
     endif()
-    target_link_libraries(libmudock PUBLIC rocrand)
-  endif()
 endif()
 
 # check if we need to activate the compilation flag that signals CUDA
 if(MUDOCK_ENABLE_CUDA)
-  target_compile_definitions(libmudock PUBLIC MUDOCK_USE_CUDA)
-  if(CMAKE_BUILD_TYPE STREQUAL "Release")
-    # CUDA_SEPARABLE_COMPILATION ON required for constant memory to be shared
-    # across translation unit
-    set_target_properties(
+    target_compile_definitions(libmudock PUBLIC MUDOCK_USE_CUDA)
+endif()
+
+if(MUDOCK_ENABLE_CUDA_LANGUAGE)
+    if(CMAKE_BUILD_TYPE STREQUAL "Release")
+        # CUDA_SEPARABLE_COMPILATION ON required for constant memory to be shared
+        # across translation unit
+        set_target_properties(
       libmudock
       PROPERTIES CUDA_STANDARD 20
                  CUDA_STANDARD_REQUIRED ON
                  CUDA_EXTENSIONS OFF
                  CUDA_SEPARABLE_COMPILATION ON)
-  else()
-    set_target_properties(
+    else()
+        set_target_properties(
       libmudock
       PROPERTIES CUDA_STANDARD 20
                  CUDA_STANDARD_REQUIRED ON
                  CUDA_EXTENSIONS OFF
                  CUDA_SEPARABLE_COMPILATION ON)
-  endif()
-  # set(CMAKE_CUDA_ARCHITECTURES OFF)
-  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --expt-relaxed-constexpr")
-  set(CMAKE_CUDA_FLAGS_RELEASE
+    endif()
+    # set(CMAKE_CUDA_ARCHITECTURES OFF)
+    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --expt-relaxed-constexpr")
+    set(CMAKE_CUDA_FLAGS_RELEASE
       "${CMAKE_CUDA_FLAGS_RELEASE} -use_fast_math -Xptxas -v")
-  set(CMAKE_CUDA_FLAGS_RELWITHDEBINFO
+    set(CMAKE_CUDA_FLAGS_RELWITHDEBINFO
       "${CMAKE_CUDA_FLAGS_RELWITHDEBINFO} -G -Xptxas -v")
-  set(CMAKE_CUDA_FLAGS_DEBUG "${CMAKE_CUDA_FLAGS_DEBUG} -G -Xptxas -v")
+    set(CMAKE_CUDA_FLAGS_DEBUG "${CMAKE_CUDA_FLAGS_DEBUG} -G -Xptxas -v")
 endif()
 
 # check if we need to activate the compilation flag that signals OpenMP
 if(MUDOCK_ENABLE_OMP_OFFLOAD)
-  target_compile_definitions(libmudock PUBLIC MUDOCK_USE_OMP)
-  target_link_libraries(libmudock PUBLIC OpenMP::OpenMP_CXX)
+    target_compile_definitions(libmudock PUBLIC MUDOCK_USE_OMP)
+    target_link_libraries(libmudock PUBLIC OpenMP::OpenMP_CXX)
 
-  # Enable offloading to AMD GPUs using Clang
-  if(NOT OMP_TARGET EQUAL "cpu")
-    if("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
-      if(GPU_PLATFORM STREQUAL "nvidia")
-        target_compile_options(libmudock PRIVATE "-fopenmp")
-        target_compile_options(libmudock PRIVATE "-fopenmp-targets=nvptx64")
-        # target_compile_options(libmudock PRIVATE "-Xopenmp-target=nvptx64")
-      elseif(GPU_PLATFORM STREQUAL "amd")
-        target_compile_options(libmudock PRIVATE "-fopenmp")
-        target_compile_options(libmudock
+    # Enable offloading to AMD GPUs using Clang
+    if(NOT OMP_TARGET EQUAL "cpu")
+        if("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
+            if(GPU_PLATFORM STREQUAL "nvidia")
+                target_compile_options(libmudock PRIVATE "-fopenmp")
+                target_compile_options(libmudock PRIVATE "-fopenmp-targets=nvptx64")
+                # target_compile_options(libmudock PRIVATE "-Xopenmp-target=nvptx64")
+            elseif(GPU_PLATFORM STREQUAL "amd")
+                target_compile_options(libmudock PRIVATE "-fopenmp")
+                target_compile_options(libmudock
                                PRIVATE "-fopenmp-targets=amdgcn-amd-amdhsa")
-        # target_compile_options(libmudock PRIVATE
-        # "-Xopenmp-target=amdgcn-amd-amdhsa")
-      endif()
-      target_compile_options(libmudock
+                # target_compile_options(libmudock PRIVATE
+                # "-Xopenmp-target=amdgcn-amd-amdhsa")
+            endif()
+            target_compile_options(libmudock
                              PRIVATE "--offload-arch=${GPU_ARCHITECTURE}")
-    elseif("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
-      # TODO test with GCC, check also if GCC supports this
-      message(FATAL_ERROR "muDock does not support GCC and OpenMP offloading")
-      # if(GPU_PLATFORM STREQUAL "cuda") target_compile_options(libmudock
-      # PRIVATE "-fopenmp") target_compile_options(libmudock PRIVATE
-      # "-foffload=nvptx-none") target_compile_options(libmudock PRIVATE
-      # "-foffload-options=nvptx-none=-march=${GPU_ARCHITECTURE}")
-      # elseif(GPU_PLATFORM STREQUAL "amd") target_compile_options(libmudock
-      # PRIVATE "-fopenmp") target_compile_options(libmudock PRIVATE
-      # "-foffload=amdgcn-amdhsa") target_compile_options(libmudock PRIVATE
-      # "-foffload-options=amdgcn-amdhsa=-march=${GPU_ARCHITECTURE}") endif()
-    else()
-      message(FATAL_ERROR "Not support OpenMP compiler")
+        elseif("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
+            # TODO test with GCC, check also if GCC supports this
+            message(FATAL_ERROR "muDock does not support GCC and OpenMP offloading")
+            # if(GPU_PLATFORM STREQUAL "cuda") target_compile_options(libmudock
+            # PRIVATE "-fopenmp") target_compile_options(libmudock PRIVATE
+            # "-foffload=nvptx-none") target_compile_options(libmudock PRIVATE
+            # "-foffload-options=nvptx-none=-march=${GPU_ARCHITECTURE}")
+            # elseif(GPU_PLATFORM STREQUAL "amd") target_compile_options(libmudock
+            # PRIVATE "-fopenmp") target_compile_options(libmudock PRIVATE
+            # "-foffload=amdgcn-amdhsa") target_compile_options(libmudock PRIVATE
+            # "-foffload-options=amdgcn-amdhsa=-march=${GPU_ARCHITECTURE}") endif()
+        else()
+            message(FATAL_ERROR "Not support OpenMP compiler")
+        endif()
     endif()
-  endif()
 endif()
 
 # check if we need to activate the compilation flag that signals SYCL
 if(MUDOCK_ENABLE_SYCL)
-  target_compile_definitions(libmudock PUBLIC MUDOCK_USE_SYCL)
-  if(NOT MUDOCK_SYCL_WG_SIZE STREQUAL "")
-    target_compile_definitions(libmudock PUBLIC MUDOCK_SYCL_WG_SIZE=${MUDOCK_SYCL_WG_SIZE})
-  endif()
-  set(sycl_generated_source)
-  set(sycl_objects"")
-  add_sycl_files("${sycl_source_files}" ${header_path} "${header_files}"
+    target_compile_definitions(libmudock PUBLIC MUDOCK_USE_SYCL)
+    if(NOT MUDOCK_SYCL_WG_SIZE STREQUAL "")
+        target_compile_definitions(libmudock PUBLIC MUDOCK_SYCL_WG_SIZE=${MUDOCK_SYCL_WG_SIZE})
+    endif()
+    set(sycl_generated_source)
+    set(sycl_objects"")
+    add_sycl_files("${sycl_source_files}" ${header_path} "${header_files}"
                  sycl_objects)
-  target_sources(libmudock PRIVATE "${sycl_objects}")
-  add_dependencies(libmudock sycl_targets)
-  target_link_directories(libmudock PUBLIC "${LLVM_LIBRARY_DIRS}")
-  target_link_libraries(libmudock PRIVATE sycl)
+    target_sources(libmudock PRIVATE "${sycl_objects}")
+    add_dependencies(libmudock sycl_targets)
+    target_link_directories(libmudock PUBLIC "${LLVM_LIBRARY_DIRS}")
+    target_link_libraries(libmudock PRIVATE sycl)
+endif()
+
+if(MUDOCK_ENABLE_ALPAKA)
+    target_compile_definitions(libmudock PUBLIC MUDOCK_USE_ALPAKA)
+    if(MUDOCK_ALPAKA_BACKEND STREQUAL "serial")
+        target_compile_definitions(libmudock PUBLIC MUDOCK_ALPAKA_BACKEND_SERIAL MUDOCK_ALPAKA_BLOCK_SIZE=1)
+    elseif(MUDOCK_ALPAKA_BACKEND STREQUAL "threads")
+        target_compile_definitions(libmudock PUBLIC MUDOCK_ALPAKA_BACKEND_THREADS MUDOCK_ALPAKA_BLOCK_SIZE=1)
+    elseif(MUDOCK_ALPAKA_BACKEND STREQUAL "tbb")
+        target_compile_definitions(libmudock PUBLIC MUDOCK_ALPAKA_BACKEND_TBB MUDOCK_ALPAKA_BLOCK_SIZE=1)
+    elseif(MUDOCK_ALPAKA_BACKEND STREQUAL "omp2")
+        target_compile_definitions(libmudock PUBLIC MUDOCK_ALPAKA_BACKEND_OMP2 MUDOCK_ALPAKA_BLOCK_SIZE=1)
+    elseif(MUDOCK_ALPAKA_BACKEND STREQUAL "cuda")
+        target_compile_definitions(libmudock PUBLIC MUDOCK_ALPAKA_BACKEND_CUDA MUDOCK_ALPAKA_BLOCK_SIZE=32)
+    elseif(MUDOCK_ALPAKA_BACKEND STREQUAL "hip")
+        target_compile_definitions(libmudock PUBLIC MUDOCK_ALPAKA_BACKEND_HIP MUDOCK_ALPAKA_BLOCK_SIZE=32)
+    elseif(MUDOCK_ALPAKA_BACKEND STREQUAL "sycl")
+        target_compile_definitions(libmudock PUBLIC MUDOCK_ALPAKA_BACKEND_SYCL MUDOCK_ALPAKA_BLOCK_SIZE=32)
+    endif()
+    target_link_libraries(libmudock PUBLIC alpaka::alpaka)
 endif()
 
 if(MUDOCK_ENABLE_OMP)
-  target_link_libraries(libmudock PRIVATE OpenMP::OpenMP_CXX)
-  target_compile_options(libmudock PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-fopenmp>)
+    target_link_libraries(libmudock PRIVATE OpenMP::OpenMP_CXX)
+    target_compile_options(libmudock PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-fopenmp>)
 endif()
 
 # ##############################################################################

@@ -10,13 +10,11 @@
 #include <mudock/chem/autodock_protein.hpp>
 #include <numeric>
 #include <stdexcept>
-#if !defined(__CUDACC__) && !defined(__HIPCC__)
-  #include <mudock/compute/buffer_utils.hpp>
-  #include <mudock/compute/docking.hpp>
-  #include <mudock/compute/geometric_transform.hpp>
-  #include <mudock/compute/scoring.hpp>
-  #include <mudock/compute/scratchpad.hpp>
-#endif
+#include <mudock/compute/buffer_utils.hpp>
+#include <mudock/compute/docking.hpp>
+#include <mudock/compute/geometric_transform.hpp>
+#include <mudock/compute/scoring.hpp>
+#include <mudock/compute/scratchpad.hpp>
 #include <mudock/compute/batch_multiple.hpp>
 #include <mudock/compute/queue.hpp>
 #include <mudock/cpp_implementation/chromosome.hpp>
@@ -84,7 +82,6 @@ namespace mudock {
     std::shared_ptr<queue_type> q;
   };
 
-#if !defined(__CUDACC__) && !defined(__HIPCC__)
   template<typename queue_t, template<typename> typename scoring_t>
     requires std::derived_from<queue_t, queue> && std::derived_from<scoring_t<queue_t>, scoring<queue_t>>
   struct genetic: public docking<queue_t> {
@@ -294,6 +291,5 @@ namespace mudock {
         ligand.properties.assign(property_type::SCORE, std::to_string(best_scores()[index]));
       }
     }
-  }; // namespace mudock
-#endif
+  };
 } // namespace mudock

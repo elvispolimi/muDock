@@ -9,6 +9,17 @@
 #include <mudock/sycl_implementation/sycl_implementation.hpp>
 #include <mudock/xsimd_implementation/xsimd_implementation.hpp>
 
+#if defined(MUDOCK_USE_ALPAKA)
+  #include <mudock/alpaka_implementation.hpp>
+  #if defined(MUDOCK_ALPAKA_BACKEND_SERIAL) || defined(MUDOCK_ALPAKA_BACKEND_THREADS) || \
+      defined(MUDOCK_ALPAKA_BACKEND_TBB) || defined(MUDOCK_ALPAKA_BACKEND_OMP2)
+    #define MUDOCK_REGISTER_ALPAKA_CPU_IN_MANAGER
+  #elif defined(MUDOCK_ALPAKA_BACKEND_CUDA) || defined(MUDOCK_ALPAKA_BACKEND_HIP) || \
+      defined(MUDOCK_ALPAKA_BACKEND_SYCL)
+    #define MUDOCK_REGISTER_ALPAKA_GPU_IN_MANAGER
+  #endif
+#endif
+
 namespace mudock {
 
   struct device_type_desc {
@@ -59,6 +70,12 @@ namespace mudock {
     using type = kernel_type_traits_impl<implementation_type::SYCL, queue_sycl>::type;
   };
 #endif
+#if defined(MUDOCK_REGISTER_ALPAKA_CPU_IN_MANAGER) || defined(MUDOCK_REGISTER_ALPAKA_GPU_IN_MANAGER)
+  template<>
+  struct kernel_type_traits<implementation_type::ALPAKA> {
+    using type = kernel_type_traits_impl<implementation_type::ALPAKA, queue_alpaka>::type;
+  };
+#endif
 
   static constexpr int num_cpu_kernel_type() {
     return 1
@@ -66,6 +83,9 @@ namespace mudock {
            + 1
 #endif
 #ifdef MUDOCK_USE_XSIMD
+           + 1
+#endif
+#ifdef MUDOCK_REGISTER_ALPAKA_CPU_IN_MANAGER
            + 1
 #endif
         ;
@@ -80,6 +100,10 @@ namespace mudock {
       ,
       implementation_type::XSIMD
 #endif
+#ifdef MUDOCK_REGISTER_ALPAKA_CPU_IN_MANAGER
+      ,
+      implementation_type::ALPAKA
+#endif
   };
 
   static constexpr int num_gpu_kernel_type() {
@@ -91,6 +115,9 @@ namespace mudock {
            + 1
 #endif
 #ifdef MUDOCK_USE_SYCL
+           + 1
+#endif
+#ifdef MUDOCK_REGISTER_ALPAKA_GPU_IN_MANAGER
            + 1
 #endif
         ;
@@ -105,6 +132,9 @@ namespace mudock {
 #ifdef MUDOCK_USE_SYCL
       implementation_type::SYCL,
 #endif
+#ifdef MUDOCK_REGISTER_ALPAKA_GPU_IN_MANAGER
+      implementation_type::ALPAKA,
+#endif
   };
 
   inline device_type get_device_type(const std::string_view& impl) {
@@ -115,3 +145,10 @@ namespace mudock {
     throw std::runtime_error("Requested device not available");
   };
 } // namespace mudock
+
+#ifdef MUDOCK_REGISTER_ALPAKA_CPU_IN_MANAGER
+  #undef MUDOCK_REGISTER_ALPAKA_CPU_IN_MANAGER
+#endif
+#ifdef MUDOCK_REGISTER_ALPAKA_GPU_IN_MANAGER
+  #undef MUDOCK_REGISTER_ALPAKA_GPU_IN_MANAGER
+#endif
