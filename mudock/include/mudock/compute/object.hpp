@@ -14,7 +14,7 @@ namespace mudock {
     std::shared_ptr<queue> q;
 
   public:
-    object(std::shared_ptr<queue> _q): q(_q) {};
+    object(std::shared_ptr<queue> _q): q(_q){};
     object(const object&)  = delete;
     object(object&& other) = delete;
     // TODO fix me the noexcept, change the mudock check

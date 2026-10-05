@@ -17,11 +17,11 @@ namespace mudock {
     void alloc(const std::size_t num_elements);
 
     [[nodiscard]] inline auto dev_pointer() const { return state.dev_pointer(); }
-    [[nodiscard]] inline curandState **dev_pointer_ref() { return state.dev_pointer_ref(); }
+    [[nodiscard]] inline curandStatePhilox4_32_10_t **dev_pointer_ref() { return state.dev_pointer_ref(); }
 
   private:
     std::shared_ptr<queue_cuda> q;
-    object<curandState> state;
+    object<curandStatePhilox4_32_10_t> state;
   };
 
 } // namespace mudock
