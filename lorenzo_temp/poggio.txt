@@ -46,6 +46,10 @@ load /home/lorenzo/thesis/muDock/dump/pose_1.mol2, ligand_1
 for i in range(2,301):cmd.load(f"/home/lorenzo/thesis/muDock/dump/pose_{i}.mol2", "ligand_1", state=i)
 set movie_fps, 30
 
+load /home/lorenzo/thesis/muDock/dump_best/lig_0_gen_1.mol2, ligand_1
+for i in range(2,29):cmd.load(f"/home/lorenzo/thesis/muDock/dump_best/lig_0_gen_{i}.mol2", "ligand_1", state=i)
+set movie_fps, 30
+
 ##########################################
 RESULTS FORMAT:
 name,gen,pop,rate,iter,evals,score,cry_score,rmsd_best_scoring_pose,rot,atoms,rho,epsilon,seed
