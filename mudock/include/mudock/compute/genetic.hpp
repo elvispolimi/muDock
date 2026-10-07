@@ -38,6 +38,7 @@ namespace mudock {
                    const int num_generations_,
                    const int tournament_length_,
                    const fp_type mutation_prob_,
+                   const fp_type max_translation_half_width_,
                    const size_t seed_,
                    chromosome* population_,
                    chromosome* next_population_,
@@ -51,6 +52,7 @@ namespace mudock {
           num_generations(num_generations_),
           tournament_length(tournament_length_),
           mutation_prob(mutation_prob_),
+          max_translation_half_width(max_translation_half_width_),
           population(population_),
           next_population(next_population_),
           num_rotamers_b(num_rotamers_b_),
@@ -75,6 +77,7 @@ namespace mudock {
     int num_generations;
     int tournament_length;
     fp_type mutation_prob;
+    fp_type max_translation_half_width;
     chromosome* __restrict__ population;
     chromosome* __restrict__ next_population;
     int* __restrict__ num_rotamers_b;
@@ -136,6 +139,7 @@ namespace mudock {
                                                          configuration.num_generations,
                                                          configuration.tournament_length,
                                                          configuration.mutation_prob,
+                                                         configuration.max_translation_half_width.value_or(fp_type{0}),
                                                          seed,
                                                          chromosomes_b.dev_pointer(),
                                                          next_population.dev_pointer(),

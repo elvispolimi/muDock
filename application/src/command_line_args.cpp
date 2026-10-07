@@ -16,6 +16,7 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
   std::size_t seed{};
   double time_limit_sec{};
   double observer_sec{};
+  double max_translation_half_width{};
   std::string search_name = std::string{to_string(args.search)};
   std::string score_name  = std::string{to_string(args.scoring)};
   std::string placement_name = std::string{mudock::to_string(args.placement_mode)};
@@ -74,6 +75,10 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
       "mutation",
       po::value(&args.knobs.mutation_prob)->default_value(args.knobs.mutation_prob),
       "Probability of a mutation to happen during GA");
+  knobs_description.add_options()(
+      "max-search-box",
+      po::value(&max_translation_half_width),
+      "Maximum per-axis rigid ligand-center displacement from the placement target in Angstrom");
   knobs_description.add_options()("seed", po::value(&seed), "Seed for random values generators");
   knobs_description.add_options()(
       "tokens",
@@ -137,6 +142,11 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
   }
   if (vm.count("observer")) {
     args.observer = std::optional<double>{observer_sec};
+  }
+  if (vm.count("max-search-box")) {
+    if (!(max_translation_half_width > 0.0))
+      throw std::runtime_error("--max-search-box must be greater than zero");
+    args.knobs.max_translation_half_width = static_cast<mudock::fp_type>(max_translation_half_width);
   }
   args.search  = mudock::parse_search_algorithm(search_name);
   args.scoring = mudock::parse_scoring_function(score_name);

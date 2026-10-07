@@ -27,6 +27,11 @@ namespace {
                             const std::uint64_t range_end) {
     mudock::info("Pipeline selection: search=", to_string(args.search), ", score=", to_string(args.scoring));
     mudock::info("Ligand placement: ", mudock::to_string(placement.mode));
+    if (args.knobs.max_translation_half_width) {
+      mudock::info("Maximum genetic translation box half-width: ",
+                   *args.knobs.max_translation_half_width,
+                   " Angstrom");
+    }
 
     dispatch_selected_pipeline(args.search,
                                args.scoring,
