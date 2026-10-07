@@ -19,15 +19,16 @@ namespace mudock {
 
     // utility function that compute the flat index of the given point
     [[nodiscard]] std::size_t get_index(const point<fp_type, n>& p) const {
-      // return md_index<n>::to1D(static_cast<std::size_t>((p.x - _min.x) * _inv_resolution),
-      //                          static_cast<std::size_t>((p.y - _min.y) * _inv_resolution),
-      //                          static_cast<std::size_t>((p.z - _min.z) * _inv_resolution));
-      return md_index<n>::to1D((p - _min).truncate() * _inv_resolution);
+      const auto relative = p - _min;
+      return md_index<n>::to1D(static_cast<std::size_t>(std::floor(relative.x() * _inv_resolution)),
+                               static_cast<std::size_t>(std::floor(relative.y() * _inv_resolution)),
+                               static_cast<std::size_t>(std::floor(relative.z() * _inv_resolution)));
     }
 
   public:
     // information about the 3D space that we are representing
-    fp_type _inv_resolution = 2;
+    fp_type _resolution     = fp_type{0.5};
+    fp_type _inv_resolution = fp_type{2};
     point<fp_type, n> _min, _max, _center;
 
     inline space_grid_t(): md_data() {}
@@ -37,7 +38,12 @@ namespace mudock {
                  const fp_type resolution,
                  const C data)
         // requires(std::is_same<C, md_span<T, n>>::value)
-        : md_data(data), _inv_resolution(fp_type{1} / resolution), _min(min), _max(max), _center(center) {}
+        : md_data(data),
+          _resolution(resolution),
+          _inv_resolution(fp_type{1} / resolution),
+          _min(min),
+          _max(max),
+          _center(center) {}
     template<class... Y>
     space_grid_t(const point<fp_type, n> min,
                  const point<fp_type, n> max,
@@ -46,6 +52,7 @@ namespace mudock {
                  Y&&... sizes)
         // requires(std::is_same<C, md_container<T, n>>::value && sizeof...(sizes) == n)
         : md_data(sizes...),
+          _resolution(resolution),
           _inv_resolution(fp_type{1} / resolution),
           _min(min),
           _max(max),
@@ -68,7 +75,7 @@ namespace mudock {
     [[nodiscard]] inline auto to_coord(I... sizes) const
       requires(sizeof...(sizes) == n)
     {
-      return (point<T, n>{sizes...} * _inv_resolution) + _min;
+      return (point<fp_type, n>{static_cast<fp_type>(sizes)...} * _resolution) + _min;
     }
 
     [[nodiscard]] T x() const { return md_data.size_x(); }

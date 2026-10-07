@@ -9,7 +9,8 @@
 #include <mudock/compute/queue.hpp>
 #include <mudock/log.hpp>
 #if !defined(__CUDACC__) && !defined(__HIPCC__)
-  #include <mudock/compute/buffer_utils.hpp>
+#include <mudock/compute/buffer_utils.hpp>
+#include <mudock/compute/ligand_placement.hpp>
   #include <mudock/compute/scratchpad.hpp>
   #include <mudock/compute/transform.hpp>
 #endif
@@ -101,14 +102,17 @@ namespace mudock {
   template<typename queue_t>
     requires std::derived_from<queue_t, queue>
   struct geometric: public transform<queue_t> {
-    geometric(std::shared_ptr<scratchpad<queue_t>> _scratch, dynamic_molecule& protein)
+    geometric(std::shared_ptr<scratchpad<queue_t>> _scratch,
+              dynamic_molecule& protein,
+              ligand_placement _placement = {})
         : transform<queue_t>(_scratch),
           ligand_fragments(_scratch->get_queue()),
           ligand_fragments_start(_scratch->get_queue()),
           frag_start_atom_indices(_scratch->get_queue()),
           frag_stop_atom_indices(_scratch->get_queue()),
           frag_indices_start(_scratch->get_queue()),
-          protein_center(protein.get_center()) {};
+          protein_center(protein.get_center()),
+          placement(_placement) {};
 
     void prepare(batch<static_molecule>& batch) {
       batch_ligands                           = batch.num_ligands;
@@ -141,12 +145,8 @@ namespace mudock {
         geom_ligand geom_lig{ligand};
         // Atoms and bonds
         const int num_atoms = ligand.num_atoms();
-        // Place the molecule to the center of the target protein
-        const auto x = ligand.x(), y = ligand.y(), z = ligand.z();
-
-        const auto ligand_center_of_mass = compute_center_of_mass(x, y, z, num_atoms);
-        const auto offset                = protein_center - ligand_center_of_mass;
-        translate_molecule<cpu_vectorization::AUTO>(x, y, z, num_atoms, offset.x(), offset.y(), offset.z());
+        // Place the molecule according to the selected initial placement policy.
+        apply_ligand_placement(ligand, placement, protein_center);
 
         const auto num_rotamers = ligand.num_rotamers();
         assert(batch_rotamers > num_rotamers);
@@ -295,6 +295,7 @@ namespace mudock {
     int batch_ligands;
     int batch_atoms;
     point<fp_type, 3> protein_center;
+    ligand_placement placement;
     std::unique_ptr<geom_kernel<queue_t>> kernel;
 
     void teardown_impl(batch<static_molecule>& batch) {

@@ -128,8 +128,8 @@ namespace mudock {
              atom_index += MUDOCK_SYCL_WG_SIZE) {
           if (atom_index < num_atoms) {
             fp_type coord_tex[3]{ligand_x[atom_index], ligand_y[atom_index], ligand_z[atom_index]};
-            if (coord_tex[0] < minimum[0] || coord_tex[0] > maximum[0] || coord_tex[1] < minimum[1] ||
-                coord_tex[1] > maximum[1] || coord_tex[2] < minimum[2] || coord_tex[2] > maximum[2]) {
+            if (coord_tex[0] < minimum[0] || coord_tex[0] >= maximum[0] || coord_tex[1] < minimum[1] ||
+                coord_tex[1] >= maximum[1] || coord_tex[2] < minimum[2] || coord_tex[2] >= maximum[2]) {
               // Is outside
               const auto diff_x          = coord_tex[0] - center[0];
               const auto diff_y          = coord_tex[1] - center[1];

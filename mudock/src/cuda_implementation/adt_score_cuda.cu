@@ -149,9 +149,9 @@ namespace mudock {
         if (atom_index < num_atoms) {
           fp_type coord_tex[3]{ligand_x[atom_index], ligand_y[atom_index], ligand_z[atom_index]};
 
-          if (coord_tex[0] < map_min_const[0] || coord_tex[0] > map_max_const[0] ||
-              coord_tex[1] < map_min_const[1] || coord_tex[1] > map_max_const[1] ||
-              coord_tex[2] < map_min_const[2] || coord_tex[2] > map_max_const[2]) {
+          if (coord_tex[0] < map_min_const[0] || coord_tex[0] >= map_max_const[0] ||
+              coord_tex[1] < map_min_const[1] || coord_tex[1] >= map_max_const[1] ||
+              coord_tex[2] < map_min_const[2] || coord_tex[2] >= map_max_const[2]) {
             // Is outside
             const auto diff_x          = coord_tex[0] - map_center_const[0];
             const auto diff_y          = coord_tex[1] - map_center_const[1];

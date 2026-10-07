@@ -8,6 +8,7 @@
 #include <mudock/chem/autodock_protein.hpp>
 #include <mudock/compute/adt_score_kernel.hpp>
 #include <mudock/compute/batch_multiple.hpp>
+#include <mudock/compute/ligand_placement.hpp>
 #if !defined(__CUDACC__) && !defined(__HIPCC__)
   #include <mudock/compute/buffer_utils.hpp>
   #include <mudock/compute/scoring.hpp>
@@ -32,7 +33,8 @@ namespace mudock {
 
     adt_score(std::shared_ptr<scratchpad<queue_type>> _scratch,
               std::shared_ptr<scratchpad<queue_type>> _device_scratch,
-              dynamic_molecule &protein)
+              dynamic_molecule &protein,
+              ligand_placement _placement = {})
         : scoring<queue_type>(_scratch),
           vols(_scratch->get_queue()),
           solpars(_scratch->get_queue()),
@@ -44,7 +46,9 @@ namespace mudock {
           nonbond_cA(_scratch->get_queue()),
           nonbond_cB(_scratch->get_queue()),
           nonbond_xB(_scratch->get_queue()),
-          device_scratch(_device_scratch) {
+          device_scratch(_device_scratch),
+          placement(_placement),
+          protein_center(protein.get_center()) {
       if (!(*device_scratch).template exists<buffer_data_type::PROT_GRID_MAPS>()) {
         autodock_protein adt_prot(protein);
 
@@ -91,6 +95,9 @@ namespace mudock {
       const int batch_non_bonds    = batch_ligands * batch_atoms * batch_atoms;
       const int tot_atoms_in_batch = batch_ligands * batch_atoms;
       auto q                       = (*this->scratch).get_queue();
+
+      for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index)
+        apply_ligand_placement(*batch.molecules[ligand_index], placement, protein_center);
 
       load_num_rotamers(batch, this->scratch);
       load_num_atoms(batch, this->scratch);
@@ -319,6 +326,8 @@ namespace mudock {
     buffer_vector<int, queue_type> nonbond_xB;
 
     std::shared_ptr<scratchpad<queue_type>> device_scratch;
+    ligand_placement placement;
+    point3D protein_center;
     std::unique_ptr<adt_score_kernel<queue_type>> kernel;
 
     void teardown_impl(batch<static_molecule> &batch) override {

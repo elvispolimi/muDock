@@ -33,6 +33,24 @@ inline T round3dp(const T x) {
 }
 
 int main(int argc, char* argv[]) {
+  {
+    const mudock::point3D min{mudock::fp_type{1}, mudock::fp_type{2}, mudock::fp_type{3}};
+    const mudock::point3D max{mudock::fp_type{5}, mudock::fp_type{6}, mudock::fp_type{7}};
+    const mudock::point3D center{mudock::fp_type{3}, mudock::fp_type{4}, mudock::fp_type{5}};
+    mudock::space_grid grid{min, max, center, mudock::fp_type{0.5}, 8, 8, 8};
+
+    const auto coordinate = grid.to_coord(2, 3, 4);
+    assert(coordinate.x() == mudock::fp_type{2.0});
+    assert(coordinate.y() == mudock::fp_type{3.5});
+    assert(coordinate.z() == mudock::fp_type{5.0});
+
+    grid.get(2, 3, 4) = mudock::fp_type{42};
+    assert(grid.get(coordinate) == mudock::fp_type{42});
+    assert(grid.get(mudock::point3D{mudock::fp_type{1.49},
+                                    mudock::fp_type{2.49},
+                                    mudock::fp_type{3.49}}) == mudock::fp_type{0});
+  }
+
   if constexpr (std::is_same<mudock::fp_type, double>::value) {
     namespace po                     = boost::program_options;
     std::filesystem::path pdbqt_path = std::filesystem::path{"protein.pdbqt"};
