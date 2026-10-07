@@ -14,6 +14,7 @@
   #include <mudock/compute/buffer_utils.hpp>
   #include <mudock/compute/docking.hpp>
   #include <mudock/compute/geometric_transform.hpp>
+  #include <mudock/compute/ligand_placement.hpp>
   #include <mudock/compute/scoring.hpp>
   #include <mudock/compute/scratchpad.hpp>
 #endif
@@ -92,10 +93,11 @@ namespace mudock {
 
     genetic(std::shared_ptr<scratchpad<queue_t>> _scratch,
             dynamic_molecule& protein,
-            scoring_t<queue_t> _scoring)
+            scoring_t<queue_t> _scoring,
+            ligand_placement _placement = {})
         : docking<queue_t>(_scratch),
           score_stage(std::move(_scoring)),
-          geom_trans(_scratch, protein),
+          geom_trans(_scratch, protein, _placement),
           next_population(_scratch->get_queue()),
           best_chromosomes(_scratch->get_queue()),
           best_scores(_scratch->get_queue()) {};
@@ -287,10 +289,22 @@ namespace mudock {
       // score_stage.teardown(batch);
 
       best_scores.copy_device2host();
+      best_chromosomes.copy_device2host();
       (*this->scratch).get_queue()->synchronize();
 
       for (int index{0}; index < batch_ligands; ++index) {
         auto& ligand = *batch.molecules[index];
+        geom_ligand geom{ligand};
+        const int num_rotamers = static_cast<int>(ligand.num_rotamers());
+        apply<cpu_vectorization::AUTO>(ligand.x(),
+                                       ligand.y(),
+                                       ligand.z(),
+                                       best_chromosomes()[index],
+                                       ligand.num_atoms(),
+                                       num_rotamers,
+                                       geom.fragments_masks(),
+                                       geom.fragmets_starts(),
+                                       geom.fragments_stops());
         ligand.properties.assign(property_type::SCORE, std::to_string(best_scores()[index]));
       }
     }

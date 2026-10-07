@@ -157,9 +157,9 @@ namespace mudock {
           const auto atom_charge = LoadN(d, charge_l + index, remaining);
 
           // Bounds check for each atom in vectorized form
-          const auto outside_x = Or(Lt(x, min_x), Gt(x, max_x));
-          const auto outside_y = Or(Lt(y, min_y), Gt(y, max_y));
-          const auto outside_z = Or(Lt(z, min_z), Gt(z, max_z));
+        const auto outside_x = Or(Lt(x, min_x), Ge(x, max_x));
+        const auto outside_y = Or(Lt(y, min_y), Ge(y, max_y));
+        const auto outside_z = Or(Lt(z, min_z), Ge(z, max_z));
           const auto outside   = And(Or(outside_x, Or(outside_y, outside_z)), valid_coord);
 
           // For atoms outside the boundaries

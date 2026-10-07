@@ -246,8 +246,8 @@ MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
                                  l_scratch_ligand_y[atom_index],
                                  l_scratch_ligand_z[atom_index]};
 
-            if (coord_tex[0] < minimum_x || coord_tex[0] > maximum_x || coord_tex[1] < minimum_y ||
-                coord_tex[1] > maximum_y || coord_tex[2] < minimum_z || coord_tex[2] > maximum_z) {
+            if (coord_tex[0] < minimum_x || coord_tex[0] >= maximum_x || coord_tex[1] < minimum_y ||
+                coord_tex[1] >= maximum_y || coord_tex[2] < minimum_z || coord_tex[2] >= maximum_z) {
               // Is outside
               const fp_type distance_two = pow(fabs(coord_tex[0] - center_x), fp_type{2}) +
                                            pow(fabs(coord_tex[1] - center_y), fp_type{2}) +
