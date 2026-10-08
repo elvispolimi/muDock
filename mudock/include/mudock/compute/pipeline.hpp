@@ -147,7 +147,8 @@ namespace mudock {
                  std::shared_ptr<scratchpad<queue_type>> device_scratch) {
       auto q = std::make_shared<mudock::scratchpad<queue_type>>(conf, id, dev_type);
       auto scoring = std::make_shared<scoring_t<queue_type>>(q, device_scratch, *protein, ligand_placement{ligand_placement_mode::preserve, std::nullopt});
-      auto local_search = local_search_t<queue_type, scoring_t>(q, scoring);
+      auto local_search = local_search_t<queue_type, scoring_t>(
+          q, scoring, ligand_placement{ligand_placement_mode::preserve, std::nullopt});
       return lamarckian_genetic<queue_type, scoring_t, local_search_t>(q, *protein, scoring, std::move(local_search), placement);
     }
 
@@ -189,7 +190,8 @@ namespace mudock {
       template<typename, template<typename> typename> typename local_search_t
   >
   struct local_search_pipeline: pipeline {
-    using pipeline::pipeline;
+    local_search_pipeline(std::shared_ptr<dynamic_molecule> protein_ptr, ligand_placement placement_config = {})
+        : pipeline(std::move(protein_ptr), placement_config) {}
 
     static knobs normalize_knobs(knobs conf) {
       conf.population_number = 1;
@@ -205,8 +207,8 @@ namespace mudock {
                                                        std::shared_ptr<scratchpad<queue_type>> device_scratch) {
       const auto effective_conf = normalize_knobs(conf);
       auto q = std::make_shared<mudock::scratchpad<queue_type>>(effective_conf, id, dev_type);
-      auto scoring = std::make_shared<scoring_t<queue_type>>(q, device_scratch, *protein);
-      return local_search_t<queue_type, scoring_t>(q, scoring);
+      auto scoring = std::make_shared<scoring_t<queue_type>>(q, device_scratch, *protein, placement);
+      return local_search_t<queue_type, scoring_t>(q, scoring, placement);
     }
 
     template<typename queue_type>

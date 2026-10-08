@@ -15,6 +15,7 @@
 #include <mudock/compute/batch_multiple.hpp>
 #include <mudock/compute/adadelta_kernel.hpp>
 #include <mudock/compute/geometric_transform.hpp>
+#include <mudock/compute/ligand_placement.hpp>
 #if !defined(__CUDACC__) && !defined(__HIPCC__)
   #include <mudock/compute/local_search.hpp>
   #include <mudock/compute/buffer_utils.hpp>
@@ -42,9 +43,10 @@ namespace mudock {
     // static constexpr fp_type EPSILON = 1e-6f;
     
     adadelta(std::shared_ptr<scratchpad<queue_type>> _scratch,
-             std::shared_ptr<scoring_t<queue_type>> _score) 
+             std::shared_ptr<scoring_t<queue_type>> _score,
+             ligand_placement _placement = {})
              : local_search<queue_type, scoring_t>(_scratch, _score),
-               geom_trans(_scratch, _score->get_protein()) {}
+               geom_trans(_scratch, _score->get_protein(), _placement) {}
 
     void prepare(batch<static_molecule> &batch) {
       // TODO L check if this makes a copy or a reference

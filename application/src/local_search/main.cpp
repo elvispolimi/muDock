@@ -5,6 +5,7 @@
 #include <limits>
 #include <memory>
 #include <optional>
+#include <stdexcept>
 
 #include <mudock/molecule.hpp>
 #include <mudock/mudock.hpp>
@@ -33,6 +34,20 @@ int main(int argc, char** argv) {
   mudock::info("Reading and parsing protein ", args.protein_path, " ...");
   auto protein = std::make_shared<mudock::dynamic_molecule>(mudock::parser<mudock::dynamic_molecule>(args.protein_path));
 
+  mudock::ligand_placement placement{args.placement_mode, args.placement_point};
+  if (args.placement_mode == mudock::ligand_placement_mode::probe) {
+    const auto probe = mudock::parser<mudock::dynamic_molecule>(args.probe_path);
+    if (probe.num_atoms() == 0) throw std::runtime_error("Probe molecule contains no atoms");
+    placement.target = mudock::compute_centroid(probe.get_x(), probe.get_y(), probe.get_z());
+    mudock::info("Probe centroid: ",
+                 placement.target->x(),
+                 ",",
+                 placement.target->y(),
+                 ",",
+                 placement.target->z());
+  }
+  mudock::info("Ligand placement: ", mudock::to_string(placement.mode));
+
   mudock::info("Reading ligand ", args.ligand_path, " ...");
   std::ifstream in(args.ligand_path, std::ios::binary);
   if (!in) {
@@ -57,7 +72,7 @@ int main(int argc, char** argv) {
 
   in.seekg(static_cast<std::streamoff>(effective_range.begin), std::ios::beg);
 
-  mudock::ls_adt_adadelta_pipeline pipe{protein};
+  mudock::ls_adt_adadelta_pipeline pipe{protein, placement};
           mudock::run_tbb_pipeline<mudock::supported_format::ADTMOL2>(
               in, args.device_confs, args.knobs, pipe, effective_range.end, args.time_limit_sec, args.observer);
   MUDOCK_MARKER_CLOSE;

@@ -260,7 +260,9 @@ namespace mudock {
     int batch_atoms;
     std::unique_ptr<crystal_convergence_kernel<queue_t>> kernel;
 
-    void teardown_impl(batch<static_molecule>& batch) {}
+    void teardown_impl(batch<static_molecule>& batch) {
+      (void) batch;
+    }
   };
 #endif
 } // namespace mudock
