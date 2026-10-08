@@ -131,7 +131,9 @@ namespace mudock {
       template<typename, template<typename> typename> typename local_search_t
   >
   struct lamarckian_genetic_scoring_pipeline: pipeline {
-    using pipeline::pipeline;
+    lamarckian_genetic_scoring_pipeline(std::shared_ptr<dynamic_molecule> protein_ptr,
+                                        ligand_placement placement_config = {})
+        : pipeline(std::move(protein_ptr), placement_config) {}
 
     template<typename queue_type>
     lamarckian_genetic<
@@ -144,9 +146,9 @@ namespace mudock {
                  const device_type dev_type,
                  std::shared_ptr<scratchpad<queue_type>> device_scratch) {
       auto q = std::make_shared<mudock::scratchpad<queue_type>>(conf, id, dev_type);
-      auto scoring = std::make_shared<scoring_t<queue_type>>(q, device_scratch, *protein);
+      auto scoring = std::make_shared<scoring_t<queue_type>>(q, device_scratch, *protein, ligand_placement{ligand_placement_mode::preserve, std::nullopt});
       auto local_search = local_search_t<queue_type, scoring_t>(q, scoring);
-      return lamarckian_genetic<queue_type, scoring_t, local_search_t>(q, *protein, scoring, std::move(local_search));
+      return lamarckian_genetic<queue_type, scoring_t, local_search_t>(q, *protein, scoring, std::move(local_search), placement);
     }
 
     template<typename queue_type>

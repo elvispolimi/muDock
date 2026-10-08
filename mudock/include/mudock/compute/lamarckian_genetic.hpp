@@ -11,6 +11,7 @@
   #include <mudock/compute/buffer_utils.hpp>
   #include <mudock/compute/docking.hpp>
   #include <mudock/compute/geometric_transform.hpp>
+  #include <mudock/compute/ligand_placement.hpp>
   #include <mudock/compute/scoring.hpp>
   #include <mudock/compute/local_search.hpp>
   #include <mudock/compute/scratchpad.hpp>
@@ -32,8 +33,9 @@ namespace mudock {
     lamarckian_genetic(std::shared_ptr<scratchpad<queue_t>> _scratch,
                       dynamic_molecule& _protein,
                       std::shared_ptr<scoring_t<queue_t>> _scoring,
-                      local_search_t<queue_t, scoring_t> _local_search)
-        : genetic<queue_t, scoring_t>(_scratch, _protein, _scoring),
+                      local_search_t<queue_t, scoring_t> _local_search,
+                      ligand_placement _placement = {})
+        : genetic<queue_t, scoring_t>(_scratch, _protein, _scoring, _placement),
           local_search_stage(std::move(_local_search)){};
 
     void prepare(batch<static_molecule>& batch) override {
@@ -141,10 +143,22 @@ namespace mudock {
       this->best_scores.copy_device2host();
       converged_ligands_b.copy_device2host();
       rmsd_best_pose_b.copy_device2host();
+      this->best_chromosomes.copy_device2host();
       (*this->scratch).get_queue()->synchronize();
   
       for (int index{0}; index < this->batch_ligands; ++index) {
         auto& ligand = *batch.molecules[index];
+        geom_ligand geom{ligand};
+        const int num_rotamers = static_cast<int>(ligand.num_rotamers());
+        apply<cpu_vectorization::AUTO>(ligand.x(),
+                                       ligand.y(),
+                                       ligand.z(),
+                                       this->best_chromosomes()[index],
+                                       ligand.num_atoms(),
+                                       num_rotamers,
+                                       geom.fragments_masks(),
+                                       geom.fragmets_starts(),
+                                       geom.fragments_stops());
         ligand.properties.assign(property_type::SCORE, std::to_string(this->best_scores()[index]));
 
         const int convergence_generation = converged_ligands_b()[index];
