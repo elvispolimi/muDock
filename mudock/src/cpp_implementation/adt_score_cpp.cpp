@@ -287,6 +287,8 @@ namespace mudock {
       int *__restrict__ active_individuals_l = active_individuals_b + ligand_index * individuals_per_ligand;
 
       
+      const fp_type angle_scale = deg_to_rad(fp_type{1});
+
       std::vector<point3D> dE_dX(batch_atoms);
       std::vector<fp_type> grad(6 + batch_rotamers);         // gradient = dE/dx, dE/dy, dE/dz, dE/dalpha, dE/dbeta, dE/dgamma, dE/d_tors_1, ..., dE/d_tors_n
 
@@ -315,8 +317,8 @@ namespace mudock {
           const auto diff_y = coord[1] - center[1];
           const auto diff_z = coord[2] - center[2];
 
-          if (coord[0] < minimum[0] || coord[0] > maximum[0] || coord[1] < minimum[1] ||
-              coord[1] > maximum[1] || coord[2] < minimum[2] || coord[2] > maximum[2]) {
+          if (coord[0] < minimum[0] || coord[0] >= maximum[0] || coord[1] < minimum[1] ||
+              coord[1] >= maximum[1] || coord[2] < minimum[2] || coord[2] >= maximum[2]) {
             const fp_type penalty_factor = 2 * 2 * ENERGYPENALTY;
             dE_dX[index].x() += penalty_factor * diff_x;
             dE_dX[index].y() += penalty_factor * diff_y;
@@ -377,7 +379,8 @@ namespace mudock {
             const auto diff_y                = scratch_y_l[a1] - scratch_y_l[a2];
             const auto diff_z                = scratch_z_l[a1] - scratch_z_l[a2];
             const fp_type distance_two       = diff_x * diff_x + diff_y * diff_y + diff_z * diff_z;
-            const fp_type distance_two_clamp = std::max(distance_two, RMIN_ELEC_SQUARE);
+            if (distance_two < RMIN_ELEC_SQUARE) continue;
+            const fp_type distance_two_clamp = distance_two;
             const fp_type distance           = std::sqrt(distance_two_clamp);
 
             const fp_type inv_r = fp_type{1} / distance;
@@ -430,7 +433,11 @@ namespace mudock {
                 // VdW derivative
                 const fp_type rA1 = rA * inv_r; // r^{-(xA+1)}
                 const fp_type rB1 = rB * inv_r; // r^{-(xB+1)}
-                dE_dr_vdw = -static_cast<fp_type>(xA) * cA * rA1 + static_cast<fp_type>(xB) * cB * rB1;
+
+                const fp_type e_vdW_Hb_unclamped = cA * rA - cB * rB;
+                if (e_vdW_Hb_unclamped < EINTCLAMP) {
+                  dE_dr_vdw = -static_cast<fp_type>(xA) * cA * rA1 + static_cast<fp_type>(xB) * cB * rB1;
+                }
               }
             }
 
@@ -498,9 +505,9 @@ namespace mudock {
         u_alpha.y() = cos_beta * sin_gamma;
         u_alpha.z() = -sin_beta;
 
-        grad[3] = tau.inner_product(u_alpha);
-        grad[4] = tau.inner_product(u_beta);
-        grad[5] = tau.inner_product(u_gamma);
+        grad[3] = angle_scale * tau.inner_product(u_alpha);
+        grad[4] = angle_scale * tau.inner_product(u_beta);
+        grad[5] = angle_scale * tau.inner_product(u_gamma);
 
         for (int index = 0; index < num_atoms; ++index) {
           grad[0] += dE_dX[index].x();
@@ -527,16 +534,18 @@ namespace mudock {
           axis.y() *= inv_norm;
           axis.z() *= inv_norm;
 
-          point3D r;
-#pragma omp simd
+          fp_type dE_dpsi{0};
+#pragma omp simd reduction(+ : dE_dpsi)
           for (int i = 0; i < num_atoms; ++i) {
             if (frag_mask[i] != 0) {
+              point3D r;
               r.x() = scratch_x_l[i] - scratch_x_l[a1];
               r.y() = scratch_y_l[i] - scratch_y_l[a1];
               r.z() = scratch_z_l[i] - scratch_z_l[a1];
-              grad[6 + t] += dE_dX[i].inner_product(axis.cross(r));
+              dE_dpsi += dE_dX[i].inner_product(axis.cross(r));
             }
           }
+          grad[6 + t] = angle_scale * dE_dpsi;
         }
 
         // Write gradient on the buffer
@@ -547,7 +556,7 @@ namespace mudock {
         
       }
     }
-  };
+  }
 
 
   template<>
