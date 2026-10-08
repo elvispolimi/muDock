@@ -13,6 +13,8 @@ namespace mudock {
     std::size_t elite_size                    = 0;
     std::size_t tournament_length             = 10;
     fp_type mutation_prob                     = static_cast<fp_type>(0.01);
+    // Maximum per-axis displacement of the rigid translation chromosome.
+    std::optional<fp_type> max_translation_half_width = std::nullopt;
     bool autostop                             = false;
     std::size_t tolerance_window              = 50;
     // fp_type score_variance_thld               = static_cast<fp_type>(0.0015);

@@ -9,6 +9,7 @@
 #include <mudock/chem/autodock_protein.hpp>
 #include <mudock/compute/adt_score_kernel.hpp>
 #include <mudock/compute/batch_multiple.hpp>
+#include <mudock/compute/ligand_placement.hpp>
 #if !defined(__CUDACC__) && !defined(__HIPCC__)
   #include <mudock/compute/buffer_utils.hpp>
   #include <mudock/compute/scoring.hpp>
@@ -33,7 +34,8 @@ namespace mudock {
 
     adt_score(std::shared_ptr<scratchpad<queue_type>> _scratch,
               std::shared_ptr<scratchpad<queue_type>> _device_scratch,
-              dynamic_molecule &protein)
+              dynamic_molecule &protein,
+              ligand_placement _placement = {})
         : differentiable_scoring<queue_type>(_scratch),
           vols(_scratch->get_queue()),
           solpars(_scratch->get_queue()),
@@ -51,7 +53,9 @@ namespace mudock {
           frag_stop_atom_indices(_scratch->get_queue()),
           frag_indices_start(_scratch->get_queue()),
           device_scratch(_device_scratch),
-          protein_(protein) {
+          protein_(protein),
+          placement(_placement),
+          protein_center(protein.get_center()) {
       if (!(*device_scratch).template exists<buffer_data_type::PROT_GRID_MAPS>()) {
         autodock_protein adt_prot(protein);
 
@@ -108,6 +112,9 @@ namespace mudock {
       const int batch_rotamers                = batch_atoms - 3;
       const std::size_t tot_rotamers_in_batch = batch_ligands * batch_rotamers;
       auto q                       = (*this->scratch).get_queue();
+
+      for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index)
+        apply_ligand_placement(*batch.molecules[ligand_index], placement, protein_center);
 
       load_num_rotamers(batch, this->scratch);
       load_num_atoms(batch, this->scratch);
@@ -481,9 +488,11 @@ namespace mudock {
     buffer_vector<int, queue_type> frag_indices_start;
 
     std::shared_ptr<scratchpad<queue_type>> device_scratch;
+    dynamic_molecule& protein_;
+    ligand_placement placement;
+    point3D protein_center;
     std::unique_ptr<adt_score_kernel<queue_type>> score_kernel;
     std::unique_ptr<adt_gradient_kernel<queue_type>> gradient_kernel;
-    dynamic_molecule& protein_;
 
     void teardown_impl(batch<static_molecule> &batch) override {
       assert(batch.num_ligands == batch_ligands && "Scoring algorithm received different batch for teardown");

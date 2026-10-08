@@ -14,6 +14,7 @@
   #include <mudock/compute/buffer_utils.hpp>
   #include <mudock/compute/docking.hpp>
   #include <mudock/compute/geometric_transform.hpp>
+  #include <mudock/compute/ligand_placement.hpp>
   #include <mudock/compute/scoring.hpp>
   #include <mudock/compute/scratchpad.hpp>
   #include <mudock/compute/crystal_convergence.hpp>
@@ -41,6 +42,7 @@ namespace mudock {
                    const int elite_size_,
                    const int tournament_length_,
                    const fp_type mutation_prob_,
+                   const fp_type max_translation_half_width_,
                    const size_t seed_,
                    chromosome* population_,
                    chromosome* next_population_,
@@ -56,6 +58,7 @@ namespace mudock {
           elite_size(elite_size_),
           tournament_length(tournament_length_),
           mutation_prob(mutation_prob_),
+          max_translation_half_width(max_translation_half_width_),
           population(population_),
           next_population(next_population_),
           num_rotamers_b(num_rotamers_b_),
@@ -82,6 +85,7 @@ namespace mudock {
     int elite_size;
     int tournament_length;
     fp_type mutation_prob;
+    fp_type max_translation_half_width;
     chromosome* __restrict__ population;
     chromosome* __restrict__ next_population;
     int* __restrict__ num_rotamers_b;
@@ -101,10 +105,11 @@ namespace mudock {
 
     genetic(std::shared_ptr<scratchpad<queue_t>> _scratch,
             dynamic_molecule& protein,
-            std::shared_ptr<scoring_t<queue_t>> _scoring)
+            std::shared_ptr<scoring_t<queue_t>> _scoring,
+            ligand_placement _placement = {})
         : docking<queue_t>(_scratch),
           score_stage(std::move(_scoring)),
-          geom_trans(_scratch, protein),
+          geom_trans(_scratch, protein, _placement),
           crystal_convergence_stage(_scratch),
           next_population(_scratch->get_queue()),
           best_chromosomes(_scratch->get_queue()),
@@ -166,6 +171,7 @@ namespace mudock {
                                                          configuration.elite_size,
                                                          configuration.tournament_length,
                                                          configuration.mutation_prob,
+                                                         configuration.max_translation_half_width.value_or(fp_type{0}),
                                                          seed,
                                                          chromosomes_b.dev_pointer(),
                                                          next_population.dev_pointer(),
@@ -411,10 +417,22 @@ namespace mudock {
       best_scores.copy_device2host();
       converged_ligands_b.copy_device2host();
       rmsd_best_pose_b.copy_device2host();
+      best_chromosomes.copy_device2host();
       (*this->scratch).get_queue()->synchronize();
   
       for (int index{0}; index < batch_ligands; ++index) {
         auto& ligand = *batch.molecules[index];
+        geom_ligand geom{ligand};
+        const int num_rotamers = static_cast<int>(ligand.num_rotamers());
+        apply<cpu_vectorization::AUTO>(ligand.x(),
+                                       ligand.y(),
+                                       ligand.z(),
+                                       best_chromosomes()[index],
+                                       ligand.num_atoms(),
+                                       num_rotamers,
+                                       geom.fragments_masks(),
+                                       geom.fragmets_starts(),
+                                       geom.fragments_stops());
         ligand.properties.assign(property_type::SCORE, std::to_string(best_scores()[index]));
 
         const int convergence_generation = converged_ligands_b()[index];

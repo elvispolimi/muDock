@@ -38,6 +38,14 @@ namespace mudock {
   __device__ __forceinline__ fp_type get_mutation_coin_distribution(hiprandState& state) {
     return random_gen_hip<fp_type>(state, 0, 1);
   };
+
+  template<bool bounded>
+  __device__ __forceinline__ void limit_translation(chromosome& chrom, const fp_type half_width) {
+    if constexpr (!bounded) return;
+    chrom[0] = fminf(fmaxf(chrom[0], -half_width), half_width);
+    chrom[1] = fminf(fmaxf(chrom[1], -half_width), half_width);
+    chrom[2] = fminf(fmaxf(chrom[2], -half_width), half_width);
+  }
   // TODO check what happens if max num_rotamers is reached, read for split index could go out of bound
   __device__ __forceinline__ int get_crossover_distribution(hiprandState& state, const int* num_rotamers) {
     return random_gen_hip<int>(state, 0, 6 + *num_rotamers);
@@ -58,11 +66,13 @@ namespace mudock {
     return best_individual;
   }
 
+  template<bool bounded>
   __global__ void initialize_gpu(const int chromosome_number,
                                  const int* __restrict__ ligand_num_rotamers,
                                  chromosome* __restrict__ chromosomes,
                                  hiprandState* __restrict__ state,
-                                 fp_type* __restrict__ ligand_scores) {
+                                 fp_type* __restrict__ ligand_scores,
+                                 const fp_type max_translation_half_width) {
     const int ligand_id        = blockIdx.x;
     const int local_thread_id  = threadIdx.x;
     const int thread_per_block = blockDim.x;
@@ -91,6 +101,7 @@ namespace mudock {
       for (int i{0}; i < 3; ++i) { // initialize the rigid translation
         chromo[i] = get_init_change_distribution(l_state) * coordinate_step;
       }
+      limit_translation<bounded>(chromo, max_translation_half_width);
       MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
       for (int i{3}; i < 6 + num_rotamers; ++i) { // initialize the rotations
         chromo[i] = get_init_change_distribution(l_state) * angle_step;
@@ -100,6 +111,7 @@ namespace mudock {
     state[global_thread_id] = l_state;
   }
 
+  template<bool bounded>
   __global__ void iterate_gpu(const int tournament_length,
                               const fp_type mutation_prob,
                               const int chromosome_number,
@@ -107,7 +119,8 @@ namespace mudock {
                               chromosome* __restrict__ chromosomes,
                               chromosome* __restrict__ next_chromosomes,
                               hiprandState* __restrict__ state,
-                              fp_type* __restrict__ ligand_scores) {
+                              fp_type* __restrict__ ligand_scores,
+                              const fp_type max_translation_half_width) {
     const int ligand_id        = blockIdx.x;
     const int local_thread_id  = threadIdx.x;
     const int thread_per_block = blockDim.x;
@@ -146,6 +159,7 @@ namespace mudock {
         if (get_mutation_coin_distribution(l_state) < mutation_prob)
           next_chromosome[i] += get_mutation_change_distribution(l_state) * coordinate_step;
       }
+      limit_translation<bounded>(next_chromosome, max_translation_half_width);
       MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
       for (int i{3}; i < 6 + num_rotamers; ++i) {
         if (get_mutation_coin_distribution(l_state) < mutation_prob) {
@@ -214,9 +228,14 @@ namespace mudock {
                     (void*) &num_rotamers_b,
                     (void*) &population,
                     (void*) hip_random_memory.get_data()->dev_pointer_ref(),
-                    (void*) &scores_b};
+                    (void*) &scores_b,
+                    (void*) &max_translation_half_width};
     //TODO check grid/dimensions
-    q->launch_kernel((void*) initialize_gpu, args, batch_ligands, BLOCK_SIZE);
+    q->launch_kernel((void*) (max_translation_half_width > fp_type{0} ? initialize_gpu<true>
+                                                                            : initialize_gpu<false>),
+                     args,
+                     batch_ligands,
+                     BLOCK_SIZE);
   }
   template<>
   void genetic_kernel<queue_hip>::operator()() {
@@ -227,9 +246,14 @@ namespace mudock {
                     (void*) &population,
                     (void*) &next_population,
                     (void*) hip_random_memory.get_data()->dev_pointer_ref(),
-                    (void*) &scores_b};
+                    (void*) &scores_b,
+                    (void*) &max_translation_half_width};
     //TODO check grid/dimensions
-    q->launch_kernel((void*) iterate_gpu, args, batch_ligands, BLOCK_SIZE);
+    q->launch_kernel((void*) (max_translation_half_width > fp_type{0} ? iterate_gpu<true>
+                                                                           : iterate_gpu<false>),
+                     args,
+                     batch_ligands,
+                     BLOCK_SIZE);
   }
   template<>
   void genetic_kernel<queue_hip>::finalize() {

@@ -8,6 +8,7 @@
 #include <mudock/compute/algorithm.hpp>
 #include <mudock/compute/bucket_size.hpp>
 #include <mudock/compute/genetic.hpp>
+#include <mudock/compute/ligand_placement.hpp>
 #include <mudock/compute/lamarckian_genetic.hpp>
 #include <mudock/compute/scratchpad.hpp>
 #include <mudock/compute/stage.hpp>
@@ -17,7 +18,9 @@
 namespace mudock {
 
   struct pipeline {
-    pipeline(std::shared_ptr<dynamic_molecule> _protein): protein(_protein) {}
+    pipeline(std::shared_ptr<dynamic_molecule> _protein,
+             ligand_placement _placement = {}):
+        protein(_protein), placement(_placement) {}
 
     template<typename queue_type>
     stage<queue_type> get_pipeline(const knobs&,
@@ -33,11 +36,13 @@ namespace mudock {
 
   protected:
     std::shared_ptr<dynamic_molecule> protein;
+    ligand_placement placement;
   };
 
   template<template<typename> typename scoring_t>
   struct scoring_pipeline: pipeline {
-    using pipeline::pipeline;
+    scoring_pipeline(std::shared_ptr<dynamic_molecule> protein_ptr, ligand_placement placement_config = {})
+        : pipeline(std::move(protein_ptr), placement_config) {}
 
     template<typename queue_type>
     scoring_t<queue_type> get_pipeline(const knobs& conf,
@@ -46,7 +51,8 @@ namespace mudock {
                                        std::shared_ptr<scratchpad<queue_type>> device_scratch) {
       return scoring_t<queue_type>(std::make_shared<mudock::scratchpad<queue_type>>(conf, id, dev_type),
                                    device_scratch,
-                                   *protein);
+                                   *protein,
+                                   placement);
     }
 
     template<typename queue_type>
@@ -78,7 +84,9 @@ namespace mudock {
 
   template<template<typename> typename scoring_t>
   struct genetic_scoring_pipeline: pipeline {
-    using pipeline::pipeline;
+    genetic_scoring_pipeline(std::shared_ptr<dynamic_molecule> protein_ptr,
+                             ligand_placement placement_config = {})
+        : pipeline(std::move(protein_ptr), placement_config) {}
 
     template<typename queue_type>
     genetic<queue_type, scoring_t> get_pipeline(const knobs& conf,
@@ -86,8 +94,8 @@ namespace mudock {
                                                 const device_type dev_type,
                                                 std::shared_ptr<scratchpad<queue_type>> device_scratch) {
       auto q = std::make_shared<mudock::scratchpad<queue_type>>(conf, id, dev_type);
-      auto scoring = std::make_shared<scoring_t<queue_type>>(q, device_scratch, *protein);
-      return genetic<queue_type, scoring_t>(q, *protein, scoring);
+      auto scoring = std::make_shared<scoring_t<queue_type>>(q, device_scratch, *protein, ligand_placement{ligand_placement_mode::preserve, std::nullopt});
+      return genetic<queue_type, scoring_t>(q, *protein, scoring, placement);
     }
 
     template<typename queue_type>

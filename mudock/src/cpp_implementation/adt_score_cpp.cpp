@@ -105,8 +105,8 @@ namespace mudock {
         for (int index = 0; index < num_atoms; ++index) {
           fp_type coord[3]{scratch_x_l[index], scratch_y_l[index], scratch_z_l[index]};
 
-          if (coord[0] < minimum[0] || coord[0] > maximum[0] || coord[1] < minimum[1] ||
-              coord[1] > maximum[1] || coord[2] < minimum[2] || coord[2] > maximum[2]) {
+          if (coord[0] < minimum[0] || coord[0] >= maximum[0] || coord[1] < minimum[1] ||
+              coord[1] >= maximum[1] || coord[2] < minimum[2] || coord[2] >= maximum[2]) {
             const auto diff_x      = coord[0] - center[0];
             const auto diff_y      = coord[1] - center[1];
             const auto diff_z      = coord[2] - center[2];

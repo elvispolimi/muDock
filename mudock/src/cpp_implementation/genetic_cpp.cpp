@@ -1,6 +1,7 @@
 #include "mudock/type_alias.hpp"
 
 #include <cstring>
+#include <cmath>
 #include <mudock/compute/buffer.hpp>
 #include <mudock/compute/devices_memory.hpp>
 #include <mudock/compute/genetic.hpp>
@@ -51,6 +52,14 @@ namespace mudock {
                                                 std::uniform_real_distribution<fp_type>& dist) {
     return random_gen_cpp<fp_type>(generator, dist, 0, 1);
   };
+
+  template<bool bounded>
+  inline void limit_translation(chromosome& chrom, const fp_type half_width) {
+    if constexpr (!bounded) return;
+    chrom[0] = std::clamp(chrom[0], -half_width, half_width);
+    chrom[1] = std::clamp(chrom[1], -half_width, half_width);
+    chrom[2] = std::clamp(chrom[2], -half_width, half_width);
+  }
   inline int get_crossover_distribution(std::mt19937& generator,
                                         std::uniform_real_distribution<fp_type>& dist,
                                         const int& num_rotamers) {
@@ -72,9 +81,11 @@ namespace mudock {
     return population[best_individual].genes;
   }
 
+  template<bool bounded>
   void initialize_impl(const int batch_ligands,
                        const int population_number,
                        const int seed,
+                       const fp_type max_translation_half_width,
                        chromosome* population,
                        int* __restrict__ num_rotamers_b,
                        fp_type* __restrict__ scores_b) {
@@ -90,18 +101,20 @@ namespace mudock {
         for (int i{0}; i < 3; ++i) { // initialize the rigid translation
           element[i] = get_init_change_distribution(rand_device(), dist) * coordinate_step;
         }
+        limit_translation<bounded>(element, max_translation_half_width);
         for (int i{3}; i < 6 + num_rotamers; ++i) { // initialize the rotations
           element[i] = get_init_change_distribution(rand_device(), dist) * angle_step;
         }
       }
     }
   }
-
+  template<bool bounded>
   void iterate_impl(const int batch_ligands,
                     const int population_number,
                     const int elite_size,
                     const int tournament_length,
                     const fp_type mutation_prob,
+                    const fp_type max_translation_half_width,
                     chromosome* population,
                     chromosome* next_population,
                     int* __restrict__ num_rotamers_b,
@@ -176,6 +189,7 @@ namespace mudock {
           if (get_mutation_coin_distribution(rand_device(), dist) < mutation_prob)
             next_individual[i] += get_mutation_change_distribution(rand_device(), dist) * coordinate_step;
         }
+        limit_translation<bounded>(next_individual, max_translation_half_width);
         for (int i{3}; i < 6 + num_rotamers; ++i) {
           if (get_mutation_coin_distribution(rand_device(), dist) < mutation_prob)
             next_individual[i] += get_mutation_change_distribution(rand_device(), dist) * angle_step;
@@ -224,26 +238,54 @@ namespace mudock {
   }
   template<>
   void genetic_kernel<queue_cpp>::operator()() {
-    q->invoke_kernel<this->iterate_region_name>(iterate_impl,
-                                                batch_ligands,
-                                                population_number,
-                                                elite_size,
-                                                tournament_length,
-                                                mutation_prob,
-                                                population,
-                                                next_population,
-                                                num_rotamers_b,
-                                                scores_b,
-                                                converged_ligands_b);
+    if (max_translation_half_width > fp_type{0}) {
+      q->invoke_kernel<this->iterate_region_name>(iterate_impl<true>,
+                                            batch_ligands,
+                                            population_number,
+                                            elite_size,
+                                            tournament_length,
+                                            mutation_prob,
+                                            max_translation_half_width,
+                                            population,
+                                            next_population,
+                                            num_rotamers_b,
+                                            scores_b,
+                                            converged_ligands_b);
+    } else {
+      q->invoke_kernel<this->iterate_region_name>(iterate_impl<false>,
+                                            batch_ligands,
+                                            population_number,
+                                            elite_size,
+                                            tournament_length,
+                                            mutation_prob,
+                                            max_translation_half_width,
+                                            population,
+                                            next_population,
+                                            num_rotamers_b,
+                                            scores_b,
+                                            converged_ligands_b);
+    }
   }
   template<>
   void genetic_kernel<queue_cpp>::initialize() {
-    q->invoke_kernel<initialize_region_name>(initialize_impl,
-                                             batch_ligands,
-                                             population_number,
-                                             seed,
-                                             population,
-                                             num_rotamers_b,
-                                             scores_b);
+    if (max_translation_half_width > fp_type{0}) {
+      q->invoke_kernel<initialize_region_name>(initialize_impl<true>,
+                                               batch_ligands,
+                                               population_number,
+                                               seed,
+                                               max_translation_half_width,
+                                               population,
+                                               num_rotamers_b,
+                                               scores_b);
+    } else {
+      q->invoke_kernel<initialize_region_name>(initialize_impl<false>,
+                                               batch_ligands,
+                                               population_number,
+                                               seed,
+                                               max_translation_half_width,
+                                               population,
+                                               num_rotamers_b,
+                                               scores_b);
+    }
   }
 } // namespace mudock
