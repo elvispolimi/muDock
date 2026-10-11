@@ -1,0 +1,15 @@
+./builds/omp/application/muDock \
+    --protein ./data/coreset_CASF_2016/3coz/3coz_pocket.pdb \
+    --ligand ./data/coreset_CASF_2016/3coz/3coz_ligand.adtmol2 \
+    --crystal_score -1.644277 \
+    --search lga \
+    --population 100 \
+    --generations 750 \
+    --autostop 1 \
+    --tolerance_window 50 \
+    --best_score_diff_thld 0.0001 \
+    --max-search-box 10 \
+    --placement preserve \
+    --lsrate 100 \
+    --lsit 200 \
+    --seed 10
