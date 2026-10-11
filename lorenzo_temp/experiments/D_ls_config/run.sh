@@ -8,14 +8,17 @@ DATA_DIR="./data/coreset_CASF_2016"
 EXP_DIR="./lorenzo_temp/experiments"
 TEST_DIR="${EXP_DIR}/test"
 
-ids=(1mq6 1z95 2cet 3ary 3coz 3dx2 3fur 3gv9 3k5v 3lka 3nw9 3p5o 3qgy 3qqs 4bkt 4dld 4j21 4kz6 4ty7 5tmn)
-crystal_scores=(-8.766284 -4.041984 -0.100647 -0.404427 -1.644277 -2.943025 -1.518824 -0.644809 -0.654886 -4.840909 -7.317592 -2.251232 -1.48791 -5.76047 -3.921186 -5.967893 -8.883362 -0.303014 -3.464769 -10.883055)
+ids=(3qgy 4m0z 3u8k 3u8n 3wtj 3zdg 4qac 2r9w 3gv9 4jxs 4kz6 3ao4 3zsx 3zt2 4cig 3ehy 3lka 3nx7 3tsk 4gr0)
+crystal_scores=(-2.307344 -5.341486 -2.007125 -3.749675 -1.827195 -1.108771 -1.540321 -5.982524 -0.503303 -3.226412 -0.480906 -2.311208 -1.366008 -2.277802 -4.31475 -7.889799 -0.991583 -8.169148 -12.731228 -17.205564)
 
-lsrates=("5" "10" "20" "50" "100")
-lsits=("10" "30" "50" "100" "200")
+lsrates=("5" "25" "50" "75" "100")
+lsits=("10" "50" "100" "150" "200")
 
 NUM_SEEDS=20
 seeds=($(seq 0 $((NUM_SEEDS - 1))))
+
+POPULATION=100
+BUDGET=100000
 
 TOTAL_RUNS=$((${#ids[@]} * ${#lsrates[@]} * ${#lsits[@]} * ${#seeds[@]}))
 COMPLETED_RUNS=0
@@ -31,6 +34,9 @@ for SEED in "${seeds[@]}"; do
 
             POCKET="${DATA_DIR}/${PDBID}/${PDBID}_pocket.pdb"
             LIGAND="${DATA_DIR}/${PDBID}/${PDBID}_ligand.adtmol2"
+
+            EVALS_PER_GENERATION=$((POPULATION + POPULATION * LSRATE * LSIT / 100))
+            GENERATIONS=$((BUDGET / EVALS_PER_GENERATION))            
             
             OUT_PATH="${TEST_DIR}/${PDBID}_${LSRATE}_${LSIT}_${SEED}.txt"
 
@@ -39,14 +45,11 @@ for SEED in "${seeds[@]}"; do
                 --ligand "$LIGAND" \
                 --seed "$SEED" \
                 --search lga \
-                --population 100 \
-                --generations 750 \
+                --population "$POPULATION" \
+                --generations "$GENERATIONS" \
                 --lsrate "$LSRATE" \
                 --lsit "$LSIT" \
-                --autostop 1 \
                 --crystal_score "$CRYSTAL_SCORE" \
-                --tolerance_window 50 \
-                --best_score_diff_thld 0.0001 \
                 --max-search-box 10 \
                 --placement preserve \
                 > "$OUT_PATH" 2>&1 &
