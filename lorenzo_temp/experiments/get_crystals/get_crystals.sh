@@ -2,7 +2,7 @@
 IGNORE_TOKEN="Experiment"
 
 # MAX_JOBS=$(nproc)
-MAX_JOBS=12
+MAX_JOBS=1
 
 BUILD=omp
 
@@ -18,15 +18,16 @@ echo "Docking..."
 for dir in ${DATA_DIR}/*/; do
     PDBID=$(basename "$dir")
 
-    PROTEIN="${DATA_DIR}/${PDBID}/${PDBID}_protein.pdb"
+    POCKET="${DATA_DIR}/${PDBID}/${PDBID}_pocket.pdb"
     LIGAND="${DATA_DIR}/${PDBID}/${PDBID}_ligand.adtmol2"
     
     OUT_PATH="${TEST_DIR}/${PDBID}_crystal.txt"
 
     ./builds/"$BUILD"/application/local_search/local_search \
-        --protein "$PROTEIN" \
+        --protein "$POCKET" \
         --ligand "$LIGAND" \
         --lsit 0 \
+        --placement preserve \
         2>&1 | grep "$IGNORE_TOKEN" >> "$OUT_PATH" \
         &
 
@@ -51,7 +52,7 @@ while [ "$(jobs -rp | wc -l)" -gt 0 ]; do
 done
 
 # cat ${TEST_DIR}/* > ./lorenzo_temp/experiments/get_crystals/crystals.csv
-sed 's/^Experiment,//' ${TEST_DIR}/* > ./lorenzo_temp/experiments/results.csv
+sed 's/^Experiment,//' ${TEST_DIR}/* > ./lorenzo_temp/experiments/cry_pocket.csv
 
 python3 lorenzo_temp/experiments/notify.py
 

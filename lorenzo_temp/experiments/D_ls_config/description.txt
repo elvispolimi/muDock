@@ -1,3 +1,7 @@
+se voglio comparare GA e LGA, forse è meglio farlo a parità di budget
+
+se voglio comparare diverse config di LGA, non so se è meglio a parità di budget o per numero di gen senza autostop
+
 ./builds/omp/application/muDock \
     --protein ./data/coreset_CASF_2016/3coz/3coz_pocket.pdb \
     --ligand ./data/coreset_CASF_2016/3coz/3coz_ligand.adtmol2 \
@@ -10,6 +14,6 @@
     --best_score_diff_thld 0.0001 \
     --max-search-box 10 \
     --placement preserve \
-    --lsrate 100 \
-    --lsit 200 \
+    --lsrate 10 \
+    --lsit 50 \
     --seed 10
