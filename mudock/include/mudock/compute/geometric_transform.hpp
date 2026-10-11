@@ -47,6 +47,7 @@ namespace mudock {
                 const int* __restrict__ frag_indices_start_b_,
                 const int* __restrict__ frag_start_indices_b_,
                 const int* __restrict__ frag_stop_indices_b_,
+                int *__restrict__ converged_ligands_b_,
                 std::shared_ptr<queue_type> q_)
         : batch_ligands(batch_ligands_),
           batch_atoms(batch_atoms_),
@@ -65,6 +66,7 @@ namespace mudock {
           frag_indices_start_b(frag_indices_start_b_),
           frag_start_indices_b(frag_start_indices_b_),
           frag_stop_indices_b(frag_stop_indices_b_),
+          converged_ligands_b(converged_ligands_b_),
           q(q_) {}
 
     void operator()();
@@ -95,6 +97,7 @@ namespace mudock {
     const int* __restrict__ frag_indices_start_b;
     const int* __restrict__ frag_start_indices_b;
     const int* __restrict__ frag_stop_indices_b;
+    int *__restrict__ converged_ligands_b;
     std::shared_ptr<queue_type> q;
   };
 
@@ -204,6 +207,14 @@ namespace mudock {
       int* frag_start_indices_p     = frag_start_atom_indices.dev_pointer();
       int* frag_stop_indices_p      = frag_stop_atom_indices.dev_pointer();
 
+      auto &converged_ligands_b = (*this->scratch).template get<buffer_data_type::CONVERGED_LIGANDS>();
+      if (!converged_ligands_b.is_valid() || converged_ligands_b.num_elements() != static_cast<size_t>(batch_ligands)) {
+        converged_ligands_b.alloc(batch_ligands);
+        converged_ligands_b.set_valid();
+      }
+      converged_ligands_b.copy_host2device();
+      int *converged_ligands = converged_ligands_b.dev_pointer();
+
       kernel = std::make_unique<geom_kernel<queue_t>>(batch_ligands,
                                                       batch_atoms,
                                                       chromsomes_per_ligand,
@@ -221,6 +232,7 @@ namespace mudock {
                                                       frag_indices_start_p,
                                                       frag_start_indices_p,
                                                       frag_stop_indices_p,
+                                                      converged_ligands,
                                                       q);
     }
 

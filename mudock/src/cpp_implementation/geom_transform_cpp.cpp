@@ -21,8 +21,11 @@ namespace mudock {
                         const int* __restrict__ ligand_fragments_start_b,
                         const int* __restrict__ frag_indices_start_b,
                         const int* __restrict__ frag_start_indices_b,
-                        const int* __restrict__ frag_stop_indices_b) {
+                        const int* __restrict__ frag_stop_indices_b,
+                        int *__restrict__ converged_ligands_b) {
     for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
+      if (converged_ligands_b[ligand_index]) continue;
+
       const int stride_atoms                     = ligand_index * batch_atoms;
       const int num_atoms                        = num_atoms_b[ligand_index];
       const int num_rotamers                     = num_rotamers_b[ligand_index];
@@ -83,6 +86,7 @@ namespace mudock {
                                        ligand_fragments_start_b,
                                        frag_indices_start_b,
                                        frag_start_indices_b,
-                                       frag_stop_indices_b);
+                                       frag_stop_indices_b,
+                                       converged_ligands_b);
   }
 } // namespace mudock

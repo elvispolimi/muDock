@@ -119,6 +119,14 @@ namespace mudock {
 
       auto q = (*this->scratch).get_queue();
 
+      auto &converged_ligands_b = (*this->scratch).template get<buffer_data_type::CONVERGED_LIGANDS>();
+      if (!converged_ligands_b.is_valid() || converged_ligands_b.num_elements() != static_cast<size_t>(batch_ligands)) {
+        converged_ligands_b.alloc(batch_ligands);
+        converged_ligands_b.set_valid();
+      }
+      converged_ligands_b.copy_host2device();
+      int *converged_ligands = converged_ligands_b.dev_pointer();
+
       adadelta_krnl = std::make_unique<adadelta_kernel<queue_type>>(individuals_per_ligand,
                                                                     batch_ligands,
                                                                     batch_atoms,
@@ -128,6 +136,7 @@ namespace mudock {
                                                                     adadelta_e_g2,
                                                                     adadelta_e_dw2,
                                                                     active_individuals,
+                                                                    converged_ligands,
                                                                     q,
                                                                     rho,
                                                                     epsilon);

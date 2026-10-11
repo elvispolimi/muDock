@@ -18,9 +18,12 @@ namespace mudock {
                                     chromosome *__restrict__ adadelta_e_dw2_b,
                                     int *__restrict__ active_individuals_b,    
                                     const fp_type rho,
-                                    const fp_type epsilon) {
+                                    const fp_type epsilon,
+                                    int *__restrict__ converged_ligands_b) {
     
     for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
+      if (converged_ligands_b[ligand_index]) continue;
+
       chromosome *__restrict__ population_l         = population_b + ligand_index * individuals_per_ligand;
       chromosome *__restrict__ e_g2_l               = adadelta_e_g2_b + ligand_index * individuals_per_ligand;
       chromosome *__restrict__ e_dw2_l              = adadelta_e_dw2_b + ligand_index * individuals_per_ligand;
@@ -72,7 +75,8 @@ namespace mudock {
                                                 adadelta_e_dw2_b,
                                                 active_individuals_b,
                                                 rho,
-                                                epsilon);
+                                                epsilon,
+                                                converged_ligands_b);
   }
 
 } // namespace mudock
