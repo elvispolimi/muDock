@@ -2,6 +2,22 @@ se voglio comparare GA e LGA, forse è meglio farlo a parità di budget
 
 se voglio comparare diverse config di LGA, non so se è meglio a parità di budget o per numero di gen senza autostop
 
+Post 1M e 100k evals, rate(5-100), iter(10-200) uniform:
+sembra che sia più importante un numero di iter alto che un rate alto, anzi un numero basso di iter spesso peggiora, 
+quindi il prossimo exp partirà da almeno 100 iters
+
+
+
+
+
+
+
+
+
+
+
+
+
 ./builds/omp/application/muDock \
     --protein ./data/coreset_CASF_2016/3coz/3coz_pocket.pdb \
     --ligand ./data/coreset_CASF_2016/3coz/3coz_ligand.adtmol2 \

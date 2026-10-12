@@ -16,7 +16,7 @@ NUM_SEEDS=20
 seeds=($(seq 0 $((NUM_SEEDS - 1))))
 
 POPULATION=100
-GENERATIONS=1000
+GENERATIONS=5000
 
 TOTAL_RUNS=$((${#ids[@]} * ${#seeds[@]}))
 COMPLETED_RUNS=0

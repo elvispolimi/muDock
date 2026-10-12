@@ -11,14 +11,14 @@ TEST_DIR="${EXP_DIR}/test"
 ids=(3qgy 4m0z 3u8k 3u8n 3wtj 3zdg 4qac 2r9w 3gv9 4jxs 4kz6 3ao4 3zsx 3zt2 4cig 3ehy 3lka 3nx7 3tsk 4gr0)
 crystal_scores=(-2.307344 -5.341486 -2.007125 -3.749675 -1.827195 -1.108771 -1.540321 -5.982524 -0.503303 -3.226412 -0.480906 -2.311208 -1.366008 -2.277802 -4.31475 -7.889799 -0.991583 -8.169148 -12.731228 -17.205564)
 
-lsrates=("5" "25" "50" "75" "100")
-lsits=("10" "50" "100" "150" "200")
+lsrates=("5" "50" "100")
+lsits=("100" "200" "300")
 
 NUM_SEEDS=20
 seeds=($(seq 0 $((NUM_SEEDS - 1))))
 
 POPULATION=100
-BUDGET=100000
+BUDGET=500000
 
 TOTAL_RUNS=$((${#ids[@]} * ${#lsrates[@]} * ${#lsits[@]} * ${#seeds[@]}))
 COMPLETED_RUNS=0
