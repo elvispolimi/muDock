@@ -69,7 +69,7 @@ def main():
         
         plt.title(f"{ligand} - LGA vs GA\n(Score Difference: LGA - GA)")
         plt.xlabel("Local Search Rate")
-        plt.ylabel("Local Search iter")
+        plt.ylabel("Local Search Iter")
         plt.tight_layout()
         
         # Save the figure
