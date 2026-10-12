@@ -6,6 +6,11 @@ Post 1M e 100k evals, rate(5-100), iter(10-200) uniform:
 sembra che sia più importante un numero di iter alto che un rate alto, anzi un numero basso di iter spesso peggiora, 
 quindi il prossimo exp partirà da almeno 100 iters
 
+Forse è meglio fare prima una coarse grained search, poi una fine grained sulle zone di successo, 
+inoltre valutare se mettere ls_on_best.
+
+Bounding box a 10 è troppo: il ligando poi va troppo lontano dalla tasca e rmsd sui 20
+DOMANDA: non capisco se funziona il bbox, che sia 1 o 10 il ligando si muove uguale tanto secondo me, mettendolo tipo a 0 0 0 come placement 
 
 
 
