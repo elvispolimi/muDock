@@ -1,8 +1,9 @@
 import argparse
+import os
+
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
-import os
 
 
 def main():
@@ -33,9 +34,14 @@ def main():
     df = pd.read_csv(args.csv_file)
 
     # Ensure numeric columns
-    df["rate"] = pd.to_numeric(df["rate"], errors="coerce")
-    df["iter"] = pd.to_numeric(df["iter"], errors="coerce")
-    df["score"] = pd.to_numeric(df["score"], errors="coerce")
+    for col in ["rate", "iter", "score", "rot"]:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+
+    if "rot" not in df.columns:
+        parser.error(
+            "The CSV must contain a 'rot' column to create rotamer-bin heatmaps."
+        )
 
     # 3. Separate GA runs (baseline) and LGA runs
     ga_runs = df[df["rate"].isna() & df["iter"].isna()]
@@ -62,9 +68,10 @@ def main():
         .rename(columns={"score": "ga_score"})
     )
 
-    # LGA scores per ligand and configuration
+    # LGA scores per ligand and configuration.
+    # Keep rot so each complex can be assigned to a bin.
     lga_agg = (
-        lga_runs.groupby(["name", "rate", "iter"])["score"]
+        lga_runs.groupby(["name", "rate", "iter", "rot"])["score"]
         .agg(agg_func)
         .reset_index()
     )
@@ -120,47 +127,76 @@ def main():
 
         print(f"Saved heatmap for {ligand} to {out_path}")
 
-    # 7. Generate the global heatmap: mean across ligands
-    global_agg = (
-        merged_data.groupby(["rate", "iter"])["score_diff"]
-        .mean()
-        .reset_index(name="mean_score_diff")
-    )
+    # 7. Generate global heatmaps grouped by rotamer count
+    # Bounds are inclusive: 1-9 and 10-50 rotamers.
+    rotamer_bins = [
+        (1, 7, "rot_1_7"),
+        (8, 13, "rot_8_13"),
+        (14, 50, "rot_14_50"),
+    ]
 
-    global_pivot = global_agg.pivot(
-        index="iter",
-        columns="rate",
-        values="mean_score_diff"
-    ).sort_index(ascending=False)
+    for rot_min, rot_max, bin_name in rotamer_bins:
+        bin_data = merged_data[
+            merged_data["rot"].between(rot_min, rot_max, inclusive="both")
+        ]
 
-    plt.figure(figsize=(8, 6))
-    sns.heatmap(
-        global_pivot,
-        annot=True,
-        cmap="coolwarm",
-        center=0,
-        fmt=".2f",
-        cbar_kws={
-            "label": f"Mean Score Difference ({args.agg.capitalize()})"
-        }
-    )
+        if bin_data.empty:
+            print(
+                f"Skipping global heatmap for {bin_name}: "
+                f"no complexes with {rot_min}-{rot_max} rotamers."
+            )
+            continue
 
-    plt.title(
-        f"Global LGA vs GA\n"
-        f"Mean Score Difference Across Ligands ({args.agg.capitalize()} per Ligand)"
-    )
-    plt.xlabel("Local Search Rate")
-    plt.ylabel("Local Search Iterations")
-    plt.tight_layout()
+        # Average score differences across complexes for each configuration
+        global_agg = (
+            bin_data.groupby(["rate", "iter"])["score_diff"]
+            .mean()
+            .reset_index(name="mean_score_diff")
+        )
 
-    out_path = os.path.join(
-        args.outdir,
-        f"heatmap_global_mean_{args.agg}.png"
-    )
-    plt.savefig(out_path, dpi=300)
-    plt.close()
+        global_pivot = global_agg.pivot(
+            index="iter",
+            columns="rate",
+            values="mean_score_diff"
+        ).sort_index(ascending=False)
 
-    print(f"Saved global heatmap to {out_path}")
+        num_complexes = bin_data["name"].nunique()
+
+        plt.figure(figsize=(8, 6))
+        sns.heatmap(
+            global_pivot,
+            annot=True,
+            cmap="coolwarm",
+            center=0,
+            fmt=".2f",
+            cbar_kws={
+                "label": (
+                    f"Mean Score Difference "
+                    f"({args.agg.capitalize()} per complex)"
+                )
+            }
+        )
+
+        plt.title(
+            f"Global LGA vs GA: {rot_min}-{rot_max} Rotamers\n"
+            f"Mean Score Difference Across {num_complexes} Complexes "
+            f"({args.agg.capitalize()} per complex)"
+        )
+        plt.xlabel("Local Search Rate")
+        plt.ylabel("Local Search Iterations")
+        plt.tight_layout()
+
+        out_path = os.path.join(
+            args.outdir,
+            f"heatmap_global_{bin_name}_{args.agg}.png"
+        )
+        plt.savefig(out_path, dpi=300)
+        plt.close()
+
+        print(
+            f"Saved global heatmap for {bin_name} "
+            f"({num_complexes} complexes) to {out_path}"
+        )
 
 
 if __name__ == "__main__":
