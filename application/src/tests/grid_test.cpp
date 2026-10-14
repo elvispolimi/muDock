@@ -46,9 +46,9 @@ int main(int argc, char* argv[]) {
 
     grid.get(2, 3, 4) = mudock::fp_type{42};
     assert(grid.get(coordinate) == mudock::fp_type{42});
-    assert(grid.get(mudock::point3D{mudock::fp_type{1.49},
-                                    mudock::fp_type{2.49},
-                                    mudock::fp_type{3.49}}) == mudock::fp_type{0});
+    assert(grid.get(mudock::point3D{mudock::fp_type{1.49f},
+                                    mudock::fp_type{2.49f},
+                                    mudock::fp_type{3.49f}}) == mudock::fp_type{0});
   }
 
   if constexpr (std::is_same<mudock::fp_type, double>::value) {

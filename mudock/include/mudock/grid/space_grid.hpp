@@ -20,9 +20,9 @@ namespace mudock {
     // utility function that compute the flat index of the given point
     [[nodiscard]] std::size_t get_index(const point<fp_type, n>& p) const {
       const auto relative = p - _min;
-      return md_index<n>::to1D(static_cast<std::size_t>(std::floor(relative.x() * _inv_resolution)),
-                               static_cast<std::size_t>(std::floor(relative.y() * _inv_resolution)),
-                               static_cast<std::size_t>(std::floor(relative.z() * _inv_resolution)));
+      return md_data.to1D(static_cast<std::size_t>(std::floor(relative.x() * _inv_resolution)),
+                          static_cast<std::size_t>(std::floor(relative.y() * _inv_resolution)),
+                          static_cast<std::size_t>(std::floor(relative.z() * _inv_resolution)));
     }
 
   public:
@@ -91,8 +91,8 @@ namespace mudock {
     }
 
     // function to access data of the space grid w/out checking if the point is actually inside
-    [[nodiscard]] inline fp_type& get(point<fp_type, n> p) { return md_data._data[get_index(p)]; }
-    [[nodiscard]] inline const fp_type& get(point<fp_type, n> p) const { return md_data._data[get_index(p)]; }
+    [[nodiscard]] inline fp_type& get(point<fp_type, n> p) { return md_data.data()[get_index(p)]; }
+    [[nodiscard]] inline const fp_type& get(point<fp_type, n> p) const { return md_data.data()[get_index(p)]; }
 
     // forward functions to access data using indexes instead of coordinates
     template<class... Y>
