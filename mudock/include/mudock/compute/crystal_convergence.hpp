@@ -147,10 +147,9 @@ namespace mudock {
       best_so_far_b.alloc(batch_ligands);
       for_how_long_best_b.alloc(batch_ligands);
 
-      initialize_converged_ligands<queue_t>(batch, this->scratch);
-      initialize_best_so_far<queue_t>(batch, this->scratch);
-      initialize_for_how_long_best<queue_t>(batch, this->scratch);
-
+      initialize_buffer<buffer_data_type::CONVERGED_LIGANDS>(this->scratch, batch_ligands, 0, true);
+      initialize_buffer<buffer_data_type::BEST_SO_FAR>(this->scratch, batch_ligands, big_bound<fp_type>(), true);
+      initialize_buffer<buffer_data_type::FOR_HOW_LONG_BEST>(this->scratch, batch_ligands, 0, true);
 
       for (int ligand_index = 0; ligand_index < batch_ligands; ++ligand_index) {
         auto& ligand = *batch.molecules[ligand_index];

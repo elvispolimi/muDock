@@ -110,57 +110,17 @@ namespace mudock {
       return false;
   };
 
-  template<typename queue_type>
+  template<buffer_data_type bdt, typename queue_type>
     requires std::derived_from<queue_type, queue>
-  bool initialize_converged_ligands(batch<static_molecule> &batch, std::shared_ptr<scratchpad<queue_type>> scratch) {
-    const auto batch_ligands = batch.num_ligands;
-
-    auto &converged_ligands = (*scratch).template get<buffer_data_type::CONVERGED_LIGANDS>();
-
-    if (!converged_ligands.is_valid()) {
-      converged_ligands.alloc(batch_ligands);
-      for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
-        converged_ligands()[ligand_index] = static_cast<int>(0);
-      }
-      converged_ligands.copy_host2device();
-      return true;
-    } else
-      return false;
-  };
-
-  template<typename queue_type>
-    requires std::derived_from<queue_type, queue>
-  bool initialize_best_so_far(batch<static_molecule> &batch, std::shared_ptr<scratchpad<queue_type>> scratch) {
-    const auto batch_ligands = batch.num_ligands;
-
-    auto &best_so_far_b = (*scratch).template get<buffer_data_type::BEST_SO_FAR>();
-
-    if (!best_so_far_b.is_valid()) {
-      best_so_far_b.alloc(batch_ligands);
-      for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
-        best_so_far_b()[ligand_index] = big_bound<fp_type>();
-      }
-      best_so_far_b.copy_host2device();
-      return true;
-    } else
-      return false;
-  };
-
-  template<typename queue_type>
-    requires std::derived_from<queue_type, queue>
-  bool initialize_for_how_long_best(batch<static_molecule> &batch, std::shared_ptr<scratchpad<queue_type>> scratch) {
-    const auto batch_ligands = batch.num_ligands;
-
-    auto &for_how_long_best_b = (*scratch).template get<buffer_data_type::FOR_HOW_LONG_BEST>();
-
-    if (!for_how_long_best_b.is_valid()) {
-      for_how_long_best_b.alloc(batch_ligands);
-      for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
-        for_how_long_best_b()[ligand_index] = static_cast<int>(0);
-      }
-      for_how_long_best_b.copy_host2device();
-      return true;
-    } else
-      return false;
-  };
+  bool initialize_buffer(std::shared_ptr<scratchpad<queue_type>> scratch,
+                        const std::size_t n,
+                        const typename buffer_type_traits<bdt>::type& value = {},
+                        const bool force = false) {
+    auto& buf = (*scratch).template get<bdt>();
+    if (!force && buf.is_valid() && buf.num_elements() == n) return false;
+    buf.alloc(n);
+    std::fill_n(buf(), n, value);
+    buf.copy_host2device();
+    return true;
+  }
 } // namespace mudock

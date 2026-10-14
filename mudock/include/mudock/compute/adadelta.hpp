@@ -1,5 +1,6 @@
 #pragma once
 
+#include <vector>
 #include <cstddef>
 #include <cstdlib>
 #include <cstring>
@@ -61,35 +62,29 @@ namespace mudock {
       local_search_on_best = configuration.ls_on_best;
       rho = configuration.rho;
       epsilon = configuration.epsilon;
+      this->standalone_local_search = this->is_standalone_local_search(configuration);
+      final_rmsds.resize(batch_ligands);
 
-      auto &gradient_b = (*this->scratch).template get<buffer_data_type::GRADIENTS>();
+
+      auto &adadelta_e_g2_b  = (*this->scratch).template get<buffer_data_type::ADADELTA_E_G2>();
+      auto &adadelta_e_dw2_b = (*this->scratch).template get<buffer_data_type::ADADELTA_E_DW2>();
+      auto &chromosomes_b    = (*this->scratch).template get<buffer_data_type::CHROMOSOMES>();
+      auto &gradients_b       = (*this->scratch).template get<buffer_data_type::GRADIENTS>();
       const size_t gradient_count = static_cast<size_t>(batch_ligands) * static_cast<size_t>(individuals_per_ligand);
-      if (!gradient_b.is_valid() || gradient_b.num_elements() != gradient_count) {
-        gradient_b.alloc(gradient_count);
-        gradient_b.set_valid();
-      }
-      gradient *gradients_b = gradient_b.dev_pointer();
+
 
       auto& num_rotamers_b = (*this->scratch).template get<buffer_data_type::NUM_ROTAMERS>();
       num_rotamers_b.alloc(batch_ligands);
       load_num_rotamers<queue_type>(batch, this->scratch);
-
-      auto &chromosomes_b = (*this->scratch).template get<buffer_data_type::CHROMOSOMES>();
-      chromosomes_b.alloc(static_cast<size_t>(batch_ligands) * static_cast<size_t>(individuals_per_ligand));
-      chromosomes_b.set_valid();
-      chromosome *population_b = chromosomes_b.dev_pointer();
-
-      // Allocate AdaDelta state buffers (E[g^2] and E[delta^2])
-      auto &adadelta_e_g2_b      = (*this->scratch).template get<buffer_data_type::ADADELTA_E_G2>();
-      auto &adadelta_e_dw2_b     = (*this->scratch).template get<buffer_data_type::ADADELTA_E_DW2>();
       
-      if (!adadelta_e_g2_b.is_valid() || adadelta_e_g2_b.num_elements() != gradient_count) {
-        adadelta_e_g2_b.alloc(gradient_count);
-        adadelta_e_dw2_b.alloc(gradient_count);
-        adadelta_e_g2_b.set_valid();
-        adadelta_e_dw2_b.set_valid();
+      // AdaDelta state: needed in both modes, and must always start from zero
+      initialize_buffer<buffer_data_type::ADADELTA_E_G2>(this->scratch, gradient_count, chromosome{}, true);
+      initialize_buffer<buffer_data_type::ADADELTA_E_DW2>(this->scratch, gradient_count, chromosome{}, true);
+
+      if (this->standalone_local_search) {
+        initialize_buffer<buffer_data_type::CHROMOSOMES>(this->scratch, gradient_count, chromosome{}, true);
+        initialize_buffer<buffer_data_type::GRADIENTS>(this->scratch, gradient_count, gradient{}, true);
       }
-      
       
       // TODO L move active from lsrate initialization from here to local search generic or LGA?
       // Initialize active population
@@ -115,7 +110,9 @@ namespace mudock {
       int* __restrict__ num_rotamers_p = num_rotamers_b.dev_pointer();
       chromosome *adadelta_e_g2        = adadelta_e_g2_b.dev_pointer();
       chromosome *adadelta_e_dw2       = adadelta_e_dw2_b.dev_pointer();
-      int *active_individuals          = active_individuals_b.dev_pointer();
+      chromosome *chromosomes          = chromosomes_b.dev_pointer();
+      gradient   *gradients            = gradients_b.dev_pointer();
+      int        *active_individuals   = active_individuals_b.dev_pointer();
 
       auto q = (*this->scratch).get_queue();
 
@@ -130,8 +127,8 @@ namespace mudock {
       adadelta_krnl = std::make_unique<adadelta_kernel<queue_type>>(individuals_per_ligand,
                                                                     batch_ligands,
                                                                     batch_atoms,
-                                                                    gradients_b,
-                                                                    population_b,
+                                                                    gradients,
+                                                                    chromosomes,
                                                                     num_rotamers_p,
                                                                     adadelta_e_g2,
                                                                     adadelta_e_dw2,
@@ -141,7 +138,6 @@ namespace mudock {
                                                                     rho,
                                                                     epsilon);
 
-      this->standalone_local_search = this->is_standalone_local_search(configuration);
       
       // Initialize the scoring kernel buffers
       this->score_stage->prepare(batch); //TODO L se non sbaglio l'ho aggiunto per quando deve fare solo local search nell'eseguibile stand alone
@@ -226,6 +222,7 @@ namespace mudock {
     bool local_search_on_best;
     fp_type rho;
     fp_type epsilon;
+    std::vector<fp_type> final_rmsds;
 
     std::unique_ptr<adadelta_kernel<queue_type>> adadelta_krnl;
     geometric<queue_type> geom_trans;
@@ -253,20 +250,20 @@ namespace mudock {
     }
 
     // TODO L this function, like dump_pose, is valid for only one ligand at a time
-    fp_type get_ligand_rmsd() {
+    fp_type get_ligand_rmsd(int ligand_index, const fp_type* x_scratch_b, const fp_type* y_scratch_b, const fp_type* z_scratch_b) {
       assert(this->ligand_template.has_value() && "Ligand template not initialized for RMSD logging");
 
-      auto& x_scratch_b = (*this->scratch).template get<buffer_data_type::X_SCRATCH>();
-      auto& y_scratch_b = (*this->scratch).template get<buffer_data_type::Y_SCRATCH>();
-      auto& z_scratch_b = (*this->scratch).template get<buffer_data_type::Z_SCRATCH>();
-      x_scratch_b.copy_device2host();
-      y_scratch_b.copy_device2host();
-      z_scratch_b.copy_device2host();
-      (*this->scratch).get_queue()->synchronize();
+      const int num_atoms   = this->ligand_template->num_atoms();
+      const int atom_stride = ligand_index * batch_atoms;
+
+      const fp_type *__restrict__ scratch_x = x_scratch_b + atom_stride;
+      const fp_type *__restrict__ scratch_y = y_scratch_b + atom_stride;
+      const fp_type *__restrict__ scratch_z = z_scratch_b + atom_stride;
+
 
       return compute_rmsd((*this->ligand_template).x(), (*this->ligand_template).y(), (*this->ligand_template).z(),
-                          x_scratch_b.host_pointer(), y_scratch_b.host_pointer(), z_scratch_b.host_pointer(), 
-                          this->ligand_template->num_atoms());
+                          scratch_x, scratch_y, scratch_z, 
+                          num_atoms);
     }
 
 
@@ -339,34 +336,30 @@ namespace mudock {
       // csv_logger score_logger("adadelta_scores.csv", {"ligand", "iteration", "standalone_ls_score"});
       // csv_logger com_logger("adadelta_com.csv", {"ligand", "iteration", "com_distance"});
       // csv_logger rmsd_logger("adadelta_rmsd.csv", {"ligand", "iteration", "rmsd"});
-      csv_logger crystal_experiment_logger("adadelta_crystal.csv", {"ligand", "crystal_score", "final_score", "rmsd", "com", "num_atoms", "num_rotamers", "iterations"});
+      // csv_logger crystal_experiment_logger("adadelta_crystal.csv", {"ligand", "crystal_score", "final_score", "rmsd", "com", "num_atoms", "num_rotamers", "iterations"});
       
-      const std::string ligand_name = this->ligand_template ? this->ligand_template->properties.get(property_type::NAME) : std::string{"unknown"};
-      auto &scores_b = (*this->scratch).template get<buffer_data_type::SCORES>();
-      std::optional<point3D> initial_com;
-      fp_type crystal_score = 0.0;
+      // const std::string ligand_name = this->ligand_template ? this->ligand_template->properties.get(property_type::NAME) : std::string{"unknown"};
+      // auto &scores_b = (*this->scratch).template get<buffer_data_type::SCORES>();
+      // std::optional<point3D> initial_com;
+      // fp_type crystal_score = 0.0;
 
       // WARNING: THIS IS VALID ONLY FOR ONE LIGAND AT A TIME
-      const int num_atoms = this->ligand_template->num_atoms();
-      const long int num_rotamers = this->ligand_template->num_rotamers();
+      // const int num_atoms = this->ligand_template->num_atoms();
+      // const long int num_rotamers = this->ligand_template->num_rotamers();
       
 
       for (std::size_t iter = 1; iter <= this->iterations; ++iter) {
         geom_trans();
         (*this->score_stage)();
-        // TODO L maybe these two calls are useless
-        scores_b.copy_device2host();
-        (*this->scratch).get_queue()->synchronize();
-        // END TODO L
         (this->score_stage).get()->compute_gradient();
         (*adadelta_krnl)();
 
         // Dump pose for visualization.
-        this->dump_pose(iter);
-        if (iter == 1) {
-          crystal_score = scores_b()[0];
-          get_ligand_com_displacement(initial_com); // call needed to set initial com
-        }
+        // this->dump_pose(iter);
+        // if (iter == 1) {
+        //   crystal_score = scores_b()[0];
+        //   get_ligand_com_displacement(initial_com); // call needed to set initial com
+        // }
           
         // score_logger.log(ligand_name, iter, scores_b()[0]);
         // com_logger.log(ligand_name, iter, get_ligand_com_displacement(initial_com));
@@ -377,13 +370,24 @@ namespace mudock {
       geom_trans();
       (*this->score_stage)();
       
-      scores_b.copy_device2host();
+      auto& x_scratch_b = (*this->scratch).template get<buffer_data_type::X_SCRATCH>();
+      auto& y_scratch_b = (*this->scratch).template get<buffer_data_type::Y_SCRATCH>();
+      auto& z_scratch_b = (*this->scratch).template get<buffer_data_type::Z_SCRATCH>();
+      x_scratch_b.copy_device2host();
+      y_scratch_b.copy_device2host();
+      z_scratch_b.copy_device2host();
       (*this->scratch).get_queue()->synchronize();
       
-      fp_type final_score = scores_b()[0];
-      fp_type rmsd = get_ligand_rmsd();
-      fp_type com = get_ligand_com_displacement(initial_com);
-      crystal_experiment_logger.log(ligand_name, crystal_score, final_score, rmsd, com, num_atoms, num_rotamers, this->iterations);
+      // for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
+      //   final_rmsds[ligand_index] = get_ligand_rmsd(ligand_index, x_scratch_b.host_pointer(), y_scratch_b.host_pointer(), z_scratch_b.host_pointer());
+      // }
+      
+      // scores_b.copy_device2host();
+      // (*this->scratch).get_queue()->synchronize();
+      
+      // fp_type final_score = scores_b()[0];
+      // fp_type com = get_ligand_com_displacement(initial_com);
+      // crystal_experiment_logger.log(ligand_name, crystal_score, final_score, rmsd, com, num_atoms, num_rotamers, this->iterations);
 
     }
 
@@ -396,13 +400,14 @@ namespace mudock {
         (*this->scratch).get_queue()->synchronize();
         for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
           auto &ligand          = *batch.molecules[ligand_index];
-          const int num_atoms = ligand.num_atoms();
-          const long int num_rotamers = ligand.num_rotamers();
+          // const int num_atoms = ligand.num_atoms();
+          // const long int num_rotamers = ligand.num_rotamers();
           const int score_index = ligand_index * scores_per_ligand;
           ligand.properties.assign(property_type::SCORE, std::to_string(scores_b()[score_index]));
-          ligand.properties.assign(property_type::NUM_ATOMS, std::to_string(num_atoms));
-          ligand.properties.assign(property_type::NUM_ROT, std::to_string(num_rotamers));
+          // ligand.properties.assign(property_type::NUM_ATOMS, std::to_string(num_atoms));
+          // ligand.properties.assign(property_type::NUM_ROT, std::to_string(num_rotamers));
           ligand.properties.assign(property_type::ITER, std::to_string(this->iterations));
+          ligand.properties.assign(property_type::RMSD_BEST_SCORING_POSE, std::to_string(final_rmsds[ligand_index]));
         }
       }
     };
