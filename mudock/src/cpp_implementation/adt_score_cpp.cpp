@@ -515,7 +515,17 @@ namespace mudock {
           grad[2] += dE_dX[index].z();
         }
 
-        // Torsion derivatives
+
+        // Torsion derivatives.
+        // apply() does: torsions -> re-center to reference centroid -> rotate -> translate.
+        // The re-centering shifts every atom by -d(centroid)/d(psi_t), so the exact derivative is
+        //   dE/dpsi_t = sum_{i in frag_t} (dE_dX[i] - mean(dE_dX)) . (axis_t x r_i)
+        // grad[0..2] already holds sum_i dE_dX[i] (filled just above), so the mean is free.
+        const fp_type inv_n   = fp_type{1} / static_cast<fp_type>(num_atoms);
+        const fp_type gmean_x = grad[0] * inv_n;
+        const fp_type gmean_y = grad[1] * inv_n;
+        const fp_type gmean_z = grad[2] * inv_n;
+
         for (int t = 0; t < num_rotamers; ++t) {
           const int* frag_mask = fragments + t * num_atoms;
 
@@ -542,7 +552,10 @@ namespace mudock {
               r.x() = scratch_x_l[i] - scratch_x_l[a1];
               r.y() = scratch_y_l[i] - scratch_y_l[a1];
               r.z() = scratch_z_l[i] - scratch_z_l[a1];
-              dE_dpsi += dE_dX[i].inner_product(axis.cross(r));
+              const point3D d = axis.cross(r);
+              dE_dpsi += (dE_dX[i].x() - gmean_x) * d.x() +
+                         (dE_dX[i].y() - gmean_y) * d.y() +
+                         (dE_dX[i].z() - gmean_z) * d.z();
             }
           }
           grad[6 + t] = angle_scale * dE_dpsi;
