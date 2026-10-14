@@ -105,7 +105,8 @@ namespace mudock {
     }
 
     [[nodiscard]] inline const md_index<n>& get_space_index() const { return md_data; }
-    [[nodiscard]] inline T* data() const { return md_data.data(); };
+    [[nodiscard]] inline auto data() { return md_data.data(); }
+    [[nodiscard]] inline auto data() const { return md_data.data(); }
   };
 
   template<typename T>
