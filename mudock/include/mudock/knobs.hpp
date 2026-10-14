@@ -31,6 +31,7 @@ namespace mudock {
     std::size_t max_tbb_tokens                = 4;
     std::size_t max_bytes_per_token           = 1048576; // 1 MB
     std::size_t max_tbb_queue_size            = 100000;
+    std::optional<std::string> crystal_path;
   };
 
 } // namespace mudock

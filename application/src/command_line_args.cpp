@@ -147,6 +147,10 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
       "queue_size",
       po::value(&args.knobs.max_tbb_queue_size)->default_value(args.knobs.max_tbb_queue_size),
       "Max number of ligands buffered in the TBB input/output queues");
+  knobs_description.add_options()(
+      "crystal_path",
+      po::value(&args.knobs.crystal_path),
+      "Path of the crystal used in ls-standalone");
   // parse them
   po::options_description all("Allowed Options");
   all.add(arguments_description).add(knobs_description);
