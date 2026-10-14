@@ -9,7 +9,8 @@
 #include <mudock/compute/queue.hpp>
 #include <mudock/log.hpp>
 #if !defined(__CUDACC__) && !defined(__HIPCC__)
-  #include <mudock/compute/buffer_utils.hpp>
+#include <mudock/compute/buffer_utils.hpp>
+#include <mudock/compute/ligand_placement.hpp>
   #include <mudock/compute/scratchpad.hpp>
   #include <mudock/compute/transform.hpp>
 #endif
@@ -101,22 +102,28 @@ namespace mudock {
   template<typename queue_t>
     requires std::derived_from<queue_t, queue>
   struct geometric: public transform<queue_t> {
-    geometric(std::shared_ptr<scratchpad<queue_t>> _scratch, dynamic_molecule& protein)
+    geometric(std::shared_ptr<scratchpad<queue_t>> _scratch,
+              dynamic_molecule& protein,
+              ligand_placement _placement = {})
         : transform<queue_t>(_scratch),
           ligand_fragments(_scratch->get_queue()),
           ligand_fragments_start(_scratch->get_queue()),
           frag_start_atom_indices(_scratch->get_queue()),
           frag_stop_atom_indices(_scratch->get_queue()),
           frag_indices_start(_scratch->get_queue()),
-          protein_center(protein.get_center()) {};
+          protein_center(protein.get_center()),
+          placement(_placement) {};
 
     void prepare(batch<static_molecule>& batch) {
       batch_ligands                           = batch.num_ligands;
       batch_atoms                             = batch.batch_max_atoms;
       const int batch_rotamers                = batch_atoms - 3;
-      const int tot_atoms_in_batch            = batch_ligands * batch_atoms;
-      const int tot_rotamers_atoms_in_batch   = tot_atoms_in_batch * batch_rotamers;
-      const std::size_t tot_rotamers_in_batch = batch_ligands * batch_rotamers;
+      const std::size_t tot_atoms_in_batch = static_cast<std::size_t>(batch_ligands) *
+                                             static_cast<std::size_t>(batch_atoms);
+      const std::size_t tot_rotamers_atoms_in_batch =
+          tot_atoms_in_batch * static_cast<std::size_t>(batch_rotamers);
+      const std::size_t tot_rotamers_in_batch =
+          static_cast<std::size_t>(batch_ligands) * static_cast<std::size_t>(batch_rotamers);
       auto q                                  = (*this->scratch).get_queue();
       const auto chromsomes_per_ligand =
           std::max(1, static_cast<int>((*this->scratch).configuration.population_number));
@@ -141,12 +148,8 @@ namespace mudock {
         geom_ligand geom_lig{ligand};
         // Atoms and bonds
         const int num_atoms = ligand.num_atoms();
-        // Place the molecule to the center of the target protein
-        const auto x = ligand.x(), y = ligand.y(), z = ligand.z();
-
-        const auto ligand_center_of_mass = compute_center_of_mass(x, y, z, num_atoms);
-        const auto offset                = protein_center - ligand_center_of_mass;
-        translate_molecule<cpu_vectorization::AUTO>(x, y, z, num_atoms, offset.x(), offset.y(), offset.z());
+        // Place the molecule according to the selected initial placement policy.
+        apply_ligand_placement(ligand, placement, protein_center);
 
         const auto num_rotamers = ligand.num_rotamers();
         assert(batch_rotamers > num_rotamers);
@@ -247,8 +250,8 @@ namespace mudock {
     }
 
     static std::size_t get_private_ligand_mem(const int max_atoms, const knobs) {
-      const int batch_rotamers              = max_atoms - 3;
-      const int tot_rotamers_atoms_in_batch = max_atoms * batch_rotamers;
+      const std::size_t batch_rotamers              = static_cast<std::size_t>(max_atoms - 3);
+      const std::size_t tot_rotamers_atoms_in_batch = static_cast<std::size_t>(max_atoms) * batch_rotamers;
       std::size_t mem{0};
       mem += sizeof(int) * tot_rotamers_atoms_in_batch; // ligand fragments
       mem += sizeof(int);                               // ligand_fragments_start
@@ -258,9 +261,8 @@ namespace mudock {
       return mem;
     }
 
-    static int get_ligand_mem(const int max_atoms, const knobs conf) {
-      return static_cast<int>(get_shared_ligand_mem(max_atoms, conf) +
-                              get_private_ligand_mem(max_atoms, conf));
+    static std::size_t get_ligand_mem(const int max_atoms, const knobs conf) {
+      return get_shared_ligand_mem(max_atoms, conf) + get_private_ligand_mem(max_atoms, conf);
     }
 
     static batch_multiple get_batch_size(const int atoms,
@@ -295,6 +297,7 @@ namespace mudock {
     int batch_ligands;
     int batch_atoms;
     point<fp_type, 3> protein_center;
+    ligand_placement placement;
     std::unique_ptr<geom_kernel<queue_t>> kernel;
 
     void teardown_impl(batch<static_molecule>& batch) {

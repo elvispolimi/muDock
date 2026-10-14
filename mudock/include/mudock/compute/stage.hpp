@@ -12,8 +12,8 @@ namespace mudock {
   struct stage {
     static std::size_t get_shared_ligand_mem(const int, const knobs&) { return 0; }
     static std::size_t get_private_ligand_mem(const int, const knobs&) { return 0; }
-    static int get_ligand_mem(const int atoms, const knobs conf) {
-      return static_cast<int>(get_shared_ligand_mem(atoms, conf) + get_private_ligand_mem(atoms, conf));
+    static std::size_t get_ligand_mem(const int atoms, const knobs conf) {
+      return get_shared_ligand_mem(atoms, conf) + get_private_ligand_mem(atoms, conf);
     }
     static int get_batch_multiple(const int, std::shared_ptr<queue_type>, const knobs&) { return 1; }
     static int get_batch_size(const int,

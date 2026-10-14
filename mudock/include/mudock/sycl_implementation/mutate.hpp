@@ -200,23 +200,18 @@ namespace mudock {
             z_scratch_chromosome[atom_index] = l_original_z[atom_index];
           }
         }
-        // apply rigid transformations
-        translate_molecule_sycl<MAX_ATOMS>(x_scratch_chromosome,
-                                           y_scratch_chromosome,
-                                           z_scratch_chromosome,
-                                           &l_chromosomes[0],
-                                           &l_chromosomes[1],
-                                           &l_chromosomes[2],
-                                           num_atoms,
-                                           it);
-        rotate_molecule_sycl<MAX_ATOMS>(x_scratch_chromosome,
-                                        y_scratch_chromosome,
-                                        z_scratch_chromosome,
-                                        &l_chromosomes[3],
-                                        &l_chromosomes[4],
-                                        &l_chromosomes[5],
-                                        num_atoms,
-                                        it);
+        const auto& sub_group = it.get_sub_group();
+        fp_type reference_x{0}, reference_y{0}, reference_z{0};
+        for (int atom_index = local_thread_id; atom_index < MAX_ATOMS; atom_index += MUDOCK_SYCL_WG_SIZE) {
+          if (atom_index < num_atoms) {
+            reference_x += x_scratch_chromosome[atom_index];
+            reference_y += y_scratch_chromosome[atom_index];
+            reference_z += z_scratch_chromosome[atom_index];
+          }
+        }
+        reference_x = sycl::reduce_over_group(sub_group, reference_x, sycl::plus<fp_type>()) / num_atoms;
+        reference_y = sycl::reduce_over_group(sub_group, reference_y, sycl::plus<fp_type>()) / num_atoms;
+        reference_z = sycl::reduce_over_group(sub_group, reference_z, sycl::plus<fp_type>()) / num_atoms;
 
         // change the molecule shape
         MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
@@ -232,6 +227,45 @@ namespace mudock {
                                           num_atoms,
                                           it);
         }
+
+        fp_type transformed_x{0}, transformed_y{0}, transformed_z{0};
+        for (int atom_index = local_thread_id; atom_index < MAX_ATOMS; atom_index += MUDOCK_SYCL_WG_SIZE) {
+          if (atom_index < num_atoms) {
+            transformed_x += x_scratch_chromosome[atom_index];
+            transformed_y += y_scratch_chromosome[atom_index];
+            transformed_z += z_scratch_chromosome[atom_index];
+          }
+        }
+        transformed_x = sycl::reduce_over_group(sub_group, transformed_x, sycl::plus<fp_type>()) / num_atoms;
+        transformed_y = sycl::reduce_over_group(sub_group, transformed_y, sycl::plus<fp_type>()) / num_atoms;
+        transformed_z = sycl::reduce_over_group(sub_group, transformed_z, sycl::plus<fp_type>()) / num_atoms;
+        const fp_type recenter_x = reference_x - transformed_x;
+        const fp_type recenter_y = reference_y - transformed_y;
+        const fp_type recenter_z = reference_z - transformed_z;
+        translate_molecule_sycl<MAX_ATOMS>(x_scratch_chromosome,
+                                           y_scratch_chromosome,
+                                           z_scratch_chromosome,
+                                           &recenter_x,
+                                           &recenter_y,
+                                           &recenter_z,
+                                           num_atoms,
+                                           it);
+        rotate_molecule_sycl<MAX_ATOMS>(x_scratch_chromosome,
+                                        y_scratch_chromosome,
+                                        z_scratch_chromosome,
+                                        &l_chromosomes[3],
+                                        &l_chromosomes[4],
+                                        &l_chromosomes[5],
+                                        num_atoms,
+                                        it);
+        translate_molecule_sycl<MAX_ATOMS>(x_scratch_chromosome,
+                                           y_scratch_chromosome,
+                                           z_scratch_chromosome,
+                                           &l_chromosomes[0],
+                                           &l_chromosomes[1],
+                                           &l_chromosomes[2],
+                                           num_atoms,
+                                           it);
       }
     }
   };

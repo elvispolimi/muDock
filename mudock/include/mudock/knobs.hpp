@@ -15,6 +15,8 @@ namespace mudock {
     std::size_t max_tbb_tokens      = 4;
     std::size_t max_bytes_per_token = 1048576; // 1 MB
     std::size_t max_tbb_queue_size  = 100000;
+    // Maximum per-axis displacement of the rigid translation chromosome.
+    std::optional<fp_type> max_translation_half_width = std::nullopt;
   };
 
 } // namespace mudock

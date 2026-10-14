@@ -11,6 +11,7 @@
 #include <mudock/mudock.hpp>
 #include <mudock/tbb_implementation/tbb_pipeline.hpp>
 #include <optional>
+#include <stdexcept>
 
 #ifdef MUDOCK_USE_MPI
   #include <mpi.h>
@@ -22,14 +23,21 @@ namespace {
                             const mudock::supported_format format,
                             const command_line_arguments& args,
                             std::shared_ptr<mudock::dynamic_molecule> protein,
+                            const mudock::ligand_placement placement,
                             const std::uint64_t range_end) {
     mudock::info("Pipeline selection: search=", to_string(args.search), ", score=", to_string(args.scoring));
+    mudock::info("Ligand placement: ", mudock::to_string(placement.mode));
+    if (args.knobs.max_translation_half_width) {
+      mudock::info("Maximum genetic translation box half-width: ",
+                   *args.knobs.max_translation_half_width,
+                   " Angstrom");
+    }
 
     dispatch_selected_pipeline(args.search,
                                args.scoring,
                                format,
                                [&]<typename pipeline_t>(const auto, const auto) {
-                                 pipeline_t pipe{protein};
+                                 pipeline_t pipe{protein, placement};
                                  constexpr_switch<0, mudock::get_num_supported_format(), 1>(
                                      [&](const auto format_index) {
                                        constexpr auto selected_format =
@@ -91,6 +99,19 @@ int main(int argc, char** argv) {
   auto protein =
       std::make_shared<mudock::dynamic_molecule>(mudock::parser<mudock::dynamic_molecule>(args.protein_path));
 
+  mudock::ligand_placement placement{args.placement_mode, args.placement_point};
+  if (args.placement_mode == mudock::ligand_placement_mode::probe) {
+    const auto probe = mudock::parser<mudock::dynamic_molecule>(args.probe_path);
+    if (probe.num_atoms() == 0) throw std::runtime_error("Probe molecule contains no atoms");
+    placement.target = mudock::compute_centroid(probe.get_x(), probe.get_y(), probe.get_z());
+    mudock::info("Probe centroid: ",
+                 placement.target->x(),
+                 ",",
+                 placement.target->y(),
+                 ",",
+                 placement.target->z());
+  }
+
   mudock::info("Reading ligand ", args.ligand_path, " ...");
   std::ifstream in(args.ligand_path, std::ios::binary);
   if (!in) {
@@ -121,7 +142,8 @@ int main(int argc, char** argv) {
 
   in.seekg(static_cast<std::streamoff>(effective_range.begin), std::ios::beg);
 
-  const int status = run_selected_pipeline(in, in_format, args, std::move(protein), effective_range.end);
+  const int status =
+      run_selected_pipeline(in, in_format, args, std::move(protein), placement, effective_range.end);
   MUDOCK_MARKER_CLOSE;
   if (status == EXIT_SUCCESS) {
     mudock::info("All Done!");

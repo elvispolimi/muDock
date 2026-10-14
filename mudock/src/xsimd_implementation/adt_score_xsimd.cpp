@@ -150,9 +150,9 @@ namespace mudock {
           const auto atom_charge = xsimd::load_unaligned(charge_l + index);
 
           // Bounds check
-          const mask_type outside_x = (x < min_x) | (x > max_x);
-          const mask_type outside_y = (y < min_y) | (x > max_y);
-          const mask_type outside_z = (z < min_z) | (z > max_z);
+          const mask_type outside_x = (x < min_x) | (x >= max_x);
+          const mask_type outside_y = (y < min_y) | (y >= max_y);
+          const mask_type outside_z = (z < min_z) | (z >= max_z);
           const mask_type outside   = (outside_x | outside_y | outside_z) & remaining_mask;
 
           // Handle atoms outside boundaries

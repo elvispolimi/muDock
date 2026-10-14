@@ -116,13 +116,13 @@ namespace mudock {
       // TODO bonds
       // Place the molecule to the center of the target protein
       const auto x = ligand.get()->get_x(), y = ligand.get()->get_y(), z = ligand.get()->get_z();
-      const auto ligand_center_of_mass = compute_center_of_mass(x, y, z);
+      const auto ligand_centroid = compute_centroid(x, y, z);
       translate_molecule(x,
                          y,
                          z,
-                         center.x - ligand_center_of_mass.x,
-                         center.y - ligand_center_of_mass.y,
-                         center.z - ligand_center_of_mass.z);
+                         center.x - ligand_centroid.x,
+                         center.y - ligand_centroid.y,
+                         center.z - ligand_centroid.z);
 
       std::memcpy((void *) (original_ligand_x.host_pointer() + stride_atoms),
                   x.data(),

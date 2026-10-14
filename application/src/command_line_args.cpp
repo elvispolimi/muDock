@@ -16,8 +16,11 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
   std::size_t seed{};
   double time_limit_sec{};
   double observer_sec{};
+  double max_translation_half_width{};
   std::string search_name = std::string{to_string(args.search)};
   std::string score_name  = std::string{to_string(args.scoring)};
+  std::string placement_name = std::string{mudock::to_string(args.placement_mode)};
+  std::vector<double> placement_point;
   arguments_description.add_options()("help,h", "print this help message");
   arguments_description.add_options()("protein,p",
                                       po::value(&args.protein_path)->default_value(args.protein_path),
@@ -25,6 +28,18 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
   arguments_description.add_options()("ligand,l",
                                       po::value(&args.ligand_path)->default_value(args.ligand_path),
                                       "Path to the ligands file (in MOL2)");
+  arguments_description.add_options()(
+      "placement",
+      po::value(&placement_name)->default_value(placement_name),
+      "Ligand placement: center_bbox|preserve|point|probe");
+  arguments_description.add_options()(
+      "placement-point",
+      po::value(&placement_point)->multitoken(),
+      "Target point in protein coordinates: X Y Z");
+  arguments_description.add_options()(
+      "probe",
+      po::value(&args.probe_path),
+      "Probe molecule whose centroid is used as the ligand target");
   arguments_description.add_options()(
       "use",
       po::value<std::vector<std::string>>(&args.device_confs)->multitoken()->composing(),
@@ -60,6 +75,10 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
       "mutation",
       po::value(&args.knobs.mutation_prob)->default_value(args.knobs.mutation_prob),
       "Probability of a mutation to happen during GA");
+  knobs_description.add_options()(
+      "max-search-box",
+      po::value(&max_translation_half_width),
+      "Maximum per-axis rigid ligand-center displacement from the placement target in Angstrom");
   knobs_description.add_options()("seed", po::value(&seed), "Seed for random values generators");
   knobs_description.add_options()(
       "tokens",
@@ -124,7 +143,28 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
   if (vm.count("observer")) {
     args.observer = std::optional<double>{observer_sec};
   }
+  if (vm.count("max-search-box")) {
+    if (!(max_translation_half_width > 0.0))
+      throw std::runtime_error("--max-search-box must be greater than zero");
+    args.knobs.max_translation_half_width = static_cast<mudock::fp_type>(max_translation_half_width);
+  }
   args.search  = mudock::parse_search_algorithm(search_name);
   args.scoring = mudock::parse_scoring_function(score_name);
+  args.placement_mode = mudock::parse_ligand_placement_mode(placement_name);
+  if (!placement_point.empty()) {
+    if (placement_point.size() != 3)
+      throw std::runtime_error("--placement-point requires exactly three values");
+    args.placement_point = mudock::point3D{static_cast<mudock::fp_type>(placement_point[0]),
+                                           static_cast<mudock::fp_type>(placement_point[1]),
+                                           static_cast<mudock::fp_type>(placement_point[2])};
+  }
+  if (args.placement_mode == mudock::ligand_placement_mode::point && !args.placement_point)
+    throw std::runtime_error("--placement point requires --placement-point X Y Z");
+  if (args.placement_mode == mudock::ligand_placement_mode::probe && args.probe_path.empty())
+    throw std::runtime_error("--placement probe requires --probe PATH");
+  if (args.placement_mode != mudock::ligand_placement_mode::point && args.placement_point)
+    throw std::runtime_error("--placement-point is only valid with --placement point");
+  if (args.placement_mode != mudock::ligand_placement_mode::probe && !args.probe_path.empty())
+    throw std::runtime_error("--probe is only valid with --placement probe");
   return args;
 }
