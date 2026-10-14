@@ -268,7 +268,8 @@ namespace mudock {
     }
 
     static std::size_t get_private_ligand_mem(const int max_atoms, const knobs) {
-      const int non_bonds_atoms = max_atoms * max_atoms;
+      const std::size_t non_bonds_atoms = static_cast<std::size_t>(max_atoms) *
+                                          static_cast<std::size_t>(max_atoms);
       std::size_t mem{0};
       mem += sizeof(fp_type) * max_atoms;       // vols
       mem += sizeof(fp_type) * max_atoms;       // solpars
@@ -283,9 +284,8 @@ namespace mudock {
       return mem;
     }
 
-    static int get_ligand_mem(const int max_atoms, const knobs conf) {
-      return static_cast<int>(get_shared_ligand_mem(max_atoms, conf) +
-                              get_private_ligand_mem(max_atoms, conf));
+    static std::size_t get_ligand_mem(const int max_atoms, const knobs conf) {
+      return get_shared_ligand_mem(max_atoms, conf) + get_private_ligand_mem(max_atoms, conf);
     }
 
     static batch_multiple get_batch_size(const int atoms,

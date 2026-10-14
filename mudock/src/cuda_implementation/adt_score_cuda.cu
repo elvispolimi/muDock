@@ -168,15 +168,15 @@ namespace mudock {
             coord_tex[1]       = (coord_tex[1] - map_min_const[1]) * inv_spacing;
             coord_tex[2]       = (coord_tex[2] - map_min_const[2]) * inv_spacing;
             const auto& charge = l_charge[atom_index];
-            const int u0      = coord_tex[0];
+            const int u0      = static_cast<int>(coord_tex[0]);
             const fp_type p0u = coord_tex[0] - static_cast<fp_type>(u0);
             const fp_type p1u = fp_type{1} - p0u;
 
-            const int v0      = coord_tex[1];
+            const int v0      = static_cast<int>(coord_tex[1]);
             const fp_type p0v = coord_tex[1] - static_cast<fp_type>(v0);
             const fp_type p1v = fp_type{1} - p0v;
 
-            const int w0      = coord_tex[2];
+            const int w0      = static_cast<int>(coord_tex[2]);
             const fp_type p0w = coord_tex[2] - static_cast<fp_type>(w0);
             const fp_type p1w = fp_type{1} - p0w;
 

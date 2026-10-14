@@ -118,9 +118,12 @@ namespace mudock {
       batch_ligands                           = batch.num_ligands;
       batch_atoms                             = batch.batch_max_atoms;
       const int batch_rotamers                = batch_atoms - 3;
-      const int tot_atoms_in_batch            = batch_ligands * batch_atoms;
-      const int tot_rotamers_atoms_in_batch   = tot_atoms_in_batch * batch_rotamers;
-      const std::size_t tot_rotamers_in_batch = batch_ligands * batch_rotamers;
+      const std::size_t tot_atoms_in_batch = static_cast<std::size_t>(batch_ligands) *
+                                             static_cast<std::size_t>(batch_atoms);
+      const std::size_t tot_rotamers_atoms_in_batch =
+          tot_atoms_in_batch * static_cast<std::size_t>(batch_rotamers);
+      const std::size_t tot_rotamers_in_batch =
+          static_cast<std::size_t>(batch_ligands) * static_cast<std::size_t>(batch_rotamers);
       auto q                                  = (*this->scratch).get_queue();
       const auto chromsomes_per_ligand =
           std::max(1, static_cast<int>((*this->scratch).configuration.population_number));
@@ -247,8 +250,8 @@ namespace mudock {
     }
 
     static std::size_t get_private_ligand_mem(const int max_atoms, const knobs) {
-      const int batch_rotamers              = max_atoms - 3;
-      const int tot_rotamers_atoms_in_batch = max_atoms * batch_rotamers;
+      const std::size_t batch_rotamers              = static_cast<std::size_t>(max_atoms - 3);
+      const std::size_t tot_rotamers_atoms_in_batch = static_cast<std::size_t>(max_atoms) * batch_rotamers;
       std::size_t mem{0};
       mem += sizeof(int) * tot_rotamers_atoms_in_batch; // ligand fragments
       mem += sizeof(int);                               // ligand_fragments_start
@@ -258,9 +261,8 @@ namespace mudock {
       return mem;
     }
 
-    static int get_ligand_mem(const int max_atoms, const knobs conf) {
-      return static_cast<int>(get_shared_ligand_mem(max_atoms, conf) +
-                              get_private_ligand_mem(max_atoms, conf));
+    static std::size_t get_ligand_mem(const int max_atoms, const knobs conf) {
+      return get_shared_ligand_mem(max_atoms, conf) + get_private_ligand_mem(max_atoms, conf);
     }
 
     static batch_multiple get_batch_size(const int atoms,
