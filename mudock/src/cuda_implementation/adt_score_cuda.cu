@@ -328,14 +328,15 @@ __global__ void calc_gradient(const int batch_atoms,
                               const int map_index_xy,
                               const int map_index_xyz,
                               gradient *__restrict__ gradients_b,
-                              int *__restrict__ active_individuals_b) {
+                              int *__restrict__ active_individuals_b,
+                              int *__restrict__ converged_ligands_b) {
     const fp_type *electro_map = grid_maps + map_index_xyz * static_cast<int>(autodock_grid_type::ELEC);
     const fp_type *desolv_map  = grid_maps + map_index_xyz * static_cast<int>(autodock_grid_type::DESOLV);
 
     const int ligand_id       = blockIdx.x;
     assert(blockDim.x == BLOCK_SIZE && warpSize == BLOCK_SIZE &&
            "Warpsize and the number of thread per block does not coincide");
-
+    if (converged_ligands_b[ligand_id]) return;
     const int atom_stride                  = ligand_id * batch_atoms;
     const int num_atoms                    = num_atoms_b[ligand_id];
     const int num_nonbonds                 = num_nonbonds_b[ligand_id + 1] - num_nonbonds_b[ligand_id];
@@ -360,7 +361,7 @@ __global__ void calc_gradient(const int batch_atoms,
     gradient *__restrict__ gradients_l     = gradients_b + ligand_id * individuals_per_ligand;
     int *__restrict__ active_individuals_l = active_individuals_b + ligand_id * individuals_per_ligand;
     
-
+    const fp_type angle_scale = deg_to_rad(fp_type{1});
     // TODO L very Important: fix this magic number with actual values
     fp_type dE_dX[3 * MAX_ATOMS];
     fp_type grad[6 + MAX_ATOMS];    // gradient = dE/dx, dE/dy, dE/dz, dE/dalpha, dE/dbeta, dE/dgamma, dE/d_tors_1, ..., dE/d_tors_n
@@ -370,9 +371,7 @@ __global__ void calc_gradient(const int batch_atoms,
     // work on all population, but divide computation on atoms
     for (int individual_index = threadIdx.x; individual_index < individuals_per_ligand; individual_index += blockDim.x) {
       
-      if (!active_individuals_l[individual_index]){
-        continue;
-      }
+      if (!active_individuals_l[individual_index]) continue;
 
       // Reinitialize to 0s all gradient components vectors
       for (int i = 0; i < 3 * batch_atoms; ++i) dE_dX[i] = 0;
@@ -385,8 +384,8 @@ __global__ void calc_gradient(const int batch_atoms,
       for (int index = 0; index < num_atoms; ++index) {
         fp_type coord[3]{scratch_x_l[index], scratch_y_l[index], scratch_z_l[index]};
 
-        if (coord[0] < map_min_const[0] || coord[0] > map_max_const[0] || coord[1] < map_min_const[1] ||
-          coord[1] > map_max_const[1] || coord[2] < map_min_const[2] || coord[2] > map_max_const[2]) {
+        if (coord[0] < map_min_const[0] || coord[0] >= map_max_const[0] || coord[1] < map_min_const[1] ||
+          coord[1] >= map_max_const[1] || coord[2] < map_min_const[2] || coord[2] >= map_max_const[2]) {
           const auto diff_x = coord[0] - map_center_const[0];
           const auto diff_y = coord[1] - map_center_const[1];
           const auto diff_z = coord[2] - map_center_const[2];
@@ -447,7 +446,8 @@ __global__ void calc_gradient(const int batch_atoms,
           const auto diff_y                = scratch_y_l[a1] - scratch_y_l[a2];
           const auto diff_z                = scratch_z_l[a1] - scratch_z_l[a2];
           const fp_type distance_two       = diff_x * diff_x + diff_y * diff_y + diff_z * diff_z;
-          const fp_type distance_two_clamp = std::max(distance_two, RMIN_ELEC_SQUARE_CUDA);
+          if (distance_two < RMIN_ELEC_SQUARE) continue;
+          const fp_type distance_two_clamp = distance_two;
           const fp_type distance           = std::sqrt(distance_two_clamp);
 
           const fp_type inv_r = fp_type{1} / distance;
@@ -500,7 +500,11 @@ __global__ void calc_gradient(const int batch_atoms,
               // VdW derivative
               const fp_type rA1 = rA * inv_r; // r^{-(xA+1)}
               const fp_type rB1 = rB * inv_r; // r^{-(xB+1)}
-              dE_dr_vdw = -static_cast<fp_type>(xA) * cA * rA1 + static_cast<fp_type>(xB) * cB * rB1;
+
+              const fp_type e_vdW_Hb_unclamped = cA * rA - cB * rB;
+              if (e_vdW_Hb_unclamped < EINTCLAMP) {
+                dE_dr_vdw = -static_cast<fp_type>(xA) * cA * rA1 + static_cast<fp_type>(xB) * cB * rB1;
+              }      
             }
           }
 
@@ -511,11 +515,11 @@ __global__ void calc_gradient(const int batch_atoms,
           const fp_type gy = dE_dr * dir_y;
           const fp_type gz = dE_dr * dir_z;
 
-          dE_dX[3*a1] += gx;
+          dE_dX[3*a1]     += gx;
           dE_dX[3*a1 + 1] += gy;
           dE_dX[3*a1 + 2] += gz;
 
-          dE_dX[3*a2] -= gx;
+          dE_dX[3*a2]     -= gx;
           dE_dX[3*a2 + 1] -= gy;
           dE_dX[3*a2 + 2] -= gz;
 
@@ -570,9 +574,9 @@ __global__ void calc_gradient(const int batch_atoms,
       u_alpha[1] = cos_beta * sin_gamma;
       u_alpha[2] = -sin_beta;
 
-      grad[3] = dot3(tau, u_alpha);
-      grad[4] = dot3(tau, u_beta);
-      grad[5] = dot3(tau, u_gamma);
+      grad[3] = angle_scale * dot3(tau, u_alpha);
+      grad[4] = angle_scale * dot3(tau, u_beta);
+      grad[5] = angle_scale * dot3(tau, u_gamma);
 
       for (int index = 0; index < num_atoms; ++index) {
         grad[0] += dE_dX[3*index];
@@ -580,7 +584,16 @@ __global__ void calc_gradient(const int batch_atoms,
         grad[2] += dE_dX[3*index + 2];
       }
 
-      // Torsion derivatives
+      // Torsion derivatives.
+      // apply() does: torsions -> re-center to reference centroid -> rotate -> translate.
+      // The re-centering shifts every atom by -d(centroid)/d(psi_t), so the exact derivative is
+      //   dE/dpsi_t = sum_{i in frag_t} (dE_dX[i] - mean(dE_dX)) . (axis_t x r_i)
+      // grad[0..2] already holds sum_i dE_dX[i] (filled just above), so the mean is free.
+      const fp_type inv_n   = fp_type{1} / static_cast<fp_type>(num_atoms);
+      const fp_type gmean_x = grad[0] * inv_n;
+      const fp_type gmean_y = grad[1] * inv_n;
+      const fp_type gmean_z = grad[2] * inv_n;
+
       for (int t = 0; t < num_rotamers; ++t) {
         const int* frag_mask = fragments + t * num_atoms;
 
@@ -599,17 +612,21 @@ __global__ void calc_gradient(const int batch_atoms,
         axis[1] *= inv_norm;
         axis[2] *= inv_norm;
 
-        fp_type r[3] = {0};
+        fp_type dE_dpsi{0};
         fp_type temp[3] = {0};
         for (int i = 0; i < num_atoms; ++i) {
           if (frag_mask[i] != 0) {
+            fp_type r[3] = {0};
             r[0] = scratch_x_l[i] - scratch_x_l[a1];
             r[1] = scratch_y_l[i] - scratch_y_l[a1];
             r[2] = scratch_z_l[i] - scratch_z_l[a1];
             cross3(axis, r, temp);
-            grad[6 + t] += dot3(&dE_dX[3*i], temp);
+            dE_dpsi += (dE_dX[3*i    ] - gmean_x) * temp[0] +
+                       (dE_dX[3*i + 1] - gmean_y) * temp[1] +
+                       (dE_dX[3*i + 2] - gmean_z) * temp[2];
           }
         }
+        grad[6 + t] = angle_scale * dE_dpsi;
       }
 
       // Write gradient on the buffer
@@ -691,7 +708,8 @@ __global__ void calc_gradient(const int batch_atoms,
                     (void*) &map_index_xy,
                     (void*) &map_index_xyz,
                     (void*) &gradients_b,
-                    (void*) &active_individuals_b};
+                    (void*) &active_individuals_b,
+                    (void*) &converged_ligands_b};
     constexpr_switch_bucket<0, reorder_buffer<static_molecule>::get_num_atom_clusters(), 1>(
         [&](const auto atom_index) {
           const auto max_atoms = reorder_buffer<static_molecule>::atoms_clusters[atom_index];

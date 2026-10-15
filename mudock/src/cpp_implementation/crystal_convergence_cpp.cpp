@@ -13,7 +13,7 @@ namespace mudock {
                          const bool autostop,
                          const int individuals_per_ligand,
                          const int* __restrict__ num_atoms_b,
-                         int* generation,
+                         const int generation,
                          int* __restrict__ converged_ligands_b,
                          const fp_type* __restrict__ template_x_b,
                          const fp_type* __restrict__ template_y_b,
@@ -98,7 +98,7 @@ namespace mudock {
       //////////////////////////////////////////////////////////////////////////////////////////////////////
       // LOG progress
       //////////////////////////////////////////////////////////////////////////////////////////////////////
-      printf("Gen %d --- Best: %f, rmsd: %f\n", *generation, double(best_score), double(rmsd_best_pose_b[ligand_index]));
+      printf("Gen %d --- Best: %f, rmsd: %f\n", generation, double(best_score), double(rmsd_best_pose_b[ligand_index]));
 
       //////////////////////////////////////////////////////////////////////////////////////////////////////
       // Mark convergence
@@ -109,11 +109,11 @@ namespace mudock {
       //         it may not log it.
       //////////////////////////////////////////////////////////////////////////////////////////////////////
       if (autostop && (good_score || good_rmsd || stale_best_score)) {
-        converged_ligands_b[ligand_index] = *generation;
+        converged_ligands_b[ligand_index] = generation;
       }
 
     }
-    *generation += 1;
+
   }
 
   
@@ -125,7 +125,7 @@ namespace mudock {
                                                             autostop,
                                                             population_number,
                                                             num_atoms_b,
-                                                            &current_generation,
+                                                            current_generation,
                                                             converged_ligands_b,
                                                             template_x_b,
                                                             template_y_b,
@@ -140,6 +140,7 @@ namespace mudock {
                                                             for_how_long_best_b,
                                                             tolerance_window,
                                                             best_score_diff_thld);
+    current_generation++;
   }
 
 } // namespace mudock

@@ -22,13 +22,15 @@ namespace mudock {
                                             chromosome *__restrict__ adadelta_e_dw2_b,
                                             int *__restrict__ active_individuals_b,    
                                             const fp_type rho,
-                                            const fp_type epsilon) {
+                                            const fp_type epsilon,
+                                            int *__restrict__ converged_ligands_b) {
 
     const int ligand_id        = blockIdx.x;
     const int local_thread_id  = threadIdx.x;
     assert(blockDim.x == BLOCK_SIZE && warpSize == BLOCK_SIZE &&
            "Warpsize and the number of thread per block does not coincide");
 
+    if (converged_ligands_b[ligand_id]) return;
     chromosome *__restrict__ population_l         = population_b + ligand_id * individuals_per_ligand;
     chromosome *__restrict__ e_g2_l               = adadelta_e_g2_b + ligand_id * individuals_per_ligand;
     chromosome *__restrict__ e_dw2_l              = adadelta_e_dw2_b + ligand_id * individuals_per_ligand;
@@ -39,14 +41,13 @@ namespace mudock {
     const int gradient_size = 6 + num_rotamers;
     
     for (int individual_index = local_thread_id; individual_index < individuals_per_ligand; individual_index += blockDim.x) {
-      if (!active_individuals_l[individual_index]){
-        continue;
-      }
+      if (!active_individuals_l[individual_index]) continue;
       
       gradient   &grad = gradients_l[individual_index];
       chromosome &w = population_l[individual_index];
       chromosome &E_g2_i = e_g2_l[individual_index];
       chromosome &E_dw2_i = e_dw2_l[individual_index];
+
       // Apply AdaDelta update for each dimension
       for (int d = 0; d < gradient_size; ++d) {
         E_g2_i[d] = rho * E_g2_i[d] + (fp_type{1} - rho) * grad[d] * grad[d];
@@ -58,11 +59,11 @@ namespace mudock {
         fp_type delta_w = -(rms_dw / rms_g) * grad[d];
         
         E_dw2_i[d] = rho * E_dw2_i[d] + (fp_type{1} - rho) * delta_w * delta_w;
-        w[d] = w[d] + delta_w;
-      }
-      
-    }
 
+        w[d] = w[d] + delta_w;
+
+      }
+    }  
   }
 
   
@@ -77,7 +78,8 @@ namespace mudock {
                     (void*) &adadelta_e_dw2_b,
                     (void*) &active_individuals_b,
                     (void*) &rho,
-                    (void*) &epsilon};
+                    (void*) &epsilon,
+                    (void*) &converged_ligands_b};
     constexpr_switch_bucket<0, reorder_buffer<static_molecule>::get_num_atom_clusters(), 1>(
       [&](const auto atom_index) {
         const auto max_atoms = reorder_buffer<static_molecule>::atoms_clusters[atom_index];

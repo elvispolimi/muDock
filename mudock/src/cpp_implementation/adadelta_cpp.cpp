@@ -34,9 +34,7 @@ namespace mudock {
       const int gradient_size = 6 + num_rotamers;
       
       for (int individual_index = 0; individual_index < individuals_per_ligand; ++individual_index) {
-        if (!active_individuals_l[individual_index]){
-          continue;
-        }
+        if (!active_individuals_l[individual_index]) continue;
         
         gradient   &grad = gradients_l[individual_index];
         chromosome &w = population_l[individual_index];

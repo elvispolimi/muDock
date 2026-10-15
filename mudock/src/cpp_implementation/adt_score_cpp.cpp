@@ -294,9 +294,7 @@ namespace mudock {
 
       for (int individual_index = 0; individual_index < individuals_per_ligand; ++individual_index) {
         
-        if (!active_individuals_l[individual_index]){
-          continue;
-        }
+        if (!active_individuals_l[individual_index]) continue;
 
         // Reinitialize to 0s all gradient components vectors
         std::fill(dE_dX.begin(), dE_dX.end(), 0);
