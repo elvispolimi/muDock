@@ -156,7 +156,7 @@ namespace mudock {
       // Lorenzo: Ligand properties for experiments
       for (int index{0}; index < batch_ligands; ++index) {
         auto& ligand = *batch.molecules[index];
-        const int num_rotamers = num_rotamers_p[index];
+        const int num_rotamers = static_cast<int>(ligand.num_rotamers());
         const int num_atoms = ligand.num_atoms();
         ligand.properties.assign(property_type::POP, std::to_string(population_number));
         ligand.properties.assign(property_type::SEED, std::to_string(seed));
@@ -207,9 +207,7 @@ namespace mudock {
         geom_trans();
         (*score_stage)();
         (*kernel)();
-        // if (autostop) {
         crystal_convergence_stage();
-        // }
         
         /////////////////////////////////////////////////////////////////////////////////////
         /////////////////////////////////////////////////////////////////////////////////////

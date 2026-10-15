@@ -79,9 +79,7 @@ namespace mudock {
         this->geom_trans();
         (*this->score_stage)();
         (*this->kernel)();
-        // if (this->autostop) {
         this->crystal_convergence_stage();
-        // }
         /////////////////////////////////////////////////////////////////////////////////////
         /////////////////////////////////////////////////////////////////////////////////////
         // TODO L remove this part, needed for experiments
