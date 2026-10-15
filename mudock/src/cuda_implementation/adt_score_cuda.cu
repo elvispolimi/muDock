@@ -130,7 +130,8 @@ namespace mudock {
                               const int map_index_xyz,
                               const fp_type* __restrict__ grid_maps,
                               const int* __restrict__ atom_tex_indexes,
-                              fp_type* __restrict__ scores) {
+                              fp_type* __restrict__ scores,
+                              int *__restrict__ converged_ligands_b) {
     const fp_type* electro_map = grid_maps + map_index_xyz * static_cast<int>(autodock_grid_type::ELEC);
     const fp_type* desolv_map  = grid_maps + map_index_xyz * static_cast<int>(autodock_grid_type::DESOLV);
 
@@ -138,6 +139,8 @@ namespace mudock {
     const int local_thread_id = threadIdx.x;
     assert(blockDim.x == BLOCK_SIZE && warpSize == BLOCK_SIZE &&
            "Warpsize and the number of thread per block does not coincide");
+
+    if (converged_ligands_b[ligand_id]) return;
 
     const int num_atoms    = num_atoms_b[ligand_id];
     const int num_nonbonds = num_nonbonds_b[ligand_id + 1] - num_nonbonds_b[ligand_id];
@@ -663,7 +666,8 @@ __global__ void calc_gradient(const int batch_atoms,
                     (void*) &map_index_xyz,
                     (void*) &(*cuda_texture_memory.v[dev_id].data).tex_dev,
                     (void*) &map_offsets_b,
-                    (void*) &scores_b};
+                    (void*) &scores_b,
+                    (void*) &converged_ligands_b};
     constexpr_switch_bucket<0, reorder_buffer<static_molecule>::get_num_atom_clusters(), 1>(
         [&](const auto atom_index) {
           const auto max_atoms = reorder_buffer<static_molecule>::atoms_clusters[atom_index];

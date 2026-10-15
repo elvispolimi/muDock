@@ -170,11 +170,14 @@ namespace mudock {
                              const int* __restrict__ fragments_stop_index,
                              const int* __restrict__ frag_indices_start,
                              const int* __restrict__ num_rotamers_b,
-                             const int* __restrict__ num_atoms_b) {
+                             const int* __restrict__ num_atoms_b,
+                             int *__restrict__ converged_ligands_b) {
     const int ligand_id       = blockIdx.x;
     const int local_thread_id = threadIdx.x;
     assert(blockDim.x == BLOCK_SIZE && warpSize == BLOCK_SIZE &&
            "Warpsize and the number of thread per block does not coincide");
+
+    if (converged_ligands_b[ligand_id]) return;
 
     const int num_atoms    = num_atoms_b[ligand_id];
     const int num_rotamers = num_rotamers_b[ligand_id];

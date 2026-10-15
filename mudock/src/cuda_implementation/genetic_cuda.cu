@@ -117,11 +117,14 @@ namespace mudock {
                               chromosome* __restrict__ next_chromosomes,
                               curandState* __restrict__ state,
                               fp_type* __restrict__ ligand_scores,
-                              const fp_type max_translation_half_width) {
+                              const fp_type max_translation_half_width,
+                              int *__restrict__ converged_ligands_b) {
     const int ligand_id        = blockIdx.x;
     const int local_thread_id  = threadIdx.x;
     const int thread_per_block = blockDim.x;
     const int global_thread_id = local_thread_id + thread_per_block * ligand_id;
+
+    if (converged_ligands_b[ligand_id]) return;
 
     const int num_rotamers                      = ligand_num_rotamers[ligand_id];
     chromosome* __restrict__ l_chromosomes      = chromosomes + ligand_id * chromosome_number;
@@ -246,7 +249,8 @@ namespace mudock {
                     (void*) &next_population,
                     (void*) cuda_random_memory.get_data()->dev_pointer_ref(),
                     (void*) &scores_b,
-                    (void*) &max_translation_half_width};
+                    (void*) &max_translation_half_width,
+                    (void*) &converged_ligands_b};
     //TODO check grid/dimensions
     q->launch_kernel((void*) (max_translation_half_width > fp_type{0} ? iterate_gpu<true>
                                                                            : iterate_gpu<false>),

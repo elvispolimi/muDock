@@ -47,7 +47,8 @@ namespace mudock {
                     (void*) &frag_stop_indices_b,
                     (void*) &frag_indices_start_b,
                     (void*) &num_rotamers_b,
-                    (void*) &num_atoms_b};
+                    (void*) &num_atoms_b,
+                    (void*) &converged_ligands_b};
     //TODO check grid/dimensions
     constexpr_switch_bucket<0, reorder_buffer<static_molecule>::get_num_atom_clusters(), 1>(
         [&](const auto atom_index) {
