@@ -54,12 +54,9 @@ namespace mudock {
       const knobs& configuration = (*this->scratch).configuration;
       // TODO L check if this makes a copy or a reference
       if (configuration.crystal_path) {
-        this->ligand_template =
-            mudock::parser<static_molecule>(std::filesystem::path(*configuration.crystal_path));
-        mudock::info("Loaded crystal pose from ", *configuration.crystal_path);
+        this->ligand_template = mudock::parser<static_molecule>(std::filesystem::path(*configuration.crystal_path));
       } else {
         this->ligand_template = *batch.molecules[0];
-        mudock::info("Crystal path not set, using input pose as reference");
       }
 
       if (this->ligand_template->num_atoms() != batch.molecules[0]->num_atoms()) {
@@ -329,9 +326,10 @@ namespace mudock {
       // What to log during the local search
       // csv_logger score_logger("adadelta_scores.csv", {"ligand", "iteration", "standalone_ls_score"});
       // csv_logger rmsd_logger("adadelta_rmsd.csv", {"ligand", "iteration", "rmsd"});
-      static csv_logger crystal_experiment_logger("adadelta_crystal.csv", {"ligand_index", "initial_score", "final_score", "initial_rmsd", "final_rmsd", "iterations"});
+      const std::string complex_id = this->ligand_template ? this->ligand_template->properties.get(property_type::NAME) : std::string{"unknown"};
+     
+      static csv_logger crystal_experiment_logger(complex_id + ".csv", {"ligand_index", "initial_score", "final_score", "initial_rmsd", "final_rmsd", "iterations"});
       
-      // const std::string ligand_name = this->ligand_template ? this->ligand_template->properties.get(property_type::NAME) : std::string{"unknown"};
       // auto &scores_b = (*this->scratch).template get<buffer_data_type::SCORES>();
       // fp_type crystal_score = 0.0;
 
@@ -348,7 +346,7 @@ namespace mudock {
 
         // Dump pose for visualization.
         // this->dump_pose(iter);
-        if (iter == 2) {
+        if (iter == 1) {
           auto& scores_b = (*this->scratch).template get<buffer_data_type::SCORES>();
           auto& x_scratch_b = (*this->scratch).template get<buffer_data_type::X_SCRATCH>();
           auto& y_scratch_b = (*this->scratch).template get<buffer_data_type::Y_SCRATCH>();
