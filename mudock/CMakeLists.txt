@@ -193,6 +193,7 @@ if(MUDOCK_ENABLE_CUDA)
     "${header_path}/${header_prefix}/cuda_implementation/cuda_texture.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/cuda_implementation.hpp"
     "${header_path}/${header_prefix}/cuda_implementation/adadelta_cuda.cuh"
+    "${header_path}/${header_prefix}/cuda_implementation/crystal_convergence_cuda.cuh"
     )
   list(
     APPEND
@@ -203,6 +204,7 @@ if(MUDOCK_ENABLE_CUDA)
     "${source_path}/cuda_implementation/cuda_random.cu"
     "${source_path}/cuda_implementation/geom_transform_cuda.cu"
     "${source_path}/cuda_implementation/adadelta_cuda.cu"
+    "${source_path}/cuda_implementation/crystal_convergence_cuda.cu"
   )
 endif()
 
