@@ -260,12 +260,21 @@ namespace mudock {
 
 
     void run_as_lga_step() {
+
+      // Reinitialize buffers
+      const size_t gradient_count = static_cast<size_t>(batch_ligands) * static_cast<size_t>(individuals_per_ligand);
+      initialize_buffer<buffer_data_type::ADADELTA_E_G2>(this->scratch, gradient_count, chromosome{}, true);
+      initialize_buffer<buffer_data_type::ADADELTA_E_DW2>(this->scratch, gradient_count, chromosome{}, true);
+
       if (local_search_on_best) {
         // Mark top n individuals based on lsrate
         auto& scores_b             = (*this->scratch).template get<buffer_data_type::SCORES>();
         auto& active_individuals_b = (*this->scratch).template get<buffer_data_type::ACTIVE_INDIVIDUALS>();
-        fp_type* __restrict__ scores_p  = scores_b.dev_pointer();
-        int* __restrict__ active_individuals_p  = active_individuals_b.dev_pointer();
+        scores_b.copy_device2host();
+        active_individuals_b.copy_device2host();
+        (*this->scratch).get_queue()->synchronize();
+        fp_type* __restrict__ scores_p  = scores_b.host_pointer();
+        int* __restrict__ active_individuals_p  = active_individuals_b.host_pointer();
         for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
           int     *__restrict__ active_individuals_l = active_individuals_p + ligand_index * individuals_per_ligand;
           fp_type *__restrict__ scores_l             = scores_p + ligand_index * individuals_per_ligand;

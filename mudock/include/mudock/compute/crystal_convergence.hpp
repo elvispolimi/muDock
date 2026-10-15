@@ -102,7 +102,7 @@ namespace mudock {
     int* __restrict__ for_how_long_best_b;
     int tolerance_window;
     fp_type best_score_diff_thld;
-    int current_generation = 0;
+    int current_generation = 1;
     std::shared_ptr<queue_type> q;
   };
 
@@ -114,11 +114,11 @@ namespace mudock {
         : convergence<queue_t>(_scratch) {};
 
     void prepare(batch<static_molecule>& batch) {
-      batch_ligands                           = batch.num_ligands;
-      batch_atoms                             = batch.batch_max_atoms;
-      const int tot_atoms_in_batch            = batch_ligands * batch_atoms;
-      auto q                                  = (*this->scratch).get_queue();
-      const auto population_number            = std::max(1, static_cast<int>((*this->scratch).configuration.population_number));
+      batch_ligands                = batch.num_ligands;
+      batch_atoms                  = batch.batch_max_atoms;
+      const int tot_atoms_in_batch = batch_ligands * batch_atoms;
+      auto q                       = (*this->scratch).get_queue();
+      const auto population_number = std::max(1, static_cast<int>((*this->scratch).configuration.population_number));
 
       load_num_rotamers<queue_t>(batch, this->scratch);
       load_num_atoms<queue_t>(batch, this->scratch);
