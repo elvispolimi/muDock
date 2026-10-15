@@ -1,0 +1,4 @@
+ligand_index,initial_score,final_score,initial_rmsd,final_rmsd,iterations
+0,50.8433,31.1658,9.21779,9.27494,300
+0,40.3856,28.1236,9.71777,9.73963,300
+0,578.975,361.768,10.2725,10.3239,300
