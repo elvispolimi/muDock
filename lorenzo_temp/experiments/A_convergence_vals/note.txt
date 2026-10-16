@@ -1,1 +1,0 @@
-sembra che window 50 e score diff 0.0001 sia buono

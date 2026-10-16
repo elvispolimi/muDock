@@ -1,7 +1,0 @@
-- ho rifatto la tabella di casf facendo lo score del cristallo SULLA POCKET ANZICHÉ SULLA PROTEINA, visto che faremo così le run
-
-- alcuni (una decina) non sono parsati da muDock, altri (una quarantina) avevano score positivo.
-
-- dei rimanenti, ho estratto il target da coreset.dat in modo da NON selezionare complessi con lo stesso target tra train e test 
-
-- una ventina per train, resto validation/test
