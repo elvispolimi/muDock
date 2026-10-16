@@ -384,12 +384,18 @@ namespace mudock {
       x_scratch_b.copy_device2host();
       y_scratch_b.copy_device2host();
       z_scratch_b.copy_device2host();
+      const fp_type* x_scratch_b_ = x_scratch_b.host_pointer();
+      const fp_type* y_scratch_b_ = y_scratch_b.host_pointer();
+      const fp_type* z_scratch_b_ = z_scratch_b.host_pointer();
+
       (*this->scratch).get_queue()->synchronize();
       for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
         final_scores[ligand_index] = scores_b()[ligand_index];
-        final_rmsds[ligand_index] = get_ligand_rmsd(ligand_index, x_scratch_b.host_pointer(), y_scratch_b.host_pointer(), z_scratch_b.host_pointer());
+        final_rmsds[ligand_index] = get_ligand_rmsd(ligand_index, x_scratch_b_, y_scratch_b_, z_scratch_b_);
         crystal_experiment_logger.log(ligand_index, initial_scores[ligand_index], final_scores[ligand_index], initial_rmsds[ligand_index], final_rmsds[ligand_index], this->iterations);
+        this->dump_pose(complex_id, ligand_index, x_scratch_b_, y_scratch_b_, z_scratch_b_, batch_atoms);
       }
+
       
 
     }

@@ -32,30 +32,32 @@ namespace mudock {
     int counter = 0;
     
 
-    // TODO L should i check if multiple ligands? i think so
-    void dump_pose(std::size_t i) {
+    // WARNING: ONLY FOR STANDALONE (ASSUMES 1 INDIVIDUAL)
+    void dump_pose(const std::string complex_id,
+                   const int ligand_index,
+                   const fp_type* x_scratch_b,
+                   const fp_type* y_scratch_b,
+                   const fp_type* z_scratch_b,
+                   const int batch_atoms) {
       assert(ligand_template.has_value() && "Ligand template was not stored before dump_pose");
-
-      auto& x_scratch_b = (*this->scratch).template get<buffer_data_type::X_SCRATCH>();
-      auto& y_scratch_b = (*this->scratch).template get<buffer_data_type::Y_SCRATCH>();
-      auto& z_scratch_b = (*this->scratch).template get<buffer_data_type::Z_SCRATCH>();
-      x_scratch_b.copy_device2host();
-      y_scratch_b.copy_device2host();
-      z_scratch_b.copy_device2host();
-      (*this->scratch).get_queue()->synchronize();
 
       static_molecule pose = *ligand_template;
       const int num_atoms = pose.num_atoms();
-      std::memcpy(pose.x(), x_scratch_b.host_pointer(), num_atoms * sizeof(fp_type));
-      std::memcpy(pose.y(), y_scratch_b.host_pointer(), num_atoms * sizeof(fp_type));
-      std::memcpy(pose.z(), z_scratch_b.host_pointer(), num_atoms * sizeof(fp_type));
+      const int atom_stride = ligand_index * batch_atoms;
+
+      const fp_type *__restrict__ scratch_x = x_scratch_b + atom_stride;
+      const fp_type *__restrict__ scratch_y = y_scratch_b + atom_stride;
+      const fp_type *__restrict__ scratch_z = z_scratch_b + atom_stride;
+
+      std::memcpy(pose.x(), scratch_x, num_atoms * sizeof(fp_type));
+      std::memcpy(pose.y(), scratch_y, num_atoms * sizeof(fp_type));
+      std::memcpy(pose.z(), scratch_z, num_atoms * sizeof(fp_type));
 
       // TODO L if there is no (dump) directory, it doesn't save the pose. fix it.
-      const std::string filename = "dump/pose_" + std::to_string(i) + ".mol2";
+      const std::string filename = "dump/pose_" + complex_id + "_" + std::to_string(ligand_index) + ".mol2";
       std::ofstream ofs(filename, std::ios::out);
       writer<supported_format::MOL2>(pose, ofs);
     }
-
 
 
     bool is_standalone_local_search(const knobs& conf) {
