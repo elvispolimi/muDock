@@ -28,7 +28,8 @@ namespace mudock {
     std::shared_ptr<scoring_t<queue_t>> score_stage;
     size_t iterations;
     bool standalone_local_search{false};
-    std::optional<static_molecule> ligand_template;
+    std::optional<static_molecule> crystal_template;
+    std::vector<std::string> ligand_names;
     int counter = 0;
     
 
@@ -39,9 +40,9 @@ namespace mudock {
                    const fp_type* y_scratch_b,
                    const fp_type* z_scratch_b,
                    const int batch_atoms) {
-      assert(ligand_template.has_value() && "Ligand template was not stored before dump_pose");
+      assert(crystal_template.has_value() && "Ligand template was not stored before dump_pose");
 
-      static_molecule pose = *ligand_template;
+      static_molecule pose = *crystal_template;
       const int num_atoms = pose.num_atoms();
       const int atom_stride = ligand_index * batch_atoms;
 
@@ -53,8 +54,8 @@ namespace mudock {
       std::memcpy(pose.y(), scratch_y, num_atoms * sizeof(fp_type));
       std::memcpy(pose.z(), scratch_z, num_atoms * sizeof(fp_type));
 
-      // TODO L if there is no (dump) directory, it doesn't save the pose. fix it.
-      const std::string filename = "dump/pose_" + complex_id + "_" + std::to_string(ligand_index) + ".mol2";
+      std::filesystem::create_directories("dump/" + complex_id);
+      const std::string filename = "dump/" + complex_id + "/pose_" + ligand_names[ligand_index] + ".mol2";
       std::ofstream ofs(filename, std::ios::out);
       writer<supported_format::MOL2>(pose, ofs);
     }

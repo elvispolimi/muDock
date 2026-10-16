@@ -54,12 +54,12 @@ namespace mudock {
       const knobs& configuration = (*this->scratch).configuration;
       // TODO L check if this makes a copy or a reference
       if (configuration.crystal_path) {
-        this->ligand_template = mudock::parser<static_molecule>(std::filesystem::path(*configuration.crystal_path));
+        this->crystal_template = mudock::parser<static_molecule>(std::filesystem::path(*configuration.crystal_path));
       } else {
-        this->ligand_template = *batch.molecules[0];
+        this->crystal_template = *batch.molecules[0];
       }
 
-      if (this->ligand_template->num_atoms() != batch.molecules[0]->num_atoms()) {
+      if (this->crystal_template->num_atoms() != batch.molecules[0]->num_atoms()) {
         throw std::runtime_error("Crystal and docked ligand have different atom counts");
       }
       batch_ligands = batch.num_ligands;
@@ -74,6 +74,10 @@ namespace mudock {
       initial_rmsds.resize(batch_ligands);
       final_scores.resize(batch_ligands);
       final_rmsds.resize(batch_ligands);
+      this->ligand_names.resize(batch_ligands);
+      for (int ligand_index = 0; ligand_index < batch_ligands; ++ligand_index) {
+        this->ligand_names[ligand_index] = batch.molecules[ligand_index]->properties.get(property_type::NAME);
+      }
 
 
       auto &adadelta_e_g2_b  = (*this->scratch).template get<buffer_data_type::ADADELTA_E_G2>();
@@ -242,9 +246,9 @@ namespace mudock {
 
     // TODO L valid only for standalone (one individual)
     fp_type get_ligand_rmsd(int ligand_index, const fp_type* x_scratch_b, const fp_type* y_scratch_b, const fp_type* z_scratch_b) {
-      assert(this->ligand_template.has_value() && "Ligand template not initialized for RMSD logging");
+      assert(this->crystal_template.has_value() && "Ligand template not initialized for RMSD logging");
 
-      const int num_atoms   = this->ligand_template->num_atoms();
+      const int num_atoms   = this->crystal_template->num_atoms();
       const int atom_stride = ligand_index * batch_atoms;
 
       const fp_type *__restrict__ scratch_x = x_scratch_b + atom_stride;
@@ -252,7 +256,7 @@ namespace mudock {
       const fp_type *__restrict__ scratch_z = z_scratch_b + atom_stride;
 
 
-      return compute_rmsd((*this->ligand_template).x(), (*this->ligand_template).y(), (*this->ligand_template).z(),
+      return compute_rmsd((*this->crystal_template).x(), (*this->crystal_template).y(), (*this->crystal_template).z(),
                           scratch_x, scratch_y, scratch_z, 
                           num_atoms);
     }
@@ -300,7 +304,7 @@ namespace mudock {
           best_index = i;
         }
       }
-      // const std::string ligand_name = this->ligand_template ? this->ligand_template->properties.get(property_type::NAME) : std::string{"unknown"};
+      // const std::string ligand_name = this->crystal_template ? this->crystal_template->properties.get(property_type::NAME) : std::string{"unknown"};
       // remove this code after experiments ^
       ///////////////////////////////////////////////////////////////////////////////////////////
 
@@ -335,16 +339,16 @@ namespace mudock {
       // What to log during the local search
       // csv_logger score_logger("adadelta_scores.csv", {"ligand", "iteration", "standalone_ls_score"});
       // csv_logger rmsd_logger("adadelta_rmsd.csv", {"ligand", "iteration", "rmsd"});
-      const std::string complex_id = this->ligand_template ? this->ligand_template->properties.get(property_type::NAME) : std::string{"unknown"};
-     
+      std::string complex_id = this->crystal_template ? this->crystal_template->properties.get(property_type::NAME) : std::string{"unknown"};
+      complex_id = complex_id.substr(0, complex_id.size() - 7);
       static csv_logger crystal_experiment_logger(complex_id + ".csv", {"ligand_index", "initial_score", "final_score", "initial_rmsd", "final_rmsd", "iterations"});
       
       // auto &scores_b = (*this->scratch).template get<buffer_data_type::SCORES>();
       // fp_type crystal_score = 0.0;
 
       // WARNING: THIS IS VALID ONLY FOR ONE LIGAND AT A TIME
-      // const int num_atoms = this->ligand_template->num_atoms();
-      // const long int num_rotamers = this->ligand_template->num_rotamers();
+      // const int num_atoms = this->crystal_template->num_atoms();
+      // const long int num_rotamers = this->crystal_template->num_rotamers();
       
 
       for (std::size_t iter = 1; iter <= this->iterations; ++iter) {
