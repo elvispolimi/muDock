@@ -340,7 +340,8 @@ namespace mudock {
       // csv_logger score_logger("adadelta_scores.csv", {"ligand", "iteration", "standalone_ls_score"});
       // csv_logger rmsd_logger("adadelta_rmsd.csv", {"ligand", "iteration", "rmsd"});
       std::string complex_id = this->crystal_template ? this->crystal_template->properties.get(property_type::NAME) : std::string{"unknown"};
-      complex_id = complex_id.substr(0, complex_id.size() - 7);
+      const auto pos = complex_id.find('_');
+      if (pos != std::string::npos) complex_id.erase(pos);
       static csv_logger crystal_experiment_logger(complex_id + ".csv", {"ligand_index", "initial_score", "final_score", "initial_rmsd", "final_rmsd", "iterations"});
       
       // auto &scores_b = (*this->scratch).template get<buffer_data_type::SCORES>();
