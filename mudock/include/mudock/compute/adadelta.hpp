@@ -397,7 +397,7 @@ namespace mudock {
       for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
         final_scores[ligand_index] = scores_b()[ligand_index];
         final_rmsds[ligand_index] = get_ligand_rmsd(ligand_index, x_scratch_b_, y_scratch_b_, z_scratch_b_);
-        crystal_experiment_logger.log(ligand_index, initial_scores[ligand_index], final_scores[ligand_index], initial_rmsds[ligand_index], final_rmsds[ligand_index], this->iterations);
+        crystal_experiment_logger.log(this->ligand_names[ligand_index], initial_scores[ligand_index], final_scores[ligand_index], initial_rmsds[ligand_index], final_rmsds[ligand_index], this->iterations);
         this->dump_pose(complex_id, ligand_index, x_scratch_b_, y_scratch_b_, z_scratch_b_, batch_atoms);
       }
 
