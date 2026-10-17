@@ -32,3 +32,21 @@ set_target_properties(
               CXX_STANDARD_REQUIRED ON
               CXX_EXTENSIONS OFF)
 target_link_libraries(test_score_adt_impl libmudock Boost::program_options)
+
+add_executable_mudock(test_soa "${CMAKE_CURRENT_SOURCE_DIR}/test_soa.cpp")
+set_target_properties(
+  test_soa
+  PROPERTIES CXX_STANDARD 20
+             CXX_STANDARD_REQUIRED ON
+             CXX_EXTENSIONS OFF)
+target_link_libraries(test_soa libmudock)
+add_test(NAME test_soa COMMAND test_soa)
+
+add_executable_mudock(test_blocks "${CMAKE_CURRENT_SOURCE_DIR}/test_blocks.cpp")
+set_target_properties(
+  test_blocks
+  PROPERTIES CXX_STANDARD 20
+             CXX_STANDARD_REQUIRED ON
+             CXX_EXTENSIONS OFF)
+target_link_libraries(test_blocks libmudock)
+add_test(NAME test_blocks COMMAND test_blocks)

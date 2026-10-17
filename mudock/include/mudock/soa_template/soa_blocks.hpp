@@ -1,0 +1,603 @@
+#pragma once
+
+/*
+ * SoA Blocks: collection of SoA layouts (blocks) that can be accessed in a structured way.
+ */
+
+#include "soa_common.hpp"
+#include "soa_layout.hpp"
+
+#define _DECLARE_SOA_BLOCKS_STREAM_INFO_IMPL(NAME, LAYOUT_NAME)                               \
+  _soa_impl_os << BOOST_PP_CAT(NAME, _);                                                      \
+  _soa_impl_offset += LayoutFor<LAYOUT_NAME>::computeDataSize(                                \
+      mudock::soa::detail::extractSegment<LayoutFor<LAYOUT_NAME>, blocksNumber>(sizes_, index)); \
+  index += mudock::soa::detail::nBlocks<LayoutFor<LAYOUT_NAME>>();
+
+#define _DECLARE_SOA_BLOCKS_STREAM_INFO(R, DATA, SPEC) \
+  _EXEC_IF_BLOCK(SPEC, _DECLARE_SOA_BLOCKS_STREAM_INFO_IMPL, (_BLOCK_GET_NAME(SPEC), _BLOCK_GET_LAYOUT(SPEC)))
+
+/*
+ * Declare accessors for the View of each block
+ */
+#define _DECLARE_ACCESSORS_VIEW_BLOCKS_IMPL(NAME, LAYOUT_NAME)                            \
+  SOA_HOST_DEVICE SOA_INLINE ViewFor<LayoutFor<LAYOUT_NAME>> NAME() {                     \
+    return LayoutFor<LAYOUT_NAME>::const_cast_View(base_type::BOOST_PP_CAT(NAME, View_)); \
+  }
+
+#define _DECLARE_ACCESSORS_VIEW_BLOCKS(R, DATA, SPEC) \
+  _EXEC_IF_BLOCK(SPEC, _DECLARE_ACCESSORS_VIEW_BLOCKS_IMPL, (_BLOCK_GET_NAME(SPEC), _BLOCK_GET_LAYOUT(SPEC)))
+
+/*
+ * Declare parameters for contructing the View of an SoA by blocks
+ * using different views for each block
+ */
+#define _DECLARE_VIEW_CONSTRUCTOR_BLOCKS_IMPL(NAME, LAYOUT_NAME) (ViewFor<LayoutFor<LAYOUT_NAME>> NAME)
+
+#define _DECLARE_VIEW_CONSTRUCTOR_BLOCKS(R, DATA, SPEC) \
+  _EXEC_IF_BLOCK(SPEC, _DECLARE_VIEW_CONSTRUCTOR_BLOCKS_IMPL, (_BLOCK_GET_NAME(SPEC), _BLOCK_GET_LAYOUT(SPEC)))
+
+/*
+ * Build the View of each block
+ */
+#define _INITIALIZE_MEMBER_VIEW_BLOCKS_IMPL(NAME) (NAME)
+
+#define _INITIALIZE_MEMBER_VIEW_BLOCKS(R, DATA, SPEC) \
+  _EXEC_IF_BLOCK(SPEC, _INITIALIZE_MEMBER_VIEW_BLOCKS_IMPL, (_BLOCK_GET_NAME(SPEC)))
+
+/**
+ * Pointers to blocks for referencing by name
+ */
+#define _DECLARE_BLOCKS_POINTERS_IMPL(NAME)                                       \
+  SOA_HOST_DEVICE SOA_INLINE auto const* BOOST_PP_CAT(addressOf_, NAME)() const { \
+    return parent_.BOOST_PP_CAT(NAME, _).metadata().data();                       \
+  }                                                                               \
+  SOA_HOST_DEVICE SOA_INLINE auto* BOOST_PP_CAT(addressOf_, NAME)() {             \
+    return parent_.BOOST_PP_CAT(NAME, _).metadata().data();                       \
+  }
+
+#define _DECLARE_BLOCKS_POINTERS(R, DATA, SPEC) \
+  _EXEC_IF_BLOCK(SPEC, _DECLARE_BLOCKS_POINTERS_IMPL, (_BLOCK_GET_NAME(SPEC)))
+
+/*
+ * Declare accessors for the ConstView of each block
+ */
+#define _DECLARE_ACCESSORS_CONST_VIEW_BLOCKS_IMPL(NAME, LAYOUT_NAME)                   \
+  SOA_HOST_DEVICE SOA_INLINE const ConstViewFor<LayoutFor<LAYOUT_NAME>> NAME() const { \
+    return BOOST_PP_CAT(NAME, View_);                                                  \
+  }
+
+#define _DECLARE_ACCESSORS_CONST_VIEW_BLOCKS(R, DATA, SPEC) \
+  _EXEC_IF_BLOCK(SPEC, _DECLARE_ACCESSORS_CONST_VIEW_BLOCKS_IMPL, (_BLOCK_GET_NAME(SPEC), _BLOCK_GET_LAYOUT(SPEC)))
+
+/*
+ * Build the ConstView of each block from the corresponding Layout
+ */
+#define _DECLARE_MEMBER_CONST_VIEW_CONSTRUCTION_BLOCKS_IMPL(NAME) \
+  (BOOST_PP_CAT(NAME, View_)(blocks.BOOST_PP_CAT(NAME, _)))
+
+#define _DECLARE_MEMBER_CONST_VIEW_CONSTRUCTION_BLOCKS(R, DATA, SPEC) \
+  _EXEC_IF_BLOCK(SPEC, _DECLARE_MEMBER_CONST_VIEW_CONSTRUCTION_BLOCKS_IMPL, (_BLOCK_GET_NAME(SPEC)))
+
+/*
+ * Declare parameters for contructing the ConstView of an SoA by blocks
+ * using different const views for each block
+ */
+#define _DECLARE_CONST_VIEW_CONSTRUCTOR_BLOCKS_IMPL(NAME, LAYOUT_NAME) (ConstViewFor<LayoutFor<LAYOUT_NAME>> NAME)
+
+#define _DECLARE_CONST_VIEW_CONSTRUCTOR_BLOCKS(R, DATA, SPEC) \
+  _EXEC_IF_BLOCK(SPEC, _DECLARE_CONST_VIEW_CONSTRUCTOR_BLOCKS_IMPL, (_BLOCK_GET_NAME(SPEC), _BLOCK_GET_LAYOUT(SPEC)))
+
+/*
+ * Build the ConstView of each block
+ */
+#define _INITIALIZE_MEMBER_CONST_VIEW_BLOCKS_IMPL(NAME) (BOOST_PP_CAT(NAME, View_){NAME})
+
+#define _INITIALIZE_MEMBER_CONST_VIEW_BLOCKS(R, DATA, SPEC) \
+  _EXEC_IF_BLOCK(SPEC, _INITIALIZE_MEMBER_CONST_VIEW_BLOCKS_IMPL, (_BLOCK_GET_NAME(SPEC)))
+
+/*
+ * Initialize the array of sizes for the View of an SoA by blocks
+ */
+#define _DECLARE_CONST_VIEW_SIZES_IMPL(NAME, LAYOUT_NAME)                  \
+  if constexpr (requires { LayoutFor<LAYOUT_NAME>::blocksNumber; }) {      \
+    const auto sizes = BOOST_PP_CAT(NAME, View_).metadata().size();        \
+    for (size_type i = 0; i < LayoutFor<LAYOUT_NAME>::blocksNumber; ++i) { \
+      sizes_[idx++] = sizes[i];                                            \
+    }                                                                      \
+  } else {                                                                 \
+    sizes_[idx++] = BOOST_PP_CAT(NAME, View_).metadata().size();           \
+  }
+
+#define _DECLARE_CONST_VIEW_SIZES(R, DATA, SPEC) \
+  _EXEC_IF_BLOCK(SPEC, _DECLARE_CONST_VIEW_SIZES_IMPL, (_BLOCK_GET_NAME(SPEC), _BLOCK_GET_LAYOUT(SPEC)))
+
+/*
+ * Declare the data members for the ConstView of the SoA by blocks
+ */
+#define _DECLARE_MEMBERS_CONST_VIEW_BLOCKS_IMPL(NAME, LAYOUT_NAME) \
+  ConstViewFor<LayoutFor<LAYOUT_NAME>> BOOST_PP_CAT(NAME, View_);
+
+#define _DECLARE_MEMBERS_CONST_VIEW_BLOCKS(R, DATA, SPEC) \
+  _EXEC_IF_BLOCK(SPEC, _DECLARE_MEMBERS_CONST_VIEW_BLOCKS_IMPL, (_BLOCK_GET_NAME(SPEC), _BLOCK_GET_LAYOUT(SPEC)))
+
+/**
+ * Declare the const_cast version of the blocks
+ * This is used to convert a ConstView into a View
+ */
+#define _DECLARE_CONST_CAST_VIEWS_IMPL(NAME, LAYOUT_NAME) (LayoutFor<LAYOUT_NAME>::const_cast_View(view.NAME()))
+
+#define _DECLARE_CONST_CAST_VIEWS(R, DATA, SPEC) \
+  _EXEC_IF_BLOCK(SPEC, _DECLARE_CONST_CAST_VIEWS_IMPL, (_BLOCK_GET_NAME(SPEC), _BLOCK_GET_LAYOUT(SPEC)))
+
+/*
+ * Declare accessors for the Layout of each block
+ */
+#define _DECLARE_LAYOUTS_ACCESSORS_IMPL(NAME, LAYOUT_NAME) \
+  LayoutFor<LAYOUT_NAME> NAME() { return BOOST_PP_CAT(NAME, _); }
+
+#define _DECLARE_LAYOUTS_ACCESSORS(R, DATA, SPEC) \
+  _EXEC_IF_BLOCK(SPEC, _DECLARE_LAYOUTS_ACCESSORS_IMPL, (_BLOCK_GET_NAME(SPEC), _BLOCK_GET_LAYOUT(SPEC)))
+
+/*
+ * Computation of the size for each block
+ */
+#define _ACCUMULATE_SOA_BLOCKS_SIZE_IMPL(LAYOUT_NAME)                                        \
+  _soa_impl_ret += LayoutFor<LAYOUT_NAME>::computeDataSize(                                  \
+      mudock::soa::detail::extractSegment<LayoutFor<LAYOUT_NAME>, blocksNumber>(sizes, index)); \
+  index += mudock::soa::detail::nBlocks<LayoutFor<LAYOUT_NAME>>();
+
+#define _ACCUMULATE_SOA_BLOCKS_SIZE(R, DATA, SPEC) \
+  _EXEC_IF_BLOCK(SPEC, _ACCUMULATE_SOA_BLOCKS_SIZE_IMPL, (_BLOCK_GET_LAYOUT(SPEC)))
+
+/*
+ * Assignment of spans to each block
+ */
+#define _ASSIGN_SPANS_TO_BLOCKS_IMPL(NAME, LAYOUT_NAME) (typename LayoutFor<LAYOUT_NAME>::Descriptor(view.NAME()))
+
+#define _ASSIGN_SPANS_TO_BLOCKS(R, DATA, SPEC) \
+  _EXEC_IF_BLOCK(SPEC, _ASSIGN_SPANS_TO_BLOCKS_IMPL, (_BLOCK_GET_NAME(SPEC), _BLOCK_GET_LAYOUT(SPEC)))
+
+/*
+ * Assignment of const spans to each block
+ */
+#define _ASSIGN_CONST_SPANS_TO_BLOCKS_IMPL(NAME, LAYOUT_NAME) \
+  (typename LayoutFor<LAYOUT_NAME>::ConstDescriptor(view.NAME()))
+
+#define _ASSIGN_CONST_SPANS_TO_BLOCKS(R, DATA, SPEC) \
+  _EXEC_IF_BLOCK(SPEC, _ASSIGN_CONST_SPANS_TO_BLOCKS_IMPL, (_BLOCK_GET_NAME(SPEC), _BLOCK_GET_LAYOUT(SPEC)))
+
+/*
+ * Declaration of the descriptor by composition of descriptors of each block
+ */
+#define _DECLARE_DESCRIPTOR_BLOCKS_IMPL(LAYOUT_NAME) (typename LayoutFor<LAYOUT_NAME>::Descriptor)
+
+#define _DECLARE_DESCRIPTOR_BLOCKS(R, DATA, SPEC) \
+  _EXEC_IF_BLOCK(SPEC, _DECLARE_DESCRIPTOR_BLOCKS_IMPL, (_BLOCK_GET_LAYOUT(SPEC)))
+
+/*
+ * Declaration of the const descriptor by composition of descriptors of each block
+ */
+#define _DECLARE_CONST_DESCRIPTOR_BLOCKS_IMPL(LAYOUT_NAME) (typename LayoutFor<LAYOUT_NAME>::ConstDescriptor)
+
+#define _DECLARE_CONST_DESCRIPTOR_BLOCKS(R, DATA, SPEC) \
+  _EXEC_IF_BLOCK(SPEC, _DECLARE_CONST_DESCRIPTOR_BLOCKS_IMPL, (_BLOCK_GET_LAYOUT(SPEC)))
+
+/*
+ * Computation of the block location in the memory layout (at SoA by blocks construction time)
+ */
+#define _DECLARE_MEMBER_CONSTRUCTION_BLOCKS_IMPL(NAME, LAYOUT_NAME)                                         \
+  BOOST_PP_CAT(NAME, _) = LayoutFor<LAYOUT_NAME>(                                                           \
+      mem + offset, mudock::soa::detail::extractSegment<LayoutFor<LAYOUT_NAME>, blocksNumber>(sizes_, index)); \
+  offset += LayoutFor<LAYOUT_NAME>::computeDataSize(                                                        \
+      mudock::soa::detail::extractSegment<LayoutFor<LAYOUT_NAME>, blocksNumber>(sizes_, index));               \
+  index += mudock::soa::detail::nBlocks<LayoutFor<LAYOUT_NAME>>();
+
+#define _DECLARE_MEMBER_CONSTRUCTION_BLOCKS(R, DATA, SPEC) \
+  _EXEC_IF_BLOCK(SPEC, _DECLARE_MEMBER_CONSTRUCTION_BLOCKS_IMPL, (_BLOCK_GET_NAME(SPEC), _BLOCK_GET_LAYOUT(SPEC)))
+
+/*
+ * Call default constructor for each block
+ */
+#define _DECLARE_MEMBER_TRIVIAL_CONSTRUCTION_BLOCKS_IMPL(NAME) (BOOST_PP_CAT(NAME, _)())
+
+#define _DECLARE_MEMBER_TRIVIAL_CONSTRUCTION_BLOCKS(R, DATA, SPEC) \
+  _EXEC_IF_BLOCK(SPEC, _DECLARE_MEMBER_TRIVIAL_CONSTRUCTION_BLOCKS_IMPL, (_BLOCK_GET_NAME(SPEC)))
+
+/*
+ * Computate number of blocks
+ */
+#define _COUNT_SOA_BLOCKS_IMPL(LAYOUT_NAME) soa_blocks_count += mudock::soa::detail::nBlocks<LayoutFor<LAYOUT_NAME>>();
+
+#define _COUNT_SOA_BLOCKS(R, DATA, SPEC) _EXEC_IF_BLOCK(SPEC, _COUNT_SOA_BLOCKS_IMPL, (_BLOCK_GET_LAYOUT(SPEC)))
+
+/*
+ * Call the copy constructor for each block
+ */
+#define _DECLARE_BLOCK_MEMBER_COPY_CONSTRUCTION_IMPL(NAME) \
+  (BOOST_PP_CAT(NAME, _)(_soa_impl_other.BOOST_PP_CAT(NAME, _)))
+
+#define _DECLARE_BLOCK_MEMBER_COPY_CONSTRUCTION(R, DATA, SPEC) \
+  _EXEC_IF_BLOCK(SPEC, _DECLARE_BLOCK_MEMBER_COPY_CONSTRUCTION_IMPL, (_BLOCK_GET_NAME(SPEC)))
+
+/*
+ * Call the assignment operator for each block
+ */
+#define _DECLARE_BLOCKS_MEMBER_ASSIGNMENT_IMPL(NAME) BOOST_PP_CAT(NAME, _) = _soa_impl_other.BOOST_PP_CAT(NAME, _);
+
+#define _DECLARE_BLOCKS_MEMBER_ASSIGNMENT(R, DATA, SPEC) \
+  _EXEC_IF_BLOCK(SPEC, _DECLARE_BLOCKS_MEMBER_ASSIGNMENT_IMPL, (_BLOCK_GET_NAME(SPEC)))
+
+/*
+ * Check the equality of sizes for each block
+ */
+#define _CHECK_VIEW_SIZES_IMPL(NAME, CLASS_NAME)                                                                      \
+  if (sizes_[index] < view.NAME().metadata().size()) {                                                                \
+    throw std::runtime_error("In " #CLASS_NAME "::deepCopy method: number of elements mismatch for block " #NAME ""); \
+  }                                                                                                                   \
+  index++;
+
+#define _CHECK_VIEW_SIZES(R, DATA, SPEC) _EXEC_IF_BLOCK(SPEC, _CHECK_VIEW_SIZES_IMPL, (_BLOCK_GET_NAME(SPEC), DATA))
+
+/*
+ * Call the deepCopy method for each block
+ */
+#define _DEEP_COPY_VIEW_COLUMNS_IMPL(NAME) BOOST_PP_CAT(NAME, _).deepCopy(view.NAME());
+
+#define _DEEP_COPY_VIEW_COLUMNS(R, DATA, SPEC) \
+  _EXEC_IF_BLOCK(SPEC, _DEEP_COPY_VIEW_COLUMNS_IMPL, (_BLOCK_GET_NAME(SPEC)))
+
+/*
+ * Call ROOTReadstreamer for each block.
+ */
+#define _STREAMER_READ_SOA_BLOCK_DATA_MEMBER_IMPL(NAME) \
+  BOOST_PP_CAT(NAME, _).ROOTReadStreamer(onfile.BOOST_PP_CAT(NAME, _));
+
+#define _STREAMER_READ_SOA_BLOCK_DATA_MEMBER(R, DATA, SPEC) \
+  _EXEC_IF_BLOCK(SPEC, _STREAMER_READ_SOA_BLOCK_DATA_MEMBER_IMPL, (_BLOCK_GET_NAME(SPEC)))
+
+/*
+ * Call ROOTStreamerCleaner for each block.
+ */
+#define _ROOT_FREE_SOA_BLOCK_COLUMN_OR_SCALAR_IMPL(NAME) BOOST_PP_CAT(NAME, _).ROOTStreamerCleaner();
+
+#define _ROOT_FREE_SOA_BLOCK_COLUMN_OR_SCALAR(R, DATA, SPEC) \
+  _EXEC_IF_BLOCK(SPEC, _ROOT_FREE_SOA_BLOCK_COLUMN_OR_SCALAR_IMPL, (_BLOCK_GET_NAME(SPEC)))
+
+/*
+ * Declare the data members for the SoA by blocks
+ */
+#define _DECLARE_MEMBERS_BLOCKS_IMPL(NAME, LAYOUT_NAME) LayoutFor<LAYOUT_NAME> BOOST_PP_CAT(NAME, _);
+
+#define _DECLARE_MEMBERS_BLOCKS(R, DATA, SPEC) \
+  _EXEC_IF_BLOCK(SPEC, _DECLARE_MEMBERS_BLOCKS_IMPL, (_BLOCK_GET_NAME(SPEC), _BLOCK_GET_LAYOUT(SPEC)))
+
+/*
+ * A macro defining a SoA by blocks layout (collection of SoA layouts)
+ */
+// clang-format off
+#define GENERATE_SOA_BLOCKS(CLASS, ...)                                                                                \
+  template <std::size_t ALIGNMENT = mudock::soa::CacheLineSize::defaultSize,                                   \
+            bool ALIGNMENT_ENFORCEMENT = mudock::soa::AlignmentEnforcement::relaxed>                                      \
+  struct CLASS {                                                                                                       \
+    template <template <std::size_t, bool> class LAYOUT>                                                    \
+    using LayoutFor = typename mudock::soa::LayoutParameters<ALIGNMENT>::template                                         \
+                                AlignmentEnforcement<ALIGNMENT_ENFORCEMENT>::template Layout<LAYOUT>;                  \
+    using size_type = mudock::soa::size_type;                                                                             \
+    using byte_size_type = mudock::soa::byte_size_type;                                                                   \
+    constexpr static byte_size_type alignment = ALIGNMENT;                                                             \
+    constexpr static bool alignmentEnforcement = ALIGNMENT_ENFORCEMENT;                                                \
+                                                                                                                       \
+    template <std::size_t VIEW_ALIGNMENT = mudock::soa::CacheLineSize::defaultSize,                            \
+            bool VIEW_ALIGNMENT_ENFORCEMENT = mudock::soa::AlignmentEnforcement::relaxed,                                 \
+            bool RESTRICT_QUALIFY = mudock::soa::RestrictQualify::Default,                                                \
+            mudock::soa::RangeChecking::Mode RANGE_CHECKING = mudock::soa::RangeChecking::Default>                           \
+    struct ViewTemplateFreeParams;                                                                                     \
+                                                                                                                       \
+    SOA_HOST_ONLY                                                                                                      \
+    void soaToStreamInternal(std::ostream & _soa_impl_os) const {                                                      \
+      _soa_impl_os << #CLASS "([";                                                                                     \
+      for (auto it = sizes_.begin(); it != sizes_.end(); ++it) {                                                       \
+          if (it != sizes_.begin()) {_soa_impl_os << ", ";}                                                            \
+          _soa_impl_os << *it;                                                                                         \
+      }                                                                                                                \
+      _soa_impl_os << "] elements, in " << blocksNumber << " blocks, byte alignement= " << alignment << "): \n";       \
+      _soa_impl_os << "  sizeof(" #CLASS "): " << sizeof(CLASS) << "\n";                                               \
+      _soa_impl_os << "  The " << blocksNumber << " blocks are:\n\n";                                                  \
+      byte_size_type _soa_impl_offset = 0;                                                                             \
+      size_type index = 0;                                                                                             \
+      _ITERATE_ON_ALL(_DECLARE_SOA_BLOCKS_STREAM_INFO, ~, __VA_ARGS__)                                                 \
+      _soa_impl_os << "Final offset of all blocks = " << _soa_impl_offset << " computeDataSize(...): "                 \
+      << computeDataSize(sizes_) << "\n\n";                                                                            \
+    }                                                                                                                  \
+                                                                                                                       \
+    /* Helper function to compute the total number of blocks */                                                        \
+    static constexpr size_type computeBlocksNumber() {                                                                 \
+      size_type soa_blocks_count = 0;                                                                                  \
+      _ITERATE_ON_ALL(_COUNT_SOA_BLOCKS, ~, __VA_ARGS__)                                                               \
+      return soa_blocks_count;                                                                                         \
+    }                                                                                                                  \
+                                                                                                                       \
+    static constexpr size_type blocksNumber = computeBlocksNumber();                                                   \
+                                                                                                                       \
+    /* Helper function used by caller to externally allocate the storage */                                            \
+    static constexpr byte_size_type computeDataSize(std::array<size_type, blocksNumber> sizes) {                       \
+      byte_size_type _soa_impl_ret = 0;                                                                                \
+      size_type index = 0;                                                                                             \
+      _ITERATE_ON_ALL(_ACCUMULATE_SOA_BLOCKS_SIZE, ~, __VA_ARGS__)                                                     \
+      return _soa_impl_ret;                                                                                            \
+    }                                                                                                                  \
+                                                                                                                       \
+    /**                                                                                                                \
+     * Helper/friend class allowing SoA by blocks introspection.                                                       \
+     */                                                                                                                \
+    struct Metadata {                                                                                                  \
+      friend CLASS;                                                                                                    \
+      SOA_HOST_DEVICE SOA_INLINE std::array<size_type, blocksNumber> size() const { return parent_.sizes_; }           \
+      SOA_HOST_DEVICE SOA_INLINE byte_size_type byteSize() const { return CLASS::computeDataSize(parent_.sizes_); }    \
+      SOA_HOST_DEVICE SOA_INLINE byte_size_type alignment() const { return CLASS::alignment; }                         \
+      SOA_HOST_DEVICE SOA_INLINE CLASS cloneToNewAddress(std::byte* _soa_impl_addr) const {                            \
+        return CLASS(_soa_impl_addr, parent_.sizes_);                                                                  \
+      }                                                                                                                \
+                                                                                                                       \
+      /* Pointers to each block */                                                                                     \
+      _ITERATE_ON_ALL(_DECLARE_BLOCKS_POINTERS, ~, __VA_ARGS__)                                                        \
+                                                                                                                       \
+      Metadata& operator=(const Metadata&) = delete;                                                                   \
+      Metadata(const Metadata&) = delete;                                                                              \
+                                                                                                                       \
+      private:                                                                                                         \
+        SOA_HOST_DEVICE SOA_INLINE Metadata(const CLASS& _soa_impl_parent) : parent_(_soa_impl_parent) {}              \
+        const CLASS& parent_;                                                                                          \
+    };                                                                                                                 \
+                                                                                                                       \
+    friend Metadata;                                                                                                   \
+                                                                                                                       \
+    SOA_HOST_DEVICE SOA_INLINE const Metadata metadata() const { return Metadata(*this); }                             \
+    SOA_HOST_DEVICE SOA_INLINE Metadata metadata() { return Metadata(*this); }                                         \
+                                                                                                                       \
+    _ITERATE_ON_ALL(_DECLARE_LAYOUTS_ACCESSORS, ~, __VA_ARGS__)                                                        \
+                                                                                                                       \
+    template <std::size_t VIEW_ALIGNMENT, bool VIEW_ALIGNMENT_ENFORCEMENT,                                             \
+              bool RESTRICT_QUALIFY, mudock::soa::RangeChecking::Mode RANGE_CHECKING>                                     \
+    struct ConstViewTemplateFreeParams {                                                                               \
+      using BOOST_PP_CAT(CLASS, _parametrized) = CLASS<VIEW_ALIGNMENT, VIEW_ALIGNMENT_ENFORCEMENT>;                    \
+                                                                                                                       \
+      template <typename LayoutT>                                                                                      \
+      using ConstViewFor = typename LayoutT::template ConstViewTemplate<RESTRICT_QUALIFY, RANGE_CHECKING>;             \
+                                                                                                                       \
+      using size_type = mudock::soa::size_type;                                                                           \
+      using byte_size_type = mudock::soa::byte_size_type;                                                                 \
+      using AlignmentEnforcement = mudock::soa::AlignmentEnforcement;                                                     \
+                                                                                                                       \
+      template <std::size_t, bool, bool, mudock::soa::RangeChecking::Mode>                                     \
+      friend struct ViewTemplateFreeParams;                                                                            \
+                                                                                                                       \
+      template <std::size_t, bool, bool, mudock::soa::RangeChecking::Mode>                                     \
+      friend struct ConstViewTemplateFreeParams;                                                                       \
+                                                                                                                       \
+      constexpr static byte_size_type defaultAlignment = mudock::soa::CacheLineSize::defaultSize;                         \
+      constexpr static byte_size_type alignment = VIEW_ALIGNMENT;                                                      \
+      constexpr static bool alignmentEnforcement = VIEW_ALIGNMENT_ENFORCEMENT;                                         \
+      constexpr static byte_size_type conditionalAlignment =                                                           \
+          alignmentEnforcement == AlignmentEnforcement::enforced ? alignment : 0;                                      \
+      constexpr static bool restrictQualify = RESTRICT_QUALIFY;                                                        \
+      constexpr static mudock::soa::RangeChecking::Mode rangeChecking = RANGE_CHECKING;                                   \
+      /* Helper/friend class allowing SoA by blocks ConstView introspection. */                                        \
+      struct Metadata {                                                                                                \
+        friend ConstViewTemplateFreeParams;                                                                            \
+        using TypeOf_Layout = BOOST_PP_CAT(CLASS, _parametrized);                                                      \
+        SOA_HOST_DEVICE SOA_INLINE std::array<size_type, blocksNumber> size() const { return parent_.sizes_; }         \
+                                                                                                                       \
+        /* Forbid copying to avoid const correctness evasion */                                                        \
+        Metadata& operator=(const Metadata&) = delete;                                                                 \
+        Metadata(const Metadata&) = delete;                                                                            \
+                                                                                                                       \
+      private:                                                                                                         \
+        SOA_HOST_DEVICE SOA_INLINE Metadata(const ConstViewTemplateFreeParams& _soa_impl_parent)                       \
+          : parent_(_soa_impl_parent) {}                                                                               \
+        const ConstViewTemplateFreeParams& parent_;                                                                    \
+      };                                                                                                               \
+                                                                                                                       \
+      friend Metadata;                                                                                                 \
+      SOA_HOST_DEVICE SOA_INLINE const Metadata metadata() const { return Metadata(*this); }                           \
+                                                                                                                       \
+      /* Trivial constuctor */                                                                                         \
+      ConstViewTemplateFreeParams() = default;                                                                         \
+                                                                                                                       \
+      /* Copiable */                                                                                                   \
+      ConstViewTemplateFreeParams(ConstViewTemplateFreeParams const&) = default;                                       \
+      ConstViewTemplateFreeParams& operator=(ConstViewTemplateFreeParams const&) = default;                            \
+                                                                                                                       \
+      /* Movable */                                                                                                    \
+      ConstViewTemplateFreeParams(ConstViewTemplateFreeParams&&) = default;                                            \
+      ConstViewTemplateFreeParams& operator=(ConstViewTemplateFreeParams&&) = default;                                 \
+                                                                                                                       \
+      /* Trivial destuctor */                                                                                          \
+      ~ConstViewTemplateFreeParams() = default;                                                                        \
+                                                                                                                       \
+      /* Constructor relying on user provided Layout by blocks */                                                      \
+      SOA_HOST_ONLY ConstViewTemplateFreeParams(const Metadata::TypeOf_Layout& blocks)                                 \
+          : _ITERATE_ON_ALL_COMMA(_DECLARE_MEMBER_CONST_VIEW_CONSTRUCTION_BLOCKS, ~, __VA_ARGS__),                     \
+            sizes_{blocks.sizes_} {}                                                                                   \
+                                                                                                                       \
+      /* Constructor relying on user provided const views for each block */                                            \
+      SOA_HOST_DEVICE ConstViewTemplateFreeParams(                                                                     \
+            _ITERATE_ON_ALL_COMMA(_DECLARE_CONST_VIEW_CONSTRUCTOR_BLOCKS, ~, __VA_ARGS__))                             \
+          : _ITERATE_ON_ALL_COMMA(_INITIALIZE_MEMBER_CONST_VIEW_BLOCKS, ~, __VA_ARGS__){                               \
+              std::size_t idx = 0; _ITERATE_ON_ALL(_DECLARE_CONST_VIEW_SIZES, ~, __VA_ARGS__)}                         \
+                                                                                                                       \
+      /* Accessors for the const views for each block */                                                               \
+      _ITERATE_ON_ALL(_DECLARE_ACCESSORS_CONST_VIEW_BLOCKS, ~, __VA_ARGS__)                                            \
+      ENUM_IF_VALID(_ITERATE_ON_ALL(GENERATE_CONST_VIEW_METHODS, ~, __VA_ARGS__))                                      \
+                                                                                                                       \
+      private:                                                                                                         \
+        _ITERATE_ON_ALL(_DECLARE_MEMBERS_CONST_VIEW_BLOCKS, ~, __VA_ARGS__)                                            \
+        std::array<size_type, blocksNumber> sizes_;                                                                    \
+    };                                                                                                                 \
+                                                                                                                       \
+    template <bool RESTRICT_QUALIFY, mudock::soa::RangeChecking::Mode RANGE_CHECKING>                                     \
+    using ConstViewTemplate = ConstViewTemplateFreeParams<ALIGNMENT, ALIGNMENT_ENFORCEMENT, RESTRICT_QUALIFY,          \
+      RANGE_CHECKING>;                                                                                                 \
+                                                                                                                       \
+    using ConstView = ConstViewTemplate<mudock::soa::RestrictQualify::Default, mudock::soa::RangeChecking::Default>;         \
+                                                                                                                       \
+    template <std::size_t VIEW_ALIGNMENT,                                                                   \
+              bool VIEW_ALIGNMENT_ENFORCEMENT,                                                                         \
+              bool RESTRICT_QUALIFY,                                                                                   \
+              mudock::soa::RangeChecking::Mode RANGE_CHECKING>                                                            \
+      struct ViewTemplateFreeParams                                                                                    \
+      : public ConstViewTemplateFreeParams<VIEW_ALIGNMENT, VIEW_ALIGNMENT_ENFORCEMENT,                                 \
+                                           RESTRICT_QUALIFY, RANGE_CHECKING> {                                         \
+      using BOOST_PP_CAT(CLASS, _parametrized) = CLASS<VIEW_ALIGNMENT, VIEW_ALIGNMENT_ENFORCEMENT>;                    \
+      template <typename LayoutT>                                                                                      \
+      using ViewFor = typename LayoutT::template ViewTemplate<RESTRICT_QUALIFY, RANGE_CHECKING>;                       \
+      using base_type =                                                                                                \
+        ConstViewTemplateFreeParams<VIEW_ALIGNMENT, VIEW_ALIGNMENT_ENFORCEMENT, RESTRICT_QUALIFY, RANGE_CHECKING>;     \
+      using size_type = mudock::soa::size_type;                                                                           \
+      using byte_size_type = mudock::soa::byte_size_type;                                                                 \
+      using AlignmentEnforcement = mudock::soa::AlignmentEnforcement;                                                     \
+                                                                                                                       \
+      constexpr static byte_size_type defaultAlignment = mudock::soa::CacheLineSize::defaultSize;                         \
+      constexpr static byte_size_type alignment = VIEW_ALIGNMENT;                                                      \
+      constexpr static bool alignmentEnforcement = VIEW_ALIGNMENT_ENFORCEMENT;                                         \
+      constexpr static byte_size_type conditionalAlignment =                                                           \
+          alignmentEnforcement == AlignmentEnforcement::enforced ? alignment : 0;                                      \
+      constexpr static bool restrictQualify = RESTRICT_QUALIFY;                                                        \
+      constexpr static mudock::soa::RangeChecking::Mode rangeChecking = RANGE_CHECKING;                                   \
+                                                                                                                       \
+      template <std::size_t, bool, bool, mudock::soa::RangeChecking::Mode>                                     \
+      friend struct ViewTemplateFreeParams;                                                                            \
+      /* Helper/friend class allowing SoA by blocks View introspection. */                                             \
+      struct Metadata {                                                                                                \
+        friend ViewTemplateFreeParams;                                                                                 \
+        using TypeOf_Layout = BOOST_PP_CAT(CLASS, _parametrized);                                                      \
+        SOA_HOST_DEVICE SOA_INLINE std::array<size_type, blocksNumber> size() const { return parent_.sizes_; }         \
+                                                                                                                       \
+        /* Forbid copying to avoid const correctness evasion */                                                        \
+        Metadata& operator=(const Metadata&) = delete;                                                                 \
+        Metadata(const Metadata&) = delete;                                                                            \
+                                                                                                                       \
+      private:                                                                                                         \
+        SOA_HOST_DEVICE SOA_INLINE Metadata(const ViewTemplateFreeParams& _soa_impl_parent)                            \
+          : parent_(_soa_impl_parent) {}                                                                               \
+        const ViewTemplateFreeParams& parent_;                                                                         \
+      };                                                                                                               \
+                                                                                                                       \
+      friend Metadata;                                                                                                 \
+      SOA_HOST_DEVICE SOA_INLINE const Metadata metadata() const { return Metadata(*this); }                           \
+      SOA_HOST_DEVICE SOA_INLINE Metadata metadata() { return Metadata(*this); }                                       \
+                                                                                                                       \
+      /* Trivial constuctor */                                                                                         \
+      ViewTemplateFreeParams() = default;                                                                              \
+                                                                                                                       \
+      /* Copiable */                                                                                                   \
+      ViewTemplateFreeParams(ViewTemplateFreeParams const&) = default;                                                 \
+      ViewTemplateFreeParams& operator=(ViewTemplateFreeParams const&) = default;                                      \
+                                                                                                                       \
+      /* Movable */                                                                                                    \
+      ViewTemplateFreeParams(ViewTemplateFreeParams&&) = default;                                                      \
+      ViewTemplateFreeParams& operator=(ViewTemplateFreeParams&&) = default;                                           \
+                                                                                                                       \
+      /* Trivial destuctor */                                                                                          \
+      ~ViewTemplateFreeParams() = default;                                                                             \
+                                                                                                                       \
+      /* Constructor relying on user provided Layout by blocks */                                                      \
+      SOA_HOST_ONLY ViewTemplateFreeParams(Metadata::TypeOf_Layout& blocks)                                            \
+          : base_type{blocks} {}                                                                                       \
+                                                                                                                       \
+      /* Constructor relying on user provided views for each block */                                                  \
+      SOA_HOST_DEVICE ViewTemplateFreeParams(_ITERATE_ON_ALL_COMMA(_DECLARE_VIEW_CONSTRUCTOR_BLOCKS, ~, __VA_ARGS__)) :\
+        base_type{_ITERATE_ON_ALL_COMMA(_INITIALIZE_MEMBER_VIEW_BLOCKS, ~, __VA_ARGS__)} {}                            \
+                                                                                                                       \
+      /* Accessors for the views for each block */                                                                     \
+      _ITERATE_ON_ALL(_DECLARE_ACCESSORS_VIEW_BLOCKS, ~, __VA_ARGS__)                                                  \
+      ENUM_IF_VALID(_ITERATE_ON_ALL(GENERATE_VIEW_METHODS, ~, __VA_ARGS__))                                            \
+                                                                                                                       \
+       /* Data members inherited from the ConstView */                                                                 \
+    };                                                                                                                 \
+    template <bool RESTRICT_QUALIFY, mudock::soa::RangeChecking::Mode RANGE_CHECKING>                                     \
+    using ViewTemplate = ViewTemplateFreeParams<ALIGNMENT, ALIGNMENT_ENFORCEMENT, RESTRICT_QUALIFY, RANGE_CHECKING>;   \
+    using View = ViewTemplate<mudock::soa::RestrictQualify::Default, mudock::soa::RangeChecking::Default>;                   \
+                                                                                                                       \
+    struct Descriptor {                                                                                                \
+      Descriptor() = default;                                                                                          \
+                                                                                                                       \
+      explicit Descriptor(View view)                                                                                  \
+          : buff(std::make_tuple(_ITERATE_ON_ALL_COMMA(_ASSIGN_SPANS_TO_BLOCKS, ~, __VA_ARGS__))) {}                   \
+                                                                                                                       \
+      static constexpr size_type blocksNumber = std::tuple_size<std::tuple<                                            \
+                                         _ITERATE_ON_ALL_COMMA(_DECLARE_DESCRIPTOR_BLOCKS, ~, __VA_ARGS__)>>::value;   \
+      std::tuple< _ITERATE_ON_ALL_COMMA(_DECLARE_DESCRIPTOR_BLOCKS, ~, __VA_ARGS__)> buff;                             \
+    };                                                                                                                 \
+                                                                                                                       \
+    struct ConstDescriptor {                                                                                           \
+      ConstDescriptor() = default;                                                                                     \
+                                                                                                                       \
+      explicit ConstDescriptor(ConstView const view)                                                                  \
+          : buff(std::make_tuple(_ITERATE_ON_ALL_COMMA(_ASSIGN_CONST_SPANS_TO_BLOCKS, ~, __VA_ARGS__))) {}             \
+                                                                                                                       \
+      static constexpr size_type blocksNumber = std::tuple_size<std::tuple<                                            \
+                                   _ITERATE_ON_ALL_COMMA(_DECLARE_CONST_DESCRIPTOR_BLOCKS, ~, __VA_ARGS__)>>::value;   \
+      std::tuple< _ITERATE_ON_ALL_COMMA(_DECLARE_CONST_DESCRIPTOR_BLOCKS, ~, __VA_ARGS__)> buff;                       \
+    };                                                                                                                 \
+                                                                                                                       \
+    /* Trivial constuctor */                                                                                           \
+    CLASS()                                                                                                            \
+        : sizes_{},                                                                                                    \
+          _ITERATE_ON_ALL_COMMA(_DECLARE_MEMBER_TRIVIAL_CONSTRUCTION_BLOCKS, ~, __VA_ARGS__) {}                        \
+                                                                                                                       \
+    /* Constructor relying on user provided storage and array of sizes */                                              \
+    SOA_HOST_ONLY CLASS(std::byte* mem, std::array<size_type, blocksNumber> elements)                                  \
+        : sizes_(elements) {                                                                                           \
+      byte_size_type offset = 0;                                                                                       \
+      size_type index = 0;                                                                                             \
+      _ITERATE_ON_ALL(_DECLARE_MEMBER_CONSTRUCTION_BLOCKS, ~, __VA_ARGS__)                                             \
+    }                                                                                                                  \
+                                                                                                                       \
+    /* Explicit copy constructor and assignment operator */                                                            \
+    SOA_HOST_ONLY CLASS(CLASS const& _soa_impl_other)                                                                  \
+        : sizes_(_soa_impl_other.sizes_),                                                                              \
+          _ITERATE_ON_ALL_COMMA(_DECLARE_BLOCK_MEMBER_COPY_CONSTRUCTION, ~, __VA_ARGS__) {}                            \
+                                                                                                                       \
+    SOA_HOST_ONLY CLASS& operator=(CLASS const& _soa_impl_other) {                                                     \
+      sizes_ = _soa_impl_other.sizes_;                                                                                 \
+      _ITERATE_ON_ALL(_DECLARE_BLOCKS_MEMBER_ASSIGNMENT, ~, __VA_ARGS__)                                               \
+      return *this;                                                                                                    \
+    }                                                                                                                  \
+                                                                                                                       \
+    /* Helper to implement View as derived from ConstView in SoABlocks implementation */                               \
+    template <bool RESTRICT_QUALIFY, mudock::soa::RangeChecking::Mode RANGE_CHECKING>                                     \
+    SOA_HOST_DEVICE SOA_INLINE static ViewTemplate<RESTRICT_QUALIFY, RANGE_CHECKING> const_cast_View(                  \
+      ConstViewTemplate<RESTRICT_QUALIFY, RANGE_CHECKING> const& view)  {                                              \
+      return ViewTemplate<RESTRICT_QUALIFY, RANGE_CHECKING>{                                                           \
+        _ITERATE_ON_ALL_COMMA(_DECLARE_CONST_CAST_VIEWS, ~, __VA_ARGS__)};                                             \
+    }                                                                                                                  \
+                                                                                                                       \
+    /*                                                                                                                 \
+     * Method for copying the data from a generic ConstView by blocks to a memory blob.                                \
+     * Host-only data can be handled by this method.                                                                   \
+     */                                                                                                                \
+    SOA_HOST_ONLY void deepCopy(ConstView const& view) {                                                               \
+      size_type index = 0;                                                                                             \
+      _ITERATE_ON_ALL(_CHECK_VIEW_SIZES, CLASS, __VA_ARGS__)                                                           \
+      _ITERATE_ON_ALL(_DEEP_COPY_VIEW_COLUMNS, ~, __VA_ARGS__)                                                         \
+    }                                                                                                                  \
+                                                                                                                       \
+    /* ROOT read streamer */                                                                                           \
+    template <typename T>                                                                                              \
+    void ROOTReadStreamer(T & onfile) {                                                                                \
+      _ITERATE_ON_ALL(_STREAMER_READ_SOA_BLOCK_DATA_MEMBER, ~, __VA_ARGS__)                                            \
+    }                                                                                                                  \
+                                                                                                                       \
+    /* ROOT allocation cleanup */                                                                                      \
+    void ROOTStreamerCleaner() {                                                                                       \
+      /* This function should only be called from the PortableCollection ROOT streamer */                              \
+      _ITERATE_ON_ALL(_ROOT_FREE_SOA_BLOCK_COLUMN_OR_SCALAR, ~, __VA_ARGS__)                                           \
+    }                                                                                                                  \
+                                                                                                                       \
+    private:                                                                                                           \
+      /* Data members */                                                                                               \
+      std::array<size_type, blocksNumber> sizes_;                                                                      \
+      _ITERATE_ON_ALL(_DECLARE_MEMBERS_BLOCKS, ~, __VA_ARGS__)                                                         \
+  }; \
+  // clang-format on
