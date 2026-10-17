@@ -21,6 +21,7 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
   std::string score_name  = std::string{to_string(args.scoring)};
   std::string placement_name = std::string{mudock::to_string(args.placement_mode)};
   std::vector<double> placement_point;
+  std::string crystal_path_str;
   arguments_description.add_options()("help,h", "print this help message");
   arguments_description.add_options()("protein,p",
                                       po::value(&args.protein_path)->default_value(args.protein_path),
@@ -123,10 +124,6 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
       "best_score_diff_thld",
       po::value(&args.knobs.best_score_diff_thld)->default_value(args.knobs.best_score_diff_thld),
       "Relative to autostop, difference threshold between best score of all times and current generation to consider as improved");
-//   knobs_description.add_options()(
-//       "score_variance_thld",
-//       po::value(&args.knobs.score_variance_thld)->default_value(args.knobs.score_variance_thld),
-//       "Relative to autostop, score variance threshold of a population");
   knobs_description.add_options()(
       "crystal_score",
       po::value(&args.knobs.crystal_score)->default_value(args.knobs.crystal_score),
@@ -149,8 +146,9 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
       "Max number of ligands buffered in the TBB input/output queues");
   knobs_description.add_options()(
       "crystal_path",
-      po::value(&args.knobs.crystal_path),
+      po::value<std::string>(&crystal_path_str),
       "Path of the crystal used in ls-standalone");
+
   // parse them
   po::options_description all("Allowed Options");
   all.add(arguments_description).add(knobs_description);
@@ -207,6 +205,9 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
     if (!(max_translation_half_width > 0.0))
       throw std::runtime_error("--max-search-box must be greater than zero");
     args.knobs.max_translation_half_width = static_cast<mudock::fp_type>(max_translation_half_width);
+  }
+  if (vm.count("crystal_path")) {
+    args.knobs.crystal_path = crystal_path_str;   // optional stays nullopt if not given
   }
   args.search  = mudock::parse_search_algorithm(search_name);
   args.scoring = mudock::parse_scoring_function(score_name);

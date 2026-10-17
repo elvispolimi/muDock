@@ -4,6 +4,7 @@
 #include <mudock/type_alias.hpp>
 #include <mudock/utils.hpp>
 #include <optional>
+#include <string>
 
 namespace mudock {
 
@@ -17,7 +18,6 @@ namespace mudock {
     std::optional<fp_type> max_translation_half_width = std::nullopt;
     bool autostop                             = false;
     std::size_t tolerance_window              = 50;
-    // fp_type score_variance_thld               = static_cast<fp_type>(0.0015);
     fp_type best_score_diff_thld              = static_cast<fp_type>(0.0001);
     fp_type crystal_score                     = small_bound<fp_type>();
     bool ls_on_best                           = false;
