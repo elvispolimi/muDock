@@ -9,17 +9,6 @@ rm -rf builds/debug && cmake -S . -B builds/debug -DCMAKE_BUILD_TYPE=Debug && cm
 rm -rf builds/old && cmake -S . -B builds/old -DMUDOCK_ENABLE_OMP=ON && cmake --build builds/old -j8
 
 
-# LOCAL VERSION
-rm -rf builds/cuda && \
-cmake -S . -B builds/cuda \
-    -DMUDOCK_ENABLE_CUDA=ON \
-    -DMUDOCK_GPU_ARCHITECTURES=cuda:sm_80 \
-    -DCMAKE_CUDA_HOST_COMPILER=/usr/bin/g++-15 \
-    -DCMAKE_C_COMPILER=/usr/bin/gcc-15 \
-    -DCMAKE_CXX_COMPILER=/usr/bin/g++-15 \
-    -DCMAKE_BUILD_TYPE=Release && \
-cmake --build builds/cuda -j8
-
 # SPACK VERSION FOR ACCENTO
 rm -rf builds/cuda && \
 cmake -S . -B builds/cuda \
@@ -36,6 +25,18 @@ cmake -S . -B builds/debug_cuda \
     -DMUDOCK_GPU_ARCHITECTURES=cuda:sm_80 \
     -DCMAKE_BUILD_TYPE=Debug &&\
 cmake --build builds/debug_cuda -j8
+
+# LOCAL VERSION
+rm -rf builds/cuda && \
+cmake -S . -B builds/cuda \
+    -DMUDOCK_ENABLE_CUDA=ON \
+    -DMUDOCK_GPU_ARCHITECTURES=cuda:sm_80 \
+    -DCMAKE_CUDA_HOST_COMPILER=/usr/bin/g++-15 \
+    -DCMAKE_C_COMPILER=/usr/bin/gcc-15 \
+    -DCMAKE_CXX_COMPILER=/usr/bin/g++-15 \
+    -DCMAKE_BUILD_TYPE=Release && \
+cmake --build builds/cuda -j8
+
 
 
 

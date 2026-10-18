@@ -20,7 +20,7 @@ namespace mudock {
                                             int* __restrict__ num_rotamers_b,
                                             chromosome *__restrict__ adadelta_e_g2_b,
                                             chromosome *__restrict__ adadelta_e_dw2_b,
-                                            int *__restrict__ active_individuals_b,    
+                                            int *__restrict__ active_individuals_b,
                                             const fp_type rho,
                                             const fp_type epsilon,
                                             int *__restrict__ converged_ligands_b) {
@@ -36,34 +36,32 @@ namespace mudock {
     chromosome *__restrict__ e_dw2_l              = adadelta_e_dw2_b + ligand_id * individuals_per_ligand;
     gradient   *__restrict__ gradients_l          = gradients_b + ligand_id * individuals_per_ligand;
     const int  *__restrict__ active_individuals_l = active_individuals_b + ligand_id * individuals_per_ligand;
-    
-    const int num_rotamers = num_rotamers_b[ligand_id];
+
+    const int num_rotamers  = num_rotamers_b[ligand_id];
     const int gradient_size = 6 + num_rotamers;
-    
-    for (int individual_index = local_thread_id; individual_index < individuals_per_ligand; individual_index += blockDim.x) {
+
+    const int total = individuals_per_ligand * gradient_size;
+    for (int idx = local_thread_id; idx < total; idx += blockDim.x) {
+      const int individual_index = idx / gradient_size;
+      const int d                = idx - individual_index * gradient_size;
       if (!active_individuals_l[individual_index]) continue;
-      
-      gradient   &grad = gradients_l[individual_index];
-      chromosome &w = population_l[individual_index];
-      chromosome &E_g2_i = e_g2_l[individual_index];
-      chromosome &E_dw2_i = e_dw2_l[individual_index];
 
-      // Apply AdaDelta update for each dimension
-      for (int d = 0; d < gradient_size; ++d) {
-        E_g2_i[d] = rho * E_g2_i[d] + (fp_type{1} - rho) * grad[d] * grad[d];
-        
-        const fp_type rms_g = std::sqrt(E_g2_i[d] + epsilon);
-        
-        const fp_type rms_dw = std::sqrt(E_dw2_i[d] + epsilon);
-        
-        fp_type delta_w = -(rms_dw / rms_g) * grad[d];
-        
-        E_dw2_i[d] = rho * E_dw2_i[d] + (fp_type{1} - rho) * delta_w * delta_w;
+      const fp_type g = gradients_l[individual_index][d];
+      fp_type& w      = population_l[individual_index][d];
+      fp_type& E_g2   = e_g2_l[individual_index][d];
+      fp_type& E_dw2  = e_dw2_l[individual_index][d];
 
-        w[d] = w[d] + delta_w;
+      E_g2 = rho * E_g2 + (fp_type{1} - rho) * g * g;
 
-      }
-    }  
+      const fp_type rms_g  = std::sqrt(E_g2 + epsilon);
+      const fp_type rms_dw = std::sqrt(E_dw2 + epsilon);
+
+      const fp_type delta_w = -(rms_dw / rms_g) * g;
+
+      E_dw2 = rho * E_dw2 + (fp_type{1} - rho) * delta_w * delta_w;
+
+      w = w + delta_w;
+    }
   }
 
   

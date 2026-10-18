@@ -77,6 +77,14 @@ namespace mudock {
     out[2] = a[0]*b[1] - a[1]*b[0];
   }
 
+  __device__ __forceinline__ fp_type warp_allreduce_sum(fp_type value) {
+    MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
+    for (int offset = BLOCK_SIZE / 2; offset > 0; offset /= 2) {
+      value += __shfl_xor_sync(0xffffffff, value, offset);
+    }
+    return value;
+  }
+
   __device__ __forceinline__ void get_grid_values(const fp_type *__restrict__ map,
                                                   const int &map_index_x,
                                                   const int &map_index_xy,
@@ -301,50 +309,54 @@ namespace mudock {
   }
 
 
-template<int MAX_ATOMS>
-__global__ void calc_gradient(const int batch_atoms,
-                              const int batch_ligands,
-                              const int individuals_per_ligand,
-                              const fp_type *__restrict__ x_scratch_b,
-                              const fp_type *__restrict__ y_scratch_b,
-                              const fp_type *__restrict__ z_scratch_b,
-                              const chromosome* __restrict__ chromosomes_b,
-                              const int* __restrict__ ligand_fragments_b,
-                              const int* __restrict__ ligand_fragments_start_b,
-                              const int* __restrict__ frag_indices_start_b,
-                              const int* __restrict__ frag_start_indices_b,
-                              const int* __restrict__ frag_stop_indices_b,
-                              const fp_type *__restrict__ vols_b,
-                              const fp_type *__restrict__ solpars_b,
-                              const fp_type *__restrict__ charges_b,
-                              const int *__restrict__ num_atoms_b,
-                              const int *__restrict__ num_rotamers_b,
-                              const int *__restrict__ num_nonbonds_b,
-                              const int *__restrict__ nonbond_a1_b,
-                              const int *__restrict__ nonbond_a2_b,
-                              const fp_type *__restrict__ nonbond_cA_b,
-                              const fp_type *__restrict__ nonbond_cB_b,
-                              const int *__restrict__ nonbond_xB_b,
-                              const fp_type *__restrict__ grid_maps,
-                              const int *__restrict__ map_offsets_b,
-                              const int map_index_x,
-                              const int map_index_xy,
-                              const int map_index_xyz,
-                              gradient *__restrict__ gradients_b,
-                              int *__restrict__ active_individuals_b,
-                              int *__restrict__ converged_ligands_b) {
+  template<int MAX_ATOMS>
+  __global__ void calc_gradient(const int batch_atoms,
+                                const int batch_ligands,
+                                const int individuals_per_ligand,
+                                const fp_type *__restrict__ x_scratch_b,
+                                const fp_type *__restrict__ y_scratch_b,
+                                const fp_type *__restrict__ z_scratch_b,
+                                const chromosome* __restrict__ chromosomes_b,
+                                const int* __restrict__ ligand_fragments_b,
+                                const int* __restrict__ ligand_fragments_start_b,
+                                const int* __restrict__ frag_indices_start_b,
+                                const int* __restrict__ frag_start_indices_b,
+                                const int* __restrict__ frag_stop_indices_b,
+                                const fp_type *__restrict__ vols_b,
+                                const fp_type *__restrict__ solpars_b,
+                                const fp_type *__restrict__ charges_b,
+                                const int *__restrict__ num_atoms_b,
+                                const int *__restrict__ num_rotamers_b,
+                                const int *__restrict__ num_nonbonds_b,
+                                const int *__restrict__ nonbond_a1_b,
+                                const int *__restrict__ nonbond_a2_b,
+                                const fp_type *__restrict__ nonbond_cA_b,
+                                const fp_type *__restrict__ nonbond_cB_b,
+                                const int *__restrict__ nonbond_xB_b,
+                                const fp_type *__restrict__ grid_maps,
+                                const int *__restrict__ map_offsets_b,
+                                const int map_index_x,
+                                const int map_index_xy,
+                                const int map_index_xyz,
+                                gradient *__restrict__ gradients_b,
+                                int *__restrict__ active_individuals_b,
+                                int *__restrict__ converged_ligands_b) {
     const fp_type *electro_map = grid_maps + map_index_xyz * static_cast<int>(autodock_grid_type::ELEC);
     const fp_type *desolv_map  = grid_maps + map_index_xyz * static_cast<int>(autodock_grid_type::DESOLV);
 
     const int ligand_id       = blockIdx.x;
+    const int local_thread_id = threadIdx.x;
     assert(blockDim.x == BLOCK_SIZE && warpSize == BLOCK_SIZE &&
            "Warpsize and the number of thread per block does not coincide");
+
+    // Block-uniform early exit: every thread of the block takes the same branch, so the
+    // __syncthreads()/full-mask shuffles below are never reached by only a subset of the block.
     if (converged_ligands_b[ligand_id]) return;
+
     const int atom_stride                  = ligand_id * batch_atoms;
     const int num_atoms                    = num_atoms_b[ligand_id];
     const int num_nonbonds                 = num_nonbonds_b[ligand_id + 1] - num_nonbonds_b[ligand_id];
     const int num_rotamers                 = num_rotamers_b[ligand_id];
-    const int batch_rotamers               = batch_atoms - 3; // TODO L why is this the max number of rotamers?
     const fp_type *__restrict__ scratch_x  = x_scratch_b + atom_stride * individuals_per_ligand;
     const fp_type *__restrict__ scratch_y  = y_scratch_b + atom_stride * individuals_per_ligand;
     const fp_type *__restrict__ scratch_z  = z_scratch_b + atom_stride * individuals_per_ligand;
@@ -362,41 +374,47 @@ __global__ void calc_gradient(const int batch_atoms,
     const int* frag_start_indices          = frag_start_indices_b + frag_indices_start_b[ligand_id];
     const int* frag_stop_indices           = frag_stop_indices_b + frag_indices_start_b[ligand_id];
     gradient *__restrict__ gradients_l     = gradients_b + ligand_id * individuals_per_ligand;
-    int *__restrict__ active_individuals_l = active_individuals_b + ligand_id * individuals_per_ligand;
-    
+    const int *__restrict__ active_individuals_l = active_individuals_b + ligand_id * individuals_per_ligand;
+
     const fp_type angle_scale = deg_to_rad(fp_type{1});
-    // TODO L very Important: fix this magic number with actual values
-    fp_type dE_dX[3 * MAX_ATOMS];
-    fp_type grad[6 + MAX_ATOMS];    // gradient = dE/dx, dE/dy, dE/dz, dE/dalpha, dE/dbeta, dE/dgamma, dE/d_tors_1, ..., dE/d_tors_n
 
-    // TODO L now each block compute a ligand and each thread in the block compute a set of individuals, strided by blockDim
-    // and no parallelization of atoms. Make some tests and see if it is better to divide like in calc_energy, where all threads
-    // work on all population, but divide computation on atoms
-    for (int individual_index = threadIdx.x; individual_index < individuals_per_ligand; individual_index += blockDim.x) {
-      
+    // Per-block (= per-ligand) shared accumulator of dE/dX for the individual currently processed.
+    // Layout: [x0,y0,z0, x1,y1,z1, ...]. This replaces the old per-thread local array
+    // (3*MAX_ATOMS fp_type per thread, which was spilled to local memory).
+    __shared__ fp_type s_dE_dX[3 * MAX_ATOMS];
+
+    // The whole block walks the individuals together. `active_individuals_l[i]` is the same for all
+    // threads, so the `continue` below is block-uniform and the barriers inside the loop are safe.
+    for (int individual_index = 0; individual_index < individuals_per_ligand; ++individual_index) {
       if (!active_individuals_l[individual_index]) continue;
-
-      // Reinitialize to 0s all gradient components vectors
-      for (int i = 0; i < 3 * batch_atoms; ++i) dE_dX[i] = 0;
-      for (int i = 0; i < 6 + batch_rotamers; ++i) grad[i] = 0;
 
       const fp_type *__restrict__ scratch_x_l = scratch_x + individual_index * batch_atoms;
       const fp_type *__restrict__ scratch_y_l = scratch_y + individual_index * batch_atoms;
       const fp_type *__restrict__ scratch_z_l = scratch_z + individual_index * batch_atoms;
 
-      for (int index = 0; index < num_atoms; ++index) {
+      // ---------------------------------------------------------------------------------------
+      // Phase 0: zero the shared accumulator
+      // ---------------------------------------------------------------------------------------
+      for (int i = local_thread_id; i < 3 * num_atoms; i += BLOCK_SIZE) s_dE_dX[i] = fp_type{0};
+      __syncthreads(); // zeroing visible before any accumulation
+
+      // ---------------------------------------------------------------------------------------
+      // Phase 1: grid (intermolecular) contribution, scattered over atoms.
+      // Thread t only touches the 3 slots of the atoms it owns -> no race, plain += is fine.
+      // ---------------------------------------------------------------------------------------
+      for (int index = local_thread_id; index < num_atoms; index += BLOCK_SIZE) {
         fp_type coord[3]{scratch_x_l[index], scratch_y_l[index], scratch_z_l[index]};
 
         if (coord[0] < map_min_const[0] || coord[0] >= map_max_const[0] || coord[1] < map_min_const[1] ||
-          coord[1] >= map_max_const[1] || coord[2] < map_min_const[2] || coord[2] >= map_max_const[2]) {
+            coord[1] >= map_max_const[1] || coord[2] < map_min_const[2] || coord[2] >= map_max_const[2]) {
           const auto diff_x = coord[0] - map_center_const[0];
           const auto diff_y = coord[1] - map_center_const[1];
           const auto diff_z = coord[2] - map_center_const[2];
           const fp_type penalty_factor = 2 * 2 * ENERGYPENALTY;
 
-          dE_dX[3*index]     += penalty_factor * diff_x;
-          dE_dX[3*index + 1] += penalty_factor * diff_y;
-          dE_dX[3*index + 2] += penalty_factor * diff_z;
+          s_dE_dX[3*index]     += penalty_factor * diff_x;
+          s_dE_dX[3*index + 1] += penalty_factor * diff_y;
+          s_dE_dX[3*index + 2] += penalty_factor * diff_z;
         } else {
           const auto &atom_charge = charge_l[index];
           const fp_type *atom_map = grid_maps + map_offsets_l[index];
@@ -417,39 +435,54 @@ __global__ void calc_gradient(const int batch_atoms,
           const fp_type p0w = coord[2] - static_cast<fp_type>(w0);
           const fp_type p1w = fp_type{1} - p0w;
 
-          // Precompute flattened indices
           const int base_index = FLATTENED_3D(u0, v0, w0, map_index_x, map_index_xy);
-          // Trilinear Interpolationp
+
+          // Accumulate in registers first, then a single write per component.
+          fp_type gx{0}, gy{0}, gz{0};
           fp_type grid_values[8];
+
           get_grid_values(electro_map + base_index, map_index_x, map_index_xy, grid_values);
           const fp_type constant_factor_el = inv_spacing * atom_charge;
-          dE_dX[3*index]     += constant_factor_el * (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
-          dE_dX[3*index + 1] += constant_factor_el * (p1w * (p1u * (grid_values[2] - grid_values[0]) + p0u * (grid_values[6] - grid_values[4])) + p0w * (p1u * (grid_values[3] - grid_values[1]) + p0u * (grid_values[7] - grid_values[5])));
-          dE_dX[3*index + 2] += constant_factor_el * (p1v * (p1u * (grid_values[1] - grid_values[0]) + p0u * (grid_values[5] - grid_values[4])) + p0v * (p1u * (grid_values[3] - grid_values[2]) + p0u * (grid_values[7] - grid_values[6])));
+          gx += constant_factor_el * (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
+          gy += constant_factor_el * (p1w * (p1u * (grid_values[2] - grid_values[0]) + p0u * (grid_values[6] - grid_values[4])) + p0w * (p1u * (grid_values[3] - grid_values[1]) + p0u * (grid_values[7] - grid_values[5])));
+          gz += constant_factor_el * (p1v * (p1u * (grid_values[1] - grid_values[0]) + p0u * (grid_values[5] - grid_values[4])) + p0v * (p1u * (grid_values[3] - grid_values[2]) + p0u * (grid_values[7] - grid_values[6])));
 
           get_grid_values(atom_map + base_index, map_index_x, map_index_xy, grid_values);
-          dE_dX[3*index]     += inv_spacing * (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
-          dE_dX[3*index + 1] += inv_spacing * (p1w * (p1u * (grid_values[2] - grid_values[0]) + p0u * (grid_values[6] - grid_values[4])) + p0w * (p1u * (grid_values[3] - grid_values[1]) + p0u * (grid_values[7] - grid_values[5])));
-          dE_dX[3*index + 2] += inv_spacing * (p1v * (p1u * (grid_values[1] - grid_values[0]) + p0u * (grid_values[5] - grid_values[4])) + p0v * (p1u * (grid_values[3] - grid_values[2]) + p0u * (grid_values[7] - grid_values[6])));            
-          
+          gx += inv_spacing * (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
+          gy += inv_spacing * (p1w * (p1u * (grid_values[2] - grid_values[0]) + p0u * (grid_values[6] - grid_values[4])) + p0w * (p1u * (grid_values[3] - grid_values[1]) + p0u * (grid_values[7] - grid_values[5])));
+          gz += inv_spacing * (p1v * (p1u * (grid_values[1] - grid_values[0]) + p0u * (grid_values[5] - grid_values[4])) + p0v * (p1u * (grid_values[3] - grid_values[2]) + p0u * (grid_values[7] - grid_values[6])));
+
           get_grid_values(desolv_map + base_index, map_index_x, map_index_xy, grid_values);
           const fp_type constant_factor_des = inv_spacing * std::fabs(atom_charge);
-          dE_dX[3*index]     += constant_factor_des * (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
-          dE_dX[3*index + 1] += constant_factor_des * (p1w * (p1u * (grid_values[2] - grid_values[0]) + p0u * (grid_values[6] - grid_values[4])) + p0w * (p1u * (grid_values[3] - grid_values[1]) + p0u * (grid_values[7] - grid_values[5])));
-          dE_dX[3*index + 2] += constant_factor_des * (p1v * (p1u * (grid_values[1] - grid_values[0]) + p0u * (grid_values[5] - grid_values[4])) + p0v * (p1u * (grid_values[3] - grid_values[2]) + p0u * (grid_values[7] - grid_values[6])));
+          gx += constant_factor_des * (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
+          gy += constant_factor_des * (p1w * (p1u * (grid_values[2] - grid_values[0]) + p0u * (grid_values[6] - grid_values[4])) + p0w * (p1u * (grid_values[3] - grid_values[1]) + p0u * (grid_values[7] - grid_values[5])));
+          gz += constant_factor_des * (p1v * (p1u * (grid_values[1] - grid_values[0]) + p0u * (grid_values[5] - grid_values[4])) + p0v * (p1u * (grid_values[3] - grid_values[2]) + p0u * (grid_values[7] - grid_values[6])));
+
+          s_dE_dX[3*index]     += gx;
+          s_dE_dX[3*index + 1] += gy;
+          s_dE_dX[3*index + 2] += gz;
         }
       }
-      
+
+      // Phase 2 updates the SAME shared slots with atomics from different threads: make sure the
+      // plain read-modify-writes of phase 1 are complete/visible first.
+      __syncthreads();
+
+      // ---------------------------------------------------------------------------------------
+      // Phase 2: intramolecular non-bonded contribution, scattered over the non-bond pairs.
+      // Several pairs share an atom (a1/a2 of different pairs are handled by different threads)
+      // -> RACE on s_dE_dX, so every accumulation is an atomicAdd on shared memory.
+      // ---------------------------------------------------------------------------------------
       if (num_rotamers > 0) {
-        for (int i = 0; i < num_nonbonds; ++i) {
+        for (int i = local_thread_id; i < num_nonbonds; i += BLOCK_SIZE) {
           const int &a1 = nonbond_a1_l[i];
           const int &a2 = nonbond_a2_l[i];
 
-          const auto diff_x                = scratch_x_l[a1] - scratch_x_l[a2];
-          const auto diff_y                = scratch_y_l[a1] - scratch_y_l[a2];
-          const auto diff_z                = scratch_z_l[a1] - scratch_z_l[a2];
-          const fp_type distance_two       = diff_x * diff_x + diff_y * diff_y + diff_z * diff_z;
-          if (distance_two < RMIN_ELEC_SQUARE) continue;
+          const auto diff_x          = scratch_x_l[a1] - scratch_x_l[a2];
+          const auto diff_y          = scratch_y_l[a1] - scratch_y_l[a2];
+          const auto diff_z          = scratch_z_l[a1] - scratch_z_l[a2];
+          const fp_type distance_two = diff_x * diff_x + diff_y * diff_y + diff_z * diff_z;
+          if (distance_two < RMIN_ELEC_SQUARE) continue; // thread-local; no barrier inside the loop
           const fp_type distance_two_clamp = distance_two;
           const fp_type distance           = std::sqrt(distance_two_clamp);
 
@@ -461,11 +494,8 @@ __global__ void calc_gradient(const int batch_atoms,
 
           // Electrostatic derivative
           const fp_type exp_term = std::exp(mehler_solmajer::lambda_B * distance);
-
           const fp_type denom = (fp_type{1} + mehler_solmajer::rk * exp_term);
-
           const fp_type epsilon = mehler_solmajer::A + mehler_solmajer::B / denom;
-
           const fp_type epsilon_prime = -mehler_solmajer::B * mehler_solmajer::rk * mehler_solmajer::lambda_B * exp_term / (denom * denom);
 
           const fp_type C = charge_l[a1] * charge_l[a2] * ELECSCALE * autodock_parameters::coeff_estat;
@@ -475,16 +505,14 @@ __global__ void calc_gradient(const int batch_atoms,
 
           const fp_type dE_dr_elec = -C * f_prime / (f * f);
 
-          // Calcuare desolv
+          // Desolvation
           const fp_type nb_desolv = (vol_l[a2] * (solpar_l[a1] + qsolpar * std::fabs(charge_l[a1])) +
-                                    vol_l[a1] * (solpar_l[a2] + qsolpar * std::fabs(charge_l[a2])));
+                                     vol_l[a1] * (solpar_l[a2] + qsolpar * std::fabs(charge_l[a2])));
 
           const fp_type e_desolv = autodock_parameters::coeff_desolv *
-                                  std::exp(fp_type{-0.5} / (sigma_square) *distance_two_clamp) * nb_desolv;
+                                   std::exp(fp_type{-0.5} / (sigma_square) * distance_two_clamp) * nb_desolv;
 
-          // Desolvation derivative
           const fp_type dE_dr_desolv = (-distance / sigma_square) * e_desolv;
-
 
           fp_type dE_dr_vdw = 0;
           if (distance_two_clamp < nbc2) {
@@ -495,107 +523,112 @@ __global__ void calc_gradient(const int batch_atoms,
               const fp_type cA = nonbond_cA_l[i];
               const fp_type cB = nonbond_cB_l[i];
 
-              // r^{-x}
               const auto log_distance = std::log(distance);
               const fp_type rA        = std::exp(-static_cast<fp_type>(xA) * log_distance);
               const fp_type rB        = std::exp(-static_cast<fp_type>(xB) * log_distance);
-              
-              // VdW derivative
+
               const fp_type rA1 = rA * inv_r; // r^{-(xA+1)}
               const fp_type rB1 = rB * inv_r; // r^{-(xB+1)}
 
               const fp_type e_vdW_Hb_unclamped = cA * rA - cB * rB;
               if (e_vdW_Hb_unclamped < EINTCLAMP) {
                 dE_dr_vdw = -static_cast<fp_type>(xA) * cA * rA1 + static_cast<fp_type>(xB) * cB * rB1;
-              }      
+              }
             }
           }
 
           const fp_type dE_dr = dE_dr_elec + dE_dr_desolv + dE_dr_vdw;
 
-          // Accumulate into dE_dX
           const fp_type gx = dE_dr * dir_x;
           const fp_type gy = dE_dr * dir_y;
           const fp_type gz = dE_dr * dir_z;
 
-          dE_dX[3*a1]     += gx;
-          dE_dX[3*a1 + 1] += gy;
-          dE_dX[3*a1 + 2] += gz;
+          atomicAdd(&s_dE_dX[3*a1],     gx);
+          atomicAdd(&s_dE_dX[3*a1 + 1], gy);
+          atomicAdd(&s_dE_dX[3*a1 + 2], gz);
 
-          dE_dX[3*a2]     -= gx;
-          dE_dX[3*a2 + 1] -= gy;
-          dE_dX[3*a2 + 2] -= gz;
-
+          atomicAdd(&s_dE_dX[3*a2],     -gx);
+          atomicAdd(&s_dE_dX[3*a2 + 1], -gy);
+          atomicAdd(&s_dE_dX[3*a2 + 2], -gz);
         }
       }
 
+      // s_dE_dX is now final: from here on it is read-only. Barrier so every thread sees every
+      // other thread's atomics before reading.
+      __syncthreads();
 
-      fp_type ligand_COM[3] = {0};
-      for (int i = 0; i < num_atoms; ++i) {
-        ligand_COM[0] += scratch_x_l[i];
-        ligand_COM[1] += scratch_y_l[i];
-        ligand_COM[2] += scratch_z_l[i];
+      // ---------------------------------------------------------------------------------------
+      // Phase 3: reductions over atoms (COM, torque, total force).
+      // Each thread accumulates over its atoms, then a full-warp xor-reduction gives every lane
+      // the result (BLOCK_SIZE == warpSize). All threads reach these calls (no divergence).
+      // ---------------------------------------------------------------------------------------
+      fp_type com[3] = {0, 0, 0};
+      for (int i = local_thread_id; i < num_atoms; i += BLOCK_SIZE) {
+        com[0] += scratch_x_l[i];
+        com[1] += scratch_y_l[i];
+        com[2] += scratch_z_l[i];
       }
-      ligand_COM[0] /= static_cast<fp_type>(num_atoms);
-      ligand_COM[1] /= static_cast<fp_type>(num_atoms);
-      ligand_COM[2] /= static_cast<fp_type>(num_atoms);
+      const fp_type inv_n = fp_type{1} / static_cast<fp_type>(num_atoms);
+      com[0] = warp_allreduce_sum(com[0]) * inv_n;
+      com[1] = warp_allreduce_sum(com[1]) * inv_n;
+      com[2] = warp_allreduce_sum(com[2]) * inv_n;
 
-      fp_type tau[3] = {0};
-      for (int i = 0; i < num_atoms; ++i) {
-        fp_type r[3] = {0};
-        r[0] = scratch_x_l[i] - ligand_COM[0];
-        r[1] = scratch_y_l[i] - ligand_COM[1];
-        r[2] = scratch_z_l[i] - ligand_COM[2];
-        fp_type torque[3] = {0};
-        cross3(r, &dE_dX[3*i], torque);
+      fp_type tau[3]  = {0, 0, 0};
+      fp_type gsum[3] = {0, 0, 0}; // sum_i dE_dX[i]  (rigid translation gradient)
+      for (int i = local_thread_id; i < num_atoms; i += BLOCK_SIZE) {
+        const fp_type r[3] = {scratch_x_l[i] - com[0], scratch_y_l[i] - com[1], scratch_z_l[i] - com[2]};
+        fp_type torque[3];
+        cross3(r, &s_dE_dX[3*i], torque);
         tau[0] += torque[0];
         tau[1] += torque[1];
         tau[2] += torque[2];
+        gsum[0] += s_dE_dX[3*i];
+        gsum[1] += s_dE_dX[3*i + 1];
+        gsum[2] += s_dE_dX[3*i + 2];
       }
+      tau[0]  = warp_allreduce_sum(tau[0]);
+      tau[1]  = warp_allreduce_sum(tau[1]);
+      tau[2]  = warp_allreduce_sum(tau[2]);
+      gsum[0] = warp_allreduce_sum(gsum[0]);
+      gsum[1] = warp_allreduce_sum(gsum[1]);
+      gsum[2] = warp_allreduce_sum(gsum[2]);
 
+      // Rigid-body gradients are cheap: every lane has tau/gsum, computing them redundantly avoids
+      // another barrier; only lane 0 writes to global memory.
       const chromosome &chrom = ligand_chromosomes[individual_index];
-      const fp_type rad_beta = deg_to_rad(chrom[4]);
+      const fp_type rad_beta  = deg_to_rad(chrom[4]);
       const fp_type rad_gamma = deg_to_rad(chrom[5]);
 
-      const fp_type sin_beta = std::sin(rad_beta);
-      const fp_type cos_beta = std::cos(rad_beta);
+      const fp_type sin_beta  = std::sin(rad_beta);
+      const fp_type cos_beta  = std::cos(rad_beta);
       const fp_type sin_gamma = std::sin(rad_gamma);
       const fp_type cos_gamma = std::cos(rad_gamma);
 
-      fp_type u_gamma[3];
-      u_gamma[0] = fp_type{0};
-      u_gamma[1] = fp_type{0};
-      u_gamma[2] = fp_type{1};
+      const fp_type u_gamma[3] = {fp_type{0}, fp_type{0}, fp_type{1}};
+      const fp_type u_beta[3]  = {-sin_gamma, cos_gamma, fp_type{0}};
+      const fp_type u_alpha[3] = {cos_beta * cos_gamma, cos_beta * sin_gamma, -sin_beta};
 
-      fp_type u_beta[3];
-      u_beta[0] = -sin_gamma;
-      u_beta[1] = cos_gamma;
-      u_beta[2] = fp_type{0};
-
-      fp_type u_alpha[3];
-      u_alpha[0] = cos_beta * cos_gamma;
-      u_alpha[1] = cos_beta * sin_gamma;
-      u_alpha[2] = -sin_beta;
-
-      grad[3] = angle_scale * dot3(tau, u_alpha);
-      grad[4] = angle_scale * dot3(tau, u_beta);
-      grad[5] = angle_scale * dot3(tau, u_gamma);
-
-      for (int index = 0; index < num_atoms; ++index) {
-        grad[0] += dE_dX[3*index];
-        grad[1] += dE_dX[3*index + 1];
-        grad[2] += dE_dX[3*index + 2];
+      gradient &grad_l = gradients_l[individual_index];
+      if (local_thread_id == 0) {
+        grad_l[0] = gsum[0];
+        grad_l[1] = gsum[1];
+        grad_l[2] = gsum[2];
+        grad_l[3] = angle_scale * dot3(tau, u_alpha);
+        grad_l[4] = angle_scale * dot3(tau, u_beta);
+        grad_l[5] = angle_scale * dot3(tau, u_gamma);
       }
 
-      // Torsion derivatives.
+      // ---------------------------------------------------------------------------------------
+      // Phase 4: torsion derivatives.
       // apply() does: torsions -> re-center to reference centroid -> rotate -> translate.
-      // The re-centering shifts every atom by -d(centroid)/d(psi_t), so the exact derivative is
-      //   dE/dpsi_t = sum_{i in frag_t} (dE_dX[i] - mean(dE_dX)) . (axis_t x r_i)
-      // grad[0..2] already holds sum_i dE_dX[i] (filled just above), so the mean is free.
-      const fp_type inv_n   = fp_type{1} / static_cast<fp_type>(num_atoms);
-      const fp_type gmean_x = grad[0] * inv_n;
-      const fp_type gmean_y = grad[1] * inv_n;
-      const fp_type gmean_z = grad[2] * inv_n;
+      // Exact derivative: dE/dpsi_t = sum_{i in frag_t} (dE_dX[i] - mean(dE_dX)) . (axis_t x r_i)
+      // Loop over torsions is sequential (block-uniform); the atom loop inside is scattered over
+      // the threads and reduced with a warp all-reduce. Only lane 0 writes grad_l[6 + t], so
+      // there is no write-write race on the output.
+      // ---------------------------------------------------------------------------------------
+      const fp_type gmean_x = gsum[0] * inv_n;
+      const fp_type gmean_y = gsum[1] * inv_n;
+      const fp_type gmean_z = gsum[2] * inv_n;
 
       for (int t = 0; t < num_rotamers; ++t) {
         const int* frag_mask = fragments + t * num_atoms;
@@ -609,36 +642,36 @@ __global__ void calc_gradient(const int batch_atoms,
         axis[2] = scratch_z_l[a2] - scratch_z_l[a1];
 
         const fp_type norm = std::sqrt(axis[0]*axis[0] + axis[1]*axis[1] + axis[2]*axis[2]);
-
         const fp_type inv_norm = fp_type{1} / norm;
         axis[0] *= inv_norm;
         axis[1] *= inv_norm;
         axis[2] *= inv_norm;
 
         fp_type dE_dpsi{0};
-        fp_type temp[3] = {0};
-        for (int i = 0; i < num_atoms; ++i) {
+        for (int i = local_thread_id; i < num_atoms; i += BLOCK_SIZE) {
           if (frag_mask[i] != 0) {
-            fp_type r[3] = {0};
-            r[0] = scratch_x_l[i] - scratch_x_l[a1];
-            r[1] = scratch_y_l[i] - scratch_y_l[a1];
-            r[2] = scratch_z_l[i] - scratch_z_l[a1];
+            const fp_type r[3] = {scratch_x_l[i] - scratch_x_l[a1],
+                                  scratch_y_l[i] - scratch_y_l[a1],
+                                  scratch_z_l[i] - scratch_z_l[a1]};
+            fp_type temp[3];
             cross3(axis, r, temp);
-            dE_dpsi += (dE_dX[3*i    ] - gmean_x) * temp[0] +
-                       (dE_dX[3*i + 1] - gmean_y) * temp[1] +
-                       (dE_dX[3*i + 2] - gmean_z) * temp[2];
+            dE_dpsi += (s_dE_dX[3*i    ] - gmean_x) * temp[0] +
+                       (s_dE_dX[3*i + 1] - gmean_y) * temp[1] +
+                       (s_dE_dX[3*i + 2] - gmean_z) * temp[2];
           }
         }
-        grad[6 + t] = angle_scale * dE_dpsi;
+        dE_dpsi = warp_allreduce_sum(dE_dpsi); // all lanes call it, outside any divergent branch
+
+        if (local_thread_id == 0) grad_l[6 + t] = angle_scale * dE_dpsi;
       }
 
-      // Write gradient on the buffer
-      gradient &grad_l = gradients_l[individual_index];
-      for (int i = 0; i < 6 + num_rotamers; ++i) {
-        grad_l[i] = grad[i];
-      } 
+      // ---------------------------------------------------------------------------------------
+      // s_dE_dX is reused by the next individual (zeroed at the top of the loop): make sure every
+      // thread is done reading it (phases 3/4) before anyone starts overwriting it.
+      // ---------------------------------------------------------------------------------------
+      __syncthreads();
     }
-  };
+  }
 
   template<>
   void adt_score_kernel<queue_cuda>::operator()() {
