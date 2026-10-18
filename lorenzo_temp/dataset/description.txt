@@ -1,0 +1,21 @@
+- ho rifatto la tabella di casf facendo lo score del cristallo SULLA POCKET ANZICHÉ SULLA PROTEINA, visto che faremo così le run
+
+- alcuni (una decina) non sono parsati da muDock, altri (una quarantina) avevano score positivo.
+
+- dei rimanenti, ho estratto il target da coreset.dat in modo da NON selezionare complessi con lo stesso target tra train e test 
+
+- una ventina per train, resto validation/test
+
+
+###############################
+NUM_ROT:
+
+Actual distribution:
+low (1-9)       :  82 (35.5%)
+medium (10-16)  :  95 (41.1%)
+high (17+)      :  54 (23.4%)
+
+Proposed allocation:
+low (1-9)       : tuning=  7, evaluation= 75
+medium (10-16)  : tuning=  8, evaluation= 87
+high (17+)      : tuning=  5, evaluation= 49

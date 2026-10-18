@@ -9,7 +9,7 @@ docs/
 
 data/
 env/
-lorenzo_temp/experiments/
+lorenzo_temp/experiments/test
 dump_best/
 dump/
 reports/
