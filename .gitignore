@@ -13,3 +13,4 @@ lorenzo_temp/experiments/test
 dump_best/
 dump/
 reports/
+*.png
