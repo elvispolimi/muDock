@@ -67,7 +67,7 @@ namespace mudock {
                                                 batch_ligands,
                                                 individuals_per_ligand,
                                                 gradients_b,
-                                                population_b,
+                                                chromosomes_b,
                                                 num_rotamers_b,
                                                 adadelta_e_g2_b,
                                                 adadelta_e_dw2_b,

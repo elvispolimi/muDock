@@ -7,6 +7,8 @@ rm -rf builds/vanilla && cmake -S . -B builds/vanilla && cmake --build builds/va
 rm -rf builds/debug && cmake -S . -B builds/debug -DCMAKE_BUILD_TYPE=Debug && cmake --build builds/debug -j8
 
 rm -rf builds/old && cmake -S . -B builds/old -DMUDOCK_ENABLE_OMP=ON && cmake --build builds/old -j8
+rm -rf builds/new && cmake -S . -B builds/new -DMUDOCK_ENABLE_OMP=ON && cmake --build builds/new -j8
+
 
 
 # SPACK VERSION FOR ACCENTO

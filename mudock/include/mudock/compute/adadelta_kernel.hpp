@@ -17,7 +17,7 @@ namespace mudock {
                     const int batch_ligands_,
                     const int batch_atoms_,
                     gradient *__restrict__ gradients_b_,
-                    chromosome *__restrict__ population_b_,
+                    chromosome *__restrict__ chromosomes_b_,
                     int *__restrict__ num_rotamers_b_,
                     chromosome *__restrict__ adadelta_e_g2_b_,
                     chromosome *__restrict__ adadelta_e_dw2_b_,
@@ -30,7 +30,7 @@ namespace mudock {
           batch_ligands(batch_ligands_),
           batch_atoms(batch_atoms_),
           gradients_b(gradients_b_),
-          population_b(population_b_),
+          chromosomes_b(chromosomes_b_),
           num_rotamers_b(num_rotamers_b_),
           adadelta_e_g2_b(adadelta_e_g2_b_),
           adadelta_e_dw2_b(adadelta_e_dw2_b_),
@@ -41,6 +41,7 @@ namespace mudock {
           epsilon(epsilon_) {}
 
     void operator()();
+    inline void set_chromosomes_buffer(chromosome* chromosomes_b_) { chromosomes_b = chromosomes_b_; }
 
     adadelta_kernel(const adadelta_kernel &)            = default;
     adadelta_kernel(adadelta_kernel &&)                 = default;
@@ -54,7 +55,7 @@ namespace mudock {
     const int batch_ligands;
     const int batch_atoms;
     gradient *__restrict__ gradients_b;
-    chromosome* population_b;
+    chromosome* chromosomes_b;
     int *__restrict__ num_rotamers_b;
     chromosome *__restrict__ adadelta_e_g2_b;
     chromosome *__restrict__ adadelta_e_dw2_b;

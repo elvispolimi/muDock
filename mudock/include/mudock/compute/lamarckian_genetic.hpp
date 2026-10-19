@@ -104,6 +104,7 @@ namespace mudock {
           std::swap(current_population_p, next_population_p);
           this->kernel->set_population_buffers(current_population_p, next_population_p);
           this->geom_trans.set_chromosomes_buffer(current_population_p);
+          local_search_stage.set_chromosomes_buffer(current_population_p);
         }
 
         // Limit LS runs: balance speed and results

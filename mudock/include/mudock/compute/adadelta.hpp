@@ -171,6 +171,13 @@ namespace mudock {
       }
     }
 
+    inline void set_chromosomes_buffer(chromosome* chromosomes_b_) {
+      if (adadelta_krnl) {
+        adadelta_krnl->set_chromosomes_buffer(chromosomes_b_);
+        geom_trans.set_chromosomes_buffer(chromosomes_b_);
+      }
+    }
+
     static std::size_t get_shared_ligand_mem(const int max_atoms, const knobs conf) {
       (void) max_atoms;
       (void) conf;
