@@ -1,0 +1,2 @@
+from fine grained:
+25% - 300iters seems to be a good compromise between score results and generation exploration
