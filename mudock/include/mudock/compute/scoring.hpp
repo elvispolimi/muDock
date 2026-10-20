@@ -6,9 +6,9 @@
 #include <mudock/molecule.hpp>
 
 namespace mudock {
-  template<typename queue_type>
-  struct scoring: public stage<queue_type> {
-    scoring(std::shared_ptr<scratchpad<queue_type>> _scratch): stage<queue_type>(_scratch) {};
+  template<typename queue_type, typename layout_set = all_scratch_layouts>
+  struct scoring: public stage<queue_type, layout_set> {
+    scoring(std::shared_ptr<scratchpad<queue_type, layout_set>> _scratch): stage<queue_type, layout_set>(_scratch) {};
     virtual void prepare(batch<static_molecule>&) = 0;
     virtual void operator()()                     = 0;
 

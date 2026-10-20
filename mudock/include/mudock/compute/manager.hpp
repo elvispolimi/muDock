@@ -73,7 +73,8 @@ namespace mudock {
                                 const std::function<void()>& on_batch_submitted = {},
                                 const std::function<void()>& on_batch_completed = {},
                                 std::atomic<std::size_t>* processed_atoms = nullptr) {
-    auto device_scratch = std::make_shared<scratchpad<queue_type>>(knobs, 0, device_type::CPU);
+    auto device_scratch = std::make_shared<scratchpad<queue_type, typename pipeline_t::scratchpad_layouts>>(
+      knobs, 0, device_type::CPU);
     auto q_b            = device_scratch->get_queue();
     std::function<int(const int)> get_size = [q_b, &knobs](const int x) {
       return pipeline_t::template get_batch_size<queue_type>(x, q_b, knobs);
@@ -125,7 +126,7 @@ namespace mudock {
                    " per device, with ",
                    mem_per_device,
                    " bytes each.");
-      auto device_scratch = std::make_shared<scratchpad<queue_type>>(
+        auto device_scratch = std::make_shared<scratchpad<queue_type, typename pipeline_t::scratchpad_layouts>>(
           knobs, id, device_type::GPU, std::move(tracker));
       for (std::size_t i = 0; i < workers_per_device; ++i) {
         pool.add_worker(

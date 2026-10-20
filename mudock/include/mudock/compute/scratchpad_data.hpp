@@ -7,6 +7,11 @@
 
 namespace mudock {
 
+  GENERATE_SOA_LAYOUT(ScratchInputCoordinates,
+                      SOA_COLUMN(fp_type, x),
+                      SOA_COLUMN(fp_type, y),
+                      SOA_COLUMN(fp_type, z))
+
   GENERATE_SOA_LAYOUT(ScratchCoordinates,
                       SOA_COLUMN(fp_type, x),
                       SOA_COLUMN(fp_type, y),

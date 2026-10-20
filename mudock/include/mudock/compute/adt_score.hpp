@@ -7,7 +7,9 @@
 #include <mudock/chem/autodock_ligand.hpp>
 #include <mudock/chem/autodock_protein.hpp>
 #include <mudock/compute/adt_score_kernel.hpp>
+#include <mudock/compute/adt_score_soa.hpp>
 #include <mudock/compute/batch_multiple.hpp>
+#include <mudock/compute/scratchpad_layout_sets.hpp>
 #if !defined(__CUDACC__) && !defined(__HIPCC__)
   #include <mudock/compute/buffer_utils.hpp>
   #include <mudock/compute/scoring.hpp>
@@ -19,67 +21,50 @@
 
 namespace mudock {
 
-  template<typename queue_type>
+  template<typename queue_type, typename layout_set = all_scratch_layouts>
   batch_multiple get_adt_score_batch_multiple(const int, std::shared_ptr<queue_type>) {
     return {};
   }
 
 #if !defined(__CUDACC__) && !defined(__HIPCC__)
   // TODO check that the object type and the kernel impl are the same
-  template<typename queue_type>
-  struct adt_score: public scoring<queue_type> {
+  template<typename queue_type, typename layout_set = all_scratch_layouts>
+  struct adt_score: public scoring<queue_type, layout_set> {
     static constexpr const char stage_name[] = "ADT";
 
-    adt_score(std::shared_ptr<scratchpad<queue_type>> _scratch,
-              std::shared_ptr<scratchpad<queue_type>> _device_scratch,
+    adt_score(std::shared_ptr<scratchpad<queue_type, layout_set>> _scratch,
+          std::shared_ptr<scratchpad<queue_type, layout_set>> _device_scratch,
               dynamic_molecule &protein)
-        : scoring<queue_type>(_scratch),
-          vols(_scratch->get_queue()),
-          solpars(_scratch->get_queue()),
-          charges(_scratch->get_queue()),
-          map_offsets(_scratch->get_queue()),
-          num_nonbond(_scratch->get_queue()),
-          nonbond_a1(_scratch->get_queue()),
-          nonbond_a2(_scratch->get_queue()),
-          nonbond_cA(_scratch->get_queue()),
-          nonbond_cB(_scratch->get_queue()),
-          nonbond_xB(_scratch->get_queue()),
+        : scoring<queue_type, layout_set>(_scratch),
+          atom_data(_scratch->get_queue()),
+          num_nonbond_data(_scratch->get_queue()),
+          nonbond_data(_scratch->get_queue()),
           device_scratch(_device_scratch) {
-      if (!(*device_scratch).template exists<buffer_data_type::PROT_GRID_MAPS>()) {
+      if (!device_scratch->protein_maps().is_valid()) {
         autodock_protein adt_prot(protein);
 
-        auto &prot_min       = (*device_scratch).template get<buffer_data_type::PROT_MIN>();
-        auto &prot_max       = (*device_scratch).template get<buffer_data_type::PROT_MAX>();
-        auto &prot_center    = (*device_scratch).template get<buffer_data_type::PROT_CENTER>();
-        auto &prot_index_x   = (*device_scratch).template get<buffer_data_type::PROT_SIZE_X>();
-        auto &prot_index_xy  = (*device_scratch).template get<buffer_data_type::PROT_SIZE_XY>();
-        auto &prot_index_xyz = (*device_scratch).template get<buffer_data_type::PROT_SIZE_XYZ>();
-        auto &prot_grid_maps = (*device_scratch).template get<buffer_data_type::PROT_GRID_MAPS>();
+        auto &prot_bounds = device_scratch->protein_bounds();
+        auto &prot_dimensions = device_scratch->protein_dimensions();
+        auto &prot_grid_maps = device_scratch->protein_maps();
 
-        prot_min.alloc(3);
-        prot_max.alloc(3);
-        prot_center.alloc(3);
-        prot_index_x.alloc(1);
-        prot_index_xy.alloc(1);
-        prot_index_xyz.alloc(1);
+        prot_bounds.alloc(3);
+        prot_dimensions.alloc(1);
         prot_grid_maps.alloc(adt_prot.get_size_xyz() * num_autodock_grids());
+        auto bounds = prot_bounds.host_view();
+        auto dimensions = prot_dimensions.host_view();
 
-        std::memcpy(prot_min(), adt_prot.get_min_p(), 3 * sizeof(fp_type));
-        std::memcpy(prot_max(), adt_prot.get_max_p(), 3 * sizeof(fp_type));
-        std::memcpy(prot_center(), adt_prot.get_center_p(), 3 * sizeof(fp_type));
-        prot_index_x()[0]   = static_cast<int>(adt_prot.get_size_x());
-        prot_index_xy()[0]  = static_cast<int>(adt_prot.get_size_xy());
-        prot_index_xyz()[0] = static_cast<int>(adt_prot.get_size_xyz());
-        std::memcpy(prot_grid_maps(),
+        std::memcpy(bounds.minimum().data(), adt_prot.get_min_p(), 3 * sizeof(fp_type));
+        std::memcpy(bounds.maximum().data(), adt_prot.get_max_p(), 3 * sizeof(fp_type));
+        std::memcpy(bounds.center().data(), adt_prot.get_center_p(), 3 * sizeof(fp_type));
+        dimensions.size_x()[0]   = static_cast<int>(adt_prot.get_size_x());
+        dimensions.size_xy()[0]  = static_cast<int>(adt_prot.get_size_xy());
+        dimensions.size_xyz()[0] = static_cast<int>(adt_prot.get_size_xyz());
+        std::memcpy(prot_grid_maps.host_view().maps().data(),
                     adt_prot.get_maps_pointer(),
                     adt_prot.get_map_flat_size() * num_autodock_grids() * sizeof(fp_type));
 
-        prot_min.copy_host2device();
-        prot_max.copy_host2device();
-        prot_center.copy_host2device();
-        prot_index_x.copy_host2device();
-        prot_index_xy.copy_host2device();
-        prot_index_xyz.copy_host2device();
+        prot_bounds.copy_host2device();
+        prot_dimensions.copy_host2device();
         prot_grid_maps.copy_host2device();
         // Workers use this device-shared pointer from their own queues.
         device_scratch->get_queue()->synchronize();
@@ -99,33 +84,28 @@ namespace mudock {
       const int scores_per_ligand =
           std::max(1, static_cast<int>((*this->scratch).configuration.population_number));
 
-      auto &score_b = (*this->scratch).template get<buffer_data_type::SCORES>();
+      auto &score_data = this->scratch->scores();
       if (load_scratchs<queue_type>(batch, this->scratch, scores_per_ligand)) {
-        if (!score_b.is_valid() ||
-            score_b.num_elements() != static_cast<size_t>(batch_ligands * scores_per_ligand)) {
-          score_b.alloc(batch_ligands * scores_per_ligand);
-          score_b.set_valid();
+        if (!score_data.is_valid() ||
+            score_data.num_elements() != static_cast<size_t>(batch_ligands * scores_per_ligand)) {
+          score_data.alloc(batch_ligands * scores_per_ligand);
+          score_data.set_valid();
         }
-      } else if (!score_b.is_valid() ||
-                 score_b.num_elements() != static_cast<size_t>(batch_ligands * scores_per_ligand)) {
-        score_b.alloc(batch_ligands * scores_per_ligand);
-        score_b.set_valid();
+      } else if (!score_data.is_valid() ||
+                 score_data.num_elements() != static_cast<size_t>(batch_ligands * scores_per_ligand)) {
+        score_data.alloc(batch_ligands * scores_per_ligand);
+        score_data.set_valid();
       }
 
-      vols.alloc(tot_atoms_in_batch);
-      solpars.alloc(tot_atoms_in_batch);
-      charges.alloc(tot_atoms_in_batch);
-      map_offsets.alloc(tot_atoms_in_batch);
-      num_nonbond.alloc(batch_ligands + 1);
-      num_nonbond()[0] = 0;
-      nonbond_a1.alloc(batch_non_bonds);
-      nonbond_a2.alloc(batch_non_bonds);
-      nonbond_cA.alloc(batch_non_bonds);
-      nonbond_cB.alloc(batch_non_bonds);
-      nonbond_xB.alloc(batch_non_bonds);
+      atom_data.alloc(tot_atoms_in_batch);
+      num_nonbond_data.alloc(batch_ligands + 1);
+      nonbond_data.alloc(batch_non_bonds);
+      auto atom_view = atom_data.host_view();
+      auto num_nonbond_view = num_nonbond_data.host_view();
+      auto nonbond_view = nonbond_data.host_view();
+      num_nonbond_view.num_nonbond()[0] = 0;
 
-      const int map_flat_size =
-          (*device_scratch).template get<buffer_data_type::PROT_SIZE_XYZ>().host_pointer()[0];
+        const int map_flat_size = device_scratch->protein_dimensions().host_view().size_xyz()[0];
       for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
         auto &ligand = *batch.molecules[ligand_index];
 
@@ -137,87 +117,83 @@ namespace mudock {
         const int num_atoms = ligand.num_atoms();
 
         const auto non_bond_size = adt_ligand.non_bond_size();
-        std::memcpy((void *) (nonbond_a1() + num_nonbond()[ligand_index]),
+        std::memcpy(nonbond_view.a1().data() + num_nonbond_view.num_nonbond()[ligand_index],
                     adt_ligand.non_bond_A(),
                     non_bond_size * sizeof(int));
-        std::memcpy((void *) (nonbond_a2() + num_nonbond()[ligand_index]),
+        std::memcpy(nonbond_view.a2().data() + num_nonbond_view.num_nonbond()[ligand_index],
                     adt_ligand.non_bond_B(),
                     non_bond_size * sizeof(int));
-        std::memcpy((void *) (nonbond_cA() + num_nonbond()[ligand_index]),
+        std::memcpy(nonbond_view.cA().data() + num_nonbond_view.num_nonbond()[ligand_index],
                     adt_ligand.non_bond_cA(),
                     non_bond_size * sizeof(fp_type));
-        std::memcpy((void *) (nonbond_cB() + num_nonbond()[ligand_index]),
+        std::memcpy(nonbond_view.cB().data() + num_nonbond_view.num_nonbond()[ligand_index],
                     adt_ligand.non_bond_cB(),
                     non_bond_size * sizeof(fp_type));
-        std::memcpy((void *) (nonbond_xB() + num_nonbond()[ligand_index]),
+        std::memcpy(nonbond_view.xB().data() + num_nonbond_view.num_nonbond()[ligand_index],
                     adt_ligand.non_bond_xB(),
                     non_bond_size * sizeof(int));
-        num_nonbond()[ligand_index + 1] = static_cast<int>(num_nonbond()[ligand_index] + non_bond_size);
+        num_nonbond_view.num_nonbond()[ligand_index + 1] =
+          static_cast<int>(num_nonbond_view.num_nonbond()[ligand_index] + non_bond_size);
 
         // Autodock typing
-        std::memcpy((void *) (vols() + stride_atoms), adt_ligand.vol(), num_atoms * sizeof(fp_type));
-        std::memcpy((void *) (solpars() + stride_atoms), adt_ligand.solpar(), num_atoms * sizeof(fp_type));
-        std::memcpy((void *) (charges() + stride_atoms), ligand.charge(), num_atoms * sizeof(fp_type));
+        std::memcpy(atom_view.vols().data() + stride_atoms, adt_ligand.vol(), num_atoms * sizeof(fp_type));
+        std::memcpy(atom_view.solpars().data() + stride_atoms, adt_ligand.solpar(), num_atoms * sizeof(fp_type));
+        std::memcpy(atom_view.charges().data() + stride_atoms, ligand.charge(), num_atoms * sizeof(fp_type));
 
-        std::memcpy((void *) (map_offsets() + stride_atoms),
+        std::memcpy(atom_view.map_offsets().data() + stride_atoms,
                     adt_ligand.atom_map_offsets(),
                     num_atoms * sizeof(int));
       }
 
-      vols.copy_host2device();
-      solpars.copy_host2device();
-      charges.copy_host2device();
-      map_offsets.copy_host2device();
-      num_nonbond.copy_host2device();
-      num_nonbond()[0] = 0;
-      nonbond_a1.copy_host2device();
-      nonbond_a2.copy_host2device();
-      nonbond_cA.copy_host2device();
-      nonbond_cB.copy_host2device();
-      nonbond_xB.copy_host2device();
+      atom_data.copy_host2device();
+      num_nonbond_data.copy_host2device();
+      nonbond_data.copy_host2device();
 
       // TODO ask Davide about this performance
       // Bind to the kernel function
       const auto expected_scratch_elements =
           static_cast<std::size_t>(scores_per_ligand) * static_cast<std::size_t>(tot_atoms_in_batch);
       (void) expected_scratch_elements;
-      assert((*this->scratch).template get<buffer_data_type::X_SCRATCH>().num_elements() ==
+      assert(this->scratch->scratch_coordinates().num_elements() ==
                  expected_scratch_elements &&
              "Number of scores per ligand does not match the allocated coordinates space");
 
-      const int *num_atoms_b = (*this->scratch).template get<buffer_data_type::NUM_ATOMS>().dev_pointer();
-      const int *num_rotamers_b =
-          (*this->scratch).template get<buffer_data_type::NUM_ROTAMERS>().dev_pointer();
-      const int *num_nonbonds_b  = num_nonbond.dev_pointer();
-      const fp_type *x_scratch_b = (*this->scratch).template get<buffer_data_type::X_SCRATCH>().dev_pointer();
-      const fp_type *y_scratch_b = (*this->scratch).template get<buffer_data_type::Y_SCRATCH>().dev_pointer();
-      const fp_type *z_scratch_b = (*this->scratch).template get<buffer_data_type::Z_SCRATCH>().dev_pointer();
+        auto batch_view = this->scratch->batch_info().device_view();
+        auto scratch_view = this->scratch->scratch_coordinates().device_view();
+        auto atom_device_view = atom_data.device_view();
+        auto num_nonbond_device_view = num_nonbond_data.device_view();
+        auto nonbond_device_view = nonbond_data.device_view();
+        const int *num_atoms_b = batch_view.num_atoms().data();
+        const int *num_rotamers_b = batch_view.num_rotamers().data();
+        const int *num_nonbonds_b  = num_nonbond_device_view.num_nonbond().data();
+        const fp_type *x_scratch_b = scratch_view.x().data();
+        const fp_type *y_scratch_b = scratch_view.y().data();
+        const fp_type *z_scratch_b = scratch_view.z().data();
 
-      const fp_type *vols_b       = vols.dev_pointer();
-      const fp_type *solpars_b    = solpars.dev_pointer();
-      const fp_type *charges_b    = charges.dev_pointer();
-      const int *map_offsets_b    = map_offsets.dev_pointer();
-      const int *nonbond_a1_b     = nonbond_a1.dev_pointer();
-      const int *nonbond_a2_b     = nonbond_a2.dev_pointer();
-      const fp_type *nonbond_cA_b = nonbond_cA.dev_pointer();
-      const fp_type *nonbond_cB_b = nonbond_cB.dev_pointer();
-      const int *nonbond_xB_b     = nonbond_xB.dev_pointer();
+        const fp_type *vols_b       = atom_device_view.vols().data();
+        const fp_type *solpars_b    = atom_device_view.solpars().data();
+        const fp_type *charges_b    = atom_device_view.charges().data();
+        const int *map_offsets_b    = atom_device_view.map_offsets().data();
+        const int *nonbond_a1_b     = nonbond_device_view.a1().data();
+        const int *nonbond_a2_b     = nonbond_device_view.a2().data();
+        const fp_type *nonbond_cA_b = nonbond_device_view.cA().data();
+        const fp_type *nonbond_cB_b = nonbond_device_view.cB().data();
+        const int *nonbond_xB_b     = nonbond_device_view.xB().data();
 
-      auto &prot_grid_maps = (*device_scratch).template get<buffer_data_type::PROT_GRID_MAPS>();
+        auto &prot_grid_maps = device_scratch->protein_maps();
       const fp_type *grid_maps = (*device_scratch).get_queue()->obj_required()
-                                     ? prot_grid_maps.dev_pointer()
-                                     : prot_grid_maps.host_pointer();
-      const fp_type *minimum = (*device_scratch).template get<buffer_data_type::PROT_MIN>().dev_pointer();
-      const fp_type *maximum = (*device_scratch).template get<buffer_data_type::PROT_MAX>().dev_pointer();
-      const fp_type *center  = (*device_scratch).template get<buffer_data_type::PROT_CENTER>().dev_pointer();
-      const int map_index_x =
-          (*device_scratch).template get<buffer_data_type::PROT_SIZE_X>().host_pointer()[0];
-      const int map_index_xy =
-          (*device_scratch).template get<buffer_data_type::PROT_SIZE_XY>().host_pointer()[0];
-      const int map_index_xyz =
-          (*device_scratch).template get<buffer_data_type::PROT_SIZE_XYZ>().host_pointer()[0];
+                       ? prot_grid_maps.device_view().maps().data()
+                       : prot_grid_maps.host_view().maps().data();
+        auto bounds_view = device_scratch->protein_bounds().device_view();
+        auto dimensions_view = device_scratch->protein_dimensions().host_view();
+        const fp_type *minimum = bounds_view.minimum().data();
+        const fp_type *maximum = bounds_view.maximum().data();
+        const fp_type *center  = bounds_view.center().data();
+        const int map_index_x = dimensions_view.size_x()[0];
+        const int map_index_xy = dimensions_view.size_xy()[0];
+        const int map_index_xyz = dimensions_view.size_xyz()[0];
 
-      fp_type *scores_b = score_b.dev_pointer();
+      fp_type *scores_b = score_data.device_view().scores().data();
 
       kernel = std::make_unique<adt_score_kernel<queue_type>>(scores_per_ligand,
                                                               batch_ligands,
@@ -270,7 +246,7 @@ namespace mudock {
 
     void operator()() {
       assert(
-          (((*this->scratch).template get<buffer_data_type::SCORES>().num_elements() % batch_ligands) == 0) &&
+          ((this->scratch->scores().num_elements() % batch_ligands) == 0) &&
           "Number of scores is not a multiple of ligands in the batch");
       assert(kernel && "Kernel method not yet prepared");
       (*kernel)();
@@ -324,31 +300,25 @@ namespace mudock {
     int batch_ligands;
     int batch_atoms;
 
-    buffer_vector<fp_type, queue_type> vols;
-    buffer_vector<fp_type, queue_type> solpars;
-    buffer_vector<fp_type, queue_type> charges;
-    buffer_vector<int, queue_type> map_offsets;
-    buffer_vector<int, queue_type> num_nonbond;
-    buffer_vector<int, queue_type> nonbond_a1;
-    buffer_vector<int, queue_type> nonbond_a2;
-    buffer_vector<fp_type, queue_type> nonbond_cA;
-    buffer_vector<fp_type, queue_type> nonbond_cB;
-    buffer_vector<int, queue_type> nonbond_xB;
+    soa_buffer<AdtAtomData<>, queue_type> atom_data;
+    soa_buffer<AdtNumNonbondData<>, queue_type> num_nonbond_data;
+    soa_buffer<AdtNonbondData<>, queue_type> nonbond_data;
 
-    std::shared_ptr<scratchpad<queue_type>> device_scratch;
+    std::shared_ptr<scratchpad<queue_type, layout_set>> device_scratch;
     std::unique_ptr<adt_score_kernel<queue_type>> kernel;
 
     void teardown_impl(batch<static_molecule> &batch) override {
       assert(batch.num_ligands == batch_ligands && "Scoring algorithm received different batch for teardown");
 
-      auto &scores_b              = (*this->scratch).template get<buffer_data_type::SCORES>();
-      const int scores_per_ligand = static_cast<int>(scores_b.num_elements() / batch_ligands);
-      scores_b.copy_device2host();
+      auto &score_data = this->scratch->scores();
+      const int scores_per_ligand = static_cast<int>(score_data.num_elements() / batch_ligands);
+      score_data.copy_device2host();
       (*this->scratch).get_queue()->synchronize();
+      auto score_view = score_data.host_view();
       for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
         auto &ligand          = *batch.molecules[ligand_index];
         const int score_index = ligand_index * scores_per_ligand;
-        ligand.properties.assign(property_type::SCORE, std::to_string(scores_b()[score_index]));
+        ligand.properties.assign(property_type::SCORE, std::to_string(score_view.scores()[score_index]));
       }
     };
   };

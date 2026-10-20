@@ -8,7 +8,7 @@
 #include <mudock/molecule.hpp>
 
 namespace mudock {
-  template<typename queue_type>
+  template<typename queue_type, typename layout_set = all_scratch_layouts>
   struct stage {
     static std::size_t get_shared_ligand_mem(const int, const knobs&) { return 0; }
     static std::size_t get_private_ligand_mem(const int, const knobs&) { return 0; }
@@ -23,7 +23,7 @@ namespace mudock {
       return static_cast<int>(std::max<size_t>(1, max_bucket_size));
     }
 
-    stage(std::shared_ptr<scratchpad<queue_type>> _scratch): scratch(_scratch) {};
+    stage(std::shared_ptr<scratchpad<queue_type, layout_set>> _scratch): scratch(_scratch) {};
     virtual void prepare(batch<static_molecule>&) = 0;
     virtual void operator()()                     = 0;
     void teardown(batch<static_molecule>& b) {
@@ -38,7 +38,7 @@ namespace mudock {
     [[nodiscard]] auto get_queue() const { return scratch->get_queue(); }
 
   protected:
-    std::shared_ptr<scratchpad<queue_type>> scratch;
+    std::shared_ptr<scratchpad<queue_type, layout_set>> scratch;
 
     virtual void teardown_impl(batch<static_molecule>&) = 0;
   };

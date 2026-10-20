@@ -8,10 +8,10 @@
 
 namespace mudock {
 
-  template<typename queue_type>
+  template<typename queue_type, typename layout_set = all_scratch_layouts>
     requires std::derived_from<queue_type, queue>
   bool load_coordinates(batch<static_molecule> &batch,
-                        std::shared_ptr<scratchpad<queue_type>> scratch,
+                        std::shared_ptr<scratchpad<queue_type, layout_set>> scratch,
                         const int scores_per_ligand) {
     const auto batch_ligands      = batch.num_ligands;
     const auto batch_atoms        = batch.batch_max_atoms;
@@ -43,23 +43,23 @@ namespace mudock {
       return false;
   };
 
-  template<typename queue_type>
+  template<typename queue_type, typename layout_set = all_scratch_layouts>
     requires std::derived_from<queue_type, queue>
-  bool load_coords(batch<static_molecule> &batch, std::shared_ptr<scratchpad<queue_type>> scratch) {
+  bool load_coords(batch<static_molecule> &batch, std::shared_ptr<scratchpad<queue_type, layout_set>> scratch) {
     return load_coordinates(batch, scratch, 1);
   }
 
-  template<typename queue_type>
+  template<typename queue_type, typename layout_set = all_scratch_layouts>
     requires std::derived_from<queue_type, queue>
   bool load_scratchs(batch<static_molecule> &batch,
-                     std::shared_ptr<scratchpad<queue_type>> scratch,
+                     std::shared_ptr<scratchpad<queue_type, layout_set>> scratch,
                      const int scores_per_ligand = 1) {
     return load_coordinates(batch, scratch, scores_per_ligand);
   }
 
-  template<typename queue_type>
+  template<typename queue_type, typename layout_set = all_scratch_layouts>
     requires std::derived_from<queue_type, queue>
-  bool load_num_rotamers(batch<static_molecule> &batch, std::shared_ptr<scratchpad<queue_type>> scratch) {
+  bool load_num_rotamers(batch<static_molecule> &batch, std::shared_ptr<scratchpad<queue_type, layout_set>> scratch) {
     const auto batch_ligands = batch.num_ligands;
 
     auto &batch_info = scratch->batch_info();
@@ -79,9 +79,9 @@ namespace mudock {
       return false;
   };
 
-  template<typename queue_type>
+  template<typename queue_type, typename layout_set = all_scratch_layouts>
     requires std::derived_from<queue_type, queue>
-  bool load_num_atoms(batch<static_molecule> &batch, std::shared_ptr<scratchpad<queue_type>> scratch) {
+  bool load_num_atoms(batch<static_molecule> &batch, std::shared_ptr<scratchpad<queue_type, layout_set>> scratch) {
     const auto batch_ligands = batch.num_ligands;
 
     auto &batch_info = scratch->batch_info();

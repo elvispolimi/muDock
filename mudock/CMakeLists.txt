@@ -36,6 +36,7 @@ list(
   "${header_path}/${header_prefix}/compute/adt_score_soa.hpp"
   "${header_path}/${header_prefix}/compute/scratchpad_soa.hpp"
   "${header_path}/${header_prefix}/compute/scratchpad_data.hpp"
+  "${header_path}/${header_prefix}/compute/scratchpad_layout_sets.hpp"
   "${header_path}/${header_prefix}/compute/scratchpad.hpp"
   "${header_path}/${header_prefix}/compute/manager.hpp"
   "${header_path}/${header_prefix}/compute/buffer.hpp"
