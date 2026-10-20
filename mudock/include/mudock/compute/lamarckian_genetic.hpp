@@ -72,13 +72,18 @@ namespace mudock {
       assert(this->kernel && "lamarckian_kernel method not yet prepared");
       this->kernel->set_population_buffers(current_population_p, next_population_p);
       this->geom_trans.set_chromosomes_buffer(current_population_p);
+      local_search_stage.set_chromosomes_buffer(current_population_p);   // also set it before the first generation
       this->kernel->initialize();
 
       printf("Running LGA...\n");
       for (int generation = 1; generation <= this->num_generations; ++generation) {
         this->geom_trans();
         (*this->score_stage)();
-        (*this->kernel)();
+        if (generation % ls_every == 0 || generation > (this->num_generations - ls_on_last)) {
+          local_search_stage();
+          this->geom_trans();
+          (*this->score_stage)();
+        }
         this->crystal_convergence_stage();
         /////////////////////////////////////////////////////////////////////////////////////
         /////////////////////////////////////////////////////////////////////////////////////
@@ -101,15 +106,11 @@ namespace mudock {
 
         // Avoid full device-to-device copy by ping-ponging population buffers.
         if (generation < this->num_generations) {
+          (*this->kernel)();
           std::swap(current_population_p, next_population_p);
           this->kernel->set_population_buffers(current_population_p, next_population_p);
           this->geom_trans.set_chromosomes_buffer(current_population_p);
           local_search_stage.set_chromosomes_buffer(current_population_p);
-        }
-
-        // Limit LS runs: balance speed and results
-        if (generation % ls_every == 0 || generation > (this->num_generations - ls_on_last)) {
-          local_search_stage();
         }
 
       }

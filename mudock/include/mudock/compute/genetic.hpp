@@ -206,8 +206,8 @@ namespace mudock {
       for (int generation = 0; generation < num_generations; ++generation) {
         geom_trans();
         (*score_stage)();
-        (*kernel)();
         crystal_convergence_stage();
+        (*kernel)();
         
         /////////////////////////////////////////////////////////////////////////////////////
         /////////////////////////////////////////////////////////////////////////////////////
