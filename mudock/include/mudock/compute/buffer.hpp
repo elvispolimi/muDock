@@ -124,7 +124,6 @@ namespace mudock {
   struct buffer_type_traits<buffer_data_type::PROT_GRID_MAPS> {
     using type = buffer_type_traits_impl<buffer_data_type::PROT_SIZE_XYZ, fp_type>::type;
   };
-
   template<template<class...> class container_type, typename T, class queue_t, class... args>
   struct buffer_impl {
   private:
@@ -202,6 +201,13 @@ namespace mudock {
     }
 
     [[nodiscard]] inline auto dev_pointer() {
+      if (obj)
+        return (*obj).dev_pointer();
+      else
+        return host_pointer();
+    }
+
+    [[nodiscard]] inline const T* dev_pointer() const {
       if (obj)
         return (*obj).dev_pointer();
       else

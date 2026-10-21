@@ -90,6 +90,12 @@ namespace mudock {
   struct genetic: public docking<queue_t> {
     static constexpr const char stage_name[] = "GENETIC";
 
+    template<typename T>
+    struct device_buffer_view {
+      const T* data;
+      std::size_t size;
+    };
+
     genetic(std::shared_ptr<scratchpad<queue_t>> _scratch,
             dynamic_molecule& protein,
             scoring_t<queue_t> _scoring)
@@ -290,6 +296,14 @@ namespace mudock {
                                  selected_info.num_sms,
                                  ")");
       return selected_info;
+    }
+
+    [[nodiscard]] device_buffer_view<chromosome> best_chromosomes_view() const {
+      return {best_chromosomes.dev_pointer(), best_chromosomes.num_elements()};
+    }
+
+    [[nodiscard]] device_buffer_view<fp_type> best_scores_view() const {
+      return {best_scores.dev_pointer(), best_scores.num_elements()};
     }
 
   private:

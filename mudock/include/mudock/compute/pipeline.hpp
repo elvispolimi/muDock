@@ -6,6 +6,7 @@
 #include <mudock/compute/algorithm.hpp>
 #include <mudock/compute/bucket_size.hpp>
 #include <mudock/compute/genetic.hpp>
+#include <mudock/compute/genetic_fused.hpp>
 #include <mudock/compute/scratchpad.hpp>
 #include <mudock/compute/stage.hpp>
 #include <mudock/devices.hpp>
@@ -120,6 +121,39 @@ namespace mudock {
     }
   };
 
+  struct genetic_fused_pipeline: pipeline {
+    using pipeline::pipeline;
+
+    template<typename queue_type>
+    genetic_fused<queue_type> get_pipeline(
+        const knobs& conf,
+        const int id,
+        const device_type dev_type,
+        std::shared_ptr<scratchpad<queue_type>> device_scratch) {
+      auto q = std::make_shared<mudock::scratchpad<queue_type>>(
+          conf, id, dev_type, device_scratch->get_memory_tracker());
+#if defined(MUDOCK_USE_CUDA)
+      if constexpr (std::same_as<queue_type, queue_cuda>) {
+        genetic_fused<queue_type>::prepare_shared_protein(device_scratch, *protein);
+        return genetic_fused<queue_type>(q, device_scratch, *protein);
+      } else {
+        throw std::runtime_error("Fused search is supported only with CUDA:GPU");
+      }
+#else
+      throw std::runtime_error("Fused search is unavailable because this build has no CUDA backend");
+#endif
+    }
+
+    template<typename queue_type>
+    static int get_batch_size(const int atoms,
+                              std::shared_ptr<queue_type> q,
+                              const knobs& conf,
+                              const size_t max_mem = 1000000000) {
+      return genetic_fused<queue_type>::template get_batch_size<queue_type>(atoms, q, conf, max_mem);
+    }
+  };
+
   using adt_score_pipeline   = scoring_pipeline<adt_score>;
   using genetic_adt_pipeline = genetic_scoring_pipeline<adt_score>;
+  using genetic_fused_adt_pipeline = genetic_fused_pipeline;
 } // namespace mudock

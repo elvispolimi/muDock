@@ -41,6 +41,7 @@ list(
   "${header_path}/${header_prefix}/compute/pipeline.hpp"
   "${header_path}/${header_prefix}/compute/docking.hpp"
   "${header_path}/${header_prefix}/compute/genetic.hpp"
+  "${header_path}/${header_prefix}/compute/genetic_fused.hpp"
   "${header_path}/${header_prefix}/compute/transform.hpp"
   "${header_path}/${header_prefix}/compute/algorithm.hpp"
   "${header_path}/${header_prefix}/compute/pipeline_selector.hpp"
@@ -177,6 +178,7 @@ if(MUDOCK_ENABLE_CUDA)
     "${header_path}/${header_prefix}/cuda_implementation/queue_cuda.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/adt_score_cuda.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/genetic_cuda.cuh"
+    "${header_path}/${header_prefix}/cuda_implementation/genetic_fused_cuda.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/cuda_random.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/cuda_utils.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/mutate.cuh"
@@ -188,6 +190,7 @@ if(MUDOCK_ENABLE_CUDA)
     "${source_path}/cuda_implementation/queue_cuda.cu"
     "${source_path}/cuda_implementation/adt_score_cuda.cu"
     "${source_path}/cuda_implementation/genetic_cuda.cu"
+    "${source_path}/cuda_implementation/genetic_fused_cuda.cu"
     "${source_path}/cuda_implementation/cuda_random.cu"
     "${source_path}/cuda_implementation/geom_transform_cuda.cu"
   )

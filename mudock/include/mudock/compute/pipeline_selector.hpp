@@ -24,6 +24,11 @@ namespace mudock {
     using type = mudock::genetic_adt_pipeline;
   };
 
+  template<>
+  struct pipeline_selector<search_algorithm::GENETIC_FUSED, scoring_function::ADT> {
+    using type = mudock::genetic_fused_adt_pipeline;
+  };
+
   template<search_algorithm search, scoring_function scoring>
   using pipeline_selector_t = typename pipeline_selector<search, scoring>::type;
 

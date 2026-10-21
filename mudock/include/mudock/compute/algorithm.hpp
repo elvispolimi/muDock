@@ -4,7 +4,7 @@
 #include <string_view>
 namespace mudock {
 
-  enum class search_algorithm : int { NONE = 0, GENETIC };
+  enum class search_algorithm : int { NONE = 0, GENETIC, GENETIC_FUSED };
   enum class scoring_function : int { ADT = 0 };
 
   struct search_algorithm_description {
@@ -17,8 +17,10 @@ namespace mudock {
     std::string_view token;
   };
 
-  inline constexpr std::array<search_algorithm_description, 2> SEARCH_ALGORITHM_DICT = {
-      {{search_algorithm::NONE, "none"}, {search_algorithm::GENETIC, "genetic"}}};
+  inline constexpr std::array<search_algorithm_description, 3> SEARCH_ALGORITHM_DICT = {
+      {{search_algorithm::NONE, "none"},
+       {search_algorithm::GENETIC, "genetic"},
+       {search_algorithm::GENETIC_FUSED, "genetic_fused"}}};
 
   inline constexpr std::array<scoring_function_description, 1> SCORING_FUNCTION_DICT = {
       {{scoring_function::ADT, "adt"}}};
