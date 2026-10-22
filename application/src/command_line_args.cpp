@@ -77,6 +77,10 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
       po::value(&args.knobs.tournament_length)->default_value(args.knobs.tournament_length),
       "Number of classes to select a parent in GA (or LGA)");
   knobs_description.add_options()(
+      "max_docking_time",
+      po::value(&args.knobs.max_docking_time)->default_value(args.knobs.max_docking_time),
+      "Max time (in seconds) to dock a ligand. Grid preparation is not accounted");
+  knobs_description.add_options()(
       "lsit",
       po::value(&args.knobs.lsit)->default_value(args.knobs.lsit),
       "Number of local search iterations for LGA");

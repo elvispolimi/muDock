@@ -203,6 +203,7 @@ namespace mudock {
       kernel->initialize();
 
       printf("Running GA...\n");
+      crystal_convergence_stage.start_timer();
       for (int generation = 0; generation < num_generations; ++generation) {
         geom_trans();
         (*score_stage)();

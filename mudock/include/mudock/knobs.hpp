@@ -20,6 +20,7 @@ namespace mudock {
     std::size_t tolerance_window              = 50;
     fp_type best_score_diff_thld              = static_cast<fp_type>(0.0001);
     fp_type crystal_score                     = small_bound<fp_type>();
+    std::size_t max_docking_time              = 0;
     bool ls_on_best                           = false;
     std::size_t lsrate                        = 100;
     std::size_t lsit                          = 300;

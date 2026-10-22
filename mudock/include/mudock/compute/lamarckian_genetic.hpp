@@ -76,6 +76,7 @@ namespace mudock {
       this->kernel->initialize();
 
       printf("Running LGA...\n");
+      this->crystal_convergence_stage.start_timer();
       for (int generation = 1; generation <= this->num_generations; ++generation) {
         this->geom_trans();
         (*this->score_stage)();

@@ -124,6 +124,8 @@ namespace mudock {
       converged_ligands_b[ligand_id] = generation;
     }
 
+    // TODO L IMPORTANT: implement timer here as in cpp
+
   }
 
   template<>

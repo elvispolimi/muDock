@@ -2,6 +2,8 @@
 
 #include "mudock/type_alias.hpp"
 
+#include <chrono>
+#include <iostream>
 #include <concepts>
 #include <memory>
 #include <mudock/chem/geom_ligand.hpp>
@@ -51,6 +53,7 @@ namespace mudock {
                 int* __restrict__ for_how_long_best_b_,
                 const int tolerance_window_,
                 const fp_type best_score_diff_thld_,
+                const int max_docking_time_,
                 std::shared_ptr<queue_type> q_)
         : batch_ligands(batch_ligands_),
           batch_atoms(batch_atoms_),
@@ -71,9 +74,14 @@ namespace mudock {
           for_how_long_best_b(for_how_long_best_b_),
           tolerance_window(tolerance_window_),
           best_score_diff_thld(best_score_diff_thld_),
+          max_docking_time(max_docking_time_),
           q(q_) {}
 
     void operator()();
+
+    void set_start_time(std::chrono::steady_clock::time_point docking_run_start_time_) {
+      docking_run_start_time = docking_run_start_time_;
+    }
 
     crystal_convergence_kernel(const crystal_convergence_kernel&)            = default;
     crystal_convergence_kernel(crystal_convergence_kernel&&)                 = default;
@@ -103,6 +111,8 @@ namespace mudock {
     int tolerance_window;
     fp_type best_score_diff_thld;
     int current_generation = 1;
+    std::chrono::steady_clock::time_point docking_run_start_time;
+    const int max_docking_time;
     std::shared_ptr<queue_type> q;
   };
 
@@ -131,8 +141,8 @@ namespace mudock {
       auto& template_y_b        = (*this->scratch).template get<buffer_data_type::Y_TEMPLATE>();
       auto& template_z_b        = (*this->scratch).template get<buffer_data_type::Z_TEMPLATE>();
       auto& rmsd_best_pose_b    = (*this->scratch).template get<buffer_data_type::RMSD_BEST_POSE>();
-      auto& best_so_far_b             = (*this->scratch).template get<buffer_data_type::BEST_SO_FAR>();
-      auto& for_how_long_best_b       = (*this->scratch).template get<buffer_data_type::FOR_HOW_LONG_BEST>();
+      auto& best_so_far_b       = (*this->scratch).template get<buffer_data_type::BEST_SO_FAR>();
+      auto& for_how_long_best_b = (*this->scratch).template get<buffer_data_type::FOR_HOW_LONG_BEST>();
 
       
       converged_ligands_b.alloc(batch_ligands);
@@ -199,6 +209,7 @@ namespace mudock {
                                                                      for_how_long_best_p,
                                                                      (*this->scratch).configuration.tolerance_window,
                                                                      (*this->scratch).configuration.best_score_diff_thld,
+                                                                     (*this->scratch).configuration.max_docking_time,
                                                                      q);
     }
 
@@ -211,6 +222,10 @@ namespace mudock {
       assert(kernel && "Kernel method not yet prepared");
       (*kernel)();
     };
+
+    void start_timer(void) {
+      (*kernel).set_start_time(std::chrono::steady_clock::now());
+    }
 
     // TODO fix function
     static std::size_t get_shared_ligand_mem(const int max_atoms, const knobs conf) {
@@ -258,6 +273,7 @@ namespace mudock {
     int batch_ligands;
     int batch_atoms;
     std::unique_ptr<crystal_convergence_kernel<queue_t>> kernel;
+    std::chrono::steady_clock::time_point docking_run_start_time;
 
     void teardown_impl(batch<static_molecule>& batch) {
       (void) batch;

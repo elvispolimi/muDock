@@ -27,7 +27,9 @@ namespace mudock {
                          fp_type* __restrict__ best_so_far_b, 
                          int* __restrict__ for_how_long_best_b,
                          const int tolerance_window,
-                         const fp_type best_score_diff_thld) {
+                         const fp_type best_score_diff_thld,
+                         const std::chrono::steady_clock::time_point docking_run_start_time,
+                         const int max_docking_time) {
     for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
       if (converged_ligands_b[ligand_index]) continue;
 
@@ -112,6 +114,15 @@ namespace mudock {
         converged_ligands_b[ligand_index] = generation;
       }
 
+      const auto now = std::chrono::steady_clock::now();
+      const auto elapsed = std::chrono::duration<double>(now - docking_run_start_time);
+
+      if (max_docking_time != 0 && elapsed.count() > max_docking_time){
+        for(int idx{0}; idx < batch_ligands; ++idx){
+          converged_ligands_b[idx] = generation;
+        }
+      }
+
     }
 
   }
@@ -139,7 +150,9 @@ namespace mudock {
                                                             best_so_far_b, 
                                                             for_how_long_best_b,
                                                             tolerance_window,
-                                                            best_score_diff_thld);
+                                                            best_score_diff_thld,
+                                                            docking_run_start_time,
+                                                            max_docking_time);
     current_generation++;
   }
 
