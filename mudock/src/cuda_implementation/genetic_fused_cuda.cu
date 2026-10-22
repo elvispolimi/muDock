@@ -53,7 +53,7 @@ namespace mudock {
   }
 
   template<int MAX_ATOMS>
-  __device__ fp_type fused_score_pose(const int ligand,
+  __device__ __forceinline__ fp_type fused_score_pose(const int ligand,
                                       const int lane,
                                       const int atoms,
                                       const int* __restrict__ atom_counts,
@@ -112,6 +112,7 @@ namespace mudock {
         grid_maps + map_index_xyz * static_cast<int>(autodock_grid_type::DESOLV);
 
     fp_type elec_grid = 0, vdw_grid = 0, desolv_grid = 0;
+    MUDOCK_PRAGMA_TEMPLATE_UNROLL(MAX_ATOMS, BLOCK_SIZE)
     for (int atom = lane; atom < MAX_ATOMS; atom += BLOCK_SIZE) {
       if (atom >= num_atoms) continue;
       fp_type cx = x[atom], cy = y[atom], cz = z[atom];
@@ -261,8 +262,11 @@ namespace mudock {
         fp_type* __restrict__ x = x_scratch + offset;
         fp_type* __restrict__ y = y_scratch + offset;
         fp_type* __restrict__ z = z_scratch + offset;
-        for (int atom = lane; atom < n_atoms; atom += BLOCK_SIZE) {
-          x[atom] = lx[atom]; y[atom] = ly[atom]; z[atom] = lz[atom];
+        MUDOCK_PRAGMA_TEMPLATE_UNROLL(MAX_ATOMS, BLOCK_SIZE)
+        for (int atom = lane; atom < MAX_ATOMS; atom += BLOCK_SIZE) {
+          if (atom < n_atoms) {
+            x[atom] = lx[atom]; y[atom] = ly[atom]; z[atom] = lz[atom];
+          }
         }
         __syncthreads();
         translate_molecule_cuda<MAX_ATOMS>(x, y, z, current[pose][0], current[pose][1],
