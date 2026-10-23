@@ -3,7 +3,6 @@
 #include "stream_engine_types.hpp"
 
 #include <algorithm>
-#include <atomic>
 #include <cstddef>
 #include <istream>
 #include <limits>
@@ -23,7 +22,6 @@ namespace mudock::stream_engine {
     const std::size_t max_bytes_per_token_;
     std::istream& stream_;
     std::size_t end_;
-    std::atomic<bool>& stop_requested_;
 
     // Reader state: mutable because of the TBB input-node `operator() const`.
     mutable std::string buffered_text_;
@@ -33,9 +31,8 @@ namespace mudock::stream_engine {
   public:
     explicit reader_body(std::size_t max_bytes_per_token,
                          std::istream& in,
-                         std::atomic<bool>& stop_requested,
                          std::size_t end = std::numeric_limits<std::size_t>::max())
-        : max_bytes_per_token_(max_bytes_per_token), stream_(in), stop_requested_(stop_requested) {
+        : max_bytes_per_token_(max_bytes_per_token), stream_(in) {
       if (end != std::numeric_limits<std::size_t>::max()) {
         end_ = end;
         return;
@@ -49,12 +46,6 @@ namespace mudock::stream_engine {
 
     std::string operator()(oneapi::tbb::flow_control& fc) const {
       while (true) {
-        if (stop_requested_.load(std::memory_order_relaxed)) {
-          buffered_text_.clear();
-          flushed_ = true;
-          fc.stop();
-          return {};
-        }
         if (auto token = try_emit_token()) {
           return std::move(*token);
         }

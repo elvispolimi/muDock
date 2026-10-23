@@ -10,6 +10,7 @@
 #include <mudock/tbb_implementation/backend_subgraph.hpp>
 #include <mudock/tbb_implementation/parser_body.hpp>
 #include <mudock/tbb_implementation/reader_body.hpp>
+#include <mudock/tbb_implementation/runtime_services.hpp>
 #include <mudock/tbb_implementation/stream_engine_types.hpp>
 #include <mudock/tbb_implementation/writer_body.hpp>
 #include <oneapi/tbb/flow_graph.h>
@@ -31,18 +32,16 @@ namespace mudock {
 
     tbb_flow::graph g;
 
-    std::atomic<bool> stop_requested{false};
-    // todo - ^ handle stop_signal
     std::atomic<std::size_t> skipped_ligands{0};
 
     // --- [SETUP] - Create graph nodes
-    reader_in ligand_reader(g, reader_body<format>{knobs.max_bytes_per_token, in, stop_requested, end});
+    reader_in ligand_reader(g, reader_body<format>{knobs.max_bytes_per_token, in, end});
 
     global_ligands_ln global_ligands_limiter(g, knobs.max_ligands_in_flight);
 
     parser_mfn ligand_parser(g,
                              tbb_flow::unlimited,
-                             parser_body<format>{global_ligands_limiter, skipped_ligands, stop_requested});
+                             parser_body<format>{global_ligands_limiter, skipped_ligands});
 
     parsed_ligands_buf parsed_ligands_buffer(g);
 
@@ -57,21 +56,34 @@ namespace mudock {
     tbb_flow::make_edge(tbb_flow::output_port<0>(ligand_parser), parsed_ligands_buffer);
     for (auto& backend: backends) backend.wire(parsed_ligands_buffer, writer);
 
-    info("Starting virtual screening ...");
+    // --- [SETUP] - Start timer for time limit, if specified
+    detail::deadline_timer timer;
+    if (time_limit_sec && *time_limit_sec > 0.0) {
+      info(std::format("Time limit enabled: {} s", *time_limit_sec));
+      timer.start(time_limit_sec, [&, limit = *time_limit_sec]() {
+        g.cancel();
+        info(std::format("Time limit of {} s reached: cancelling graph ...", limit));
+      });
+    }
 
     // --- [SCREENING] - Phase 1: drain raw ligands
+    info("Starting virtual screening ...");
     ligand_reader.activate();
     g.wait_for_all();
+    timer.cancel();
 
-    // --- [SCREENING] - Phase 2: flush ROBs' partial batches
-    for (auto& backend: backends) backend.flush_batches();
-    g.wait_for_all();
+    // --- [SCREENING] - Phase 2: flush ROBs' partial batches (skipped if time limit expired)
+    if (!g.is_cancelled()) {
+      info("Flushing partial batches ...");
+      for (auto& backend: backends) backend.flush_batches();
+      g.wait_for_all();
+    }
 
     // --- [SCREENING] - Phase 3: flush writer's buffer
+    info("Flushing writer's buffer ...");
     writer_state.flush();
 
     // todo - observer
-    // todo - timeout
   }
 
 } // namespace mudock

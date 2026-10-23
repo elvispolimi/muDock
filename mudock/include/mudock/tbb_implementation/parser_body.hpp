@@ -22,33 +22,20 @@ namespace mudock::stream_engine {
   class parser_body {
     global_ligands_ln& global_ligands_limiter_;
     std::atomic<std::size_t>& skipped_ligands_;
-    std::atomic<bool>& stop_requested_;
 
   public:
-    explicit parser_body(global_ligands_ln& global_ligands_limiter,
-                         std::atomic<std::size_t>& skipped_ligands,
-                         std::atomic<bool>& stop_requested)
-        : global_ligands_limiter_(global_ligands_limiter),
-          skipped_ligands_(skipped_ligands),
-          stop_requested_(stop_requested) {}
+    explicit parser_body(global_ligands_ln& global_ligands_limiter, std::atomic<std::size_t>& skipped_ligands)
+        : global_ligands_limiter_(global_ligands_limiter), skipped_ligands_(skipped_ligands) {}
 
     void operator()(const std::string& token, parser_mfn::output_ports_type& out) const {
-      if (stop_requested_.load(std::memory_order_relaxed)) {
-        release_slot();
-        return;
-      }
-
       try {
         auto ligand = std::make_shared<static_molecule>(mudock::parser<format, static_molecule>(token));
         std::get<0>(out).try_put(std::move(ligand));
       } catch (const std::exception&) {
         skipped_ligands_.fetch_add(1, std::memory_order_relaxed);
-        release_slot();
+        global_ligands_limiter_.decrementer().try_put(tbb_flow::continue_msg{});
       }
     }
-
-  private:
-    void release_slot() const { global_ligands_limiter_.decrementer().try_put(tbb_flow::continue_msg{}); }
   };
 
 } // namespace mudock::stream_engine
