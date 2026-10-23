@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 IGNORE_TOKEN="Experiment"
 
-MAX_JOBS=12
+MAX_JOBS=16
 
 BUILD=build
 DATA_DIR="./data/coreset_CASF_2016"
@@ -16,8 +16,8 @@ NUM_SEEDS=20
 seeds=($(seq 0 $((NUM_SEEDS - 1))))
 
 POPULATION=100
-BUDGET=1000000
-GENERATIONS=$((BUDGET / POPULATION)) 
+GENERATIONS=1000000000 # high value => not bounded
+BUDGET=60 #seconds
 
 TOTAL_RUNS=$((${#ids[@]} * ${#seeds[@]}))
 COMPLETED_RUNS=0
@@ -44,6 +44,7 @@ for SEED in "${seeds[@]}"; do
             --crystal_score "$CRYSTAL_SCORE" \
             --placement preserve \
             --max-search-box 5 \
+            --max_docking_time "$BUDGET" \
             > "$OUT_PATH" 2>&1 &
 
         if [ "$(jobs -rp | wc -l)" -ge "$MAX_JOBS" ]; then

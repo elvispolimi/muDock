@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 IGNORE_TOKEN="Experiment"
 
-MAX_JOBS=12
+MAX_JOBS=16
 
 BUILD=build
 DATA_DIR="./data/coreset_CASF_2016"
@@ -12,12 +12,12 @@ ids=(3p5o 3u5j 4lzs 4ogj 4wiv 3ebp 3f3a 3f3c 3f3d 3f3e 4mme 4e6q 4f09 4gfm 4hge 
 crystal_scores=(-5.091403 -4.212269 -3.624627 -1.08664 -5.579877 -1.070766 -3.952088 -5.573053 -4.529698 -5.970263 -5.017744 -2.686873 -3.135863 -3.722687 -4.370185 -8.040822 -9.958447 -3.980942 -0.716404 -1.978494)
 
 # COARSE
-# lsrates=("5" "50" "100")
-# lsits=("10" "150" "300")
+lsrates=("5" "50" "100")
+lsits=("100" "200" "400" "800" "1600" "3200")
 
 # FINE
-lsrates=("5" "25" "50" "75" "100")
-lsits=("10" "75" "150" "225" "300")
+# lsrates=("5" "25" "50" "75" "100")
+# lsits=("10" "75" "150" "225" "300")
 
 NUM_SEEDS=20
 seeds=($(seq 0 $((NUM_SEEDS - 1))))
