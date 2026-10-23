@@ -8,6 +8,7 @@
 #include <istream>
 #include <limits>
 #include <mudock/format/supported_format.hpp>
+#include <optional>
 #include <string>
 #include <string_view>
 
@@ -54,58 +55,64 @@ namespace mudock::stream_engine {
           fc.stop();
           return {};
         }
-
-        if (!buffered_text_.empty()) {
-          auto input_view = std::string_view{buffered_text_};
-          const auto next = format_splitter_.next_molecule_start_index(input_view);
-          if (next != std::string_view::npos) {
-            std::string token = buffered_text_.substr(0, next);
-            buffered_text_.erase(0, next);
-            return token;
-          }
+        if (auto token = try_emit_token()) {
+          return std::move(*token);
         }
-
-        const std::streampos pos = stream_.tellg();
-        if (pos == std::streampos(-1)) {
-          if (!flushed_ && !buffered_text_.empty()) {
-            flushed_   = true;
-            auto token = std::move(buffered_text_);
-            buffered_text_.clear();
-            return token;
-          }
-          fc.stop();
-          return {};
+        if (!read_more()) {
+          return flush_remainder(fc);
         }
-
-        const std::size_t cur = static_cast<std::size_t>(pos);
-        if (cur >= end_) {
-          if (!flushed_ && !buffered_text_.empty()) {
-            flushed_   = true;
-            auto token = std::move(buffered_text_);
-            buffered_text_.clear();
-            return token;
-          }
-          fc.stop();
-          return {};
-        }
-
-        const std::size_t bytes_per_token = std::min(max_bytes_per_token_, end_ - cur);
-        std::string buf(bytes_per_token, '\0');
-        stream_.read(buf.data(), static_cast<std::streamsize>(buf.size()));
-        if (stream_.gcount() <= 0) {
-          if (!flushed_ && !buffered_text_.empty()) {
-            flushed_   = true;
-            auto token = std::move(buffered_text_);
-            buffered_text_.clear();
-            return token;
-          }
-          fc.stop();
-          return {};
-        }
-
-        buf.resize(static_cast<std::size_t>(stream_.gcount()));
-        buffered_text_ += buf;
       }
+    }
+
+  private:
+    std::optional<std::string> try_emit_token() const {
+      if (!buffered_text_.empty()) {
+        const auto next_token_pos = format_splitter_.next_molecule_start_index(buffered_text_);
+        if (next_token_pos != std::string_view::npos) {
+          std::string token = buffered_text_.substr(0, next_token_pos);
+          buffered_text_.erase(0, next_token_pos);
+          return token;
+        }
+      }
+      return std::nullopt;
+    }
+
+    bool read_more() const {
+      // Position-tracking unavailable: failed state.
+      const std::streampos pos = stream_.tellg();
+      if (pos == std::streampos(-1)) {
+        return false;
+      }
+
+      // End position reached: EOF (seekable stream).
+      const auto cur = static_cast<std::size_t>(pos);
+      if (cur >= end_) {
+        return false;
+      }
+
+      const auto bytes_per_token = std::min(max_bytes_per_token_, end_ - cur);
+      std::string buf(bytes_per_token, '\0');
+      stream_.read(buf.data(), static_cast<std::streamsize>(buf.size()));
+
+      // Stream returned 0 bytes: EOF (non-seekable stream), or unexpected failure (seekable stream).
+      const auto bytes_read = stream_.gcount();
+      if (bytes_read <= 0) {
+        return false;
+      }
+
+      buffered_text_.append(buf.data(), static_cast<std::size_t>(bytes_read));
+      return true;
+    }
+
+    std::string flush_remainder(oneapi::tbb::flow_control& fc) const {
+      if (!flushed_ && !buffered_text_.empty()) {
+        flushed_   = true;
+        auto token = std::move(buffered_text_);
+        buffered_text_.clear();
+        return token;
+      }
+      fc.stop();
+      return {};
     }
   };
 
