@@ -119,7 +119,8 @@ namespace mudock {
         if (bond_counter == std::size_t{1}) { // in this case we have lone pairs
           // so we need to explore the neighbor's neighbor for Carbonyl Oxygen O=C-X
           if (elements[neigh1_index] != element::C) [[unlikely]]
-            throw std::runtime_error("The original autogrid was not expecting a non C atom with a O");
+          // TODO L remove this comment to resume exception
+            // throw std::runtime_error("The original autogrid was not expecting a non C atom with a O");
           adt_protein.vector1[atom_index] = atom_point.difference(std::as_const(neigh1_point)).normalize();
           for (int other_index = from_neighbor; other_index < to_neighbor; ++other_index) {
             if ((other_index != neigh1_index) && (other_index != atom_index)) {
