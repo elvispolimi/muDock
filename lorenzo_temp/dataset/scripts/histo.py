@@ -2,7 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 # Input CSV file
-CSV_FILE = "./lorenzo_temp/info/casf_2016_pocket.csv"
+CSV_FILE = "./lorenzo_temp/dataset/tables/casf_crystals_pocket.csv"
 
 # Read CSV
 df = pd.read_csv(CSV_FILE)

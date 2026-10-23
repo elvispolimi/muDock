@@ -1,7 +1,7 @@
 
 import pandas as pd
 
-df = pd.read_csv("lorenzo_temp/info/casf2016_rotatable_bonds.csv")
+df = pd.read_csv("lorenzo_temp/dataset/tables/rots.csv")
 
 # Adjust this column name if needed.
 col = "rot"
