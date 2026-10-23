@@ -10,6 +10,7 @@
 #include <mudock/tbb_implementation/backend_subgraph.hpp>
 #include <mudock/tbb_implementation/parser_body.hpp>
 #include <mudock/tbb_implementation/reader_body.hpp>
+#include <mudock/tbb_implementation/runtime_services.hpp>
 #include <mudock/tbb_implementation/stream_engine_types.hpp>
 #include <mudock/tbb_implementation/writer_body.hpp>
 #include <oneapi/tbb/flow_graph.h>
@@ -32,7 +33,6 @@ namespace mudock {
     tbb_flow::graph g;
 
     std::atomic<bool> stop_requested{false};
-    // todo - ^ handle stop_signal
     std::atomic<std::size_t> skipped_ligands{0};
 
     // --- [SETUP] - Create graph nodes
@@ -57,11 +57,22 @@ namespace mudock {
     tbb_flow::make_edge(tbb_flow::output_port<0>(ligand_parser), parsed_ligands_buffer);
     for (auto& backend: backends) backend.wire(parsed_ligands_buffer, writer);
 
+    // --- [SETUP] - Start timer for time limit, if specified
+    detail::deadline_timer timer;
+    if (time_limit_sec && *time_limit_sec > 0.0) {
+      info(std::format("Time limit enabled: {} s", *time_limit_sec));
+      timer.start(time_limit_sec, [&, limit = *time_limit_sec]() {
+        stop_requested.store(true, std::memory_order_relaxed);
+        info(std::format("Time limit of {} s reached: stopping admission of new work.", limit));
+      });
+    }
+
     info("Starting virtual screening ...");
 
     // --- [SCREENING] - Phase 1: drain raw ligands
     ligand_reader.activate();
     g.wait_for_all();
+    timer.cancel();
 
     // --- [SCREENING] - Phase 2: flush ROBs' partial batches
     for (auto& backend: backends) backend.flush_batches();
@@ -71,7 +82,6 @@ namespace mudock {
     writer_state.flush();
 
     // todo - observer
-    // todo - timeout
   }
 
 } // namespace mudock

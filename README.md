@@ -23,6 +23,7 @@
 > - `backend_subgraph` abstraction: one subgraph per CPU-group (one per spec) or GPU device (one per id), owning a batcher node, a batch buffer, and `N` screener nodes. CPU and GPU builders mirror `manager::launch_worker_{cpu,gpu}`.
 > - Real scoring: `screener_state` / `screener_body` wrap the existing `stage::prepare/operator()/teardown` lifecycle.
 > - Three-phase drain: normal flow, then partial-batch flush from each backend's reorder buffer, then writer buffer flush.
+> - Time limit: `detail::deadline_timer` flips `stop_requested` at the configured deadline. The reader exits cleanly and the parser discards admitted-but-unparsed ligands. Enabled via `--time_limit_sec N`.
 >
 > #### Try it
 >
@@ -45,12 +46,15 @@
 > - **State/body pattern per node**: each stateful body (writer, batcher, screener) has a co-located `<x>_state` class that outlives TBB's internal body copies, simplifying the three-phase drain. The body is a pure delegate; the state owns the mutable data (buffer, reorder buffer, scoring stage instance) and hides "when to emit" policy.
 > - **`backend_subgraph` as the per-spec unit**: one subgraph covers a CPU-group (shared host memory → shared batcher, shared device scratchpad) or a single GPU device (isolated memory → dedicated batcher, dedicated device scratchpad shared across workers). Centralizes the per-backend setup.
 > - **Intentional duplication of `manager::*` procedures**: `parse_backend_spec`, `build_{cpu,gpu}_subgraph`, and `build_backend_subgraphs` mirror `manager::parse_worker_configuration`, `manager::launch_worker_{cpu,gpu}`, and the top-level `manager::manager` loop respectively. Keeping the graph path self-contained means `mudock/compute/manager.hpp` can be deprecated and removed once end-to-end TBB orchestration lands, without having to untangle shared helpers first.
+> - **Timer and observer live as explicit threads**, not TBB nodes: both wait on wall-clock timers, then flip a flag (timer) or emit a log line (observer) — neither produces or consumes graph messages. Inside the graph they'd misbehave three ways: a sleeping task holds an arena slot (losing a core of parallelism); TBB's non-preemptive work-stealing scheduler gives no timing guarantees (a periodic/deadline task fires whenever a worker gets to it, worst-case under the heavy load where you most need the signal); and self-re-enqueueing polling busy-waits, burning CPU and polluting the work-stealing queues.
+> - **Soft shutdown via `stop_requested`, not `graph::cancel()`**: the stop flag is cooperative. Nodes that care about it (reader, parser) check it and exit cleanly, in-flight work drains downstream, and all three drain phases still run to completion. `graph::cancel()` is a hard kill: pending tasks are never scheduled, mid-flight ligands are dropped, and Phase 2 can't flush its partial batch because the graph is already cancelled.
+> - **What soft shutdown discards**: when the deadline fires, the reader exits and the parser drops any tokens that passed the limiter but haven’t been parsed yet. So “no new work is admitted” means nothing new gets past the parser, not the limiter. Ligands that were already parsed still go through to scoring, and partial batches in the batcher’s ROB are still flushed in Phase 2. Dropping at the parser is a deliberate choice that roughly matches how the legacy parallel_pipeline dropped pending work on deadline. We can revisit it if we decide every token past the limiter should be processed.
 >
 > #### Follow-up...
 >
 > - GPU validation: `build_gpu_subgraph` is implemented but has not been exercised against a real GPU backend.
 > - Aggregate the atomic counters and performance metrics into a cohesive struct (currently scattered across `stream_engine_graph`).
-> - `stop_requested` propagation, `deadline_timer`, observer.
+> - Observer: periodic metrics snapshots (reuse `detail::periodic_observer`).
 > - CLI wiring for `--max_ligands_in_flight` — currently uses the compile-time default.
 > - (?) Whole-graph simulation with mock node bodies to probe end-to-end performance, bottlenecks, and memory footprint under controlled loads.
 > - (?) Per-backend credit limiters, so batches aren't blindly round-robined to already saturated backends.
