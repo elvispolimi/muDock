@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 IGNORE_TOKEN="Experiment"
 
-MAX_JOBS=16
+MAX_JOBS=18
 
 BUILD=build
 DATA_DIR="./data/coreset_CASF_2016"
@@ -12,8 +12,8 @@ ids=(1bcu 1oyt 2r9w 2zda 3ao4 3bv9 3ehy 3gr2 3gv9 3lka 3nx7 3tsk 3utu 3zso 3zsx 
 crystal_scores=(-2.453103 -1.394959 -5.982522 -4.452805 -2.45466 55.23962 -7.889795 34.48156 -0.51968 -0.952467 -8.168454 -12.761602 -10.54346 -1.462153 -1.400095 -2.277798 -4.416257 -17.216919 -3.233058 -0.480943)
 
 # COARSE
-lsrates=("5" "50" "100")
-lsits=("100" "200" "400" "800" "1600" "3200")
+lsrates=("6" "12" "25" "50" "100")
+lsits=("200" "400" "800" "1600" "3200")
 
 # FINE
 # lsrates=("5" "25" "50" "75" "100")
@@ -23,8 +23,8 @@ NUM_SEEDS=20
 seeds=($(seq 0 $((NUM_SEEDS - 1))))
 
 POPULATION=100
-GENERATIONS=1000000 # high value => not bounded
-BUDGET=60 #seconds
+GENERATIONS=10000 # high value => not bounded
+BUDGET=30 #seconds
 
 TOTAL_RUNS=$((${#ids[@]} * ${#lsrates[@]} * ${#lsits[@]} * ${#seeds[@]}))
 COMPLETED_RUNS=0

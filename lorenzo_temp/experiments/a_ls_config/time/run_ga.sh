@@ -16,8 +16,8 @@ NUM_SEEDS=20
 seeds=($(seq 0 $((NUM_SEEDS - 1))))
 
 POPULATION=100
-GENERATIONS=1000000000 # high value => not bounded
-BUDGET=60 #seconds
+GENERATIONS=1000000 # high value => not bounded
+BUDGET=30 #seconds
 
 TOTAL_RUNS=$((${#ids[@]} * ${#seeds[@]}))
 COMPLETED_RUNS=0
