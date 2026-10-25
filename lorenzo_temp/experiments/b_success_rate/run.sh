@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-BUDGET=5 #seconds
+BUDGET=3 #seconds
 
 IGNORE_TOKEN="Experiment"
 MAX_JOBS=12
