@@ -3,8 +3,8 @@
 Compare docking success rates of GA vs LGA runs, per ligand.
 
 A run is "successful" when score < 0.
-GA runs are identified by missing (N/A) `rate` and `iterations` fields;
-every other run is an LGA run, aggregated over all iterations/rate configs.
+GA runs are identified by missing (N/A) `rate` and `iter` fields;
+every other run is an LGA run, aggregated over all iter/rate configs.
 
 Usage:
     python success_rate.py results.csv [-o success_rate.png] [--csv summary.csv]
@@ -23,14 +23,14 @@ NA_VALUES = ["N/A", "NA", "n/a", "na", "", "-", "None", "null"]
 def load(path):
     df = pd.read_csv(path, na_values=NA_VALUES, keep_default_na=True)
 
-    required = {"name", "score", "rate", "iterations"}
+    required = {"name", "score", "rate", "iter"}
     missing = required - set(df.columns)
     if missing:
         sys.exit(f"Missing required column(s): {', '.join(sorted(missing))}")
 
     df["score"] = pd.to_numeric(df["score"], errors="coerce")
     df["rate"] = pd.to_numeric(df["rate"], errors="coerce")
-    df["iterations"] = pd.to_numeric(df["iterations"], errors="coerce")
+    df["iter"] = pd.to_numeric(df["iter"], errors="coerce")
 
     bad = df["score"].isna().sum()
     if bad:
@@ -39,7 +39,7 @@ def load(path):
 
     # GA: no local search parameters. LGA: everything else.
     df["algo"] = np.where(
-        df["rate"].isna() & df["iterations"].isna(), "GA", "LGA"
+        df["rate"].isna() & df["iter"].isna(), "GA", "LGA"
     )
     return df
 
@@ -94,7 +94,7 @@ def plot(table, counts, out_path, annotate=True):
     n_lga = counts["LGA"].sum()
     fig.text(
         0.01, 0.01,
-        f"{n_ga} GA runs, {n_lga} LGA runs (all iterations/rate configurations pooled)",
+        f"{n_ga} GA runs, {n_lga} LGA runs (all iter/rate configurations pooled)",
         fontsize=8, color="gray",
     )
 
