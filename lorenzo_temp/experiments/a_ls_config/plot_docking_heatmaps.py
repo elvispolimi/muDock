@@ -130,10 +130,10 @@ def main():
     # 7. Generate global heatmaps grouped by rotamer count
     # Bounds are inclusive: 1-9 and 10-50 rotamers.
     rotamer_bins = [
-        (0, 9, "rot_0_9"),
+        (1, 9, "rot_1_9"),
         (10, 16, "rot_10_16"),
-        (17, 50, "rot_17_50"),
-        (0, 50, "global"),
+        (17, 44, "rot_17_44"),
+        (1, 44, "global"),
         # (1,	1, "rot_1"),
         # (2,	2, "rot_2"),
         # (3,	3, "rot_3"),
