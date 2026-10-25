@@ -70,7 +70,7 @@ namespace mudock {
     void* args[] = {(void*) &batch_ligands,
                     (void*) &individuals_per_ligand,
                     (void*) &gradients_b,
-                    (void*) &population_b,
+                    (void*) &chromosomes_b,
                     (void*) &num_rotamers_b,
                     (void*) &adadelta_e_g2_b,
                     (void*) &adadelta_e_dw2_b,

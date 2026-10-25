@@ -12,6 +12,15 @@
 #include <cmath>
 
 namespace mudock {
+
+  __device__ __forceinline__ fp_type warp_allreduce_sum(fp_type value) {
+    MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
+    for (int offset = BLOCK_SIZE / 2; offset > 0; offset /= 2) {
+      value += __shfl_xor_sync(0xffffffff, value, offset);
+    }
+    return value;
+  }
+
   template<int MAX_ATOMS>
   __global__ void check_convergence_gpu(const int batch_ligands,
                                         const int batch_atoms,
@@ -29,14 +38,16 @@ namespace mudock {
                                         fp_type *__restrict__ rmsd_best_pose_b,
                                         const fp_type *__restrict__ scores_b,
                                         const fp_type crystal_score,
-                                        fp_type* __restrict__ best_so_far_b, 
+                                        fp_type* __restrict__ best_so_far_b,
                                         int* __restrict__ for_how_long_best_b,
                                         const int tolerance_window,
                                         const fp_type best_score_diff_thld) {
-    const int ligand_id        = blockIdx.x;
-    const int local_thread_id  = threadIdx.x;
+    const int ligand_id       = blockIdx.x;
+    const int local_thread_id = threadIdx.x;
     assert(blockDim.x == BLOCK_SIZE && warpSize == BLOCK_SIZE &&
            "Warpsize and the number of thread per block does not coincide");
+
+    // Block-uniform early exit: all lanes leave together, so the full-mask shuffles below are safe.
     if (converged_ligands_b[ligand_id]) return;
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -44,89 +55,87 @@ namespace mudock {
     //          WE HAVE THE CRYSTAL, WHICH IS OK FOR EVALUATING PERFORMANCE, BUT NOT USEFUL FOR REAL CASE
     //          SCENARIOS WHERE INSTEAD WE MUST CHECK CONVERGENCE LOOKING AT THE SCORE OR POPULATION
     //          STAGNATION ETC...
-    //////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    //////////////////////////////////////////////////////////////////////////////////////////////////////
     // WARNING: TODO L: criterion on crystal_score is valid for only one ligand at the time
     //////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    //////////////////////////////////////////////////////////////////////////////////////////////////////
-    // CRITERION 1: best_score <= (crystal_score + 1)
-    //////////////////////////////////////////////////////////////////////////////////////////////////////
-    // TODO L: implement 
+    constexpr int no_index = std::numeric_limits<int>::max();
     const fp_type *__restrict__ scores_l = scores_b + ligand_id * individuals_per_ligand;
-    int best_index = 0;
-    fp_type best_score = scores_l[best_index];
-    for (int individual_index = 0; individual_index < individuals_per_ligand; individual_index++) {
-      if (scores_l[individual_index] < best_score){
-        best_index = individual_index;
-        best_score = scores_l[individual_index];
+
+    int best_index     = no_index;
+    fp_type best_score = std::numeric_limits<fp_type>::infinity();
+    for (int i = local_thread_id; i < individuals_per_ligand; i += BLOCK_SIZE) {
+      const fp_type s = scores_l[i];
+      if (best_index == no_index || s < best_score) { // i increases per thread: first minimum is kept
+        best_score = s;
+        best_index = i;
       }
     }
-    bool good_score = best_score <= (crystal_score + SCORE_TOLERANCE) ? true : false;
-
+    MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
+    for (int offset = BLOCK_SIZE / 2; offset > 0; offset /= 2) {
+      const fp_type other_score = __shfl_xor_sync(0xFFFFFFFF, best_score, offset);
+      const int other_index     = __shfl_xor_sync(0xFFFFFFFF, best_index, offset);
+      if (other_index != no_index &&
+          (best_index == no_index || other_score < best_score ||
+           (other_score == best_score && other_index < best_index))) {
+        best_score = other_score;
+        best_index = other_index;
+      }
+    }
+    // xor-butterfly: every lane now holds the same (best_score, best_index).
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////
-    // CRITERION 2: RMSD best scoring pose < 1 Ångström
+    // CRITERION 2: RMSD of the best scoring pose, atoms scattered over the threads
     //////////////////////////////////////////////////////////////////////////////////////////////////////
-    const int num_atoms   = num_atoms_b[ligand_id];
-    const int atom_stride = ligand_id * batch_atoms;
+    const int num_atoms         = num_atoms_b[ligand_id];
+    const int atom_stride       = ligand_id * batch_atoms;
     const fp_type* template_x_l = template_x_b + atom_stride;
     const fp_type* template_y_l = template_y_b + atom_stride;
     const fp_type* template_z_l = template_z_b + atom_stride;
 
-    const fp_type *__restrict__ scratch_x = x_scratch_b + atom_stride * individuals_per_ligand;
-    const fp_type *__restrict__ scratch_y = y_scratch_b + atom_stride * individuals_per_ligand;
-    const fp_type *__restrict__ scratch_z = z_scratch_b + atom_stride * individuals_per_ligand;
-    const fp_type *__restrict__ scratch_x_l = scratch_x + best_index * batch_atoms;
-    const fp_type *__restrict__ scratch_y_l = scratch_y + best_index * batch_atoms;
-    const fp_type *__restrict__ scratch_z_l = scratch_z + best_index * batch_atoms;
+    const fp_type *__restrict__ scratch_x_l = x_scratch_b + atom_stride * individuals_per_ligand + best_index * batch_atoms;
+    const fp_type *__restrict__ scratch_y_l = y_scratch_b + atom_stride * individuals_per_ligand + best_index * batch_atoms;
+    const fp_type *__restrict__ scratch_z_l = z_scratch_b + atom_stride * individuals_per_ligand + best_index * batch_atoms;
 
     fp_type sum_sq_dist = fp_type{0};
-    for (int atom_index = 0; atom_index < num_atoms; ++atom_index) {
+    for (int atom_index = local_thread_id; atom_index < num_atoms; atom_index += BLOCK_SIZE) {
       const fp_type dx = template_x_l[atom_index] - scratch_x_l[atom_index];
       const fp_type dy = template_y_l[atom_index] - scratch_y_l[atom_index];
       const fp_type dz = template_z_l[atom_index] - scratch_z_l[atom_index];
       sum_sq_dist += dx * dx + dy * dy + dz * dz;
     }
-    rmsd_best_pose_b[ligand_id] = std::sqrt(sum_sq_dist / static_cast<fp_type>(num_atoms));
-    bool good_rmsd = rmsd_best_pose_b[ligand_id] < RMSD_TOLERANCE ? true : false;
+    sum_sq_dist = warp_allreduce_sum(sum_sq_dist); // all lanes call it (no divergence before)
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////
+    // Everything below reads/modifies the per-ligand persistent state: a SINGLE lane does it
+    //////////////////////////////////////////////////////////////////////////////////////////////////////
+    if (local_thread_id != 0) return;
+
+    const fp_type rmsd = std::sqrt(sum_sq_dist / static_cast<fp_type>(num_atoms));
+    rmsd_best_pose_b[ligand_id] = rmsd;
+
+    // CRITERION 1: best_score <= crystal_score + tolerance
+    const bool good_score = best_score <= (crystal_score + SCORE_TOLERANCE);
+    // CRITERION 2: RMSD < tolerance
+    const bool good_rmsd = rmsd < RMSD_TOLERANCE;
+
     // CRITERION 3: best score so far has not improved (significantly)
-    //////////////////////////////////////////////////////////////////////////////////////////////////////
-    bool best_score_not_improved = (best_so_far_b[ligand_id] - best_score < best_score_diff_thld) ? true : false;
-    
-    if (best_score_not_improved) {
-      for_how_long_best_b[ligand_id] += 1;
-    } else {
-      for_how_long_best_b[ligand_id] = 0;
-    }
-    
-    bool stale_best_score = (for_how_long_best_b[ligand_id] >= tolerance_window) ? true : false;
-    
-    // Update best so far
-    best_so_far_b[ligand_id] = std::min(best_so_far_b[ligand_id], best_score);
+    const fp_type best_so_far = best_so_far_b[ligand_id];
+    int stale_count           = for_how_long_best_b[ligand_id];
+    stale_count               = (best_so_far - best_score < best_score_diff_thld) ? stale_count + 1 : 0;
+    for_how_long_best_b[ligand_id] = stale_count;
+    const bool stale_best_score    = stale_count >= tolerance_window;
 
-    //////////////////////////////////////////////////////////////////////////////////////////////////////
-    // LOG progress
-    //////////////////////////////////////////////////////////////////////////////////////////////////////
+    best_so_far_b[ligand_id] = std::min(best_so_far, best_score);
 
-    //////////////////////////////////////////////////////////////////////////////////////////////////////
     // Mark convergence
-    //////////////////////////////////////////////////////////////////////////////////////////////////////
-    //////////////////////////////////////////////////////////////////////////////////////////////////////
-    // TODO L: i moved autostop parameter here so that in every case we log rmsd, but technically not 
-    //         needed. If autostop is inside genetic and decides if this convergence stage runs or not,
-    //         it may not log it.
-    //////////////////////////////////////////////////////////////////////////////////////////////////////
     if (autostop && (good_score || good_rmsd || stale_best_score)) {
       converged_ligands_b[ligand_id] = generation;
     }
 
-    // TODO L IMPORTANT: implement timer here as in cpp
+    // TODO L IMPORTANT: implement timer here as in cpp, if needed
 
   }
+
 
   template<>
   void crystal_convergence_kernel<queue_cuda>::operator()() {
