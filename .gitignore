@@ -1,4 +1,5 @@
 build*/
+diagnostics/*
 results*
 script*
 **.md

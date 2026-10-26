@@ -29,9 +29,6 @@ namespace mudock {
     const fp_type* x_coords;
     const fp_type* y_coords;
     const fp_type* z_coords;
-    fp_type* x_scratch;
-    fp_type* y_scratch;
-    fp_type* z_scratch;
     const int* fragments;
     const int* fragments_start;
     const int* frag_indices_start;

@@ -232,9 +232,6 @@ namespace mudock {
       auto* scores_device = take_device.template operator()<fp_type>(population_capacity);
       auto* best_scores_device = take_device.template operator()<fp_type>(ligand_count);
       auto* best_chromosomes_device = take_device.template operator()<chromosome>(ligand_count);
-      auto* x_scratch_device = take_device.template operator()<fp_type>(atom_capacity);
-      auto* y_scratch_device = take_device.template operator()<fp_type>(atom_capacity);
-      auto* z_scratch_device = take_device.template operator()<fp_type>(atom_capacity);
 
       const auto seed = conf.seed.value_or(static_cast<std::size_t>(
           std::chrono::high_resolution_clock::now().time_since_epoch().count()));
@@ -255,9 +252,6 @@ namespace mudock {
                               x_coords_device,
                               y_coords_device,
                               z_coords_device,
-                              x_scratch_device,
-                              y_scratch_device,
-                              z_scratch_device,
                               fragments_device,
                               fragments_start_device,
                               frag_indices_start_device,
@@ -380,13 +374,11 @@ namespace mudock {
     }
 
     static std::size_t ligand_slab_bytes(const std::size_t ligands, const int atoms, const knobs& conf) {
-      const auto atom_capacity = ligands * static_cast<std::size_t>(atoms);
       const auto population_capacity = ligands * std::max<std::size_t>(1, conf.population_number);
       return ligand_input_bytes(ligands, atoms) +
              2 * population_capacity * sizeof(chromosome) +
              population_capacity * sizeof(fp_type) +
-             ligands * (sizeof(fp_type) + sizeof(chromosome)) +
-             3 * atom_capacity * sizeof(fp_type);
+             ligands * (sizeof(fp_type) + sizeof(chromosome));
     }
 
     std::shared_ptr<scratchpad<queue_t>> device_scratch;

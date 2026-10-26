@@ -17,7 +17,7 @@ namespace mudock {
                                                           const int num_atoms) {
     MUDOCK_PRAGMA_TEMPLATE_UNROLL(MAX_ATOMS, BLOCK_SIZE)
     for (int i = 0; i < MAX_ATOMS; i += BLOCK_SIZE) {
-      const int atom_index = i + threadIdx.x;
+      const int atom_index = i + threadIdx.x % BLOCK_SIZE;
       if (atom_index < num_atoms) {
         x[atom_index] += offset_x;
         y[atom_index] += offset_y;
@@ -38,7 +38,7 @@ namespace mudock {
     fp_type c_x{0}, c_y{0}, c_z{0};
     MUDOCK_PRAGMA_TEMPLATE_UNROLL(MAX_ATOMS, BLOCK_SIZE)
     for (int i = 0; i < MAX_ATOMS; i += BLOCK_SIZE) {
-      const int atom_index = i + threadIdx.x;
+      const int atom_index = i + threadIdx.x % BLOCK_SIZE;
       if (atom_index < num_atoms) {
         c_x += x[atom_index];
         c_y += y[atom_index];
@@ -80,7 +80,7 @@ namespace mudock {
     // apply the rotation matrix
     MUDOCK_PRAGMA_TEMPLATE_UNROLL(MAX_ATOMS, BLOCK_SIZE)
     for (int i = 0; i < MAX_ATOMS; i += BLOCK_SIZE) {
-      const int atom_index = i + threadIdx.x;
+      const int atom_index = i + threadIdx.x % BLOCK_SIZE;
       if (atom_index < num_atoms) {
         const auto translated_x = x[atom_index] - c_x, translated_y = y[atom_index] - c_y,
                    translated_z = z[atom_index] - c_z;
@@ -145,7 +145,7 @@ namespace mudock {
     // apply the rotation matrix
     MUDOCK_PRAGMA_TEMPLATE_UNROLL(MAX_ATOMS, BLOCK_SIZE)
     for (int i = 0; i < MAX_ATOMS; i += BLOCK_SIZE) {
-      const int atom_index = i + threadIdx.x;
+      const int atom_index = i + threadIdx.x % BLOCK_SIZE;
       if (atom_index < num_atoms && bitmask[atom_index] != 0) {
         const auto prev_x = x[atom_index], prev_y = y[atom_index], prev_z = z[atom_index];
         x[atom_index]     = prev_x * m00 + prev_y * m01 + prev_z * m02 + m03;
