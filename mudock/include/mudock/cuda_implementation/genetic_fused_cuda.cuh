@@ -14,16 +14,17 @@ namespace mudock {
   struct genetic_fused_data {
     int ligands;
     int atoms;
+    int max_rotamers;
     int population;
     int generations;
     int tournament_length;
     fp_type mutation_probability;
     std::size_t seed;
-    chromosome* current;
-    chromosome* next;
+    fp_type* current;
+    fp_type* next;
     fp_type* scores;
     fp_type* best_scores;
-    chromosome* best_chromosomes;
+    fp_type* best_chromosomes;
     const int* num_atoms;
     const int* num_rotamers;
     const fp_type* x_coords;
@@ -62,7 +63,7 @@ namespace mudock {
   };
 
 #ifdef MUDOCK_USE_CUDA
-  batch_multiple get_genetic_fused_batch_multiple_cuda(int device_id, int atoms);
+  batch_multiple get_genetic_fused_batch_multiple_cuda(int device_id, int atoms, int max_rotamers);
 
   template<>
   struct genetic_fused_launcher<queue_cuda> {

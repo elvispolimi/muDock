@@ -33,69 +33,75 @@ namespace mudock {
     static constexpr std::array<int, 1> atoms_clusters = {{256}};
 #endif
     static constexpr std::size_t get_num_atom_clusters() { return atoms_clusters.size(); };
+    static constexpr std::array<int, 8> rotamers_clusters = {{1, 4, 8, 16, 32, 64, 128, 256}};
+    static constexpr std::size_t get_num_rotamer_clusters() { return rotamers_clusters.size(); };
 
   private:
     // the actual containers of ligand batches, with the related maximum sizes
-    std::array<int, atoms_clusters.size()> max_sizes;
-    std::array<batch<T>, atoms_clusters.size()> clusters;
+    std::array<std::array<int, rotamers_clusters.size()>, atoms_clusters.size()> max_sizes;
+    std::array<std::array<std::unique_ptr<batch<T>>, rotamers_clusters.size()>, atoms_clusters.size()> clusters;
     std::mutex mutex;
 
-    // helper functor that given a random ligand, it will find the index of its cluster
-    static constexpr auto get_flattened_index(const int num_atoms) {
+    static constexpr auto get_cluster_index(const int value, const auto& cluster_values, const char* label) {
       const auto it = std::find_if(
-          std::begin(atoms_clusters), std::end(atoms_clusters), [&num_atoms](const auto a) {
-            return num_atoms <= a;
+          std::begin(cluster_values), std::end(cluster_values), [&value](const auto max_value) {
+            return value <= max_value;
           });
-      auto index_atoms = static_cast<std::size_t>(std::distance(std::begin(atoms_clusters), it));
-      if (index_atoms >= get_num_atom_clusters()) {
-        throw std::runtime_error("Molecule with " + std::to_string(num_atoms) + " atoms, it is too large");
+      const auto index = static_cast<std::size_t>(std::distance(std::begin(cluster_values), it));
+      if (index >= cluster_values.size()) {
+        throw std::runtime_error("Molecule with " + std::to_string(value) + " " + label +
+                                 " exceeds the largest reorder-buffer bucket");
       }
-      return index_atoms;
+      return index;
     }
 
   public:
-    // the constructor will initialize the max_sizes array. The input is a function that given the number of
-    // atoms and rotamers, will provide the batch size
-    reorder_buffer(std::function<int(const int)> get_size = {}) {
+    // The sizing callback receives the atom and rotamer bucket limits.
+    reorder_buffer(std::function<int(const int, const int)> get_size = {}) {
       // make sure to have a sizer function
       if (!get_size) {
-        get_size = [](const int) -> int { return int{1}; };
+        get_size = [](const int, const int) -> int { return int{1}; };
       }
 
       // populate the array of maximum sizes
-      auto index = std::size_t{0};
-      for (const auto& max_atom_value: atoms_clusters) {
-        // populate the max sizes (using the function)
-        max_sizes[index] = std::min(get_size(max_atom_value), batch<T>::max_batch_size);
-
-        // populate the clusters' size
-        auto& cluster           = clusters[index]; // get a ref
-        cluster.batch_max_atoms = max_atom_value;
-
-        // update the global index on the clusters
-        ++index;
+      for (std::size_t atom_index = 0; atom_index < atoms_clusters.size(); ++atom_index) {
+        for (std::size_t rotamer_index = 0; rotamer_index < rotamers_clusters.size(); ++rotamer_index) {
+          max_sizes[atom_index][rotamer_index] =
+              std::min(get_size(atoms_clusters[atom_index], rotamers_clusters[rotamer_index]),
+                       batch<T>::max_batch_size);
+        }
       }
     }
 
     // add the molecule to a batch. If the batch is full, return it
     std::pair<batch<T>, bool> add_ligand(std::unique_ptr<T> new_molecule) {
       std::lock_guard lock{mutex};
-      const auto cluster_index               = get_flattened_index(new_molecule->num_atoms());
-      auto& cluster                          = clusters[cluster_index]; // take a ref (to update it)
+      const auto atom_index = get_cluster_index(new_molecule->num_atoms(), atoms_clusters, "atoms");
+      const auto rotamer_index = get_cluster_index(
+          static_cast<int>(new_molecule->num_rotamers()), rotamers_clusters, "rotamers");
+      auto& cluster_ptr = clusters[atom_index][rotamer_index];
+      if (!cluster_ptr) {
+        cluster_ptr = std::make_unique<batch<T>>();
+        cluster_ptr->batch_max_atoms = atoms_clusters[atom_index];
+        cluster_ptr->batch_max_rotamers = rotamers_clusters[rotamer_index];
+      }
+      auto& cluster = *cluster_ptr;
       cluster.num_atoms += new_molecule->num_atoms();
       cluster.molecules[cluster.num_ligands] = std::move(new_molecule);
       ++cluster.num_ligands;
-      return cluster.num_ligands < max_sizes[cluster_index] ? std::make_pair(batch<T>{}, false)
-                                                            : std::make_pair(std::move(cluster), true);
+      return cluster.num_ligands < max_sizes[atom_index][rotamer_index]
+                 ? std::make_pair(batch<T>{}, false)
+                 : std::make_pair(std::move(cluster), true);
     }
 
     // get the first half-empty butches inside this buffer
     std::pair<batch<T>, bool> flush_one() {
       std::lock_guard lock{mutex};
-      for (auto& cluster: clusters) {
-        const std::size_t num_ligands = cluster.num_ligands;
-        if (num_ligands > std::size_t{0}) {
-          return std::make_pair(std::move(cluster), true);
+      for (auto& atom_clusters: clusters) {
+        for (auto& cluster: atom_clusters) {
+          if (cluster && cluster->num_ligands > 0) {
+            return std::make_pair(std::move(*cluster), true);
+          }
         }
       }
       return std::make_pair(batch<T>{}, false);

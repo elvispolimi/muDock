@@ -7,9 +7,9 @@
 #include <stdexcept>
 
 namespace mudock {
-  template<int MAX_ATOMS>
+  template<int MAX_ATOMS, int MAX_ROTAMERS>
   batch_multiple get_geom_apply_batch(const int device_id) {
-    return get_kernel_batch_multiple_cuda<apply_cuda<MAX_ATOMS>>(device_id,
+    return get_kernel_batch_multiple_cuda<apply_cuda<MAX_ATOMS, MAX_ROTAMERS>>(device_id,
                                                                  BLOCK_SIZE,
                                                                  0,
                                                                  "geometric::apply_cuda");
@@ -22,7 +22,7 @@ namespace mudock {
     constexpr_for<0, reorder_buffer<static_molecule>::get_num_atom_clusters(), 1>([&](const auto atom_index) {
       const auto n_atoms = reorder_buffer<static_molecule>::atoms_clusters[atom_index];
       if (atoms == n_atoms)
-        bucket_multiple = get_geom_apply_batch<n_atoms>(device_id);
+        bucket_multiple = get_geom_apply_batch<n_atoms, 1>(device_id);
     });
     if (bucket_multiple.total_multiple() <= 0)
       throw std::runtime_error(
@@ -52,7 +52,16 @@ namespace mudock {
     constexpr_switch_bucket<0, reorder_buffer<static_molecule>::get_num_atom_clusters(), 1>(
         [&](const auto atom_index) {
           const auto max_atoms = reorder_buffer<static_molecule>::atoms_clusters[atom_index];
-          q->launch_kernel((void*) apply_cuda<max_atoms>, args, batch_ligands, BLOCK_SIZE);
+          constexpr_switch_bucket<0, reorder_buffer<static_molecule>::get_num_rotamer_clusters(), 1>(
+              [&](const auto rotamer_index) {
+                constexpr int max_rotamers = reorder_buffer<static_molecule>::rotamers_clusters[rotamer_index];
+                q->launch_kernel((void*) apply_cuda<max_atoms, max_rotamers>,
+                                 args,
+                                 batch_ligands,
+                                 BLOCK_SIZE);
+              },
+              batch_rotamers,
+              reorder_buffer<static_molecule>::rotamers_clusters.data());
         },
         batch_atoms,
         reorder_buffer<static_molecule>::atoms_clusters.data());

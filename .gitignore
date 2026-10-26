@@ -3,6 +3,7 @@ diagnostics/*
 results*
 script*
 **.md
+!AGENTS.md
 **.pdf
 profil*
 .vscode/

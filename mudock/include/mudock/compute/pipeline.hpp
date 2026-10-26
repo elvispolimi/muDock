@@ -25,7 +25,11 @@ namespace mudock {
                                    dynamic_molecule&) {}
 
     template<typename queue_type>
-    static int get_batch_size(const int, std::shared_ptr<queue_type>, const knobs&, const size_t) {
+    static int get_batch_size(const int,
+                              const int,
+                              std::shared_ptr<queue_type>,
+                              const knobs&,
+                              const size_t = 1000000000) {
       return 1;
     }
 
@@ -50,6 +54,7 @@ namespace mudock {
 
     template<typename queue_type>
     static int get_batch_size(const int atoms,
+                              const int,
                               std::shared_ptr<queue_type> q,
                               const knobs& conf,
                               const size_t max_mem = 1000000000) {
@@ -93,6 +98,7 @@ namespace mudock {
 
     template<typename queue_type>
     static int get_batch_size(const int atoms,
+                              const int,
                               std::shared_ptr<queue_type> q,
                               const knobs& conf,
                               const size_t max_mem = 1000000000) {
@@ -146,10 +152,12 @@ namespace mudock {
 
     template<typename queue_type>
     static int get_batch_size(const int atoms,
+                              const int rotamers,
                               std::shared_ptr<queue_type> q,
                               const knobs& conf,
                               const size_t max_mem = 1000000000) {
-      return genetic_fused<queue_type>::template get_batch_size<queue_type>(atoms, q, conf, max_mem);
+      return genetic_fused<queue_type>::template get_batch_size<queue_type>(
+          atoms, rotamers, q, conf, max_mem);
     }
   };
 

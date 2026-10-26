@@ -75,8 +75,8 @@ namespace mudock {
                                 std::atomic<std::size_t>* processed_atoms = nullptr) {
     auto device_scratch = std::make_shared<scratchpad<queue_type>>(knobs, 0, device_type::CPU);
     auto q_b            = device_scratch->get_queue();
-    std::function<int(const int)> get_size = [q_b, &knobs](const int x) {
-      return pipeline_t::template get_batch_size<queue_type>(x, q_b, knobs);
+    std::function<int(const int, const int)> get_size = [q_b, &knobs](const int atoms, const int rotamers) {
+      return pipeline_t::template get_batch_size<queue_type>(atoms, rotamers, q_b, knobs);
     };
     auto rob = std::make_shared<reorder_buffer<static_molecule>>(get_size);
 
@@ -114,9 +114,11 @@ namespace mudock {
     for (const auto id: parse_ids(parts[2])) {
       auto tracker                            = std::make_shared<device_memory_tracker>();
       auto q_b                               = std::make_shared<queue_type>(id, device_type::GPU, tracker);
-      std::function<int(const int)> get_size = [q_b, &knobs, mem_per_device](const int x) {
-        return pipeline_t::template get_batch_size<queue_type>(x, q_b, knobs, mem_per_device);
-      };
+      std::function<int(const int, const int)> get_size =
+          [q_b, &knobs, mem_per_device](const int atoms, const int rotamers) {
+            return pipeline_t::template get_batch_size<queue_type>(
+                atoms, rotamers, q_b, knobs, mem_per_device);
+          };
       auto rob = std::make_shared<reorder_buffer<static_molecule>>(get_size);
       mudock::info("Starting GPU device ",
                    id,

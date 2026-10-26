@@ -154,7 +154,7 @@ namespace mudock {
       }
     }
   }
-  template<int MAX_ATOMS>
+  template<int MAX_ATOMS, int MAX_ROTAMERS>
   __global__ void apply_cuda(const int chromosome_number,
                              const int atom_stride,
                              const fp_type* __restrict__ original_x,
@@ -222,7 +222,7 @@ namespace mudock {
                                       num_atoms);
 
       // change the molecule shape
-      MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
+      MUDOCK_PRAGMA_TEMPLATE_UNROLL(MAX_ROTAMERS, 1)
       for (int i = 0; i < num_rotamers; ++i) {
         const int* bitmask = l_fragments + i * num_atoms;
         rotate_fragment_cuda<MAX_ATOMS>(x_scratch_chromosome,

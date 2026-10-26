@@ -31,6 +31,7 @@ namespace mudock {
     static constexpr char geom_region_name[] = "geometric_trasformation";
     geom_kernel(const int batch_ligands_,
                 const int batch_atoms_,
+                const int batch_rotamers_,
                 const int chromsomes_per_ligand_,
                 const chromosome* __restrict__ chromosomes_b_,
                 const int* __restrict__ num_atoms_b_,
@@ -49,6 +50,7 @@ namespace mudock {
                 std::shared_ptr<queue_type> q_)
         : batch_ligands(batch_ligands_),
           batch_atoms(batch_atoms_),
+          batch_rotamers(batch_rotamers_),
           chromsomes_per_ligand(chromsomes_per_ligand_),
           chromosomes_b(chromosomes_b_),
           num_atoms_b(num_atoms_b_),
@@ -79,6 +81,7 @@ namespace mudock {
   private:
     const int batch_ligands;
     const int batch_atoms;
+    const int batch_rotamers;
     const int chromsomes_per_ligand;
     const chromosome* __restrict__ chromosomes_b;
     const int* __restrict__ num_atoms_b;
@@ -113,7 +116,7 @@ namespace mudock {
     void prepare(batch<static_molecule>& batch) {
       batch_ligands                           = batch.num_ligands;
       batch_atoms                             = batch.batch_max_atoms;
-      const int batch_rotamers                = batch_atoms - 3;
+      const int batch_rotamers                = batch.batch_max_rotamers;
       const int tot_atoms_in_batch            = batch_ligands * batch_atoms;
       const int tot_rotamers_atoms_in_batch   = tot_atoms_in_batch * batch_rotamers;
       const std::size_t tot_rotamers_in_batch = batch_ligands * batch_rotamers;
@@ -149,7 +152,7 @@ namespace mudock {
         translate_molecule<cpu_vectorization::AUTO>(x, y, z, num_atoms, offset.x(), offset.y(), offset.z());
 
         const auto num_rotamers = ligand.num_rotamers();
-        assert(batch_rotamers > num_rotamers);
+        assert(batch_rotamers >= num_rotamers);
 
         std::memcpy((void*) (ligand_fragments() + ligand_fragments_start()[ligand_index]),
                     geom_lig.fragments_masks(),
@@ -206,6 +209,7 @@ namespace mudock {
 
       kernel = std::make_unique<geom_kernel<queue_t>>(batch_ligands,
                                                       batch_atoms,
+                                                      batch_rotamers,
                                                       chromsomes_per_ligand,
                                                       chromosomes_p,
                                                       num_atoms_p,

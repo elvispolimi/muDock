@@ -87,13 +87,14 @@ namespace mudock {
       const auto& conf = this->scratch->configuration;
       const int ligands = batch.num_ligands;
       const int atoms = batch.batch_max_atoms;
+      const int max_rotamers = batch.batch_max_rotamers;
       const int population = static_cast<int>(conf.population_number);
       const auto ligand_count = static_cast<std::size_t>(ligands);
       const auto atom_stride = static_cast<std::size_t>(atoms);
+      const auto gene_stride = static_cast<std::size_t>(6 + max_rotamers);
       const auto atom_capacity = ligand_count * atom_stride;
-      const auto max_rotamers = static_cast<std::size_t>(std::max(0, atoms - 3));
-      const auto fragment_capacity = atom_capacity * max_rotamers;
-      const auto rotamer_capacity = ligand_count * max_rotamers;
+      const auto fragment_capacity = atom_capacity * static_cast<std::size_t>(max_rotamers);
+      const auto rotamer_capacity = ligand_count * static_cast<std::size_t>(max_rotamers);
       const auto nonbond_capacity = atom_capacity * atom_stride;
       const auto population_capacity = ligand_count * static_cast<std::size_t>(population);
 
@@ -101,8 +102,8 @@ namespace mudock {
         throw std::runtime_error("Fused protein data was not initialized before worker startup");
       const auto map_flat_size = device_scratch->template get<buffer_data_type::PROT_SIZE_XYZ>().host_pointer()[0];
 
-      const auto input_bytes = ligand_input_bytes(ligands, atoms);
-      const auto total_bytes = ligand_slab_bytes(ligands, atoms, conf);
+      const auto input_bytes = ligand_input_bytes(ligands, atoms, max_rotamers);
+      const auto total_bytes = ligand_slab_bytes(ligands, atoms, max_rotamers, conf);
       if (host_ligand_scratch.size() < input_bytes) host_ligand_scratch.resize(input_bytes);
 
       auto* host_cursor = host_ligand_scratch.data();
@@ -140,6 +141,8 @@ namespace mudock {
         auto& ligand = *batch.molecules[ligand_index];
         const int ligand_atoms = ligand.num_atoms();
         const int ligand_rotamers = static_cast<int>(ligand.num_rotamers());
+        if (ligand_rotamers > max_rotamers)
+          throw std::runtime_error("Ligand rotamer count exceeds its reorder-buffer bucket");
         const auto atom_offset = static_cast<std::size_t>(ligand_index) * atom_stride;
         num_atoms[ligand_index] = ligand_atoms;
         num_rotamers[ligand_index] = ligand_rotamers;
@@ -227,16 +230,17 @@ namespace mudock {
       const fp_type* nonbond_cB_device = take_device_input.template operator()<fp_type>(nonbond_capacity);
       const int* nonbond_xB_device = take_device_input.template operator()<int>(nonbond_capacity);
 
-      auto* current_device = take_device.template operator()<chromosome>(population_capacity);
-      auto* next_device = take_device.template operator()<chromosome>(population_capacity);
+      auto* current_device = take_device.template operator()<fp_type>(population_capacity * gene_stride);
+      auto* next_device = take_device.template operator()<fp_type>(population_capacity * gene_stride);
       auto* scores_device = take_device.template operator()<fp_type>(population_capacity);
       auto* best_scores_device = take_device.template operator()<fp_type>(ligand_count);
-      auto* best_chromosomes_device = take_device.template operator()<chromosome>(ligand_count);
+      auto* best_chromosomes_device = take_device.template operator()<fp_type>(ligand_count * gene_stride);
 
       const auto seed = conf.seed.value_or(static_cast<std::size_t>(
           std::chrono::high_resolution_clock::now().time_since_epoch().count()));
       genetic_fused_data data{ligands,
                               atoms,
+                              max_rotamers,
                               population,
                               static_cast<int>(conf.num_generations),
                               static_cast<int>(conf.tournament_length),
@@ -280,6 +284,7 @@ namespace mudock {
       batch_ligands = ligands;
       best_scores_result.resize(ligand_count);
       best_chromosomes_result.resize(ligand_count);
+      best_chromosomes_compact_result.resize(ligand_count * gene_stride);
       mudock::stage_bucket_trace(stage_name,
                                  " prepared device=",
                                  q->get_id(),
@@ -287,6 +292,8 @@ namespace mudock {
                                  ligands,
                                  " atoms=",
                                  atoms,
+                                 " max_rotamers=",
+                                 max_rotamers,
                                  " slab_bytes=",
                                  total_bytes,
                                  " h2d_bytes=",
@@ -306,21 +313,22 @@ namespace mudock {
     [[nodiscard]] const std::vector<fp_type>& best_scores() const { return best_scores_result; }
     [[nodiscard]] const std::vector<chromosome>& best_chromosomes() const { return best_chromosomes_result; }
 
-    static std::size_t get_ligand_mem(const int atoms, const knobs& conf) {
-      return ligand_slab_bytes(1, atoms, conf);
+    static std::size_t get_ligand_mem(const int atoms, const int max_rotamers, const knobs& conf) {
+      return ligand_slab_bytes(1, atoms, max_rotamers, conf);
     }
 
     template<typename queue_type>
     static int get_batch_size(const int atoms,
+                              const int max_rotamers,
                               std::shared_ptr<queue_type> q,
                               const knobs& conf,
                               const std::size_t max_mem) {
-      const auto mem_per_ligand = get_ligand_mem(atoms, conf);
+      const auto mem_per_ligand = get_ligand_mem(atoms, max_rotamers, conf);
       const auto max_bucket_size = std::max<std::size_t>(1, max_mem / mem_per_ligand);
       const auto fallback = [&]() -> batch_multiple {
 #if defined(MUDOCK_USE_CUDA)
         if constexpr (std::same_as<queue_type, queue_cuda>)
-          return get_genetic_fused_batch_multiple_cuda(q->get_id(), atoms);
+          return get_genetic_fused_batch_multiple_cuda(q->get_id(), atoms, max_rotamers);
 #endif
         return {};
       };
@@ -351,20 +359,30 @@ namespace mudock {
                           best_scores_result.data(),
                           best_scores_result.size() * sizeof(fp_type));
       q->copy_device2host(best_chromosomes_device_ptr,
-                          best_chromosomes_result.data(),
-                          best_chromosomes_result.size() * sizeof(chromosome));
+                          best_chromosomes_compact_result.data(),
+                          best_chromosomes_compact_result.size() * sizeof(fp_type));
       q->synchronize();
-      for (int ligand = 0; ligand < batch_ligands; ++ligand)
+      const auto gene_stride = static_cast<std::size_t>(6 + batch.batch_max_rotamers);
+      for (int ligand = 0; ligand < batch_ligands; ++ligand) {
+        auto& best_chromosome = best_chromosomes_result[static_cast<std::size_t>(ligand)];
+        best_chromosome.fill(fp_type{});
+        const auto gene_count = static_cast<std::size_t>(6 + batch.molecules[ligand]->num_rotamers());
+        std::copy_n(best_chromosomes_compact_result.data() + static_cast<std::size_t>(ligand) * gene_stride,
+                    gene_count,
+                    best_chromosome.begin());
         batch.molecules[ligand]->properties.assign(property_type::SCORE,
                                                     std::to_string(best_scores_result[static_cast<std::size_t>(ligand)]));
+      }
     }
 
   private:
-    static std::size_t ligand_input_bytes(const std::size_t ligands, const int atoms) {
+    static std::size_t ligand_input_bytes(const std::size_t ligands,
+                                          const int atoms,
+                                          const int max_rotamers) {
       const auto atom_capacity = ligands * static_cast<std::size_t>(atoms);
-      const auto max_rotamers = static_cast<std::size_t>(std::max(0, atoms - 3));
-      const auto fragment_capacity = atom_capacity * max_rotamers;
-      const auto rotamer_capacity = ligands * max_rotamers;
+      const auto rotamer_capacity_per_ligand = static_cast<std::size_t>(max_rotamers);
+      const auto fragment_capacity = atom_capacity * rotamer_capacity_per_ligand;
+      const auto rotamer_capacity = ligands * rotamer_capacity_per_ligand;
       const auto nonbond_capacity = atom_capacity * static_cast<std::size_t>(atoms);
       return 2 * ligands * sizeof(int) + 3 * atom_capacity * sizeof(fp_type) +
              fragment_capacity * sizeof(int) + 3 * (ligands + 1) * sizeof(int) +
@@ -373,12 +391,16 @@ namespace mudock {
              nonbond_capacity * (3 * sizeof(int) + 2 * sizeof(fp_type));
     }
 
-    static std::size_t ligand_slab_bytes(const std::size_t ligands, const int atoms, const knobs& conf) {
+    static std::size_t ligand_slab_bytes(const std::size_t ligands,
+                                         const int atoms,
+                                         const int max_rotamers,
+                                         const knobs& conf) {
       const auto population_capacity = ligands * std::max<std::size_t>(1, conf.population_number);
-      return ligand_input_bytes(ligands, atoms) +
-             2 * population_capacity * sizeof(chromosome) +
+      const auto gene_stride = static_cast<std::size_t>(6 + max_rotamers);
+      return ligand_input_bytes(ligands, atoms, max_rotamers) +
+             2 * population_capacity * gene_stride * sizeof(fp_type) +
              population_capacity * sizeof(fp_type) +
-             ligands * (sizeof(fp_type) + sizeof(chromosome));
+             ligands * (sizeof(fp_type) + gene_stride * sizeof(fp_type));
     }
 
     std::shared_ptr<scratchpad<queue_t>> device_scratch;
@@ -389,7 +411,8 @@ namespace mudock {
     std::vector<fp_type> best_scores_result;
     std::vector<chromosome> best_chromosomes_result;
     fp_type* best_scores_device_ptr{};
-    chromosome* best_chromosomes_device_ptr{};
+    fp_type* best_chromosomes_device_ptr{};
     int batch_ligands{};
+    std::vector<fp_type> best_chromosomes_compact_result;
   };
 } // namespace mudock

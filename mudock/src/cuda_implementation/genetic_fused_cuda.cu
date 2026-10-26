@@ -205,7 +205,7 @@ namespace mudock {
     return __shfl_sync(0xffffffff, energy, 0);
   }
 
-  template<int MAX_ATOMS>
+  template<int MAX_ATOMS, int MAX_ROTAMERS>
   __global__ void FUSED_GENETIC_LAUNCH_BOUNDS(MAX_ATOMS)
       genetic_fused_kernel(const int ligands,
                            const int atoms,
@@ -214,11 +214,11 @@ namespace mudock {
                            const int tournament_length,
                            const fp_type mutation_probability,
                            const std::size_t seed,
-                           chromosome* __restrict__ current_data,
-                           chromosome* __restrict__ next_data,
+                           fp_type* __restrict__ current_data,
+                           fp_type* __restrict__ next_data,
                            fp_type* __restrict__ scores_data,
                            fp_type* __restrict__ best_scores,
-                           chromosome* __restrict__ best_chromosomes,
+                           fp_type* __restrict__ best_chromosomes,
                            const int* __restrict__ atom_counts,
                            const int* __restrict__ rotamer_counts,
                            const fp_type* __restrict__ x_coords,
@@ -254,10 +254,12 @@ namespace mudock {
     const int thread                 = threadIdx.x;
     const int n_atoms                = atom_counts[ligand];
     const int n_rotamers             = rotamer_counts[ligand];
-    const int ligand_gene_offset     = ligand * population;
-    chromosome* __restrict__ current = current_data + ligand_gene_offset;
-    chromosome* __restrict__ next    = next_data + ligand_gene_offset;
-    fp_type* __restrict__ scores     = scores_data + ligand_gene_offset;
+    constexpr int gene_stride = 6 + MAX_ROTAMERS;
+    const int ligand_gene_offset = ligand * population * gene_stride;
+    const int ligand_score_offset = ligand * population;
+    fp_type* __restrict__ current = current_data + ligand_gene_offset;
+    fp_type* __restrict__ next    = next_data + ligand_gene_offset;
+    fp_type* __restrict__ scores   = scores_data + ligand_score_offset;
     __shared__ fp_type pose_x[FUSED_WARPS_PER_BLOCK][MAX_ATOMS];
     __shared__ fp_type pose_y[FUSED_WARPS_PER_BLOCK][MAX_ATOMS];
     __shared__ fp_type pose_z[FUSED_WARPS_PER_BLOCK][MAX_ATOMS];
@@ -267,10 +269,11 @@ namespace mudock {
     curand_init(seed + tid, tid, 0, &rng);
 
     for (int i = thread; i < population; i += FUSED_BLOCK_SIZE) {
+      fp_type* genes = current + i * gene_stride;
       scores[i] = std::numeric_limits<fp_type>::infinity();
-      for (int gene = 0; gene < 3; ++gene) current[i][gene] = fused_random(rng, -45, 45) * fp_type{0.2};
+      for (int gene = 0; gene < 3; ++gene) genes[gene] = fused_random(rng, -45, 45) * fp_type{0.2};
       for (int gene = 3; gene < 6 + n_rotamers; ++gene)
-        current[i][gene] = fused_random(rng, -45, 45) * fp_type{4};
+        genes[gene] = fused_random(rng, -45, 45) * fp_type{4};
     }
     __syncthreads();
 
@@ -301,19 +304,20 @@ namespace mudock {
           translate_molecule_cuda<MAX_ATOMS>(x,
                                              y,
                                              z,
-                                             current[pose][0],
-                                             current[pose][1],
-                                             current[pose][2],
+                                             current[pose * gene_stride],
+                                             current[pose * gene_stride + 1],
+                                             current[pose * gene_stride + 2],
                                              n_atoms);
           __syncwarp();
           rotate_molecule_cuda<MAX_ATOMS>(x,
                                           y,
                                           z,
-                                          current[pose][3],
-                                          current[pose][4],
-                                          current[pose][5],
+                                          current[pose * gene_stride + 3],
+                                          current[pose * gene_stride + 4],
+                                          current[pose * gene_stride + 5],
                                           n_atoms);
           __syncwarp();
+          MUDOCK_PRAGMA_TEMPLATE_UNROLL(MAX_ROTAMERS, 1)
           for (int rot = 0; rot < n_rotamers; ++rot) {
             rotate_fragment_cuda<MAX_ATOMS>(x,
                                             y,
@@ -321,7 +325,7 @@ namespace mudock {
                                             ligand_fragments + rot * n_atoms,
                                             frag_start[rot],
                                             frag_stop[rot],
-                                            current[pose][6 + rot],
+                                            current[pose * gene_stride + 6 + rot],
                                             n_atoms);
             __syncwarp();
           }
@@ -361,17 +365,20 @@ namespace mudock {
           const int p1    = fused_select(rng, population, tournament_length, scores);
           const int p2    = fused_select(rng, population, tournament_length, scores);
           const int split = fused_random_int(rng, 0, 6 + n_rotamers);
+          fp_type* child_genes = next + child * gene_stride;
+          const fp_type* parent1_genes = current + p1 * gene_stride;
+          const fp_type* parent2_genes = current + p2 * gene_stride;
           for (int gene = 0; gene < 6 + n_rotamers; ++gene)
-            next[child][gene] = gene < split ? current[p1][gene] : current[p2][gene];
+            child_genes[gene] = gene < split ? parent1_genes[gene] : parent2_genes[gene];
           for (int gene = 0; gene < 3; ++gene)
             if (fused_random(rng, 0, 1) < mutation_probability)
-              next[child][gene] += fused_random(rng, -10, 10) * fp_type{0.2};
+              child_genes[gene] += fused_random(rng, -10, 10) * fp_type{0.2};
           for (int gene = 3; gene < 6 + n_rotamers; ++gene)
             if (fused_random(rng, 0, 1) < mutation_probability)
-              next[child][gene] += fused_random(rng, -10, 10) * fp_type{4};
+              child_genes[gene] += fused_random(rng, -10, 10) * fp_type{4};
         }
         __syncthreads();
-        chromosome* swap = current;
+        fp_type* swap = current;
         current          = next;
         next             = swap;
       }
@@ -396,8 +403,10 @@ namespace mudock {
       }
       if (lane == 0) {
         best_scores[ligand] = best_score;
+        const fp_type* best_genes = current + best_index * gene_stride;
+        fp_type* output_genes = best_chromosomes + ligand * gene_stride;
         for (int gene = 0; gene < 6 + n_rotamers; ++gene)
-          best_chromosomes[ligand][gene] = current[best_index][gene];
+          output_genes[gene] = best_genes[gene];
       }
     }
   }
@@ -445,19 +454,38 @@ namespace mudock {
     constexpr_switch_bucket<0, reorder_buffer<static_molecule>::get_num_atom_clusters(), 1>(
         [&](const auto atom_cluster) {
           constexpr int max_atoms = reorder_buffer<static_molecule>::atoms_clusters[atom_cluster];
-          q->launch_kernel((void*) genetic_fused_kernel<max_atoms>, args, data.ligands, FUSED_BLOCK_SIZE);
+          constexpr_switch_bucket<0, reorder_buffer<static_molecule>::get_num_rotamer_clusters(), 1>(
+              [&](const auto rotamer_cluster) {
+                constexpr int max_rotamers =
+                    reorder_buffer<static_molecule>::rotamers_clusters[rotamer_cluster];
+                q->launch_kernel((void*) genetic_fused_kernel<max_atoms, max_rotamers>,
+                                 args,
+                                 data.ligands,
+                                 FUSED_BLOCK_SIZE);
+              },
+              data.max_rotamers,
+              reorder_buffer<static_molecule>::rotamers_clusters.data());
         },
         data.atoms,
         reorder_buffer<static_molecule>::atoms_clusters.data());
   }
 
-  batch_multiple get_genetic_fused_batch_multiple_cuda(const int device_id, const int atoms) {
+  batch_multiple get_genetic_fused_batch_multiple_cuda(const int device_id,
+                                                        const int atoms,
+                                                        const int max_rotamers) {
     batch_multiple multiple{};
     constexpr_switch_bucket<0, reorder_buffer<static_molecule>::get_num_atom_clusters(), 1>(
         [&](const auto atom_cluster) {
           constexpr int max_atoms = reorder_buffer<static_molecule>::atoms_clusters[atom_cluster];
-          multiple =
-              get_kernel_batch_multiple_cuda<genetic_fused_kernel<max_atoms>>(device_id, FUSED_BLOCK_SIZE);
+          constexpr_switch_bucket<0, reorder_buffer<static_molecule>::get_num_rotamer_clusters(), 1>(
+              [&](const auto rotamer_cluster) {
+                constexpr int max_rotamers_bucket =
+                    reorder_buffer<static_molecule>::rotamers_clusters[rotamer_cluster];
+                multiple = get_kernel_batch_multiple_cuda<
+                    genetic_fused_kernel<max_atoms, max_rotamers_bucket>>(device_id, FUSED_BLOCK_SIZE);
+              },
+              max_rotamers,
+              reorder_buffer<static_molecule>::rotamers_clusters.data());
         },
         atoms,
         reorder_buffer<static_molecule>::atoms_clusters.data());
