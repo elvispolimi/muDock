@@ -15,6 +15,8 @@
 #define FUSED_FLATTENED_3D(x, y, z, ix, ixy) ((ixy) * (z) + (y) * (ix) + (x))
 #define FUSED_WARPS_PER_BLOCK                4
 #define FUSED_BLOCK_SIZE                     (BLOCK_SIZE * FUSED_WARPS_PER_BLOCK)
+// 1 requests full unrolling; larger values reduce the template unroll factor.
+#define FUSED_ROTAMER_UNROLL_DIVISOR 1
 #if defined(MUDOCK_GENETIC_FUSED_LAUNCH_BOUNDS_ATOM_SCALED_MAX)
   #define FUSED_GENETIC_LAUNCH_BOUNDS(max_atoms) \
     __launch_bounds__(FUSED_BLOCK_SIZE, (max_atoms) >= 160 ? 1 : ((max_atoms) >= 128 ? 2 : 8))
@@ -317,17 +319,19 @@ namespace mudock {
                                           current[pose * gene_stride + 5],
                                           n_atoms);
           __syncwarp();
-          MUDOCK_PRAGMA_TEMPLATE_UNROLL(MAX_ROTAMERS, 1)
-          for (int rot = 0; rot < n_rotamers; ++rot) {
-            rotate_fragment_cuda<MAX_ATOMS>(x,
-                                            y,
-                                            z,
-                                            ligand_fragments + rot * n_atoms,
-                                            frag_start[rot],
-                                            frag_stop[rot],
-                                            current[pose * gene_stride + 6 + rot],
-                                            n_atoms);
-            __syncwarp();
+          MUDOCK_PRAGMA_TEMPLATE_UNROLL(MAX_ROTAMERS / FUSED_ROTAMER_UNROLL_DIVISOR, 1)
+          for (int rot = 0; rot < MAX_ROTAMERS; ++rot) {
+            if (rot < n_rotamers) {
+              rotate_fragment_cuda<MAX_ATOMS>(x,
+                                              y,
+                                              z,
+                                              ligand_fragments + rot * n_atoms,
+                                              frag_start[rot],
+                                              frag_stop[rot],
+                                              current[pose * gene_stride + 6 + rot],
+                                              n_atoms);
+              __syncwarp();
+            }
           }
           const fp_type score = fused_score_pose<MAX_ATOMS>(ligand,
                                                             lane,
