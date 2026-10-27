@@ -4,6 +4,7 @@
 #include <array>
 #include <cstdint>
 #include <functional>
+#include <mudock/log.hpp>
 #include <memory>
 #include <mudock/batch.hpp>
 #include <mutex>
@@ -84,22 +85,54 @@ namespace mudock {
         cluster_ptr = std::make_unique<batch<T>>();
         cluster_ptr->batch_max_atoms = atoms_clusters[atom_index];
         cluster_ptr->batch_max_rotamers = rotamers_clusters[rotamer_index];
+        stage_bucket_trace("REORDER_BUFFER allocate atom_bucket<=",
+                           atoms_clusters[atom_index],
+                           " rotamer_bucket<=",
+                           rotamers_clusters[rotamer_index],
+                           " max_ligands=",
+                           max_sizes[atom_index][rotamer_index],
+                           " storage_slots=",
+                           batch<T>::max_batch_size,
+                           " batch_object_bytes=",
+                           sizeof(batch<T>));
       }
       auto& cluster = *cluster_ptr;
       cluster.num_atoms += new_molecule->num_atoms();
       cluster.molecules[cluster.num_ligands] = std::move(new_molecule);
       ++cluster.num_ligands;
-      return cluster.num_ligands < max_sizes[atom_index][rotamer_index]
-                 ? std::make_pair(batch<T>{}, false)
-                 : std::make_pair(std::move(cluster), true);
+      if (cluster.num_ligands < max_sizes[atom_index][rotamer_index])
+        return std::make_pair(batch<T>{}, false);
+
+      stage_bucket_trace("REORDER_BUFFER emit atom_bucket<=",
+                         cluster.batch_max_atoms,
+                         " rotamer_bucket<=",
+                         cluster.batch_max_rotamers,
+                         " ligands=",
+                         cluster.num_ligands,
+                         " atoms=",
+                         cluster.num_atoms,
+                         " capacity=",
+                         max_sizes[atom_index][rotamer_index]);
+      return std::make_pair(std::move(cluster), true);
     }
 
     // get the first half-empty butches inside this buffer
     std::pair<batch<T>, bool> flush_one() {
       std::lock_guard lock{mutex};
-      for (auto& atom_clusters: clusters) {
-        for (auto& cluster: atom_clusters) {
+      for (std::size_t atom_index = 0; atom_index < clusters.size(); ++atom_index) {
+        for (std::size_t rotamer_index = 0; rotamer_index < clusters[atom_index].size(); ++rotamer_index) {
+          auto& cluster = clusters[atom_index][rotamer_index];
           if (cluster && cluster->num_ligands > 0) {
+            stage_bucket_trace("REORDER_BUFFER flush atom_bucket<=",
+                               cluster->batch_max_atoms,
+                               " rotamer_bucket<=",
+                               cluster->batch_max_rotamers,
+                               " ligands=",
+                               cluster->num_ligands,
+                               " atoms=",
+                               cluster->num_atoms,
+                               " capacity=",
+                               max_sizes[atom_index][rotamer_index]);
             return std::make_pair(std::move(*cluster), true);
           }
         }
