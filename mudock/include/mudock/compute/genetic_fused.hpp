@@ -327,8 +327,19 @@ namespace mudock {
       const auto max_bucket_size = std::max<std::size_t>(1, max_mem / mem_per_ligand);
       const auto fallback = [&]() -> batch_multiple {
 #if defined(MUDOCK_USE_CUDA)
-        if constexpr (std::same_as<queue_type, queue_cuda>)
-          return get_genetic_fused_batch_multiple_cuda(q->get_id(), atoms, max_rotamers);
+        if constexpr (std::same_as<queue_type, queue_cuda>) {
+          const auto multiple = get_genetic_fused_batch_multiple_cuda(q->get_id(), atoms, max_rotamers);
+          mudock::stage_bucket_trace(stage_name,
+                                     " CUDA occupancy device=",
+                                     q->get_id(),
+                                     " active_blocks_per_sm=",
+                                     multiple.active_blocks_per_sm,
+                                     " num_sms=",
+                                     multiple.num_sms,
+                                     " total_multiple=",
+                                     multiple.total_multiple());
+          return multiple;
+        }
 #endif
         return {};
       };
@@ -336,7 +347,9 @@ namespace mudock {
                                  stage_name,
                                  ") pre-resolve for ",
                                  atoms,
-                                 " atoms: mem_budget=",
+                                 " atoms, max_rotamers=",
+                                 max_rotamers,
+                                 ": mem_budget=",
                                  max_mem,
                                  " B, mem_per_ligand=",
                                  mem_per_ligand,
