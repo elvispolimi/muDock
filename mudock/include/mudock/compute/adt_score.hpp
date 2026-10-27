@@ -101,10 +101,6 @@ namespace mudock {
       // preparing the scoring function in the local search pipeline, which otherwise woudn't do it alone 
       // because it was managed in the genetic preparation
       
-      // Check if already prepared for this batch size
-      if (batch_ligands == batch.num_ligands && batch_atoms == batch.batch_max_atoms) {
-        return;  // Already prepared with same dimensions
-      }
       batch_ligands                = batch.num_ligands;
       batch_atoms                  = batch.batch_max_atoms;
       const int batch_non_bonds    = batch_ligands * batch_atoms * batch_atoms;
