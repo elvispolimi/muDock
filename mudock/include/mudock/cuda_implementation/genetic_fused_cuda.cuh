@@ -10,15 +10,22 @@
   #include <mudock/cuda_implementation/queue_cuda.cuh>
 #endif
 
-// Define this to process poses with one warp per ligand block instead of four.
+// Source-level experiment switches for the fused genetic kernel.
+// Uncomment to process one ligand per block with one warp instead of four.
 // #define FUSED_GENETIC_SINGLE_WARP
 #ifdef FUSED_GENETIC_SINGLE_WARP
   #define FUSED_WARPS_PER_BLOCK 1
 #else
   #define FUSED_WARPS_PER_BLOCK 4
 #endif
-// Comment this out to store per-warp pose coordinates in the global scratch slab.
+
+// Comment out to store per-warp pose coordinates in the global scratch slab.
 #define FUSED_GENETIC_USE_SHARED_MEMORY
+
+// Comment out to use a runtime rotamer loop instead of template specialization.
+#define FUSED_GENETIC_TEMPLATE_ROTAMERS
+// 1 requests full unrolling; larger values reduce the template unroll factor.
+#define FUSED_ROTAMER_UNROLL_DIVISOR 1
 
 namespace mudock {
   struct genetic_fused_data {

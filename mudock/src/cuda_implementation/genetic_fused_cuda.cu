@@ -14,10 +14,6 @@
 
 #define FUSED_FLATTENED_3D(x, y, z, ix, ixy) ((ixy) * (z) + (y) * (ix) + (x))
 #define FUSED_BLOCK_SIZE                     (BLOCK_SIZE * FUSED_WARPS_PER_BLOCK)
-// Comment this out to use a runtime loop without a MAX_ROTAMERS specialization.
-#define FUSED_GENETIC_TEMPLATE_ROTAMERS
-// 1 requests full unrolling; larger values reduce the template unroll factor.
-#define FUSED_ROTAMER_UNROLL_DIVISOR 1
 #if defined(MUDOCK_GENETIC_FUSED_LAUNCH_BOUNDS_ATOM_SCALED_MAX)
   #define FUSED_GENETIC_LAUNCH_BOUNDS(max_atoms) \
     __launch_bounds__(FUSED_BLOCK_SIZE, (max_atoms) >= 160 ? 1 : ((max_atoms) >= 128 ? 2 : 8))
@@ -160,46 +156,46 @@ namespace mudock {
 
     // Previous non-unrolled intramolecular pair loop, disabled to isolate
     // its runtime cost from the grid-based score:
-    // constexpr fp_type A        = mehler_solmajer::A;
-    // constexpr fp_type B        = mehler_solmajer::B;
-    // constexpr fp_type rk       = mehler_solmajer::rk;
-    // constexpr fp_type lambda_B = mehler_solmajer::lambda_B;
-    // const int nb_begin         = num_nonbond[ligand];
-    // const int nb_count         = num_nonbond[ligand + 1] - nb_begin;
-    // const int* nb_a1           = nonbond_a1 + nb_begin;
-    // const int* nb_a2           = nonbond_a2 + nb_begin;
-    // const fp_type* nb_cA       = nonbond_cA + nb_begin;
-    // const fp_type* nb_cB       = nonbond_cB + nb_begin;
-    // const int* nb_xB           = nonbond_xB + nb_begin;
-    // fp_type elec_internal = 0, vdw_internal = 0, desolv_internal = 0;
-    // if (num_rotamers > 0) {
-    //   for (int i = lane; i < nb_count; i += BLOCK_SIZE) {
-    //     const int a1 = nb_a1[i], a2 = nb_a2[i];
-    //     const fp_type q1 = charge[a1], q2 = charge[a2];
-    //     const fp_type dx = x[a1] - x[a2], dy = y[a1] - y[a2], dz = z[a1] - z[a2];
-    //     const fp_type distance2  = dx * dx + dy * dy + dz * dz;
-    //     const fp_type clamped    = distance2 > RMIN_ELEC_SQUARE ? distance2 : RMIN_ELEC_SQUARE;
-    //     const fp_type distance   = sqrtf(clamped);
-    //     const fp_type dielectric = A + B / (fp_type{1} + rk * expf(lambda_B * distance));
-    //     elec_internal += q1 * q2 * ELECSCALE * autodock_parameters::coeff_estat / (distance * dielectric);
-    //     const fp_type nb_desolv =
-    //         vol[a2] * (solpar[a1] + qsolpar * fabsf(q1)) + vol[a1] * (solpar[a2] + qsolpar * fabsf(q2));
-    //     desolv_internal +=
-    //         autodock_parameters::coeff_desolv * expf(fp_type{-0.5} / sigma_square * clamped) * nb_desolv;
-    //     if (clamped < nbc2 && xA_default != nb_xB[i]) {
-    //       const fp_type log_distance = logf(distance);
-    //       const fp_type rA           = expf(static_cast<fp_type>(xA_default) * log_distance);
-    //       const fp_type rB           = expf(static_cast<fp_type>(nb_xB[i]) * log_distance);
-    //       fp_type e                  = nb_cA[i] / rA - nb_cB[i] / rB;
-    //       e                          = EINTCLAMP < e ? EINTCLAMP : e;
-    //       vdw_internal += e;
-    //     }
-    //   }
-    // }
-    // fp_type elec_energy = 0, vdw_energy = 0, desolv_energy = 0;
-    // elec_energy    = elec_internal;
-    // vdw_energy     = vdw_internal;
-    // desolv_energy  = desolv_internal;
+    constexpr fp_type A        = mehler_solmajer::A;
+    constexpr fp_type B        = mehler_solmajer::B;
+    constexpr fp_type rk       = mehler_solmajer::rk;
+    constexpr fp_type lambda_B = mehler_solmajer::lambda_B;
+    const int nb_begin         = num_nonbond[ligand];
+    const int nb_count         = num_nonbond[ligand + 1] - nb_begin;
+    const int* nb_a1           = nonbond_a1 + nb_begin;
+    const int* nb_a2           = nonbond_a2 + nb_begin;
+    const fp_type* nb_cA       = nonbond_cA + nb_begin;
+    const fp_type* nb_cB       = nonbond_cB + nb_begin;
+    const int* nb_xB           = nonbond_xB + nb_begin;
+    fp_type elec_internal = 0, vdw_internal = 0, desolv_internal = 0;
+    if (num_rotamers > 0) {
+      for (int i = lane; i < nb_count; i += BLOCK_SIZE) {
+        const int a1 = nb_a1[i], a2 = nb_a2[i];
+        const fp_type q1 = charge[a1], q2 = charge[a2];
+        const fp_type dx = x[a1] - x[a2], dy = y[a1] - y[a2], dz = z[a1] - z[a2];
+        const fp_type distance2  = dx * dx + dy * dy + dz * dz;
+        const fp_type clamped    = distance2 > RMIN_ELEC_SQUARE ? distance2 : RMIN_ELEC_SQUARE;
+        const fp_type distance   = sqrtf(clamped);
+        const fp_type dielectric = A + B / (fp_type{1} + rk * expf(lambda_B * distance));
+        elec_internal += q1 * q2 * ELECSCALE * autodock_parameters::coeff_estat / (distance * dielectric);
+        const fp_type nb_desolv =
+            vol[a2] * (solpar[a1] + qsolpar * fabsf(q1)) + vol[a1] * (solpar[a2] + qsolpar * fabsf(q2));
+        desolv_internal +=
+            autodock_parameters::coeff_desolv * expf(fp_type{-0.5} / sigma_square * clamped) * nb_desolv;
+        if (clamped < nbc2 && xA_default != nb_xB[i]) {
+          const fp_type log_distance = logf(distance);
+          const fp_type rA           = expf(static_cast<fp_type>(xA_default) * log_distance);
+          const fp_type rB           = expf(static_cast<fp_type>(nb_xB[i]) * log_distance);
+          fp_type e                  = nb_cA[i] / rA - nb_cB[i] / rB;
+          e                          = EINTCLAMP < e ? EINTCLAMP : e;
+          vdw_internal += e;
+        }
+      }
+    }
+    fp_type elec_energy = 0, vdw_energy = 0, desolv_energy = 0;
+    elec_energy    = elec_internal;
+    vdw_energy     = vdw_internal;
+    desolv_energy  = desolv_internal;
     fp_type energy = vdw_grid + elec_grid + desolv_grid;
     for (int offset = BLOCK_SIZE / 2; offset > 0; offset /= 2)
       energy += __shfl_down_sync(0xffffffff, energy, offset);
@@ -210,9 +206,9 @@ namespace mudock {
 
 #ifdef FUSED_GENETIC_TEMPLATE_ROTAMERS
   template<int MAX_ATOMS, int MAX_ROTAMERS>
-  #else
+#else
   template<int MAX_ATOMS>
-  #endif
+#endif
   __global__ void FUSED_GENETIC_LAUNCH_BOUNDS(MAX_ATOMS)
       genetic_fused_kernel(const int ligands,
                            const int atoms,
@@ -258,34 +254,33 @@ namespace mudock {
     const int ligand = blockIdx.x;
     if (ligand >= ligands)
       return;
-    const int lane                   = threadIdx.x % BLOCK_SIZE;
-    const int warp                   = threadIdx.x / BLOCK_SIZE;
-    const int thread                 = threadIdx.x;
-    const int n_atoms                = atom_counts[ligand];
-    const int n_rotamers             = rotamer_counts[ligand];
+    const int lane       = threadIdx.x % BLOCK_SIZE;
+    const int warp       = threadIdx.x / BLOCK_SIZE;
+    const int thread     = threadIdx.x;
+    const int n_atoms    = atom_counts[ligand];
+    const int n_rotamers = rotamer_counts[ligand];
 #ifdef FUSED_GENETIC_TEMPLATE_ROTAMERS
-    constexpr int gene_stride = 6 + MAX_ROTAMERS;
+    constexpr int gene_stride        = 6 + MAX_ROTAMERS;
     constexpr int rotamer_loop_bound = MAX_ROTAMERS;
 #else
-    const int gene_stride = 6 + max_rotamers;
+    const int gene_stride        = 6 + max_rotamers;
     const int rotamer_loop_bound = n_rotamers;
 #endif
-    const int ligand_gene_offset = ligand * population * gene_stride;
+    const int ligand_gene_offset  = ligand * population * gene_stride;
     const int ligand_score_offset = ligand * population;
     fp_type* __restrict__ current = current_data + ligand_gene_offset;
     fp_type* __restrict__ next    = next_data + ligand_gene_offset;
-    fp_type* __restrict__ scores   = scores_data + ligand_score_offset;
+    fp_type* __restrict__ scores  = scores_data + ligand_score_offset;
 #ifdef FUSED_GENETIC_USE_SHARED_MEMORY
     __shared__ fp_type pose_x[FUSED_WARPS_PER_BLOCK][MAX_ATOMS];
     __shared__ fp_type pose_y[FUSED_WARPS_PER_BLOCK][MAX_ATOMS];
     __shared__ fp_type pose_z[FUSED_WARPS_PER_BLOCK][MAX_ATOMS];
 #else
-    const std::size_t warp_scratch_stride = static_cast<std::size_t>(FUSED_WARPS_PER_BLOCK) * atoms;
-    const std::size_t ligand_scratch_offset =
-        static_cast<std::size_t>(ligand) * 3 * warp_scratch_stride;
-    fp_type* const pose_x = pose_scratch + ligand_scratch_offset;
-    fp_type* const pose_y = pose_x + warp_scratch_stride;
-    fp_type* const pose_z = pose_y + warp_scratch_stride;
+    const std::size_t warp_scratch_stride   = static_cast<std::size_t>(FUSED_WARPS_PER_BLOCK) * atoms;
+    const std::size_t ligand_scratch_offset = static_cast<std::size_t>(ligand) * 3 * warp_scratch_stride;
+    fp_type* const pose_x                   = pose_scratch + ligand_scratch_offset;
+    fp_type* const pose_y                   = pose_x + warp_scratch_stride;
+    fp_type* const pose_z                   = pose_y + warp_scratch_stride;
 #endif
 
     curandState rng;
@@ -294,10 +289,9 @@ namespace mudock {
 
     for (int i = thread; i < population; i += FUSED_BLOCK_SIZE) {
       fp_type* genes = current + i * gene_stride;
-      scores[i] = std::numeric_limits<fp_type>::infinity();
+      scores[i]      = std::numeric_limits<fp_type>::infinity();
       for (int gene = 0; gene < 3; ++gene) genes[gene] = fused_random(rng, -45, 45) * fp_type{0.2};
-      for (int gene = 3; gene < 6 + n_rotamers; ++gene)
-        genes[gene] = fused_random(rng, -45, 45) * fp_type{4};
+      for (int gene = 3; gene < 6 + n_rotamers; ++gene) genes[gene] = fused_random(rng, -45, 45) * fp_type{4};
     }
     __syncthreads();
 
@@ -319,9 +313,9 @@ namespace mudock {
           fp_type* __restrict__ z = pose_z[warp];
 #else
           const std::size_t warp_offset = static_cast<std::size_t>(warp) * atoms;
-          fp_type* __restrict__ x = pose_x + warp_offset;
-          fp_type* __restrict__ y = pose_y + warp_offset;
-          fp_type* __restrict__ z = pose_z + warp_offset;
+          fp_type* __restrict__ x       = pose_x + warp_offset;
+          fp_type* __restrict__ y       = pose_y + warp_offset;
+          fp_type* __restrict__ z       = pose_z + warp_offset;
 #endif
           MUDOCK_PRAGMA_TEMPLATE_UNROLL(MAX_ATOMS, BLOCK_SIZE)
           for (int atom = lane; atom < MAX_ATOMS; atom += BLOCK_SIZE) {
@@ -399,10 +393,10 @@ namespace mudock {
 
       if (generation + 1 < generations) {
         for (int child = thread; child < population; child += FUSED_BLOCK_SIZE) {
-          const int p1    = fused_select(rng, population, tournament_length, scores);
-          const int p2    = fused_select(rng, population, tournament_length, scores);
-          const int split = fused_random_int(rng, 0, 6 + n_rotamers);
-          fp_type* child_genes = next + child * gene_stride;
+          const int p1                 = fused_select(rng, population, tournament_length, scores);
+          const int p2                 = fused_select(rng, population, tournament_length, scores);
+          const int split              = fused_random_int(rng, 0, 6 + n_rotamers);
+          fp_type* child_genes         = next + child * gene_stride;
           const fp_type* parent1_genes = current + p1 * gene_stride;
           const fp_type* parent2_genes = current + p2 * gene_stride;
           for (int gene = 0; gene < 6 + n_rotamers; ++gene)
@@ -416,8 +410,8 @@ namespace mudock {
         }
         __syncthreads();
         fp_type* swap = current;
-        current          = next;
-        next             = swap;
+        current       = next;
+        next          = swap;
       }
     }
 
@@ -439,11 +433,10 @@ namespace mudock {
         }
       }
       if (lane == 0) {
-        best_scores[ligand] = best_score;
+        best_scores[ligand]       = best_score;
         const fp_type* best_genes = current + best_index * gene_stride;
-        fp_type* output_genes = best_chromosomes + ligand * gene_stride;
-        for (int gene = 0; gene < 6 + n_rotamers; ++gene)
-          output_genes[gene] = best_genes[gene];
+        fp_type* output_genes     = best_chromosomes + ligand * gene_stride;
+        for (int gene = 0; gene < 6 + n_rotamers; ++gene) output_genes[gene] = best_genes[gene];
       }
     }
   }
@@ -506,19 +499,15 @@ namespace mudock {
               data.max_rotamers,
               reorder_buffer<static_molecule>::rotamers_clusters.data());
 #else
-          q->launch_kernel((void*) genetic_fused_kernel<max_atoms>,
-                           args,
-                           data.ligands,
-                           FUSED_BLOCK_SIZE);
+          q->launch_kernel((void*) genetic_fused_kernel<max_atoms>, args, data.ligands, FUSED_BLOCK_SIZE);
 #endif
         },
         data.atoms,
         reorder_buffer<static_molecule>::atoms_clusters.data());
   }
 
-  batch_multiple get_genetic_fused_batch_multiple_cuda(const int device_id,
-                                                        const int atoms,
-                                                        const int max_rotamers) {
+  batch_multiple
+      get_genetic_fused_batch_multiple_cuda(const int device_id, const int atoms, const int max_rotamers) {
     batch_multiple multiple{};
     constexpr_switch_bucket<0, reorder_buffer<static_molecule>::get_num_atom_clusters(), 1>(
         [&](const auto atom_cluster) {
@@ -528,15 +517,17 @@ namespace mudock {
               [&](const auto rotamer_cluster) {
                 constexpr int max_rotamers_bucket =
                     reorder_buffer<static_molecule>::rotamers_clusters[rotamer_cluster];
-                multiple = get_kernel_batch_multiple_cuda<
-                    genetic_fused_kernel<max_atoms, max_rotamers_bucket>>(device_id, FUSED_BLOCK_SIZE);
+                multiple =
+                    get_kernel_batch_multiple_cuda<genetic_fused_kernel<max_atoms, max_rotamers_bucket>>(
+                        device_id,
+                        FUSED_BLOCK_SIZE);
               },
               max_rotamers,
               reorder_buffer<static_molecule>::rotamers_clusters.data());
 #else
           (void) max_rotamers;
-          multiple = get_kernel_batch_multiple_cuda<genetic_fused_kernel<max_atoms>>(
-              device_id, FUSED_BLOCK_SIZE);
+          multiple =
+              get_kernel_batch_multiple_cuda<genetic_fused_kernel<max_atoms>>(device_id, FUSED_BLOCK_SIZE);
 #endif
         },
         atoms,
