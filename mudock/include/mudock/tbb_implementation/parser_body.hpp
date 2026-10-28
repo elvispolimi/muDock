@@ -1,0 +1,41 @@
+#pragma once
+
+#include "stream_engine_types.hpp"
+
+#include <atomic>
+#include <cstddef>
+#include <exception>
+#include <memory>
+#include <mudock/format/reader.hpp>
+#include <mudock/format/supported_format.hpp>
+#include <mudock/molecule.hpp>
+#include <oneapi/tbb/flow_graph.h>
+#include <string>
+
+namespace mudock::stream_engine {
+
+  /**
+   * Multifunction-node body that parses one input token into a `static_molecule`;
+   * emits on port 0, or decrements the global limiter if parsing is skipped/aborted.
+   */
+  template<supported_format format>
+  class parser_body {
+    global_ligands_ln& global_ligands_limiter_;
+    std::atomic<std::size_t>& skipped_ligands_;
+
+  public:
+    explicit parser_body(global_ligands_ln& global_ligands_limiter, std::atomic<std::size_t>& skipped_ligands)
+        : global_ligands_limiter_(global_ligands_limiter), skipped_ligands_(skipped_ligands) {}
+
+    void operator()(const std::string& token, parser_mfn::output_ports_type& out) const {
+      try {
+        auto ligand = std::make_shared<static_molecule>(mudock::parser<format, static_molecule>(token));
+        std::get<0>(out).try_put(std::move(ligand));
+      } catch (const std::exception&) {
+        skipped_ligands_.fetch_add(1, std::memory_order_relaxed);
+        global_ligands_limiter_.decrementer().try_put(tbb_flow::continue_msg{});
+      }
+    }
+  };
+
+} // namespace mudock::stream_engine

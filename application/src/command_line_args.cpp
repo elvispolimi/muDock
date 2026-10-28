@@ -32,7 +32,7 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
   arguments_description.add_options()(
       "time_limit_sec",
       po::value(&time_limit_sec),
-      "Optional benchmark time limit in seconds; when reached, pending input ligands are discarded");
+      "Optional benchmark time limit in seconds; when reached, the run waits for in-flight tasks to finish, then results discards their results.");
   arguments_description.add_options()("observer",
                                       po::value(&observer_sec),
                                       "Optional throughput observer interval in seconds");
