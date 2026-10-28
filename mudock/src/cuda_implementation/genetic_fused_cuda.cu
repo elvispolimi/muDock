@@ -15,6 +15,8 @@
 #define FUSED_FLATTENED_3D(x, y, z, ix, ixy) ((ixy) * (z) + (y) * (ix) + (x))
 #define FUSED_WARPS_PER_BLOCK                4
 #define FUSED_BLOCK_SIZE                     (BLOCK_SIZE * FUSED_WARPS_PER_BLOCK)
+// Comment this out to use a runtime loop without a MAX_ROTAMERS specialization.
+#define FUSED_GENETIC_TEMPLATE_ROTAMERS
 // 1 requests full unrolling; larger values reduce the template unroll factor.
 #define FUSED_ROTAMER_UNROLL_DIVISOR 1
 #if defined(MUDOCK_GENETIC_FUSED_LAUNCH_BOUNDS_ATOM_SCALED_MAX)
@@ -207,10 +209,15 @@ namespace mudock {
     return __shfl_sync(0xffffffff, energy, 0);
   }
 
+#ifdef FUSED_GENETIC_TEMPLATE_ROTAMERS
   template<int MAX_ATOMS, int MAX_ROTAMERS>
+  #else
+  template<int MAX_ATOMS>
+  #endif
   __global__ void FUSED_GENETIC_LAUNCH_BOUNDS(MAX_ATOMS)
       genetic_fused_kernel(const int ligands,
                            const int atoms,
+                           const int max_rotamers,
                            const int population,
                            const int generations,
                            const int tournament_length,
@@ -256,7 +263,13 @@ namespace mudock {
     const int thread                 = threadIdx.x;
     const int n_atoms                = atom_counts[ligand];
     const int n_rotamers             = rotamer_counts[ligand];
+#ifdef FUSED_GENETIC_TEMPLATE_ROTAMERS
     constexpr int gene_stride = 6 + MAX_ROTAMERS;
+    constexpr int rotamer_loop_bound = MAX_ROTAMERS;
+#else
+    const int gene_stride = 6 + max_rotamers;
+    const int rotamer_loop_bound = n_rotamers;
+#endif
     const int ligand_gene_offset = ligand * population * gene_stride;
     const int ligand_score_offset = ligand * population;
     fp_type* __restrict__ current = current_data + ligand_gene_offset;
@@ -319,19 +332,23 @@ namespace mudock {
                                           current[pose * gene_stride + 5],
                                           n_atoms);
           __syncwarp();
+#ifdef FUSED_GENETIC_TEMPLATE_ROTAMERS
           MUDOCK_PRAGMA_TEMPLATE_UNROLL(MAX_ROTAMERS / FUSED_ROTAMER_UNROLL_DIVISOR, 1)
-          for (int rot = 0; rot < MAX_ROTAMERS; ++rot) {
-            if (rot < n_rotamers) {
-              rotate_fragment_cuda<MAX_ATOMS>(x,
-                                              y,
-                                              z,
-                                              ligand_fragments + rot * n_atoms,
-                                              frag_start[rot],
-                                              frag_stop[rot],
-                                              current[pose * gene_stride + 6 + rot],
-                                              n_atoms);
-              __syncwarp();
-            }
+#endif
+          for (int rot = 0; rot < rotamer_loop_bound; ++rot) {
+#ifdef FUSED_GENETIC_TEMPLATE_ROTAMERS
+            if (rot >= n_rotamers)
+              continue;
+#endif
+            rotate_fragment_cuda<MAX_ATOMS>(x,
+                                            y,
+                                            z,
+                                            ligand_fragments + rot * n_atoms,
+                                            frag_start[rot],
+                                            frag_stop[rot],
+                                            current[pose * gene_stride + 6 + rot],
+                                            n_atoms);
+            __syncwarp();
           }
           const fp_type score = fused_score_pose<MAX_ATOMS>(ligand,
                                                             lane,
@@ -418,6 +435,7 @@ namespace mudock {
   void genetic_fused_launcher<queue_cuda>::operator()() {
     void* args[] = {&data.ligands,
                     &data.atoms,
+                    &data.max_rotamers,
                     &data.population,
                     &data.generations,
                     &data.tournament_length,
@@ -458,6 +476,7 @@ namespace mudock {
     constexpr_switch_bucket<0, reorder_buffer<static_molecule>::get_num_atom_clusters(), 1>(
         [&](const auto atom_cluster) {
           constexpr int max_atoms = reorder_buffer<static_molecule>::atoms_clusters[atom_cluster];
+#ifdef FUSED_GENETIC_TEMPLATE_ROTAMERS
           constexpr_switch_bucket<0, reorder_buffer<static_molecule>::get_num_rotamer_clusters(), 1>(
               [&](const auto rotamer_cluster) {
                 constexpr int max_rotamers =
@@ -469,6 +488,12 @@ namespace mudock {
               },
               data.max_rotamers,
               reorder_buffer<static_molecule>::rotamers_clusters.data());
+#else
+          q->launch_kernel((void*) genetic_fused_kernel<max_atoms>,
+                           args,
+                           data.ligands,
+                           FUSED_BLOCK_SIZE);
+#endif
         },
         data.atoms,
         reorder_buffer<static_molecule>::atoms_clusters.data());
@@ -481,6 +506,7 @@ namespace mudock {
     constexpr_switch_bucket<0, reorder_buffer<static_molecule>::get_num_atom_clusters(), 1>(
         [&](const auto atom_cluster) {
           constexpr int max_atoms = reorder_buffer<static_molecule>::atoms_clusters[atom_cluster];
+#ifdef FUSED_GENETIC_TEMPLATE_ROTAMERS
           constexpr_switch_bucket<0, reorder_buffer<static_molecule>::get_num_rotamer_clusters(), 1>(
               [&](const auto rotamer_cluster) {
                 constexpr int max_rotamers_bucket =
@@ -490,6 +516,11 @@ namespace mudock {
               },
               max_rotamers,
               reorder_buffer<static_molecule>::rotamers_clusters.data());
+#else
+          (void) max_rotamers;
+          multiple = get_kernel_batch_multiple_cuda<genetic_fused_kernel<max_atoms>>(
+              device_id, FUSED_BLOCK_SIZE);
+#endif
         },
         atoms,
         reorder_buffer<static_molecule>::atoms_clusters.data());
