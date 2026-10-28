@@ -13,7 +13,6 @@
 #include <mudock/utils.hpp>
 
 #define FUSED_FLATTENED_3D(x, y, z, ix, ixy) ((ixy) * (z) + (y) * (ix) + (x))
-#define FUSED_WARPS_PER_BLOCK                4
 #define FUSED_BLOCK_SIZE                     (BLOCK_SIZE * FUSED_WARPS_PER_BLOCK)
 // Comment this out to use a runtime loop without a MAX_ROTAMERS specialization.
 #define FUSED_GENETIC_TEMPLATE_ROTAMERS
@@ -228,6 +227,7 @@ namespace mudock {
                            fp_type* __restrict__ scores_data,
                            fp_type* __restrict__ best_scores,
                            fp_type* __restrict__ best_chromosomes,
+                           fp_type* __restrict__ pose_scratch,
                            const int* __restrict__ atom_counts,
                            const int* __restrict__ rotamer_counts,
                            const fp_type* __restrict__ x_coords,
@@ -275,9 +275,18 @@ namespace mudock {
     fp_type* __restrict__ current = current_data + ligand_gene_offset;
     fp_type* __restrict__ next    = next_data + ligand_gene_offset;
     fp_type* __restrict__ scores   = scores_data + ligand_score_offset;
+#ifdef FUSED_GENETIC_USE_SHARED_MEMORY
     __shared__ fp_type pose_x[FUSED_WARPS_PER_BLOCK][MAX_ATOMS];
     __shared__ fp_type pose_y[FUSED_WARPS_PER_BLOCK][MAX_ATOMS];
     __shared__ fp_type pose_z[FUSED_WARPS_PER_BLOCK][MAX_ATOMS];
+#else
+    const std::size_t warp_scratch_stride = static_cast<std::size_t>(FUSED_WARPS_PER_BLOCK) * atoms;
+    const std::size_t ligand_scratch_offset =
+        static_cast<std::size_t>(ligand) * 3 * warp_scratch_stride;
+    fp_type* const pose_x = pose_scratch + ligand_scratch_offset;
+    fp_type* const pose_y = pose_x + warp_scratch_stride;
+    fp_type* const pose_z = pose_y + warp_scratch_stride;
+#endif
 
     curandState rng;
     const unsigned long long tid = static_cast<unsigned long long>(ligand) * FUSED_BLOCK_SIZE + thread;
@@ -304,9 +313,16 @@ namespace mudock {
       for (int pose_base = 0; pose_base < population; pose_base += FUSED_WARPS_PER_BLOCK) {
         const int pose = pose_base + warp;
         if (pose < population) {
+#ifdef FUSED_GENETIC_USE_SHARED_MEMORY
           fp_type* __restrict__ x = pose_x[warp];
           fp_type* __restrict__ y = pose_y[warp];
           fp_type* __restrict__ z = pose_z[warp];
+#else
+          const std::size_t warp_offset = static_cast<std::size_t>(warp) * atoms;
+          fp_type* __restrict__ x = pose_x + warp_offset;
+          fp_type* __restrict__ y = pose_y + warp_offset;
+          fp_type* __restrict__ z = pose_z + warp_offset;
+#endif
           MUDOCK_PRAGMA_TEMPLATE_UNROLL(MAX_ATOMS, BLOCK_SIZE)
           for (int atom = lane; atom < MAX_ATOMS; atom += BLOCK_SIZE) {
             if (atom < n_atoms) {
@@ -446,6 +462,7 @@ namespace mudock {
                     &data.scores,
                     &data.best_scores,
                     &data.best_chromosomes,
+                    &data.pose_scratch,
                     &data.num_atoms,
                     &data.num_rotamers,
                     &data.x_coords,

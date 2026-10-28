@@ -235,6 +235,8 @@ namespace mudock {
       auto* scores_device = take_device.template operator()<fp_type>(population_capacity);
       auto* best_scores_device = take_device.template operator()<fp_type>(ligand_count);
       auto* best_chromosomes_device = take_device.template operator()<fp_type>(ligand_count * gene_stride);
+      const auto pose_scratch_bytes = ligand_pose_scratch_bytes(ligand_count, atoms);
+      auto* pose_scratch_device = take_device.template operator()<fp_type>(pose_scratch_bytes / sizeof(fp_type));
 
       const auto seed = conf.seed.value_or(static_cast<std::size_t>(
           std::chrono::high_resolution_clock::now().time_since_epoch().count()));
@@ -251,6 +253,7 @@ namespace mudock {
                               scores_device,
                               best_scores_device,
                               best_chromosomes_device,
+                              pose_scratch_device,
                               num_atoms_device,
                               num_rotamers_device,
                               x_coords_device,
@@ -296,6 +299,8 @@ namespace mudock {
                                  max_rotamers,
                                  " slab_bytes=",
                                  total_bytes,
+                                 " pose_scratch_bytes=",
+                                 pose_scratch_bytes,
                                  " h2d_bytes=",
                                  input_bytes,
                                  " population=",
@@ -413,7 +418,18 @@ namespace mudock {
       return ligand_input_bytes(ligands, atoms, max_rotamers) +
              2 * population_capacity * gene_stride * sizeof(fp_type) +
              population_capacity * sizeof(fp_type) +
-             ligands * (sizeof(fp_type) + gene_stride * sizeof(fp_type));
+             ligands * (sizeof(fp_type) + gene_stride * sizeof(fp_type)) +
+             ligand_pose_scratch_bytes(ligands, atoms);
+    }
+
+    static std::size_t ligand_pose_scratch_bytes(const std::size_t ligands, const int atoms) {
+#if defined(FUSED_GENETIC_USE_SHARED_MEMORY)
+      (void)ligands;
+      (void)atoms;
+      return 0;
+#else
+      return 3 * ligands * FUSED_WARPS_PER_BLOCK * static_cast<std::size_t>(atoms) * sizeof(fp_type);
+#endif
     }
 
     std::shared_ptr<scratchpad<queue_t>> device_scratch;

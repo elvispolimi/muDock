@@ -10,6 +10,16 @@
   #include <mudock/cuda_implementation/queue_cuda.cuh>
 #endif
 
+// Define this to process poses with one warp per ligand block instead of four.
+// #define FUSED_GENETIC_SINGLE_WARP
+#ifdef FUSED_GENETIC_SINGLE_WARP
+  #define FUSED_WARPS_PER_BLOCK 1
+#else
+  #define FUSED_WARPS_PER_BLOCK 4
+#endif
+// Comment this out to store per-warp pose coordinates in the global scratch slab.
+#define FUSED_GENETIC_USE_SHARED_MEMORY
+
 namespace mudock {
   struct genetic_fused_data {
     int ligands;
@@ -25,6 +35,7 @@ namespace mudock {
     fp_type* scores;
     fp_type* best_scores;
     fp_type* best_chromosomes;
+    fp_type* pose_scratch;
     const int* num_atoms;
     const int* num_rotamers;
     const fp_type* x_coords;
