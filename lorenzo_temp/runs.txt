@@ -19,7 +19,7 @@
 
 ./builds/omp/application/muDock -p ./data/coreset_CASF_2016/2ymd/2ymd_protein.pdb -l ./data/coreset_CASF_2016/2ymd/2ymd_ligand.adtmol2 --seed 0 --search lga
 
-./builds/cuda/application/muDock -p ./data/ligen_poses_from_pdbbind2016_coreset/1a30/protein.pdb -l ./data/ligen_poses_from_pdbbind2016_coreset/1a30/poses.adtmol2 --seed 0 --search lga
+./builds/cuda/application/muDock -p ./data/1fkb/1fkb_pocket.pdb -l ./data/16all.adtmol2 --search genetic --observer 2 --use CUDA:GPU:0
 
 
 ############################

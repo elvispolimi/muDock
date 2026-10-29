@@ -17,8 +17,21 @@ cmake -S . -B builds/cuda \
     -DMUDOCK_ENABLE_OMP=ON \
     -DMUDOCK_ENABLE_CUDA=ON \
     -DMUDOCK_GPU_ARCHITECTURES=cuda:sm_80 \
-    -DCMAKE_BUILD_TYPE=Release &&\
+    -DCMAKE_BUILD_TYPE=Release && \
 cmake --build builds/cuda -j8
+
+rm -rf builds/cudatry && \
+cmake -S . -B builds/cudatry \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DMUDOCK_ENABLE_FAST=ON \
+  -DMUDOCK_ENABLE_KERNEL_LOCK=ON \
+  -DMUDOCK_ENABLE_STAGE_BUCKET_TRACE=ON \
+  -DMUDOCK_GENETIC_BUCKET_COMBINE=MIN \
+  -DMUDOCK_ATOM_CLUSTER_LEVEL=OFF \
+  -DMUDOCK_GPU_ARCHITECTURES=nvidia:sm_80 \
+  -DMUDOCK_ENABLE_CUDA=ON && \
+cmake --build builds/cudatry -j8
+
 
 rm -rf builds/debug_cuda && \
 cmake -S . -B builds/debug_cuda \

@@ -346,10 +346,10 @@ namespace mudock {
       // What to log during the local search
       // csv_logger score_logger("adadelta_scores.csv", {"ligand", "iteration", "standalone_ls_score"});
       // csv_logger rmsd_logger("adadelta_rmsd.csv", {"ligand", "iteration", "rmsd"});
-      std::string complex_id = this->crystal_template ? this->crystal_template->properties.get(property_type::NAME) : std::string{"unknown"};
-      const auto pos = complex_id.find('_');
-      if (pos != std::string::npos) complex_id.erase(pos);
-      static csv_logger crystal_experiment_logger(complex_id + ".csv", {"ligand_index", "initial_score", "final_score", "initial_rmsd", "final_rmsd", "iterations"});
+      // std::string complex_id = this->crystal_template ? this->crystal_template->properties.get(property_type::NAME) : std::string{"unknown"};
+      // const auto pos = complex_id.find('_');
+      // if (pos != std::string::npos) complex_id.erase(pos);
+      // static csv_logger crystal_experiment_logger(complex_id + ".csv", {"ligand_index", "initial_score", "final_score", "initial_rmsd", "final_rmsd", "iterations"});
       
       // auto &scores_b = (*this->scratch).template get<buffer_data_type::SCORES>();
       // fp_type crystal_score = 0.0;
@@ -367,46 +367,46 @@ namespace mudock {
 
         // Dump pose for visualization.
         // this->dump_pose(iter);
-        if (iter == 1) {
-          auto& scores_b = (*this->scratch).template get<buffer_data_type::SCORES>();
-          auto& x_scratch_b = (*this->scratch).template get<buffer_data_type::X_SCRATCH>();
-          auto& y_scratch_b = (*this->scratch).template get<buffer_data_type::Y_SCRATCH>();
-          auto& z_scratch_b = (*this->scratch).template get<buffer_data_type::Z_SCRATCH>();
-          scores_b.copy_device2host();
-          x_scratch_b.copy_device2host();
-          y_scratch_b.copy_device2host();
-          z_scratch_b.copy_device2host();
-          (*this->scratch).get_queue()->synchronize();
-          for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
-            initial_scores[ligand_index] = scores_b()[ligand_index];
-            initial_rmsds[ligand_index] = get_ligand_rmsd(ligand_index, x_scratch_b.host_pointer(), y_scratch_b.host_pointer(), z_scratch_b.host_pointer());
-          }
-        }
+        // if (iter == 1) {
+        //   auto& scores_b = (*this->scratch).template get<buffer_data_type::SCORES>();
+        //   auto& x_scratch_b = (*this->scratch).template get<buffer_data_type::X_SCRATCH>();
+        //   auto& y_scratch_b = (*this->scratch).template get<buffer_data_type::Y_SCRATCH>();
+        //   auto& z_scratch_b = (*this->scratch).template get<buffer_data_type::Z_SCRATCH>();
+        //   scores_b.copy_device2host();
+        //   x_scratch_b.copy_device2host();
+        //   y_scratch_b.copy_device2host();
+        //   z_scratch_b.copy_device2host();
+        //   (*this->scratch).get_queue()->synchronize();
+        //   for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
+        //     initial_scores[ligand_index] = scores_b()[ligand_index];
+        //     initial_rmsds[ligand_index] = get_ligand_rmsd(ligand_index, x_scratch_b.host_pointer(), y_scratch_b.host_pointer(), z_scratch_b.host_pointer());
+        //   }
+        // }
           
       }
       
       geom_trans();
       (*this->score_stage)();
       
-      auto& scores_b = (*this->scratch).template get<buffer_data_type::SCORES>();
-      auto& x_scratch_b = (*this->scratch).template get<buffer_data_type::X_SCRATCH>();
-      auto& y_scratch_b = (*this->scratch).template get<buffer_data_type::Y_SCRATCH>();
-      auto& z_scratch_b = (*this->scratch).template get<buffer_data_type::Z_SCRATCH>();
-      scores_b.copy_device2host();
-      x_scratch_b.copy_device2host();
-      y_scratch_b.copy_device2host();
-      z_scratch_b.copy_device2host();
-      const fp_type* x_scratch_b_ = x_scratch_b.host_pointer();
-      const fp_type* y_scratch_b_ = y_scratch_b.host_pointer();
-      const fp_type* z_scratch_b_ = z_scratch_b.host_pointer();
+      // auto& scores_b = (*this->scratch).template get<buffer_data_type::SCORES>();
+      // auto& x_scratch_b = (*this->scratch).template get<buffer_data_type::X_SCRATCH>();
+      // auto& y_scratch_b = (*this->scratch).template get<buffer_data_type::Y_SCRATCH>();
+      // auto& z_scratch_b = (*this->scratch).template get<buffer_data_type::Z_SCRATCH>();
+      // scores_b.copy_device2host();
+      // x_scratch_b.copy_device2host();
+      // y_scratch_b.copy_device2host();
+      // z_scratch_b.copy_device2host();
+      // const fp_type* x_scratch_b_ = x_scratch_b.host_pointer();
+      // const fp_type* y_scratch_b_ = y_scratch_b.host_pointer();
+      // const fp_type* z_scratch_b_ = z_scratch_b.host_pointer();
 
-      (*this->scratch).get_queue()->synchronize();
-      for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
-        final_scores[ligand_index] = scores_b()[ligand_index];
-        final_rmsds[ligand_index] = get_ligand_rmsd(ligand_index, x_scratch_b_, y_scratch_b_, z_scratch_b_);
-        crystal_experiment_logger.log(this->ligand_names[ligand_index], initial_scores[ligand_index], final_scores[ligand_index], initial_rmsds[ligand_index], final_rmsds[ligand_index], this->iterations);
-        this->dump_pose(complex_id, ligand_index, x_scratch_b_, y_scratch_b_, z_scratch_b_, batch_atoms);
-      }
+      // (*this->scratch).get_queue()->synchronize();
+      // for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
+      //   final_scores[ligand_index] = scores_b()[ligand_index];
+      //   final_rmsds[ligand_index] = get_ligand_rmsd(ligand_index, x_scratch_b_, y_scratch_b_, z_scratch_b_);
+      //   crystal_experiment_logger.log(this->ligand_names[ligand_index], initial_scores[ligand_index], final_scores[ligand_index], initial_rmsds[ligand_index], final_rmsds[ligand_index], this->iterations);
+      //   this->dump_pose(complex_id, ligand_index, x_scratch_b_, y_scratch_b_, z_scratch_b_, batch_atoms);
+      // }
 
       
 

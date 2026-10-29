@@ -123,7 +123,6 @@ namespace mudock {
       batch_atoms                  = batch.batch_max_atoms;
       num_generations              = static_cast<int>(configuration.num_generations);
       population_number            = static_cast<int>(configuration.population_number);
-      // autostop                     = configuration.autostop;
       auto q                       = (*this->scratch).get_queue();
 
       auto& num_rotamers_b            = (*this->scratch).template get<buffer_data_type::NUM_ROTAMERS>();
@@ -192,17 +191,11 @@ namespace mudock {
       chromosome* current_population_p = chromosomes_b.dev_pointer();
       chromosome* next_population_p    = next_population.dev_pointer();
 
-      /////////////////////////////////////////////////////////////////////////////////////
-      // TODO L remove this
-      auto& scores_b = (*this->scratch).template get<buffer_data_type::SCORES>();
-      /////////////////////////////////////////////////////////////////////////////////////
-
       assert(kernel && "Kernel method not yet prepared");
       kernel->set_population_buffers(current_population_p, next_population_p);
       geom_trans.set_chromosomes_buffer(current_population_p);
       kernel->initialize();
 
-      printf("Running GA...\n");
       crystal_convergence_stage.start_timer();
       for (int generation = 0; generation < num_generations; ++generation) {
         geom_trans();
@@ -210,26 +203,6 @@ namespace mudock {
         crystal_convergence_stage();
         (*kernel)();
         
-        /////////////////////////////////////////////////////////////////////////////////////
-        /////////////////////////////////////////////////////////////////////////////////////
-        // TODO L remove this part, needed for experiments
-        scores_b.copy_device2host();
-        (*this->scratch).get_queue()->synchronize();
-
-        const fp_type* scores = scores_b.host_pointer();
-
-        int best_index = 0;
-        for (int i = 1; i < population_number; ++i) {
-            if (scores[i] < scores[best_index]) {
-                best_index = i;
-            }
-        }
-
-        // dump_best_pose_genetic(0, best_index, generation + 1);
-        
-        /////////////////////////////////////////////////////////////////////////////////////
-        /////////////////////////////////////////////////////////////////////////////////////
-
         // Avoid full device-to-device copy by ping-ponging population buffers.
         if (generation + 1 < num_generations) {
           std::swap(current_population_p, next_population_p);
