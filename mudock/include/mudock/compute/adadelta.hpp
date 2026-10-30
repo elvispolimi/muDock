@@ -279,6 +279,7 @@ namespace mudock {
           const int n = static_cast<int>(static_cast<fp_type>(local_search_rate) * static_cast<fp_type>(individuals_per_ligand) / fp_type{100});
           markTopNActive(scores_l, ls_selected_l, n, individuals_per_ligand);
         }
+        ls_selected_b.copy_host2device();
       }
 
       // Run local search
