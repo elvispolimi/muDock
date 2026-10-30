@@ -339,7 +339,7 @@ namespace mudock {
                                 const int map_index_xy,
                                 const int map_index_xyz,
                                 gradient *__restrict__ gradients_b,
-                                int *__restrict__ active_individuals_b,
+                                int *__restrict__ ls_selected_b,
                                 int *__restrict__ converged_ligands_b) {
     const fp_type *electro_map = grid_maps + map_index_xyz * static_cast<int>(autodock_grid_type::ELEC);
     const fp_type *desolv_map  = grid_maps + map_index_xyz * static_cast<int>(autodock_grid_type::DESOLV);
@@ -372,7 +372,7 @@ namespace mudock {
     const int* frag_start_indices          = frag_start_indices_b + frag_indices_start_b[ligand_id];
     const int* frag_stop_indices           = frag_stop_indices_b + frag_indices_start_b[ligand_id];
     gradient *__restrict__ gradients_l     = gradients_b + ligand_id * individuals_per_ligand;
-    int *__restrict__ active_individuals_l = active_individuals_b + ligand_id * individuals_per_ligand;
+    int *__restrict__ ls_selected_l = ls_selected_b + ligand_id * individuals_per_ligand;
     
     const fp_type angle_scale = deg_to_rad(fp_type{1});
 
@@ -383,7 +383,7 @@ namespace mudock {
     // Each thread processes its assigned individuals independently (strided by blockDim.x = 32)
     for (int individual_index = local_thread_id; individual_index < individuals_per_ligand; individual_index += blockDim.x) {
       
-      if (!active_individuals_l[individual_index]) continue;
+      if (!ls_selected_l[individual_index]) continue;
 
       // Reinitialize local gradient components to 0
       for (int i = 0; i < 3 * num_atoms; ++i) dE_dX[i] = fp_type{0};
@@ -690,7 +690,7 @@ namespace mudock {
                     (void*) &map_index_xy,
                     (void*) &map_index_xyz,
                     (void*) &gradients_b,
-                    (void*) &active_individuals_b,
+                    (void*) &ls_selected_b,
                     (void*) &converged_ligands_b};
     constexpr_switch_bucket<0, reorder_buffer<static_molecule>::get_num_atom_clusters(), 1>(
         [&](const auto atom_index) {

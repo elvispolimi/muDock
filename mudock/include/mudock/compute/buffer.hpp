@@ -39,7 +39,7 @@ namespace mudock {
     PROT_GRID_MAPS,
     ADADELTA_E_G2,
     ADADELTA_E_DW2,
-    ACTIVE_INDIVIDUALS,
+    LS_SELECTED,
     CONVERGED_LIGANDS, // IMPORTANT: store 0 if ligand NOT converged, otherwise store the number of generations to reach convergence
     BEST_SO_FAR,
     FOR_HOW_LONG_BEST,
@@ -160,8 +160,8 @@ namespace mudock {
     using type = buffer_type_traits_impl<buffer_data_type::ADADELTA_E_DW2, chromosome>::type;
   };
   template<>
-  struct buffer_type_traits<buffer_data_type::ACTIVE_INDIVIDUALS> {
-    using type = buffer_type_traits_impl<buffer_data_type::ACTIVE_INDIVIDUALS, int>::type;
+  struct buffer_type_traits<buffer_data_type::LS_SELECTED> {
+    using type = buffer_type_traits_impl<buffer_data_type::LS_SELECTED, int>::type;
   };
   template<>
   struct buffer_type_traits<buffer_data_type::CONVERGED_LIGANDS> {

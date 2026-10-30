@@ -16,7 +16,7 @@ namespace mudock {
                                     int* __restrict__ num_rotamers_b,
                                     chromosome *__restrict__ adadelta_e_g2_b,
                                     chromosome *__restrict__ adadelta_e_dw2_b,
-                                    int *__restrict__ active_individuals_b,    
+                                    int *__restrict__ ls_selected_b,    
                                     const fp_type rho,
                                     const fp_type epsilon,
                                     int *__restrict__ converged_ligands_b) {
@@ -28,13 +28,13 @@ namespace mudock {
       chromosome *__restrict__ e_g2_l               = adadelta_e_g2_b + ligand_index * individuals_per_ligand;
       chromosome *__restrict__ e_dw2_l              = adadelta_e_dw2_b + ligand_index * individuals_per_ligand;
       gradient   *__restrict__ gradients_l          = gradients_b + ligand_index * individuals_per_ligand;
-      const int  *__restrict__ active_individuals_l = active_individuals_b + ligand_index * individuals_per_ligand;
+      const int  *__restrict__ ls_selected_l = ls_selected_b + ligand_index * individuals_per_ligand;
       
       const int num_rotamers = num_rotamers_b[ligand_index];
       const int gradient_size = 6 + num_rotamers;
       
       for (int individual_index = 0; individual_index < individuals_per_ligand; ++individual_index) {
-        if (!active_individuals_l[individual_index]) continue;
+        if (!ls_selected_l[individual_index]) continue;
         
         gradient   &grad = gradients_l[individual_index];
         chromosome &w = population_l[individual_index];
@@ -71,7 +71,7 @@ namespace mudock {
                                                 num_rotamers_b,
                                                 adadelta_e_g2_b,
                                                 adadelta_e_dw2_b,
-                                                active_individuals_b,
+                                                ls_selected_b,
                                                 rho,
                                                 epsilon,
                                                 converged_ligands_b);

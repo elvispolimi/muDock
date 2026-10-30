@@ -20,7 +20,7 @@ namespace mudock {
                                             int* __restrict__ num_rotamers_b,
                                             chromosome *__restrict__ adadelta_e_g2_b,
                                             chromosome *__restrict__ adadelta_e_dw2_b,
-                                            int *__restrict__ active_individuals_b,
+                                            int *__restrict__ ls_selected_b,
                                             const fp_type rho,
                                             const fp_type epsilon,
                                             int *__restrict__ converged_ligands_b) {
@@ -35,7 +35,7 @@ namespace mudock {
     chromosome *__restrict__ e_g2_l               = adadelta_e_g2_b + ligand_id * individuals_per_ligand;
     chromosome *__restrict__ e_dw2_l              = adadelta_e_dw2_b + ligand_id * individuals_per_ligand;
     gradient   *__restrict__ gradients_l          = gradients_b + ligand_id * individuals_per_ligand;
-    const int  *__restrict__ active_individuals_l = active_individuals_b + ligand_id * individuals_per_ligand;
+    const int  *__restrict__ ls_selected_l = ls_selected_b + ligand_id * individuals_per_ligand;
 
     const int num_rotamers  = num_rotamers_b[ligand_id];
     const int gradient_size = 6 + num_rotamers;
@@ -44,7 +44,7 @@ namespace mudock {
     for (int idx = local_thread_id; idx < total; idx += blockDim.x) {
       const int individual_index = idx / gradient_size;
       const int d                = idx - individual_index * gradient_size;
-      if (!active_individuals_l[individual_index]) continue;
+      if (!ls_selected_l[individual_index]) continue;
 
       const fp_type g = gradients_l[individual_index][d];
       fp_type& w      = population_l[individual_index][d];
@@ -74,7 +74,7 @@ namespace mudock {
                     (void*) &num_rotamers_b,
                     (void*) &adadelta_e_g2_b,
                     (void*) &adadelta_e_dw2_b,
-                    (void*) &active_individuals_b,
+                    (void*) &ls_selected_b,
                     (void*) &rho,
                     (void*) &epsilon,
                     (void*) &converged_ligands_b};

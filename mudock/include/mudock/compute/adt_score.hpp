@@ -329,12 +329,12 @@ namespace mudock {
 
       gradient *gradients_b = gradient_b.dev_pointer();
 
-      auto &active_individuals_b = (*this->scratch).template get<buffer_data_type::ACTIVE_INDIVIDUALS>();
-      if (!active_individuals_b.is_valid() || active_individuals_b.num_elements() != gradient_count) {
-        active_individuals_b.alloc(gradient_count);
-        active_individuals_b.set_valid();
+      auto &ls_selected_b = (*this->scratch).template get<buffer_data_type::LS_SELECTED>();
+      if (!ls_selected_b.is_valid() || ls_selected_b.num_elements() != gradient_count) {
+        ls_selected_b.alloc(gradient_count);
+        ls_selected_b.set_valid();
       }
-      int *active_individuals = active_individuals_b.dev_pointer();
+      int *ls_selected = ls_selected_b.dev_pointer();
 
       gradient_kernel = std::make_unique<adt_gradient_kernel<queue_type>>(scores_per_ligand,
                                                               batch_ligands,
@@ -368,7 +368,7 @@ namespace mudock {
                                                               map_index_xy,
                                                               map_index_xyz,
                                                               gradients_b,
-                                                              active_individuals,
+                                                              ls_selected,
                                                               converged_ligands,
                                                               q);
     }

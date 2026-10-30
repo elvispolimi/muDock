@@ -101,10 +101,10 @@ namespace mudock {
       
       // TODO L move active from lsrate initialization from here to local search generic or LGA?
       // Initialize active population
-      auto &active_individuals_b = (*this->scratch).template get<buffer_data_type::ACTIVE_INDIVIDUALS>();
-      if (!active_individuals_b.is_valid() || active_individuals_b.num_elements() != gradient_count) {
-        active_individuals_b.alloc(gradient_count);
-        active_individuals_b.set_valid();
+      auto &ls_selected_b = (*this->scratch).template get<buffer_data_type::LS_SELECTED>();
+      if (!ls_selected_b.is_valid() || ls_selected_b.num_elements() != gradient_count) {
+        ls_selected_b.alloc(gradient_count);
+        ls_selected_b.set_valid();
       }
       std::vector<int> active_init(gradient_count);
       
@@ -115,17 +115,17 @@ namespace mudock {
         active_init[i] = dist(rng);
       }
 
-      std::memcpy((void *) active_individuals_b(),
+      std::memcpy((void *) ls_selected_b(),
                   active_init.data(),
                   gradient_count * sizeof(int));
-      active_individuals_b.copy_host2device();
+      ls_selected_b.copy_host2device();
 
       int* __restrict__ num_rotamers_p = num_rotamers_b.dev_pointer();
       chromosome *adadelta_e_g2        = adadelta_e_g2_b.dev_pointer();
       chromosome *adadelta_e_dw2       = adadelta_e_dw2_b.dev_pointer();
       chromosome *chromosomes          = chromosomes_b.dev_pointer();
       gradient   *gradients            = gradients_b.dev_pointer();
-      int        *active_individuals   = active_individuals_b.dev_pointer();
+      int        *ls_selected   = ls_selected_b.dev_pointer();
 
       auto q = (*this->scratch).get_queue();
 
@@ -145,7 +145,7 @@ namespace mudock {
                                                                     num_rotamers_p,
                                                                     adadelta_e_g2,
                                                                     adadelta_e_dw2,
-                                                                    active_individuals,
+                                                                    ls_selected,
                                                                     converged_ligands,
                                                                     q,
                                                                     rho,
@@ -267,17 +267,17 @@ namespace mudock {
       if (local_search_on_best) {
         // Mark top n individuals based on lsrate
         auto& scores_b             = (*this->scratch).template get<buffer_data_type::SCORES>();
-        auto& active_individuals_b = (*this->scratch).template get<buffer_data_type::ACTIVE_INDIVIDUALS>();
+        auto& ls_selected_b = (*this->scratch).template get<buffer_data_type::LS_SELECTED>();
         scores_b.copy_device2host();
-        active_individuals_b.copy_device2host();
+        ls_selected_b.copy_device2host();
         (*this->scratch).get_queue()->synchronize();
         fp_type* __restrict__ scores_p  = scores_b.host_pointer();
-        int* __restrict__ active_individuals_p  = active_individuals_b.host_pointer();
+        int* __restrict__ ls_selected_p  = ls_selected_b.host_pointer();
         for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
-          int     *__restrict__ active_individuals_l = active_individuals_p + ligand_index * individuals_per_ligand;
+          int     *__restrict__ ls_selected_l = ls_selected_p + ligand_index * individuals_per_ligand;
           fp_type *__restrict__ scores_l             = scores_p + ligand_index * individuals_per_ligand;
           const int n = static_cast<int>(static_cast<fp_type>(local_search_rate) * static_cast<fp_type>(individuals_per_ligand) / fp_type{100});
-          markTopNActive(scores_l, active_individuals_l, n, individuals_per_ligand);
+          markTopNActive(scores_l, ls_selected_l, n, individuals_per_ligand);
         }
       }
 
@@ -305,14 +305,14 @@ namespace mudock {
     }
 
     // scores: input array of length m
-    // active_individuals: output array of length m (must be pre-allocated by caller)
+    // ls_selected: output array of length m (must be pre-allocated by caller)
     // m: length of both arrays
     // n: how many top scores to mark active
     template <typename fp_type>
-    void markTopNActive(const fp_type* scores, int* active_individuals, int n, int m) {
-        std::fill(active_individuals, active_individuals + m, 0);
+    void markTopNActive(const fp_type* scores, int* ls_selected, int n, int m) {
+        std::fill(ls_selected, ls_selected + m, 0);
         if (n <= 0) return;
-        if (n >= m) { std::fill(active_individuals, active_individuals + m, 1); return; }
+        if (n >= m) { std::fill(ls_selected, ls_selected + m, 1); return; }
 
         // index array on the heap (or use alloca/stack array if m is small/fixed)
         int* idx = new int[m];
@@ -322,7 +322,7 @@ namespace mudock {
             [scores](int a, int b) { return scores[a] < scores[b]; });
 
         for (int i = 0; i < n; i++) {
-            active_individuals[idx[i]] = 1;
+            ls_selected[idx[i]] = 1;
         }
 
         delete[] idx;

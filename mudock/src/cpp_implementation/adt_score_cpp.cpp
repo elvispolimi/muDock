@@ -257,7 +257,7 @@ namespace mudock {
                             const int map_index_xy,
                             const int map_index_xyz,
                             gradient *__restrict__ gradients_b,
-                            int *__restrict__ active_individuals_b,
+                            int *__restrict__ ls_selected_b,
                             int *__restrict__ converged_ligands_b) {
     for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
       if (converged_ligands_b[ligand_index]) continue;
@@ -284,7 +284,7 @@ namespace mudock {
       const int* frag_start_indices          = frag_start_indices_b + frag_indices_start_b[ligand_index];
       const int* frag_stop_indices           = frag_stop_indices_b + frag_indices_start_b[ligand_index];
       gradient *__restrict__ gradients_l     = gradients_b + ligand_index * individuals_per_ligand;
-      int *__restrict__ active_individuals_l = active_individuals_b + ligand_index * individuals_per_ligand;
+      int *__restrict__ ls_selected_l = ls_selected_b + ligand_index * individuals_per_ligand;
 
       
       const fp_type angle_scale = deg_to_rad(fp_type{1});
@@ -294,7 +294,7 @@ namespace mudock {
 
       for (int individual_index = 0; individual_index < individuals_per_ligand; ++individual_index) {
         
-        if (!active_individuals_l[individual_index]) continue;
+        if (!ls_selected_l[individual_index]) continue;
 
         // Reinitialize to 0s all gradient components vectors
         std::fill(dE_dX.begin(), dE_dX.end(), 0);
@@ -637,7 +637,7 @@ namespace mudock {
                                             map_index_xy,
                                             map_index_xyz,
                                             gradients_b,
-                                            active_individuals_b,
+                                            ls_selected_b,
                                             converged_ligands_b
     );
   }
