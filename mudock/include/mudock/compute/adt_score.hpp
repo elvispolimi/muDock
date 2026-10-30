@@ -96,11 +96,7 @@ namespace mudock {
       }
     }
 
-    void prepare(batch<static_molecule> &batch) {
-      // TODO L IMPORTANT not very elegant check, try to do better. This comes from the need of 
-      // preparing the scoring function in the local search pipeline, which otherwise woudn't do it alone 
-      // because it was managed in the genetic preparation
-      
+    void prepare(batch<static_molecule> &batch) {  
       batch_ligands                = batch.num_ligands;
       batch_atoms                  = batch.batch_max_atoms;
       const int batch_non_bonds    = batch_ligands * batch_atoms * batch_atoms;
@@ -394,7 +390,6 @@ namespace mudock {
       (*gradient_kernel)();
     }
 
-    // TODO L should this include gradient things?
     static std::size_t get_shared_ligand_mem(const int max_atoms, const knobs conf) {
       const int scores_per_ligand = std::max(1, static_cast<int>(conf.population_number));
       return sizeof(int) + sizeof(int) + sizeof(fp_type) * scores_per_ligand +
@@ -428,6 +423,7 @@ namespace mudock {
       mem += sizeof(fp_type) * max_atoms;               //y_coords_b
       mem += sizeof(fp_type) * max_atoms;               //z_coords_b
       mem += sizeof(int) * individuals_per_ligand;      //active flag
+      mem += sizeof(gradient) * individuals_per_ligand; //gradients
       
       return mem;
     }

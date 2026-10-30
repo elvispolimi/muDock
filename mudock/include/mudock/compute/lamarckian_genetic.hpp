@@ -63,11 +63,6 @@ namespace mudock {
       auto& chromosomes_b = (*this->scratch).template get<buffer_data_type::CHROMOSOMES>();
       chromosome* current_population_p = chromosomes_b.dev_pointer();
       chromosome* next_population_p    = this->next_population.dev_pointer();
-
-      /////////////////////////////////////////////////////////////////////////////////////
-      // TODO L remove this
-      auto& scores_b = (*this->scratch).template get<buffer_data_type::SCORES>();
-      /////////////////////////////////////////////////////////////////////////////////////
       
       assert(this->kernel && "lamarckian_kernel method not yet prepared");
       this->kernel->set_population_buffers(current_population_p, next_population_p);
@@ -86,24 +81,6 @@ namespace mudock {
           (*this->score_stage)();
         }
         this->crystal_convergence_stage();
-        /////////////////////////////////////////////////////////////////////////////////////
-        /////////////////////////////////////////////////////////////////////////////////////
-        // TODO L remove this part, needed for experiments
-        scores_b.copy_device2host();
-        (*this->scratch).get_queue()->synchronize();
-
-        const fp_type* scores = scores_b.host_pointer();
-
-        int best_index = 0;
-        for (int i = 1; i < this->population_number; ++i) {
-            if (scores[i] < scores[best_index]) {
-                best_index = i;
-            }
-        }
-
-        // this->dump_best_pose_genetic(0, best_index, generation);
-        /////////////////////////////////////////////////////////////////////////////////////
-        /////////////////////////////////////////////////////////////////////////////////////
 
         // Avoid full device-to-device copy by ping-ponging population buffers.
         if (generation < this->num_generations) {

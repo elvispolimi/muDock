@@ -17,4 +17,11 @@ namespace mudock {
     value.num_sms              = std::max(1, value.num_sms);
     return value;
   }
+
+  // batch_multiple.hpp
+  inline batch_multiple min_batch_multiple(const batch_multiple a, const batch_multiple b) {
+    const auto na = normalize_batch_multiple(a);
+    const auto nb = normalize_batch_multiple(b);
+    return (na.total_multiple() <= nb.total_multiple()) ? na : nb;
+  }
 } // namespace mudock

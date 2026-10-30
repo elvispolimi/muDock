@@ -30,7 +30,6 @@
 
 namespace mudock {
 
-  // TODO L Important implement this
   template<typename queue_type>
   batch_multiple get_adadelta_batch_multiple(const int, std::shared_ptr<queue_type>) {
     return {};
@@ -185,25 +184,13 @@ namespace mudock {
     }
 
     static std::size_t get_private_ligand_mem(const int max_atoms, const knobs conf) {
+      (void) max_atoms;
       std::size_t mem{0};
 
-      const int individuals_per_ligand =
-          std::max(1, static_cast<int>(conf.population_number));
+      const int individuals_per_ligand = std::max(1, static_cast<int>(conf.population_number));
 
-      // Memory required by the scoring stage for one ligand.
-      mem += scoring_t<queue_type>::get_ligand_mem(max_atoms, conf);
-
-      // One gradient per individual.
-      mem += sizeof(gradient) * individuals_per_ligand;
-
-      // One AdaDelta E[g^2] state per individual.
-      mem += sizeof(chromosome) * individuals_per_ligand;
-
-      // One AdaDelta E[delta_w^2] state per individual.
-      mem += sizeof(chromosome) * individuals_per_ligand;
-
-      // One active flag per individual.
-      mem += sizeof(int) * individuals_per_ligand;
+      mem += sizeof(chromosome) * individuals_per_ligand; // One AdaDelta E[g^2] state per individual.
+      mem += sizeof(chromosome) * individuals_per_ligand; // One AdaDelta E[delta_w^2] state per individual.
 
       return mem;
     }
@@ -304,13 +291,13 @@ namespace mudock {
       ///////////////////////////////////////////////////////////////////////////////////////////
       // TODO L : Experiments on rmsd, not needed in general for computation of local search
       // WARNING: GETTING SCORES ASSUMING THERE IS ONLY ONE LIGAND IN THE BATCH
-      fp_type* __restrict__ scores = (*this->scratch).template get<buffer_data_type::SCORES>().dev_pointer();
-      int best_index = 0;
-      for(int i = 0; i < individuals_per_ligand; ++i){
-        if (scores[i] < scores[best_index]){
-          best_index = i;
-        }
-      }
+      // fp_type* __restrict__ scores = (*this->scratch).template get<buffer_data_type::SCORES>().dev_pointer();
+      // int best_index = 0;
+      // for(int i = 0; i < individuals_per_ligand; ++i){
+      //   if (scores[i] < scores[best_index]){
+      //     best_index = i;
+      //   }
+      // }
       // const std::string ligand_name = this->crystal_template ? this->crystal_template->properties.get(property_type::NAME) : std::string{"unknown"};
       // remove this code after experiments ^
       ///////////////////////////////////////////////////////////////////////////////////////////

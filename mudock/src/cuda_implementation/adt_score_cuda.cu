@@ -709,6 +709,14 @@ namespace mudock {
                                                                   "adt_score::calc_energy");
   }
 
+  template<int MAX_ATOMS>
+  batch_multiple get_evaluate_gradient_batch(const int device_id) {
+    return get_kernel_batch_multiple_cuda<calc_gradient<MAX_ATOMS>>(device_id,
+                                                                  BLOCK_SIZE,
+                                                                  0,
+                                                                  "adt_score::calc_gradient");
+  }
+
   template<>
   batch_multiple get_adt_score_batch_multiple<queue_cuda>(const int atoms, std::shared_ptr<queue_cuda> q_b) {
     batch_multiple bucket_multiple{};
@@ -716,7 +724,7 @@ namespace mudock {
     constexpr_for<0, reorder_buffer<static_molecule>::get_num_atom_clusters(), 1>([&](const auto atom_index) {
       const auto n_atoms = reorder_buffer<static_molecule>::atoms_clusters[atom_index];
       if (atoms == n_atoms)
-        bucket_multiple = get_evaluate_fitness_batch<n_atoms>(device_id);
+        bucket_multiple = min_batch_multiple(get_evaluate_fitness_batch<n_atoms>(device_id), get_evaluate_gradient_batch<n_atoms>(device_id));
     });
     if (bucket_multiple.total_multiple() <= 0)
       throw std::runtime_error(
