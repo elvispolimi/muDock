@@ -377,8 +377,10 @@ namespace mudock {
     const fp_type angle_scale = deg_to_rad(fp_type{1});
 
     // Thread-private buffers (stored in local memory / registers per thread)
-    fp_type dE_dX[3 * MAX_ATOMS];
-    fp_type grad[6 + MAX_ATOMS];
+    // fp_type dE_dX[3 * MAX_ATOMS];
+    fp_type dE_dx[MAX_ATOMS];
+    fp_type dE_dy[MAX_ATOMS];
+    fp_type dE_dz[MAX_ATOMS];
 
     // Each thread processes its assigned individuals independently (strided by blockDim.x = 32)
     for (int individual_index = local_thread_id; individual_index < individuals_per_ligand; individual_index += blockDim.x) {
@@ -386,8 +388,11 @@ namespace mudock {
       if (!ls_selected_l[individual_index]) continue;
 
       // Reinitialize local gradient components to 0
-      for (int i = 0; i < 3 * num_atoms; ++i) dE_dX[i] = fp_type{0};
-      for (int i = 0; i < 6 + num_rotamers; ++i) grad[i] = fp_type{0};
+      for (int i = 0; i < num_atoms; ++i) {  
+        dE_dx[i] = fp_type{0};
+        dE_dy[i] = fp_type{0};
+        dE_dz[i] = fp_type{0};
+      }
 
       const fp_type *__restrict__ scratch_x_l = scratch_x + individual_index * batch_atoms;
       const fp_type *__restrict__ scratch_y_l = scratch_y + individual_index * batch_atoms;
@@ -405,9 +410,9 @@ namespace mudock {
           const auto diff_z = coord[2] - map_center_const[2];
           const fp_type penalty_factor = 2 * 2 * ENERGYPENALTY;
 
-          dE_dX[3*index]     += penalty_factor * diff_x;
-          dE_dX[3*index + 1] += penalty_factor * diff_y;
-          dE_dX[3*index + 2] += penalty_factor * diff_z;
+          dE_dx[index] += penalty_factor * diff_x;
+          dE_dy[index] += penalty_factor * diff_y;
+          dE_dz[index] += penalty_factor * diff_z;
         } else {
           const auto &atom_charge = charge_l[index];
           const fp_type *atom_map = grid_maps + map_offsets_l[index];
@@ -433,20 +438,20 @@ namespace mudock {
 
           get_grid_values(electro_map + base_index, map_index_x, map_index_xy, grid_values);
           const fp_type constant_factor_el = inv_spacing * atom_charge;
-          dE_dX[3*index]     += constant_factor_el * (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
-          dE_dX[3*index + 1] += constant_factor_el * (p1w * (p1u * (grid_values[2] - grid_values[0]) + p0u * (grid_values[6] - grid_values[4])) + p0w * (p1u * (grid_values[3] - grid_values[1]) + p0u * (grid_values[7] - grid_values[5])));
-          dE_dX[3*index + 2] += constant_factor_el * (p1v * (p1u * (grid_values[1] - grid_values[0]) + p0u * (grid_values[5] - grid_values[4])) + p0v * (p1u * (grid_values[3] - grid_values[2]) + p0u * (grid_values[7] - grid_values[6])));
+          dE_dx[index]     += constant_factor_el * (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
+          dE_dy[index] += constant_factor_el * (p1w * (p1u * (grid_values[2] - grid_values[0]) + p0u * (grid_values[6] - grid_values[4])) + p0w * (p1u * (grid_values[3] - grid_values[1]) + p0u * (grid_values[7] - grid_values[5])));
+          dE_dz[index] += constant_factor_el * (p1v * (p1u * (grid_values[1] - grid_values[0]) + p0u * (grid_values[5] - grid_values[4])) + p0v * (p1u * (grid_values[3] - grid_values[2]) + p0u * (grid_values[7] - grid_values[6])));
 
           get_grid_values(atom_map + base_index, map_index_x, map_index_xy, grid_values);
-          dE_dX[3*index]     += inv_spacing * (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
-          dE_dX[3*index + 1] += inv_spacing * (p1w * (p1u * (grid_values[2] - grid_values[0]) + p0u * (grid_values[6] - grid_values[4])) + p0w * (p1u * (grid_values[3] - grid_values[1]) + p0u * (grid_values[7] - grid_values[5])));
-          dE_dX[3*index + 2] += inv_spacing * (p1v * (p1u * (grid_values[1] - grid_values[0]) + p0u * (grid_values[5] - grid_values[4])) + p0v * (p1u * (grid_values[3] - grid_values[2]) + p0u * (grid_values[7] - grid_values[6])));            
+          dE_dx[index]     += inv_spacing * (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
+          dE_dy[index] += inv_spacing * (p1w * (p1u * (grid_values[2] - grid_values[0]) + p0u * (grid_values[6] - grid_values[4])) + p0w * (p1u * (grid_values[3] - grid_values[1]) + p0u * (grid_values[7] - grid_values[5])));
+          dE_dz[index] += inv_spacing * (p1v * (p1u * (grid_values[1] - grid_values[0]) + p0u * (grid_values[5] - grid_values[4])) + p0v * (p1u * (grid_values[3] - grid_values[2]) + p0u * (grid_values[7] - grid_values[6])));            
           
           get_grid_values(desolv_map + base_index, map_index_x, map_index_xy, grid_values);
           const fp_type constant_factor_des = inv_spacing * std::fabs(atom_charge);
-          dE_dX[3*index]     += constant_factor_des * (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
-          dE_dX[3*index + 1] += constant_factor_des * (p1w * (p1u * (grid_values[2] - grid_values[0]) + p0u * (grid_values[6] - grid_values[4])) + p0w * (p1u * (grid_values[3] - grid_values[1]) + p0u * (grid_values[7] - grid_values[5])));
-          dE_dX[3*index + 2] += constant_factor_des * (p1v * (p1u * (grid_values[1] - grid_values[0]) + p0u * (grid_values[5] - grid_values[4])) + p0v * (p1u * (grid_values[3] - grid_values[2]) + p0u * (grid_values[7] - grid_values[6])));
+          dE_dx[index]     += constant_factor_des * (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
+          dE_dy[index] += constant_factor_des * (p1w * (p1u * (grid_values[2] - grid_values[0]) + p0u * (grid_values[6] - grid_values[4])) + p0w * (p1u * (grid_values[3] - grid_values[1]) + p0u * (grid_values[7] - grid_values[5])));
+          dE_dz[index] += constant_factor_des * (p1v * (p1u * (grid_values[1] - grid_values[0]) + p0u * (grid_values[5] - grid_values[4])) + p0v * (p1u * (grid_values[3] - grid_values[2]) + p0u * (grid_values[7] - grid_values[6])));
         }
       }
       
@@ -513,13 +518,13 @@ namespace mudock {
           const fp_type gy = dE_dr * dir_y;
           const fp_type gz = dE_dr * dir_z;
 
-          dE_dX[3*a1]     += gx;
-          dE_dX[3*a1 + 1] += gy;
-          dE_dX[3*a1 + 2] += gz;
+          dE_dx[a1] += gx;
+          dE_dy[a1] += gy;
+          dE_dz[a1] += gz;
 
-          dE_dX[3*a2]     -= gx;
-          dE_dX[3*a2 + 1] -= gy;
-          dE_dX[3*a2 + 2] -= gz;
+          dE_dx[a2] -= gx;
+          dE_dy[a2] -= gy;
+          dE_dz[a2] -= gz;
         }
       }
 
@@ -543,7 +548,10 @@ namespace mudock {
           scratch_z_l[i] - ligand_COM[2]
         };
         fp_type torque[3];
-        cross3(r, &dE_dX[3*i], torque);
+        // Cross product: torque = r x dE_dX
+        torque[0] = r[1]*dE_dz[i] - r[2]*dE_dy[i];
+        torque[1] = r[2]*dE_dx[i] - r[0]*dE_dz[i];
+        torque[2] = r[0]*dE_dy[i] - r[1]*dE_dx[i];
         tau[0] += torque[0];
         tau[1] += torque[1];
         tau[2] += torque[2];
@@ -562,20 +570,33 @@ namespace mudock {
       const fp_type u_beta[3]  = {-sin_gamma, cos_gamma, fp_type{0}};
       const fp_type u_alpha[3] = {cos_beta * cos_gamma, cos_beta * sin_gamma, -sin_beta};
 
-      grad[3] = angle_scale * dot3(tau, u_alpha);
-      grad[4] = angle_scale * dot3(tau, u_beta);
-      grad[5] = angle_scale * dot3(tau, u_gamma);
+      fp_type g_rot_alpha = angle_scale * dot3(tau, u_alpha);
+      fp_type g_rot_beta  = angle_scale * dot3(tau, u_beta);
+      fp_type g_rot_gamma = angle_scale * dot3(tau, u_gamma);
+
+      fp_type g_trasl_x = 0;
+      fp_type g_trasl_y = 0;
+      fp_type g_trasl_z = 0;
 
       for (int index = 0; index < num_atoms; ++index) {
-        grad[0] += dE_dX[3*index];
-        grad[1] += dE_dX[3*index + 1];
-        grad[2] += dE_dX[3*index + 2];
+        g_trasl_x += dE_dx[index];
+        g_trasl_y += dE_dy[index];
+        g_trasl_z += dE_dz[index];
       }
 
       // 4. Torsion derivatives
-      const fp_type gmean_x = grad[0] * inv_n;
-      const fp_type gmean_y = grad[1] * inv_n;
-      const fp_type gmean_z = grad[2] * inv_n;
+      const fp_type gmean_x = g_trasl_x * inv_n;
+      const fp_type gmean_y = g_trasl_y * inv_n;
+      const fp_type gmean_z = g_trasl_z * inv_n;
+
+      gradient &grad_l = gradients_l[individual_index];
+
+      grad_l[0] = g_trasl_x;
+      grad_l[1] = g_trasl_y;
+      grad_l[2] = g_trasl_z;
+      grad_l[3] = g_rot_alpha;
+      grad_l[4] = g_rot_beta;
+      grad_l[5] = g_rot_gamma;
 
       for (int t = 0; t < num_rotamers; ++t) {
         const int* frag_mask = fragments + t * num_atoms;
@@ -602,19 +623,13 @@ namespace mudock {
                                   scratch_z_l[i] - scratch_z_l[a1]};
             fp_type temp[3];
             cross3(axis, r, temp);
-            dE_dpsi += (dE_dX[3*i    ] - gmean_x) * temp[0] +
-                       (dE_dX[3*i + 1] - gmean_y) * temp[1] +
-                       (dE_dX[3*i + 2] - gmean_z) * temp[2];
+            dE_dpsi += (dE_dx[i] - gmean_x) * temp[0] +
+                       (dE_dy[i] - gmean_y) * temp[1] +
+                       (dE_dz[i] - gmean_z) * temp[2];
           }
         }
-        grad[6 + t] = angle_scale * dE_dpsi;
+        grad_l[6 + t] = angle_scale * dE_dpsi;
       }
-
-      // Write results to global memory
-      gradient &grad_l = gradients_l[individual_index];
-      for (int i = 0; i < 6 + num_rotamers; ++i) {
-        grad_l[i] = grad[i];
-      } 
     }
   }
 
