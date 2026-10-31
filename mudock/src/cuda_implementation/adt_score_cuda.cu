@@ -349,6 +349,7 @@ namespace mudock {
     assert(blockDim.x == BLOCK_SIZE && warpSize == BLOCK_SIZE &&
            "Warpsize and the number of thread per block does not coincide");
 
+    // Block-uniform early exit: all lanes leave together
     if (converged_ligands_b[ligand_id]) return;
 
     const int atom_stride                  = ligand_id * batch_atoms;
@@ -372,47 +373,42 @@ namespace mudock {
     const int* frag_start_indices          = frag_start_indices_b + frag_indices_start_b[ligand_id];
     const int* frag_stop_indices           = frag_stop_indices_b + frag_indices_start_b[ligand_id];
     gradient *__restrict__ gradients_l     = gradients_b + ligand_id * individuals_per_ligand;
-    int *__restrict__ ls_selected_l = ls_selected_b + ligand_id * individuals_per_ligand;
-    
+    int *__restrict__ ls_selected_l        = ls_selected_b + ligand_id * individuals_per_ligand;
+
     const fp_type angle_scale = deg_to_rad(fp_type{1});
+    const fp_type inv_n       = fp_type{1} / static_cast<fp_type>(num_atoms);
 
-    // Thread-private buffers (stored in local memory / registers per thread)
-    // fp_type dE_dX[3 * MAX_ATOMS];
-    fp_type dE_dx[MAX_ATOMS];
-    fp_type dE_dy[MAX_ATOMS];
-    fp_type dE_dz[MAX_ATOMS];
+    // Per-atom gradient, shared by the 32 lanes of the block
+    __shared__ fp_type dE_dx[MAX_ATOMS];
+    __shared__ fp_type dE_dy[MAX_ATOMS];
+    __shared__ fp_type dE_dz[MAX_ATOMS];
 
-    // Each thread processes its assigned individuals independently (strided by blockDim.x = 32)
-    for (int individual_index = local_thread_id; individual_index < individuals_per_ligand; individual_index += blockDim.x) {
-      
-      if (!ls_selected_l[individual_index]) continue;
-
-      // Reinitialize local gradient components to 0
-      for (int i = 0; i < num_atoms; ++i) {  
-        dE_dx[i] = fp_type{0};
-        dE_dy[i] = fp_type{0};
-        dE_dz[i] = fp_type{0};
-      }
+    // All lanes work together on one individual at a time
+    for (int individual_index = 0; individual_index < individuals_per_ligand; ++individual_index) {
+      if (!ls_selected_l[individual_index]) continue; // block-uniform
 
       const fp_type *__restrict__ scratch_x_l = scratch_x + individual_index * batch_atoms;
       const fp_type *__restrict__ scratch_y_l = scratch_y + individual_index * batch_atoms;
       const fp_type *__restrict__ scratch_z_l = scratch_z + individual_index * batch_atoms;
 
-      // 1. Grid (intermolecular) contribution
-      for (int index = 0; index < num_atoms; ++index) {
+      // ---------------------------------------------------------------------------------------------
+      // 1. Grid (intermolecular) contribution: one thread per atom, writes only its own dE entries
+      // ---------------------------------------------------------------------------------------------
+      for (int index = local_thread_id; index < num_atoms; index += BLOCK_SIZE) {
+        fp_type gx{0}, gy{0}, gz{0};
         fp_type coord[3]{scratch_x_l[index], scratch_y_l[index], scratch_z_l[index]};
 
-        if (coord[0] < map_min_const[0] || coord[0] >= map_max_const[0] || 
-            coord[1] < map_min_const[1] || coord[1] >= map_max_const[1] || 
+        if (coord[0] < map_min_const[0] || coord[0] >= map_max_const[0] ||
+            coord[1] < map_min_const[1] || coord[1] >= map_max_const[1] ||
             coord[2] < map_min_const[2] || coord[2] >= map_max_const[2]) {
           const auto diff_x = coord[0] - map_center_const[0];
           const auto diff_y = coord[1] - map_center_const[1];
           const auto diff_z = coord[2] - map_center_const[2];
           const fp_type penalty_factor = 2 * 2 * ENERGYPENALTY;
 
-          dE_dx[index] += penalty_factor * diff_x;
-          dE_dy[index] += penalty_factor * diff_y;
-          dE_dz[index] += penalty_factor * diff_z;
+          gx += penalty_factor * diff_x;
+          gy += penalty_factor * diff_y;
+          gz += penalty_factor * diff_z;
         } else {
           const auto &atom_charge = charge_l[index];
           const fp_type *atom_map = grid_maps + map_offsets_l[index];
@@ -438,26 +434,35 @@ namespace mudock {
 
           get_grid_values(electro_map + base_index, map_index_x, map_index_xy, grid_values);
           const fp_type constant_factor_el = inv_spacing * atom_charge;
-          dE_dx[index]     += constant_factor_el * (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
-          dE_dy[index] += constant_factor_el * (p1w * (p1u * (grid_values[2] - grid_values[0]) + p0u * (grid_values[6] - grid_values[4])) + p0w * (p1u * (grid_values[3] - grid_values[1]) + p0u * (grid_values[7] - grid_values[5])));
-          dE_dz[index] += constant_factor_el * (p1v * (p1u * (grid_values[1] - grid_values[0]) + p0u * (grid_values[5] - grid_values[4])) + p0v * (p1u * (grid_values[3] - grid_values[2]) + p0u * (grid_values[7] - grid_values[6])));
+          gx += constant_factor_el * (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
+          gy += constant_factor_el * (p1w * (p1u * (grid_values[2] - grid_values[0]) + p0u * (grid_values[6] - grid_values[4])) + p0w * (p1u * (grid_values[3] - grid_values[1]) + p0u * (grid_values[7] - grid_values[5])));
+          gz += constant_factor_el * (p1v * (p1u * (grid_values[1] - grid_values[0]) + p0u * (grid_values[5] - grid_values[4])) + p0v * (p1u * (grid_values[3] - grid_values[2]) + p0u * (grid_values[7] - grid_values[6])));
 
           get_grid_values(atom_map + base_index, map_index_x, map_index_xy, grid_values);
-          dE_dx[index]     += inv_spacing * (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
-          dE_dy[index] += inv_spacing * (p1w * (p1u * (grid_values[2] - grid_values[0]) + p0u * (grid_values[6] - grid_values[4])) + p0w * (p1u * (grid_values[3] - grid_values[1]) + p0u * (grid_values[7] - grid_values[5])));
-          dE_dz[index] += inv_spacing * (p1v * (p1u * (grid_values[1] - grid_values[0]) + p0u * (grid_values[5] - grid_values[4])) + p0v * (p1u * (grid_values[3] - grid_values[2]) + p0u * (grid_values[7] - grid_values[6])));            
-          
+          gx += inv_spacing * (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
+          gy += inv_spacing * (p1w * (p1u * (grid_values[2] - grid_values[0]) + p0u * (grid_values[6] - grid_values[4])) + p0w * (p1u * (grid_values[3] - grid_values[1]) + p0u * (grid_values[7] - grid_values[5])));
+          gz += inv_spacing * (p1v * (p1u * (grid_values[1] - grid_values[0]) + p0u * (grid_values[5] - grid_values[4])) + p0v * (p1u * (grid_values[3] - grid_values[2]) + p0u * (grid_values[7] - grid_values[6])));
+
           get_grid_values(desolv_map + base_index, map_index_x, map_index_xy, grid_values);
           const fp_type constant_factor_des = inv_spacing * std::fabs(atom_charge);
-          dE_dx[index]     += constant_factor_des * (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
-          dE_dy[index] += constant_factor_des * (p1w * (p1u * (grid_values[2] - grid_values[0]) + p0u * (grid_values[6] - grid_values[4])) + p0w * (p1u * (grid_values[3] - grid_values[1]) + p0u * (grid_values[7] - grid_values[5])));
-          dE_dz[index] += constant_factor_des * (p1v * (p1u * (grid_values[1] - grid_values[0]) + p0u * (grid_values[5] - grid_values[4])) + p0v * (p1u * (grid_values[3] - grid_values[2]) + p0u * (grid_values[7] - grid_values[6])));
+          gx += constant_factor_des * (p1w * (p1v * (grid_values[4] - grid_values[0]) + p0v * (grid_values[6] - grid_values[2])) + p0w * (p1v * (grid_values[5] - grid_values[1]) + p0v * (grid_values[7] - grid_values[3])));
+          gy += constant_factor_des * (p1w * (p1u * (grid_values[2] - grid_values[0]) + p0u * (grid_values[6] - grid_values[4])) + p0w * (p1u * (grid_values[3] - grid_values[1]) + p0u * (grid_values[7] - grid_values[5])));
+          gz += constant_factor_des * (p1v * (p1u * (grid_values[1] - grid_values[0]) + p0u * (grid_values[5] - grid_values[4])) + p0v * (p1u * (grid_values[3] - grid_values[2]) + p0u * (grid_values[7] - grid_values[6])));
         }
+        // plain store also initializes the entry (replaces the explicit zeroing), no race: own atom
+        dE_dx[index] = gx;
+        dE_dy[index] = gy;
+        dE_dz[index] = gz;
       }
-      
-      // 2. Intramolecular non-bonded contribution
+      // dE_* fully initialized (and visible to every lane) before the pair phase starts atomics on them
+      __syncwarp();
+
+      // ---------------------------------------------------------------------------------------------
+      // 2. Intramolecular non-bonded contribution: lanes split the PAIRS; a1/a2 can belong to any
+      //    lane's atoms and several pairs can hit the same atom -> atomicAdd on shared memory
+      // ---------------------------------------------------------------------------------------------
       if (num_rotamers > 0) {
-        for (int i = 0; i < num_nonbonds; ++i) {
+        for (int i = local_thread_id; i < num_nonbonds; i += BLOCK_SIZE) {
           const int &a1 = nonbond_a1_l[i];
           const int &a2 = nonbond_a2_l[i];
 
@@ -465,8 +470,8 @@ namespace mudock {
           const auto diff_y          = scratch_y_l[a1] - scratch_y_l[a2];
           const auto diff_z          = scratch_z_l[a1] - scratch_z_l[a2];
           const fp_type distance_two = diff_x * diff_x + diff_y * diff_y + diff_z * diff_z;
-          if (distance_two < RMIN_ELEC_SQUARE) continue;
-          
+          if (distance_two < RMIN_ELEC_SQUARE) continue; // per-lane continue: no collective op inside
+
           const fp_type distance_two_clamp = distance_two;
           const fp_type distance           = std::sqrt(distance_two_clamp);
           const fp_type inv_r = fp_type{1} / distance;
@@ -503,7 +508,7 @@ namespace mudock {
               const auto log_distance = std::log(distance);
               const fp_type rA        = std::exp(-static_cast<fp_type>(xA) * log_distance);
               const fp_type rB        = std::exp(-static_cast<fp_type>(xB) * log_distance);
-              
+
               const fp_type rA1 = rA * inv_r;
               const fp_type rB1 = rB * inv_r;
               const fp_type e_vdW_Hb_unclamped = cA * rA - cB * rB;
@@ -518,44 +523,52 @@ namespace mudock {
           const fp_type gy = dE_dr * dir_y;
           const fp_type gz = dE_dr * dir_z;
 
-          dE_dx[a1] += gx;
-          dE_dy[a1] += gy;
-          dE_dz[a1] += gz;
+          atomicAdd(&dE_dx[a1], gx);
+          atomicAdd(&dE_dy[a1], gy);
+          atomicAdd(&dE_dz[a1], gz);
 
-          dE_dx[a2] -= gx;
-          dE_dy[a2] -= gy;
-          dE_dz[a2] -= gz;
+          atomicAdd(&dE_dx[a2], -gx);
+          atomicAdd(&dE_dy[a2], -gy);
+          atomicAdd(&dE_dz[a2], -gz);
         }
       }
+      // all atomics done and visible before anybody reads the final per-atom gradient
+      __syncwarp();
 
-      // 3. Center of Mass & Torques
-      fp_type ligand_COM[3] = {0, 0, 0};
-      for (int i = 0; i < num_atoms; ++i) {
-        ligand_COM[0] += scratch_x_l[i];
-        ligand_COM[1] += scratch_y_l[i];
-        ligand_COM[2] += scratch_z_l[i];
+      // ---------------------------------------------------------------------------------------------
+      // 3. Center of mass, torque, translation gradient: partial sums per lane + warp all-reduce
+      // ---------------------------------------------------------------------------------------------
+      fp_type com_x{0}, com_y{0}, com_z{0};
+      fp_type gt_x{0}, gt_y{0}, gt_z{0};
+      for (int i = local_thread_id; i < num_atoms; i += BLOCK_SIZE) {
+        com_x += scratch_x_l[i];
+        com_y += scratch_y_l[i];
+        com_z += scratch_z_l[i];
+        gt_x += dE_dx[i];
+        gt_y += dE_dy[i];
+        gt_z += dE_dz[i];
       }
-      const fp_type inv_n = fp_type{1} / static_cast<fp_type>(num_atoms);
-      ligand_COM[0] *= inv_n;
-      ligand_COM[1] *= inv_n;
-      ligand_COM[2] *= inv_n;
+      com_x = warp_allreduce_sum(com_x) * inv_n;
+      com_y = warp_allreduce_sum(com_y) * inv_n;
+      com_z = warp_allreduce_sum(com_z) * inv_n;
+      const fp_type g_trasl_x = warp_allreduce_sum(gt_x);
+      const fp_type g_trasl_y = warp_allreduce_sum(gt_y);
+      const fp_type g_trasl_z = warp_allreduce_sum(gt_z);
 
-      fp_type tau[3] = {0, 0, 0};
-      for (int i = 0; i < num_atoms; ++i) {
-        fp_type r[3] = {
-          scratch_x_l[i] - ligand_COM[0],
-          scratch_y_l[i] - ligand_COM[1],
-          scratch_z_l[i] - ligand_COM[2]
-        };
-        fp_type torque[3];
+      fp_type tau_x{0}, tau_y{0}, tau_z{0};
+      for (int i = local_thread_id; i < num_atoms; i += BLOCK_SIZE) {
+        const fp_type rx = scratch_x_l[i] - com_x;
+        const fp_type ry = scratch_y_l[i] - com_y;
+        const fp_type rz = scratch_z_l[i] - com_z;
         // Cross product: torque = r x dE_dX
-        torque[0] = r[1]*dE_dz[i] - r[2]*dE_dy[i];
-        torque[1] = r[2]*dE_dx[i] - r[0]*dE_dz[i];
-        torque[2] = r[0]*dE_dy[i] - r[1]*dE_dx[i];
-        tau[0] += torque[0];
-        tau[1] += torque[1];
-        tau[2] += torque[2];
+        tau_x += ry * dE_dz[i] - rz * dE_dy[i];
+        tau_y += rz * dE_dx[i] - rx * dE_dz[i];
+        tau_z += rx * dE_dy[i] - ry * dE_dx[i];
       }
+      fp_type tau[3];
+      tau[0] = warp_allreduce_sum(tau_x);
+      tau[1] = warp_allreduce_sum(tau_y);
+      tau[2] = warp_allreduce_sum(tau_z);
 
       const chromosome &chrom = ligand_chromosomes[individual_index];
       const fp_type rad_beta  = deg_to_rad(chrom[4]);
@@ -570,33 +583,26 @@ namespace mudock {
       const fp_type u_beta[3]  = {-sin_gamma, cos_gamma, fp_type{0}};
       const fp_type u_alpha[3] = {cos_beta * cos_gamma, cos_beta * sin_gamma, -sin_beta};
 
-      fp_type g_rot_alpha = angle_scale * dot3(tau, u_alpha);
-      fp_type g_rot_beta  = angle_scale * dot3(tau, u_beta);
-      fp_type g_rot_gamma = angle_scale * dot3(tau, u_gamma);
+      const fp_type g_rot_alpha = angle_scale * dot3(tau, u_alpha);
+      const fp_type g_rot_beta  = angle_scale * dot3(tau, u_beta);
+      const fp_type g_rot_gamma = angle_scale * dot3(tau, u_gamma);
 
-      fp_type g_trasl_x = 0;
-      fp_type g_trasl_y = 0;
-      fp_type g_trasl_z = 0;
-
-      for (int index = 0; index < num_atoms; ++index) {
-        g_trasl_x += dE_dx[index];
-        g_trasl_y += dE_dy[index];
-        g_trasl_z += dE_dz[index];
+      gradient &grad_l = gradients_l[individual_index];
+      if (local_thread_id == 0) {
+        grad_l[0] = g_trasl_x;
+        grad_l[1] = g_trasl_y;
+        grad_l[2] = g_trasl_z;
+        grad_l[3] = g_rot_alpha;
+        grad_l[4] = g_rot_beta;
+        grad_l[5] = g_rot_gamma;
       }
 
-      // 4. Torsion derivatives
+      // ---------------------------------------------------------------------------------------------
+      // 4. Torsion derivatives: every lane sums over its atoms, then warp all-reduce, lane 0 stores
+      // ---------------------------------------------------------------------------------------------
       const fp_type gmean_x = g_trasl_x * inv_n;
       const fp_type gmean_y = g_trasl_y * inv_n;
       const fp_type gmean_z = g_trasl_z * inv_n;
-
-      gradient &grad_l = gradients_l[individual_index];
-
-      grad_l[0] = g_trasl_x;
-      grad_l[1] = g_trasl_y;
-      grad_l[2] = g_trasl_z;
-      grad_l[3] = g_rot_alpha;
-      grad_l[4] = g_rot_beta;
-      grad_l[5] = g_rot_gamma;
 
       for (int t = 0; t < num_rotamers; ++t) {
         const int* frag_mask = fragments + t * num_atoms;
@@ -604,6 +610,7 @@ namespace mudock {
         const int a1 = frag_start_indices[t];
         const int a2 = frag_stop_indices[t];
 
+        // axis is computed redundantly by every lane (same value, avoids a broadcast)
         fp_type axis[3];
         axis[0] = scratch_x_l[a2] - scratch_x_l[a1];
         axis[1] = scratch_y_l[a2] - scratch_y_l[a1];
@@ -616,7 +623,7 @@ namespace mudock {
         axis[2] *= inv_norm;
 
         fp_type dE_dpsi{0};
-        for (int i = 0; i < num_atoms; ++i) {
+        for (int i = local_thread_id; i < num_atoms; i += BLOCK_SIZE) {
           if (frag_mask[i] != 0) {
             const fp_type r[3] = {scratch_x_l[i] - scratch_x_l[a1],
                                   scratch_y_l[i] - scratch_y_l[a1],
@@ -628,10 +635,16 @@ namespace mudock {
                        (dE_dz[i] - gmean_z) * temp[2];
           }
         }
-        grad_l[6 + t] = angle_scale * dE_dpsi;
+        dE_dpsi = warp_allreduce_sum(dE_dpsi); // called by all lanes (no divergence before)
+        if (local_thread_id == 0) grad_l[6 + t] = angle_scale * dE_dpsi;
       }
+
+      // WAR hazard: the next individual overwrites dE_* in phase 1 while slower lanes could still be
+      // reading them here
+      __syncwarp();
     }
   }
+
 
   template<>
   void adt_score_kernel<queue_cuda>::operator()() {
