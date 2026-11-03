@@ -23,6 +23,7 @@
   #include <mudock/compute/buffer_utils.hpp>
   #include <mudock/compute/scoring.hpp>
   #include <mudock/compute/scratchpad.hpp>
+  #include <mudock/compute/adadelta_convergence.hpp>
 #endif
 #include <mudock/molecule.hpp>
 #include <mudock/type_alias.hpp>
@@ -47,7 +48,8 @@ namespace mudock {
              std::shared_ptr<scoring_t<queue_type>> _score,
              ligand_placement _placement = {})
              : local_search<queue_type, scoring_t>(_scratch, _score),
-               geom_trans(_scratch, _score->get_protein(), _placement) {}
+             geom_trans(_scratch, _score->get_protein(), _placement),
+             adadelta_convergence_stage(_scratch) {}
 
     void prepare(batch<static_molecule> &batch) {
       const knobs& configuration = (*this->scratch).configuration;
@@ -82,7 +84,7 @@ namespace mudock {
       auto &adadelta_e_g2_b  = (*this->scratch).template get<buffer_data_type::ADADELTA_E_G2>();
       auto &adadelta_e_dw2_b = (*this->scratch).template get<buffer_data_type::ADADELTA_E_DW2>();
       auto &chromosomes_b    = (*this->scratch).template get<buffer_data_type::CHROMOSOMES>();
-      auto &gradients_b       = (*this->scratch).template get<buffer_data_type::GRADIENTS>();
+      auto &gradients_b      = (*this->scratch).template get<buffer_data_type::GRADIENTS>();
       const size_t gradient_count = static_cast<size_t>(batch_ligands) * static_cast<size_t>(individuals_per_ligand);
 
 
@@ -125,7 +127,7 @@ namespace mudock {
       chromosome *adadelta_e_dw2       = adadelta_e_dw2_b.dev_pointer();
       chromosome *chromosomes          = chromosomes_b.dev_pointer();
       gradient   *gradients            = gradients_b.dev_pointer();
-      int        *ls_selected   = ls_selected_b.dev_pointer();
+      int        *ls_selected          = ls_selected_b.dev_pointer();
 
       auto q = (*this->scratch).get_queue();
 
@@ -155,6 +157,7 @@ namespace mudock {
       // Initialize the scoring kernel buffers
       this->score_stage->prepare(batch); //TODO L se non sbaglio l'ho aggiunto per quando deve fare solo local search nell'eseguibile stand alone
       geom_trans.prepare(batch);
+      adadelta_convergence_stage.prepare(batch);
     }
 
     void operator()() {
@@ -237,6 +240,7 @@ namespace mudock {
 
     std::unique_ptr<adadelta_kernel<queue_type>> adadelta_krnl;
     geometric<queue_type> geom_trans;
+    adadelta_convergence<queue_type> adadelta_convergence_stage;
 
     // TODO L valid only for standalone (one individual)
     fp_type get_ligand_rmsd(int ligand_index, const fp_type* x_scratch_b, const fp_type* y_scratch_b, const fp_type* z_scratch_b) {
@@ -285,6 +289,8 @@ namespace mudock {
       // Run local search
       for (std::size_t i = 0; i < this->iterations; ++i) {
         geom_trans();
+        (*this->score_stage)();
+        adadelta_convergence_stage();
         (this->score_stage).get()->compute_gradient();
         (*adadelta_krnl)();
       }

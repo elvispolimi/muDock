@@ -58,6 +58,7 @@ list(
   "${header_path}/${header_prefix}/cpp_implementation/geom_transform_cpp.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/genetic_cpp.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/adadelta_cpp.hpp"
+  "${header_path}/${header_prefix}/cpp_implementation/adadelta_convergence_cpp.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/cpp_implementation.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/mutate_cpp.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/mutate.hpp"
@@ -136,6 +137,7 @@ list(
   "${source_path}/cpp_implementation/adt_score_cpp.cpp"
   "${source_path}/cpp_implementation/genetic_cpp.cpp"
   "${source_path}/cpp_implementation/adadelta_cpp.cpp"
+  "${source_path}/cpp_implementation/adadelta_convergence_cpp.cpp"
   "${source_path}/cpp_implementation/crystal_convergence_cpp.cpp"
   "${source_path}/tbb_implementation/runtime_services.cpp"
 )

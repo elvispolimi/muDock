@@ -43,6 +43,8 @@ namespace mudock {
     CONVERGED_LIGANDS, // IMPORTANT: store 0 if ligand NOT converged, otherwise store the number of generations to reach convergence
     BEST_SO_FAR,
     FOR_HOW_LONG_BEST,
+    BEST_SCORES,
+    BEST_SCORES_AGE,
     RMSD_BEST_POSE
   };
 
@@ -174,6 +176,14 @@ namespace mudock {
   template<>
   struct buffer_type_traits<buffer_data_type::FOR_HOW_LONG_BEST> {
     using type = buffer_type_traits_impl<buffer_data_type::FOR_HOW_LONG_BEST, int>::type;
+  };
+  template<>
+  struct buffer_type_traits<buffer_data_type::BEST_SCORES> {
+    using type = buffer_type_traits_impl<buffer_data_type::BEST_SCORES, fp_type>::type;
+  };
+  template<>
+  struct buffer_type_traits<buffer_data_type::BEST_SCORES_AGE> {
+    using type = buffer_type_traits_impl<buffer_data_type::BEST_SCORES_AGE, int>::type;
   };
   template<>
   struct buffer_type_traits<buffer_data_type::RMSD_BEST_POSE> {

@@ -8,7 +8,7 @@
 #include <cmath>
 
 namespace mudock {
-  void check_convergence(const int batch_ligands,
+  void check_ligand_convergence(const int batch_ligands,
                          const int batch_atoms,
                          const bool autostop,
                          const int individuals_per_ligand,
@@ -130,7 +130,7 @@ namespace mudock {
   
   template<>
   void crystal_convergence_kernel<queue_cpp>::operator()() {
-    q->invoke_kernel<this->crystal_convergence_region_name>(check_convergence,
+    q->invoke_kernel<this->crystal_convergence_region_name>(check_ligand_convergence,
                                                             batch_ligands,
                                                             batch_atoms,
                                                             autostop,
