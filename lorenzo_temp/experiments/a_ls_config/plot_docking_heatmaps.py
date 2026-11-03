@@ -122,10 +122,10 @@ def main():
             args.outdir,
             f"heatmap_{ligand}_{args.agg}.png"
         )
-        plt.savefig(out_path, dpi=300)
+        # plt.savefig(out_path, dpi=300)
         plt.close()
 
-        print(f"Saved heatmap for {ligand} to {out_path}")
+        # print(f"Saved heatmap for {ligand} to {out_path}")
 
     # 7. Generate global heatmaps grouped by rotamer count
     # Bounds are inclusive: 1-9 and 10-50 rotamers.
@@ -223,14 +223,13 @@ def main():
             fmt=".2f",
             cbar_kws={
                 "label": (
-                    f"Mean Score Difference "
-                    f"({args.agg.capitalize()} per complex)"
+                    f"kcal/mol"
                 )
             }
         )
 
         plt.title(
-            f"Global LGA vs GA: {rot_min}-{rot_max} Rotamers\n"
+            f"LGA vs GA\n"
             f"Mean Score Difference Across {num_complexes} Complexes "
             f"({args.agg.capitalize()} per complex)"
         )
