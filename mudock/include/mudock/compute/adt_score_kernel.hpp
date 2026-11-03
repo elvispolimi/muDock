@@ -187,6 +187,8 @@ namespace mudock {
 
     void operator()();
 
+    inline void set_chromosomes_buffer(const chromosome* chromosomes_b_) { chromosomes_b = chromosomes_b_; }
+
     adt_gradient_kernel(const adt_gradient_kernel &)            = default;
     adt_gradient_kernel(adt_gradient_kernel &&)                 = default;
     adt_gradient_kernel &operator=(const adt_gradient_kernel &) = delete;

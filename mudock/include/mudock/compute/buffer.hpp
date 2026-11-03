@@ -45,6 +45,7 @@ namespace mudock {
     FOR_HOW_LONG_BEST,
     BEST_SCORES,
     BEST_SCORES_AGE,
+    ADADELTA_BEST_CHROMOSOMES,
     RMSD_BEST_POSE
   };
 
@@ -184,6 +185,10 @@ namespace mudock {
   template<>
   struct buffer_type_traits<buffer_data_type::BEST_SCORES_AGE> {
     using type = buffer_type_traits_impl<buffer_data_type::BEST_SCORES_AGE, int>::type;
+  };
+  template<>
+  struct buffer_type_traits<buffer_data_type::ADADELTA_BEST_CHROMOSOMES> {
+    using type = buffer_type_traits_impl<buffer_data_type::ADADELTA_BEST_CHROMOSOMES, chromosome>::type;
   };
   template<>
   struct buffer_type_traits<buffer_data_type::RMSD_BEST_POSE> {

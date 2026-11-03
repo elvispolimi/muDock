@@ -101,26 +101,10 @@ namespace mudock {
         initialize_buffer<buffer_data_type::CHROMOSOMES>(this->scratch, gradient_count, chromosome{}, true);
       }
       
-      // TODO L move active from lsrate initialization from here to local search generic or LGA?
-      // Initialize active population
-      auto &ls_selected_b = (*this->scratch).template get<buffer_data_type::LS_SELECTED>();
-      if (!ls_selected_b.is_valid() || ls_selected_b.num_elements() != gradient_count) {
-        ls_selected_b.alloc(gradient_count);
-        ls_selected_b.set_valid();
-      }
-      std::vector<int> active_init(gradient_count);
-      
-      std::mt19937 rng(configuration.seed.value_or(std::random_device{}()));
-      std::bernoulli_distribution dist(static_cast<double>(static_cast<fp_type>(local_search_rate) / fp_type{100}));
-
-      for (size_t i = 0; i < gradient_count; ++i) {
-        active_init[i] = dist(rng);
-      }
-
-      std::memcpy((void *) ls_selected_b(),
-                  active_init.data(),
-                  gradient_count * sizeof(int));
-      ls_selected_b.copy_host2device();
+      // Allocate once; selection is renewed at every local-search invocation.
+      initialize_buffer<buffer_data_type::LS_SELECTED>(this->scratch, gradient_count, 0, true);
+      auto& ls_selected_b = this->scratch->template get<buffer_data_type::LS_SELECTED>();
+      selection_rng.seed(static_cast<std::mt19937::result_type>(configuration.seed.value_or(std::random_device{}())));
 
       int* __restrict__ num_rotamers_p = num_rotamers_b.dev_pointer();
       chromosome *adadelta_e_g2        = adadelta_e_g2_b.dev_pointer();
@@ -166,6 +150,7 @@ namespace mudock {
           "Number of gradients is not a multiple of ligands in the batch");
       assert(adadelta_krnl && "Adadelta local search kernel method not yet prepared");
 
+      reset_local_search();
       if (this->standalone_local_search) {
         run_standalone();
       } else {
@@ -177,6 +162,10 @@ namespace mudock {
       if (adadelta_krnl) {
         adadelta_krnl->set_chromosomes_buffer(chromosomes_b_);
         geom_trans.set_chromosomes_buffer(chromosomes_b_);
+        adadelta_convergence_stage.set_chromosomes_buffer(chromosomes_b_);
+        if constexpr (requires { this->score_stage->set_chromosomes_buffer(chromosomes_b_); }) {
+          this->score_stage->set_chromosomes_buffer(chromosomes_b_);
+        }
       }
     }
 
@@ -194,6 +183,7 @@ namespace mudock {
 
       mem += sizeof(chromosome) * individuals_per_ligand; // One AdaDelta E[g^2] state per individual.
       mem += sizeof(chromosome) * individuals_per_ligand; // One AdaDelta E[delta_w^2] state per individual.
+      mem += adadelta_convergence<queue_type>::get_private_ligand_mem(max_atoms, conf);
 
       return mem;
     }
@@ -233,6 +223,7 @@ namespace mudock {
     bool local_search_on_best;
     fp_type rho;
     fp_type epsilon;
+    std::mt19937 selection_rng;
     std::vector<fp_type> initial_scores;
     std::vector<fp_type> initial_rmsds;
     std::vector<fp_type> final_scores;
@@ -261,32 +252,34 @@ namespace mudock {
 
 
 
-    void run_as_lga_step() {
-
-      // Reinitialize buffers
+    void reset_local_search() {
       const size_t gradient_count = static_cast<size_t>(batch_ligands) * static_cast<size_t>(individuals_per_ligand);
       initialize_buffer<buffer_data_type::ADADELTA_E_G2>(this->scratch, gradient_count, chromosome{}, true);
       initialize_buffer<buffer_data_type::ADADELTA_E_DW2>(this->scratch, gradient_count, chromosome{}, true);
+      adadelta_convergence_stage.reset();
 
-      if (local_search_on_best) {
-        // Mark top n individuals based on lsrate
-        auto& scores_b             = (*this->scratch).template get<buffer_data_type::SCORES>();
-        auto& ls_selected_b = (*this->scratch).template get<buffer_data_type::LS_SELECTED>();
+      auto& ls_selected_b = this->scratch->template get<buffer_data_type::LS_SELECTED>();
+      int* selected = ls_selected_b.host_pointer();
+
+      if (local_search_on_best && !this->standalone_local_search) {
+        // LGA has already scored the incoming population.
+        auto& scores_b = this->scratch->template get<buffer_data_type::SCORES>();
         scores_b.copy_device2host();
-        ls_selected_b.copy_device2host();
-        (*this->scratch).get_queue()->synchronize();
-        fp_type* __restrict__ scores_p  = scores_b.host_pointer();
-        int* __restrict__ ls_selected_p  = ls_selected_b.host_pointer();
+        this->scratch->get_queue()->synchronize();
+        const fp_type* scores = scores_b.host_pointer();
+        const int n = local_search_rate * individuals_per_ligand / 100;
         for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
-          int     *__restrict__ ls_selected_l = ls_selected_p + ligand_index * individuals_per_ligand;
-          fp_type *__restrict__ scores_l             = scores_p + ligand_index * individuals_per_ligand;
-          const int n = static_cast<int>(static_cast<fp_type>(local_search_rate) * static_cast<fp_type>(individuals_per_ligand) / fp_type{100});
-          markTopNActive(scores_l, ls_selected_l, n, individuals_per_ligand);
+          const int offset = ligand_index * individuals_per_ligand;
+          markTopNActive(scores + offset, selected + offset, n, individuals_per_ligand);
         }
-        ls_selected_b.copy_host2device();
+      } else {
+        std::bernoulli_distribution select(static_cast<double>(local_search_rate) / 100.0);
+        for (std::size_t i = 0; i < gradient_count; ++i) selected[i] = select(selection_rng);
       }
+      ls_selected_b.copy_host2device();
+    }
 
-      // Run local search
+    void run_iterations() {
       for (std::size_t i = 0; i < this->iterations; ++i) {
         geom_trans();
         (*this->score_stage)();
@@ -294,6 +287,17 @@ namespace mudock {
         (this->score_stage).get()->compute_gradient();
         (*adadelta_krnl)();
       }
+
+      // Include the last update in the best-pose comparison before restoring it.
+      geom_trans();
+      (*this->score_stage)();
+      adadelta_convergence_stage.finalize();
+      geom_trans();
+      (*this->score_stage)();
+    }
+
+    void run_as_lga_step() {
+      run_iterations();
 
       ///////////////////////////////////////////////////////////////////////////////////////////
       // TODO L : Experiments on rmsd, not needed in general for computation of local search
@@ -353,14 +357,8 @@ namespace mudock {
       // const long int num_rotamers = this->crystal_template->num_rotamers();
       
 
-      for (std::size_t iter = 1; iter <= this->iterations; ++iter) {
-        geom_trans();
-        (*this->score_stage)();
-        (this->score_stage).get()->compute_gradient();
-        (*adadelta_krnl)();
+      run_iterations();
 
-        // Dump pose for visualization.
-        // this->dump_pose(iter);
         // if (iter == 1) {
         //   auto& scores_b = (*this->scratch).template get<buffer_data_type::SCORES>();
         //   auto& x_scratch_b = (*this->scratch).template get<buffer_data_type::X_SCRATCH>();
@@ -377,11 +375,6 @@ namespace mudock {
         //   }
         // }
           
-      }
-      
-      geom_trans();
-      (*this->score_stage)();
-      
       // auto& scores_b = (*this->scratch).template get<buffer_data_type::SCORES>();
       // auto& x_scratch_b = (*this->scratch).template get<buffer_data_type::X_SCRATCH>();
       // auto& y_scratch_b = (*this->scratch).template get<buffer_data_type::Y_SCRATCH>();

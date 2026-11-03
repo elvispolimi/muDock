@@ -1,6 +1,7 @@
 #pragma once
 
 #include <mudock/compute/adadelta.hpp>
+#include <mudock/cuda_implementation/adadelta_convergence_cuda.cuh>
 #include <mudock/cuda_implementation/queue_cuda.cuh>
 
 namespace mudock {

@@ -1,0 +1,4 @@
+add_executable(test_adadelta_convergence adadelta_convergence.cpp)
+target_link_libraries(test_adadelta_convergence PRIVATE libmudock)
+target_compile_features(test_adadelta_convergence PRIVATE cxx_std_20)
+add_test(NAME test_adadelta_convergence COMMAND test_adadelta_convergence)
