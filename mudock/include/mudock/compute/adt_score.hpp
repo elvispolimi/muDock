@@ -390,12 +390,6 @@ namespace mudock {
       (*gradient_kernel)();
     }
 
-    inline void set_chromosomes_buffer(const chromosome* chromosomes_b_) {
-      if (gradient_kernel) {
-        gradient_kernel->set_chromosomes_buffer(chromosomes_b_);
-      }
-    }
-
     static std::size_t get_shared_ligand_mem(const int max_atoms, const knobs conf) {
       const int scores_per_ligand = std::max(1, static_cast<int>(conf.population_number));
       return sizeof(int) + sizeof(int) + sizeof(fp_type) * scores_per_ligand +

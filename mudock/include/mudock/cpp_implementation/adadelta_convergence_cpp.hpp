@@ -5,5 +5,5 @@
 
 namespace mudock {
   template<>
-  void adadelta_convergence_kernel<queue_cpp>::operator()(std::size_t completed_iterations, bool finalize);
+  void adadelta_convergence_kernel<queue_cpp>::operator()();
 } // namespace mudock
