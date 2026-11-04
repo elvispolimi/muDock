@@ -260,9 +260,13 @@ namespace mudock {
     void run_as_lga_step() {
 
       // Reinitialize buffers
-      const size_t gradient_count = static_cast<size_t>(batch_ligands) * static_cast<size_t>(individuals_per_ligand);
-      initialize_buffer<buffer_data_type::ADADELTA_E_G2>(this->scratch, gradient_count, chromosome{}, true);
-      initialize_buffer<buffer_data_type::ADADELTA_E_DW2>(this->scratch, gradient_count, chromosome{}, true);
+      const size_t gradient_count = static_cast<size_t>(batch_ligands) * individuals_per_ligand;
+      auto& e_g2 = this->scratch->template get<buffer_data_type::ADADELTA_E_G2>();
+      auto& e_dw2 = this->scratch->template get<buffer_data_type::ADADELTA_E_DW2>();
+      auto q = this->scratch->get_queue();
+      const size_t bytes = gradient_count * sizeof(chromosome);
+      q->set_to_value(e_g2.dev_pointer(), bytes, 0);
+      q->set_to_value(e_dw2.dev_pointer(), bytes, 0);
 
       if (local_search_on_best) {
         // Mark top n individuals based on lsrate
