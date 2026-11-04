@@ -85,6 +85,48 @@ namespace mudock {
     return value;
   }
 
+  // One full warp owns the shared gradient arrays. All 32 lanes must call
+  // this helper, using atom == -1 for an inactive pair. Within each phase,
+  // only one leader writes each atom; the final barrier orders subsequent
+  // phases, so plain shared-memory additions are sufficient.
+  // Requires compute capability >= 7.0 (__match_any_sync).
+  __device__ __forceinline__ void accumulate_without_atomics(
+      fp_type* dx, fp_type* dy, fp_type* dz,
+      const int atom, const fp_type gx, const fp_type gy, const fp_type gz) {
+    constexpr unsigned full_mask = 0xffffffffu;
+    const int lane = threadIdx.x;
+    const unsigned peers = __match_any_sync(full_mask, atom);
+
+    if (atom >= 0) {
+      const int leader = __ffs(peers) - 1;
+      fp_type sx = gx;
+      fp_type sy = gy;
+      fp_type sz = gz;
+
+      if (__popc(peers) > 1) {
+        sx = sy = sz = fp_type{0};
+        unsigned remaining = peers;
+        while (remaining != 0) {
+          const int source = __ffs(remaining) - 1;
+          sx += __shfl_sync(peers, gx, source);
+          sy += __shfl_sync(peers, gy, source);
+          sz += __shfl_sync(peers, gz, source);
+          remaining &= remaining - 1;
+        }
+      }
+
+      if (lane == leader) {
+        dx[atom] += sx;
+        dy[atom] += sy;
+        dz[atom] += sz;
+      }
+    }
+
+    // Every lane participates, including lanes with no valid pair. This
+    // separates endpoint updates and prevents overlap between loop rounds.
+    __syncwarp(full_mask);
+  }
+
   __device__ __forceinline__ void get_grid_values(const fp_type *__restrict__ map,
                                                   const int &map_index_x,
                                                   const int &map_index_xy,
@@ -454,85 +496,96 @@ namespace mudock {
         dE_dy[index] = gy;
         dE_dz[index] = gz;
       }
-      // dE_* fully initialized (and visible to every lane) before the pair phase starts atomics on them
+      // Make the grid contributions visible before nonbonded accumulation.
       __syncwarp();
 
       // ---------------------------------------------------------------------------------------------
-      // 2. Intramolecular non-bonded contribution: lanes split the PAIRS; a1/a2 can belong to any
-      //    lane's atoms and several pairs can hit the same atom -> atomicAdd on shared memory
+      // 2. Intramolecular non-bonded contribution: same pair-to-lane mapping,
+      //    with atom-grouped updates and no atomic operations. The loop bounds
+      //    are warp-uniform; inactive lanes still execute both helper calls.
       // ---------------------------------------------------------------------------------------------
       if (num_rotamers > 0) {
-        for (int i = local_thread_id; i < num_nonbonds; i += BLOCK_SIZE) {
-          const int &a1 = nonbond_a1_l[i];
-          const int &a2 = nonbond_a2_l[i];
+        for (int base = 0; base < num_nonbonds; base += BLOCK_SIZE) {
+          const int i = base + local_thread_id;
+          int target_a1 = -1;
+          int target_a2 = -1;
+          fp_type gx{0}, gy{0}, gz{0};
 
-          const auto diff_x          = scratch_x_l[a1] - scratch_x_l[a2];
-          const auto diff_y          = scratch_y_l[a1] - scratch_y_l[a2];
-          const auto diff_z          = scratch_z_l[a1] - scratch_z_l[a2];
-          const fp_type distance_two = diff_x * diff_x + diff_y * diff_y + diff_z * diff_z;
-          if (distance_two < RMIN_ELEC_SQUARE) continue; // per-lane continue: no collective op inside
+          if (i < num_nonbonds) {
+            const int a1 = nonbond_a1_l[i];
+            const int a2 = nonbond_a2_l[i];
 
-          const fp_type distance_two_clamp = distance_two;
-          const fp_type distance           = std::sqrt(distance_two_clamp);
-          const fp_type inv_r = fp_type{1} / distance;
+            const auto diff_x = scratch_x_l[a1] - scratch_x_l[a2];
+            const auto diff_y = scratch_y_l[a1] - scratch_y_l[a2];
+            const auto diff_z = scratch_z_l[a1] - scratch_z_l[a2];
+            const fp_type distance_two = diff_x * diff_x + diff_y * diff_y + diff_z * diff_z;
 
-          const fp_type dir_x = diff_x * inv_r;
-          const fp_type dir_y = diff_y * inv_r;
-          const fp_type dir_z = diff_z * inv_r;
+            // Preserve the original skip condition, but never skip a warp
+            // collective. Invalid pairs retain the -1 endpoint sentinels.
+            if (!(distance_two < RMIN_ELEC_SQUARE)) {
+              target_a1 = a1;
+              target_a2 = a2;
 
-          const fp_type exp_term = std::exp(mehler_solmajer::lambda_B * distance);
-          const fp_type denom = (fp_type{1} + mehler_solmajer::rk * exp_term);
-          const fp_type epsilon = mehler_solmajer::A + mehler_solmajer::B / denom;
-          const fp_type epsilon_prime = -mehler_solmajer::B * mehler_solmajer::rk * mehler_solmajer::lambda_B * exp_term / (denom * denom);
-          const fp_type C = charge_l[a1] * charge_l[a2] * ELECSCALE * autodock_parameters::coeff_estat;
+              const fp_type distance_two_clamp = distance_two;
+              const fp_type distance           = std::sqrt(distance_two_clamp);
+              const fp_type inv_r = fp_type{1} / distance;
 
-          const fp_type f = distance * epsilon;
-          const fp_type f_prime = epsilon + distance * epsilon_prime;
-          const fp_type dE_dr_elec = -C * f_prime / (f * f);
+              const fp_type dir_x = diff_x * inv_r;
+              const fp_type dir_y = diff_y * inv_r;
+              const fp_type dir_z = diff_z * inv_r;
 
-          const fp_type nb_desolv = (vol_l[a2] * (solpar_l[a1] + qsolpar * std::fabs(charge_l[a1])) +
-                                     vol_l[a1] * (solpar_l[a2] + qsolpar * std::fabs(charge_l[a2])));
-          const fp_type e_desolv = autodock_parameters::coeff_desolv *
-                                   std::exp(fp_type{-0.5} / (sigma_square) * distance_two_clamp) * nb_desolv;
-          const fp_type dE_dr_desolv = (-distance / sigma_square) * e_desolv;
+              const fp_type exp_term = std::exp(mehler_solmajer::lambda_B * distance);
+              const fp_type denom = (fp_type{1} + mehler_solmajer::rk * exp_term);
+              const fp_type epsilon = mehler_solmajer::A + mehler_solmajer::B / denom;
+              const fp_type epsilon_prime = -mehler_solmajer::B * mehler_solmajer::rk * mehler_solmajer::lambda_B * exp_term / (denom * denom);
+              const fp_type C = charge_l[a1] * charge_l[a2] * ELECSCALE * autodock_parameters::coeff_estat;
 
-          fp_type dE_dr_vdw = 0;
-          if (distance_two_clamp < nbc2) {
-            const int xA = xA_default;
-            const int xB = nonbond_xB_l[i];
+              const fp_type f = distance * epsilon;
+              const fp_type f_prime = epsilon + distance * epsilon_prime;
+              const fp_type dE_dr_elec = -C * f_prime / (f * f);
 
-            if (xA != xB) {
-              const fp_type cA = nonbond_cA_l[i];
-              const fp_type cB = nonbond_cB_l[i];
+              const fp_type nb_desolv = (vol_l[a2] * (solpar_l[a1] + qsolpar * std::fabs(charge_l[a1])) +
+                                         vol_l[a1] * (solpar_l[a2] + qsolpar * std::fabs(charge_l[a2])));
+              const fp_type e_desolv = autodock_parameters::coeff_desolv *
+                                       std::exp(fp_type{-0.5} / (sigma_square) * distance_two_clamp) * nb_desolv;
+              const fp_type dE_dr_desolv = (-distance / sigma_square) * e_desolv;
 
-              const auto log_distance = std::log(distance);
-              const fp_type rA        = std::exp(-static_cast<fp_type>(xA) * log_distance);
-              const fp_type rB        = std::exp(-static_cast<fp_type>(xB) * log_distance);
+              fp_type dE_dr_vdw = 0;
+              if (distance_two_clamp < nbc2) {
+                const int xA = xA_default;
+                const int xB = nonbond_xB_l[i];
 
-              const fp_type rA1 = rA * inv_r;
-              const fp_type rB1 = rB * inv_r;
-              const fp_type e_vdW_Hb_unclamped = cA * rA - cB * rB;
-              if (e_vdW_Hb_unclamped < EINTCLAMP) {
-                dE_dr_vdw = -static_cast<fp_type>(xA) * cA * rA1 + static_cast<fp_type>(xB) * cB * rB1;
+                if (xA != xB) {
+                  const fp_type cA = nonbond_cA_l[i];
+                  const fp_type cB = nonbond_cB_l[i];
+
+                  const auto log_distance = std::log(distance);
+                  const fp_type rA        = std::exp(-static_cast<fp_type>(xA) * log_distance);
+                  const fp_type rB        = std::exp(-static_cast<fp_type>(xB) * log_distance);
+
+                  const fp_type rA1 = rA * inv_r;
+                  const fp_type rB1 = rB * inv_r;
+                  const fp_type e_vdW_Hb_unclamped = cA * rA - cB * rB;
+                  if (e_vdW_Hb_unclamped < EINTCLAMP) {
+                    dE_dr_vdw = -static_cast<fp_type>(xA) * cA * rA1 + static_cast<fp_type>(xB) * cB * rB1;
+                  }
+                }
               }
+
+              const fp_type dE_dr = dE_dr_elec + dE_dr_desolv + dE_dr_vdw;
+              gx = dE_dr * dir_x;
+              gy = dE_dr * dir_y;
+              gz = dE_dr * dir_z;
             }
           }
 
-          const fp_type dE_dr = dE_dr_elec + dE_dr_desolv + dE_dr_vdw;
-          const fp_type gx = dE_dr * dir_x;
-          const fp_type gy = dE_dr * dir_y;
-          const fp_type gz = dE_dr * dir_z;
-
-          atomicAdd(&dE_dx[a1], gx);
-          atomicAdd(&dE_dy[a1], gy);
-          atomicAdd(&dE_dz[a1], gz);
-
-          atomicAdd(&dE_dx[a2], -gx);
-          atomicAdd(&dE_dy[a2], -gy);
-          atomicAdd(&dE_dz[a2], -gz);
+          // Each phase has one writer per target atom. The helper ends with
+          // a full-warp barrier, ordering a1, a2 and the next pair chunk.
+          accumulate_without_atomics(dE_dx, dE_dy, dE_dz, target_a1, gx, gy, gz);
+          accumulate_without_atomics(dE_dx, dE_dy, dE_dz, target_a2, -gx, -gy, -gz);
         }
       }
-      // all atomics done and visible before anybody reads the final per-atom gradient
+      // Ensure every final per-atom gradient is visible to the next phase.
       __syncwarp();
 
       // ---------------------------------------------------------------------------------------------
