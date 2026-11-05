@@ -7,37 +7,36 @@
 ############################
 # MUDOCK
 ############################
-./builds/omp/application/muDock -p ./data/1fkb/1fkb_protein.pdb -l ./data/1fkb/1fkb_ligand.adtmol2 --seed 0 --search lga
-./builds/omp/application/muDock -p ./data/1hii/1hii_protein.pdb -l ./data/1hii/1hii_ligand.adtmol2 --seed 0 --search lga
-./builds/omp/application/muDock -p ./data/2ya6/2ya6_protein.pdb -l ./data/2ya6/2ya6_ligand.adtmol2 --seed 0 --search lga
-./builds/omp/application/muDock -p ./data/3fv3/3fv3_protein.pdb -l ./data/3fv3/3fv3_ligand.adtmol2 --seed 0 --search lga
-./builds/omp/application/muDock -p ./data/3udd/3udd_protein.pdb -l ./data/3udd/3udd_ligand.adtmol2 --seed 0 --search lga
-./builds/omp/application/muDock -p ./data/4few/4few_protein.pdb -l ./data/4few/4few_ligand.adtmol2 --seed 0 --search lga
-./builds/omp/application/muDock -p ./data/5cst/5cst_protein.pdb -l ./data/5cst/5cst_ligand.adtmol2 --seed 0 --search lga
-./builds/omp/application/muDock -p ./data/5uez/5uez_protein.pdb -l ./data/5uez/5uez_ligand.adtmol2 --seed 0 --search lga
-./builds/omp/application/muDock -p ./data/5wuk/5wuk_protein.pdb -l ./data/5wuk/5wuk_ligand.adtmol2 --seed 0 --search lga
+./builds/omp/application/muDock -p ./data/1fkb/1fkb_pocket.pdb -l ./data/1fkb/1fkb_ligand.adtmol2 --seed 0 --search lga
+./builds/omp/application/muDock -p ./data/1hii/1hii_pocket.pdb -l ./data/1hii/1hii_ligand.adtmol2 --seed 0 --search lga
+./builds/omp/application/muDock -p ./data/2ya6/2ya6_pocket.pdb -l ./data/2ya6/2ya6_ligand.adtmol2 --seed 0 --search lga
+./builds/omp/application/muDock -p ./data/3fv3/3fv3_pocket.pdb -l ./data/3fv3/3fv3_ligand.adtmol2 --seed 0 --search lga
+./builds/omp/application/muDock -p ./data/3udd/3udd_pocket.pdb -l ./data/3udd/3udd_ligand.adtmol2 --seed 0 --search lga
+./builds/omp/application/muDock -p ./data/4few/4few_pocket.pdb -l ./data/4few/4few_ligand.adtmol2 --seed 0 --search lga
+./builds/omp/application/muDock -p ./data/5cst/5cst_pocket.pdb -l ./data/5cst/5cst_ligand.adtmol2 --seed 0 --search lga
+./builds/omp/application/muDock -p ./data/5uez/5uez_pocket.pdb -l ./data/5uez/5uez_ligand.adtmol2 --seed 0 --search lga
+./builds/omp/application/muDock -p ./data/5wuk/5wuk_pocket.pdb -l ./data/5wuk/5wuk_ligand.adtmol2 --seed 0 --search lga
 
-./builds/omp/application/muDock -p ./data/coreset_CASF_2016/2ymd/2ymd_protein.pdb -l ./data/coreset_CASF_2016/2ymd/2ymd_ligand.adtmol2 --seed 0 --search lga
+./builds/omp/application/muDock -p ./data/coreset_CASF_2016/2ymd/2ymd_pocket.pdb -l ./data/coreset_CASF_2016/2ymd/2ymd_ligand.adtmol2 --seed 0 --search lga
 
-./builds/cuda/application/muDock -p ./data/1fkb/1fkb_pocket.pdb -l ./data/16all.adtmol2 --search genetic --observer 2 --use CUDA:GPU:0
+./builds/cuda/application/muDock -p ./data/1fkb/1fkb_pocket.pdb -l ./../mixed.reduced.adtmol2 --search genetic --observer 5 --use CUDA:GPU:0:2:10000000000
 
 
 ############################
 # LS
 ############################
-./builds/omp/application/local_search/local_search -p ./data/1fkb/1fkb_protein.pdb -l ./data/1fkb/1fkb_ligand.adtmol2 --placement preserve
-./builds/omp/application/local_search/local_search -p ./data/1hii/1hii_protein.pdb -l ./data/1hii/1hii_ligand.adtmol2 --placement preserve
-./builds/omp/application/local_search/local_search -p ./data/2ya6/2ya6_protein.pdb -l ./data/2ya6/2ya6_ligand.adtmol2 --placement preserve
-./builds/omp/application/local_search/local_search -p ./data/3fv3/3fv3_protein.pdb -l ./data/3fv3/3fv3_ligand.adtmol2 --placement preserve
-./builds/omp/application/local_search/local_search -p ./data/3udd/3udd_protein.pdb -l ./data/3udd/3udd_ligand.adtmol2 --placement preserve
-./builds/omp/application/local_search/local_search -p ./data/4few/4few_protein.pdb -l ./data/4few/4few_ligand.adtmol2 --placement preserve
-./builds/omp/application/local_search/local_search -p ./data/5cst/5cst_protein.pdb -l ./data/5cst/5cst_ligand.adtmol2 --placement preserve
-./builds/omp/application/local_search/local_search -p ./data/5uez/5uez_protein.pdb -l ./data/5uez/5uez_ligand.adtmol2 --placement preserve
-./builds/omp/application/local_search/local_search -p ./data/5wuk/5wuk_protein.pdb -l ./data/5wuk/5wuk_ligand.adtmol2 --placement preserve 
+./builds/cuda/application/local_search/local_search -p ./data/1fkb/1fkb_pocket.pdb -l ./data/1fkb/1fkb_ligand.adtmol2 --placement preserve > tmp.txt
+./builds/cuda/application/local_search/local_search -p ./data/1hii/1hii_pocket.pdb -l ./data/1hii/1hii_ligand.adtmol2 --placement preserve > tmp.txt
+./builds/cuda/application/local_search/local_search -p ./data/2ya6/2ya6_pocket.pdb -l ./data/2ya6/2ya6_ligand.adtmol2 --placement preserve > tmp.txt
+./builds/cuda/application/local_search/local_search -p ./data/3udd/3udd_pocket.pdb -l ./data/3udd/3udd_ligand.adtmol2 --placement preserve > tmp.txt
+./builds/cuda/application/local_search/local_search -p ./data/4few/4few_pocket.pdb -l ./data/4few/4few_ligand.adtmol2 --placement preserve > tmp.txt
+./builds/cuda/application/local_search/local_search -p ./data/5cst/5cst_pocket.pdb -l ./data/5cst/5cst_ligand.adtmol2 --placement preserve > tmp.txt
+./builds/cuda/application/local_search/local_search -p ./data/5uez/5uez_pocket.pdb -l ./data/5uez/5uez_ligand.adtmol2 --placement preserve > tmp.txt
+./builds/cuda/application/local_search/local_search -p ./data/5wuk/5wuk_pocket.pdb -l ./data/5wuk/5wuk_ligand.adtmol2 --placement preserve > tmp.txt 
 
 ./builds/omp/application/local_search/local_search -p ./data/coreset_CASF_2016/3arq/3arq_pocket.pdb -l ./data/3arq/3arq_ligand.adtmol2 --lsit 0 --placement preserve
 
 
-./builds/cuda/application/local_search/local_search -p ./data/ligen_poses_from_pdbbind2016_coreset/1a30/protein.pdb -l ./data/ligen_poses_from_pdbbind2016_coreset/1a30/poses.adtmol2 --use CUDA:GPU:0 --placement preserve
+./builds/cuda/application/local_search/local_search -p ./data/ligen_poses_from_pdbbind2016_coreset/1a30/pocket.pdb -l ./data/ligen_poses_from_pdbbind2016_coreset/1a30/poses.adtmol2 --use CUDA:GPU:0 --placement preserve
 
-./builds/omp/application/local_search/local_search -p ./data/ligen_poses_from_pdbbind2016_coreset/1a30/protein.pdb -l ./data/ligen_poses_from_pdbbind2016_coreset/1a30/poses.adtmol2 --placement preserve
+./builds/omp/application/local_search/local_search -p ./data/ligen_poses_from_pdbbind2016_coreset/1a30/pocket.pdb -l ./data/ligen_poses_from_pdbbind2016_coreset/1a30/poses.adtmol2 --placement preserve

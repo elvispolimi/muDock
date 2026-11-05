@@ -14,22 +14,24 @@ rm -rf builds/new && cmake -S . -B builds/new -DMUDOCK_ENABLE_OMP=ON && cmake --
 # SPACK VERSION FOR ACCENTO
 rm -rf builds/cuda && \
 cmake -S . -B builds/cuda \
+    -DMUDOCK_ATOM_CLUSTER_LEVEL=EXTREME \
     -DMUDOCK_ENABLE_OMP=ON \
     -DMUDOCK_ENABLE_CUDA=ON \
+    -DMUDOCK_ENABLE_STAGE_BUCKET_TRACE=ON \
     -DMUDOCK_GPU_ARCHITECTURES=cuda:sm_80 \
     -DCMAKE_BUILD_TYPE=Release && \
 cmake --build builds/cuda -j8
 
 rm -rf builds/cudatry && \
 cmake -S . -B builds/cudatry \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DMUDOCK_ENABLE_FAST=ON \
-  -DMUDOCK_ENABLE_KERNEL_LOCK=ON \
-  -DMUDOCK_ENABLE_STAGE_BUCKET_TRACE=ON \
-  -DMUDOCK_GENETIC_BUCKET_COMBINE=MIN \
-  -DMUDOCK_ATOM_CLUSTER_LEVEL=OFF \
-  -DMUDOCK_GPU_ARCHITECTURES=nvidia:sm_80 \
-  -DMUDOCK_ENABLE_CUDA=ON && \
+    -DMUDOCK_ATOM_CLUSTER_LEVEL=EXTREME \
+    -DMUDOCK_ENABLE_IPO=ON \
+    -DMUDOCK_ENABLE_OMP=ON \
+    -DMUDOCK_ENABLE_CUDA=ON \
+    -DMUDOCK_STAGE_BUCKET_OVERRIDE=500 \
+    -DMUDOCK_ENABLE_STAGE_BUCKET_TRACE=ON \
+    -DMUDOCK_GPU_ARCHITECTURES=cuda:sm_80 \
+    -DCMAKE_BUILD_TYPE=Release && \
 cmake --build builds/cudatry -j8
 
 
@@ -76,3 +78,37 @@ pkill -u "$USER" -f '/builds/omp/application/muDock'
 pkill -u "$USER" -f '/builds/omp/application/local_search/local_search'
 pkill -u "$USER" -f '/builds/build/application/muDock'
 pkill -u "$USER" -f '/builds/build/application/local_search/local_search'
+
+############################################
+
+time ./bin/autodock_gpu_128wi \
+--dlgoutput 0 --xmloutput 0  \
+--ffile input/1fkb/1fkb_pocket.maps.fld \
+-B ../data/mixed_reduced_pdbqt/ \
+--nrun 1 \
+--psize 100 \
+--ngen 10 \
+--lsrat 100 \
+--lsit 300 \
+--heuristics 0 \
+--autostop 0 \
+--nev 1000000000 \
+> /dev/null
+
+#####################################
+
+./builds/cuda/application/muDock \
+-p ./data/1fkb/1fkb_pocket.pdb \
+-l ../data/8pdbbind_ligands_filtered.mol2 \
+--search lga \
+--population 100 \
+--generations 10 \
+--lsrate 100 \
+--lsit 300 \
+--observer 15 \
+--use CUDA:GPU:0:2:10000000000 \
+> /dev/null
+
+############################################
+124670 ligands in mixed_reduced
+15870 ligands in pdbbind_ligands_filtered
