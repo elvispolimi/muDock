@@ -1,0 +1,9 @@
+software,dataset,multiplier,data_size,avg_throughput,memory_per_worker_gb
+mudock,pdb,1,15870,,
+mudock,pdb,2,31740,,
+mudock,pdb,4,63480,,
+mudock,pdb,8,126960,16.69,13
+adgpu,pdb,1,15870,,NaN
+adgpu,pdb,2,31740,,NaN
+adgpu,pdb,4,63480,,NaN
+adgpu,pdb,8,126960,,NaN
