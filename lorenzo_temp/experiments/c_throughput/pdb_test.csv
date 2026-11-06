@@ -5,5 +5,5 @@ muDock,pdb,4,63480,12.89,20
 muDock,pdb,8,126960,16.69,13
 AutoDock-GPU,pdb,1,15870,11.46,NaN
 AutoDock-GPU,pdb,2,31740,12.90,NaN
-AutoDock-GPU,pdb,4,63480,,NaN
-AutoDock-GPU,pdb,8,126960,,NaN
+AutoDock-GPU,pdb,4,63480,12.95,NaN
+AutoDock-GPU,pdb,8,126960,13.35,NaN
