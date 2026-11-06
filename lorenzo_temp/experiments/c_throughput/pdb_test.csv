@@ -1,9 +1,9 @@
 software,dataset,multiplier,data_size,avg_throughput,memory_per_worker_gb
-muDock,pdb,1,15870,,
-muDock,pdb,2,31740,,
-muDock,pdb,4,63480,,
+muDock,pdb,1,15870,5.42,20
+muDock,pdb,2,31740,8.82,20
+muDock,pdb,4,63480,12.89,20
 muDock,pdb,8,126960,16.69,13
-AutoDock-GPU,pdb,1,15870,,NaN
-AutoDock-GPU,pdb,2,31740,,NaN
+AutoDock-GPU,pdb,1,15870,11.46,NaN
+AutoDock-GPU,pdb,2,31740,12.90,NaN
 AutoDock-GPU,pdb,4,63480,,NaN
 AutoDock-GPU,pdb,8,126960,,NaN

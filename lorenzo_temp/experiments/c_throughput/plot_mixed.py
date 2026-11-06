@@ -32,11 +32,11 @@ def plot_throughput(csv_file):
             va="bottom",
         )
 
-    plt.xlabel("Software")
-    plt.ylabel("Average throughput")
-    plt.title("Average Throughput by Software")
+    plt.xlabel("Application")
+    plt.ylabel("Average throughput (lig/s)")
+    plt.title("")
     plt.grid(axis="y", linestyle="--", alpha=0.5)
-    plt.xticks(rotation=15)
+    plt.xticks()
     plt.tight_layout()
     plt.show()
 

@@ -23,9 +23,9 @@ def plot_throughput(csv_file):
             label=software,
         )
 
-    plt.xlabel("Data size")
-    plt.ylabel("Average throughput")
-    plt.title("Throughput vs Data Size")
+    plt.xlabel("Number of ligands")
+    plt.ylabel("Average throughput (lig/s)")
+    plt.title("Average Throughput registered on increasing ligand number")
     plt.legend(title="Software")
     plt.grid(True, linestyle="--", alpha=0.5)
     plt.tight_layout()
