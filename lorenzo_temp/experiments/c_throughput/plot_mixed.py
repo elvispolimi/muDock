@@ -33,11 +33,12 @@ def plot_throughput(csv_file):
         )
 
     plt.xlabel("Application")
-    plt.ylabel("Average throughput (lig/s)")
+    plt.ylabel("Average throughput (atoms/s)")
     plt.title("")
     plt.grid(axis="y", linestyle="--", alpha=0.5)
     plt.xticks()
     plt.tight_layout()
+    plt.savefig("mixed_dataset.pdf", bbox_inches="tight")
     plt.show()
 
 

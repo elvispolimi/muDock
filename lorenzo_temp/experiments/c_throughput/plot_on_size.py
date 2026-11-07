@@ -24,13 +24,13 @@ def plot_throughput(csv_file):
         )
 
     plt.xlabel("Number of ligands")
-    plt.ylabel("Average throughput (lig/s)")
+    plt.ylabel("Average throughput (atoms/s)")
     plt.title("Average Throughput registered on increasing ligand number")
     plt.legend(title="Software")
     plt.grid(True, linestyle="--", alpha=0.5)
     plt.tight_layout()
+    plt.savefig("pdb_dataset.pdf", bbox_inches="tight")
     plt.show()
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
