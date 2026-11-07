@@ -1,4 +1,4 @@
 software,dataset,multiplier,data_size,avg_throughput,memory_per_worker_gb
-muDock,mixed,1,124670,30.97,10
-muDock,mixed,1,124670,30.56,13
-AutoDock-GPU,mixed,1,124670,12.95,NaN
+muDock,mixed,1,124670,1464,10
+muDock,mixed,1,124670,1445,13
+AutoDock-GPU,mixed,1,124670,612,NaN
