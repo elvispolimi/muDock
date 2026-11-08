@@ -740,7 +740,7 @@ namespace mudock {
   template<>
   void adt_gradient_kernel<queue_cuda>::operator()() {
     const int dev_id = q->get_id();
-    // init_device(dev_id, minimum, maximum, center, map_index_xyz, grid_maps);
+    init_device(dev_id, minimum, maximum, center, map_index_xyz, grid_maps);
     
     void* args[] = {(void*) &batch_atoms,
                     (void*) &batch_ligands,

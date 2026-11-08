@@ -52,15 +52,15 @@ namespace mudock {
     void prepare(batch<static_molecule> &batch) {
       const knobs& configuration = (*this->scratch).configuration;
       // TODO L check if this makes a copy or a reference
-      if (configuration.crystal_path) {
-        this->crystal_template = mudock::parser<static_molecule>(std::filesystem::path(*configuration.crystal_path));
-      } else {
-        this->crystal_template = *batch.molecules[0];
-      }
+      // if (configuration.crystal_path) {
+      //   this->crystal_template = mudock::parser<static_molecule>(std::filesystem::path(*configuration.crystal_path));
+      // } else {
+      //   this->crystal_template = *batch.molecules[0];
+      // }
 
-      if (this->crystal_template->num_atoms() != batch.molecules[0]->num_atoms()) {
-        throw std::runtime_error("Crystal and docked ligand have different atom counts");
-      }
+      // if (this->crystal_template->num_atoms() != batch.molecules[0]->num_atoms()) {
+      //   throw std::runtime_error("Crystal and docked ligand have different atom counts");
+      // }
       batch_ligands = batch.num_ligands;
       batch_atoms   = batch.batch_max_atoms;
       individuals_per_ligand = std::max(1, static_cast<int>(configuration.population_number));
@@ -69,14 +69,14 @@ namespace mudock {
       rho = configuration.rho;
       epsilon = configuration.epsilon;
       this->standalone_local_search = this->is_standalone_local_search(configuration);
-      initial_scores.resize(batch_ligands);
-      initial_rmsds.resize(batch_ligands);
-      final_scores.resize(batch_ligands);
-      final_rmsds.resize(batch_ligands);
-      this->ligand_names.resize(batch_ligands);
-      for (int ligand_index = 0; ligand_index < batch_ligands; ++ligand_index) {
-        this->ligand_names[ligand_index] = batch.molecules[ligand_index]->properties.get(property_type::NAME);
-      }
+      // initial_scores.resize(batch_ligands);
+      // initial_rmsds.resize(batch_ligands);
+      // final_scores.resize(batch_ligands);
+      // final_rmsds.resize(batch_ligands);
+      // this->ligand_names.resize(batch_ligands);
+      // for (int ligand_index = 0; ligand_index < batch_ligands; ++ligand_index) {
+      //   this->ligand_names[ligand_index] = batch.molecules[ligand_index]->properties.get(property_type::NAME);
+      // }
 
 
       auto &adadelta_e_g2_b  = (*this->scratch).template get<buffer_data_type::ADADELTA_E_G2>();
@@ -230,30 +230,30 @@ namespace mudock {
     bool local_search_on_best;
     fp_type rho;
     fp_type epsilon;
-    std::vector<fp_type> initial_scores;
-    std::vector<fp_type> initial_rmsds;
-    std::vector<fp_type> final_scores;
-    std::vector<fp_type> final_rmsds;
+    // std::vector<fp_type> initial_scores;
+    // std::vector<fp_type> initial_rmsds;
+    // std::vector<fp_type> final_scores;
+    // std::vector<fp_type> final_rmsds;
 
     std::unique_ptr<adadelta_kernel<queue_type>> adadelta_krnl;
     geometric<queue_type> geom_trans;
 
     // TODO L valid only for standalone (one individual)
-    fp_type get_ligand_rmsd(int ligand_index, const fp_type* x_scratch_b, const fp_type* y_scratch_b, const fp_type* z_scratch_b) {
-      assert(this->crystal_template.has_value() && "Ligand template not initialized for RMSD logging");
+    // fp_type get_ligand_rmsd(int ligand_index, const fp_type* x_scratch_b, const fp_type* y_scratch_b, const fp_type* z_scratch_b) {
+    //   assert(this->crystal_template.has_value() && "Ligand template not initialized for RMSD logging");
 
-      const int num_atoms   = this->crystal_template->num_atoms();
-      const int atom_stride = ligand_index * batch_atoms;
+    //   const int num_atoms   = this->crystal_template->num_atoms();
+    //   const int atom_stride = ligand_index * batch_atoms;
 
-      const fp_type *__restrict__ scratch_x = x_scratch_b + atom_stride;
-      const fp_type *__restrict__ scratch_y = y_scratch_b + atom_stride;
-      const fp_type *__restrict__ scratch_z = z_scratch_b + atom_stride;
+    //   const fp_type *__restrict__ scratch_x = x_scratch_b + atom_stride;
+    //   const fp_type *__restrict__ scratch_y = y_scratch_b + atom_stride;
+    //   const fp_type *__restrict__ scratch_z = z_scratch_b + atom_stride;
 
 
-      return compute_rmsd((*this->crystal_template).x(), (*this->crystal_template).y(), (*this->crystal_template).z(),
-                          scratch_x, scratch_y, scratch_z, 
-                          num_atoms);
-    }
+    //   return compute_rmsd((*this->crystal_template).x(), (*this->crystal_template).y(), (*this->crystal_template).z(),
+    //                       scratch_x, scratch_y, scratch_z, 
+    //                       num_atoms);
+    // }
 
 
 
@@ -353,7 +353,7 @@ namespace mudock {
 
       for (std::size_t iter = 1; iter <= this->iterations; ++iter) {
         geom_trans();
-        (*this->score_stage)();
+        // (*this->score_stage)();
         (this->score_stage).get()->compute_gradient();
         (*adadelta_krnl)();
 
@@ -419,8 +419,8 @@ namespace mudock {
           ligand.properties.assign(property_type::SCORE, std::to_string(scores_b()[score_index]));
           // ligand.properties.assign(property_type::NUM_ATOMS, std::to_string(num_atoms));
           // ligand.properties.assign(property_type::NUM_ROT, std::to_string(num_rotamers));
-          ligand.properties.assign(property_type::ITER, std::to_string(this->iterations));
-          ligand.properties.assign(property_type::RMSD_BEST_SCORING_POSE, std::to_string(final_rmsds[ligand_index]));
+          // ligand.properties.assign(property_type::ITER, std::to_string(this->iterations));
+          // ligand.properties.assign(property_type::RMSD_BEST_SCORING_POSE, std::to_string(final_rmsds[ligand_index]));
         }
       }
     };

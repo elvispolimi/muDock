@@ -84,7 +84,7 @@ pkill -u "$USER" -f '/builds/build/application/local_search/local_search'
 time ./bin/autodock_gpu_128wi \
 --dlgoutput 0 --xmloutput 0  \
 --ffile input/1fkb/1fkb_pocket.maps.fld \
--B ../data/mixed_reduced_pdbqt/ \
+-B /work/lvalentini/mixed_reduced_pdbqt/ \
 --nrun 1 \
 --psize 100 \
 --ngen 10 \
@@ -99,7 +99,7 @@ time ./bin/autodock_gpu_128wi \
 
 ./builds/cuda/application/muDock \
 -p ./data/1fkb/1fkb_pocket.pdb \
--l ../data/8pdbbind_ligands_filtered.mol2 \
+-l /work/lvalentini/8pdbbind_ligands_filtered.mol2 \
 --search lga \
 --population 100 \
 --generations 10 \
@@ -112,3 +112,34 @@ time ./bin/autodock_gpu_128wi \
 ############################################
 124670 ligands in mixed_reduced
 15870 ligands in pdbbind_ligands_filtered
+
+
+#############################################
+
+
+./builds/cuda/application/local_search/local_search \
+-p ./data/1fkb/1fkb_pocket.pdb \
+-l /work/lvalentini/8mixed.reduced.adtmol2 \
+--lsit 1000 \
+--use CUDA:GPU:0:2:20000000000 \
+> /dev/null \
+&& \
+echo "RUN 1 ^"
+&& \
+./builds/cuda/application/local_search/local_search \
+-p ./data/1fkb/1fkb_pocket.pdb \
+-l /work/lvalentini/8mixed.reduced.adtmol2 \
+--lsit 1000 \
+--use CUDA:GPU:0:2:20000000000 \
+> /dev/null \
+&& \
+echo "RUN 2 ^"
+&& \
+./builds/cuda/application/local_search/local_search \
+-p ./data/1fkb/1fkb_pocket.pdb \
+-l /work/lvalentini/8mixed.reduced.adtmol2 \
+--lsit 1000 \
+--use CUDA:GPU:0:2:20000000000 \
+> /dev/null \
+&& \
+echo "RUN 3 ^"
