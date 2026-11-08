@@ -121,7 +121,7 @@ time ./bin/autodock_gpu_128wi \
 -p ./data/1fkb/1fkb_pocket.pdb \
 -l /work/lvalentini/8mixed.reduced.adtmol2 \
 --lsit 1000 \
---use CUDA:GPU:0:2:20000000000 \
+--use CUDA:GPU:0:2:10000000000 \
 > /dev/null \
 && \
 echo "RUN 1 ^"
@@ -130,7 +130,7 @@ echo "RUN 1 ^"
 -p ./data/1fkb/1fkb_pocket.pdb \
 -l /work/lvalentini/8mixed.reduced.adtmol2 \
 --lsit 1000 \
---use CUDA:GPU:0:2:20000000000 \
+--use CUDA:GPU:0:2:10000000000 \
 > /dev/null \
 && \
 echo "RUN 2 ^"
@@ -139,7 +139,70 @@ echo "RUN 2 ^"
 -p ./data/1fkb/1fkb_pocket.pdb \
 -l /work/lvalentini/8mixed.reduced.adtmol2 \
 --lsit 1000 \
---use CUDA:GPU:0:2:20000000000 \
+--use CUDA:GPU:0:2:10000000000 \
 > /dev/null \
 && \
 echo "RUN 3 ^"
+&& \
+./builds/cuda/application/local_search/local_search \
+-p ./data/1fkb/1fkb_pocket.pdb \
+-l /work/lvalentini/8mixed.reduced.adtmol2 \
+--lsit 1000 \
+--use CUDA:GPU:0:2:10000000000 \
+> /dev/null \
+&& \
+echo "RUN 4 ^"
+&& \
+./builds/cuda/application/local_search/local_search \
+-p ./data/1fkb/1fkb_pocket.pdb \
+-l /work/lvalentini/8mixed.reduced.adtmol2 \
+--lsit 1000 \
+--use CUDA:GPU:0:2:10000000000 \
+> /dev/null \
+&& \
+echo "RUN 5 ^"
+&& \
+./builds/cuda/application/local_search/local_search \
+-p ./data/1fkb/1fkb_pocket.pdb \
+-l /work/lvalentini/8mixed.reduced.adtmol2 \
+--lsit 1000 \
+--use CUDA:GPU:0:2:10000000000 \
+> /dev/null \
+&& \
+echo "RUN 6 ^"
+&& \
+./builds/cuda/application/local_search/local_search \
+-p ./data/1fkb/1fkb_pocket.pdb \
+-l /work/lvalentini/8mixed.reduced.adtmol2 \
+--lsit 1000 \
+--use CUDA:GPU:0:2:10000000000 \
+> /dev/null \
+&& \
+echo "RUN 7 ^"
+&& \
+./builds/cuda/application/local_search/local_search \
+-p ./data/1fkb/1fkb_pocket.pdb \
+-l /work/lvalentini/8mixed.reduced.adtmol2 \
+--lsit 1000 \
+--use CUDA:GPU:0:2:10000000000 \
+> /dev/null \
+&& \
+echo "RUN 8 ^"
+&& \
+./builds/cuda/application/local_search/local_search \
+-p ./data/1fkb/1fkb_pocket.pdb \
+-l /work/lvalentini/8mixed.reduced.adtmol2 \
+--lsit 1000 \
+--use CUDA:GPU:0:2:10000000000 \
+> /dev/null \
+&& \
+echo "RUN 9 ^"
+&& \
+./builds/cuda/application/local_search/local_search \
+-p ./data/1fkb/1fkb_pocket.pdb \
+-l /work/lvalentini/8mixed.reduced.adtmol2 \
+--lsit 1000 \
+--use CUDA:GPU:0:2:10000000000 \
+> /dev/null \
+&& \
+echo "RUN 10 ^"
