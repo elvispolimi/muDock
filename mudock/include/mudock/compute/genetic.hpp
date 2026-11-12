@@ -145,25 +145,8 @@ namespace mudock {
 
       geom_trans.prepare(batch);
       score_stage.prepare(batch);
-      mudock::stage_bucket_trace("GENETIC memory device=",
-                                 q->get_id(),
-                                 " ligands=",
-                                 batch_ligands,
-                                 " theoretical_bytes_per_ligand=",
-                                 get_ligand_mem(batch.batch_max_atoms, configuration),
-                                 " queue_allocated_bytes=",
-                                 q->allocated_bytes(),
-                                 " queue_peak_allocated_bytes=",
-                                 q->peak_allocated_bytes(),
-                                 " device_shared_queue_bytes=",
-                                 score_stage.get_device_shared_queue()->allocated_bytes(),
-                                 " device_current_bytes=",
-                                 q->device_allocated_bytes(),
-                                 " device_peak_allocated_bytes=",
-                                 q->device_peak_allocated_bytes());
     };
     void operator()() {
-      auto q                           = (*this->scratch).get_queue();
       auto& chromosomes_b              = (*this->scratch).template get<buffer_data_type::CHROMOSOMES>();
       chromosome* current_population_p = chromosomes_b.dev_pointer();
       chromosome* next_population_p    = next_population.dev_pointer();
@@ -172,19 +155,6 @@ namespace mudock {
       kernel->set_population_buffers(current_population_p, next_population_p);
       geom_trans.set_chromosomes_buffer(current_population_p);
       kernel->initialize();
-      mudock::stage_bucket_trace("GENETIC runtime memory device=",
-                                 q->get_id(),
-                                 " worker_current_bytes=",
-                                 q->allocated_bytes(),
-                                 " worker_peak_allocated_bytes=",
-                                 q->peak_allocated_bytes(),
-                                 " device_current_bytes=",
-                                 q->device_allocated_bytes(),
-                                 " device_peak_allocated_bytes=",
-                                 q->device_peak_allocated_bytes(),
-                                 " shared_current_bytes=",
-                                 score_stage.get_device_shared_queue()->allocated_bytes());
-
       for (int generation = 0; generation < num_generations; ++generation) {
         geom_trans();
         score_stage();

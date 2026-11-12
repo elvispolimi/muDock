@@ -246,27 +246,8 @@ namespace mudock {
                                                               map_index_xyz,
                                                               scores_b,
                                                               q);
-      mudock::stage_bucket_trace("ADT memory device=",
-                                 q->get_id(),
-                                 " ligands=",
-                                 batch_ligands,
-                                 " atoms=",
-                                 batch_atoms,
-                                 " theoretical_bytes_per_ligand=",
-                                 get_ligand_mem(batch_atoms, (*this->scratch).configuration),
-                                 " queue_allocated_bytes=",
-                                 q->allocated_bytes(),
-                                 " queue_peak_allocated_bytes=",
-                                 q->peak_allocated_bytes(),
-                                 " device_shared_queue_bytes=",
-                                 device_scratch->get_queue()->allocated_bytes(),
-                                 " device_current_bytes=",
-                                 q->device_allocated_bytes(),
-                                 " device_peak_allocated_bytes=",
-                                 q->device_peak_allocated_bytes());
     }
 
-    [[nodiscard]] auto get_device_shared_queue() const { return device_scratch->get_queue(); }
 
     void operator()() {
       assert(

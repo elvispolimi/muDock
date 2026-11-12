@@ -20,8 +20,6 @@ namespace mudock {
     sycl::device get_device() { return d; }
     sycl::queue get_queue() { return q; };
 
-    std::size_t allocated_bytes{0};
-    std::size_t peak_allocated_bytes{0};
 
   private:
     sycl::queue q;

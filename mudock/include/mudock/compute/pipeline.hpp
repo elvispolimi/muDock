@@ -41,8 +41,7 @@ namespace mudock {
                                        const int id,
                                        const device_type dev_type,
                                        std::shared_ptr<scratchpad<queue_type>> device_scratch) {
-      return scoring_t<queue_type>(std::make_shared<mudock::scratchpad<queue_type>>(
-                                       conf, id, dev_type, device_scratch->get_memory_tracker()),
+      return scoring_t<queue_type>(std::make_shared<mudock::scratchpad<queue_type>>(conf, id, dev_type),
                                    device_scratch,
                                    *protein);
     }
@@ -63,9 +62,7 @@ namespace mudock {
                                  " B, mem_per_ligand=",
                                  mem_per_ligand,
                                  " B, max_bucket_size=",
-                                 max_bucket_size,
-                                 ", estimated_worker_batch_bytes=",
-                                 max_bucket_size * mem_per_ligand);
+                                 max_bucket_size);
       return resolve_stage_bucket_size(
           scoring_t<queue_type>::stage_name,
           atoms,
@@ -85,8 +82,7 @@ namespace mudock {
                                                 const int id,
                                                 const device_type dev_type,
                                                 std::shared_ptr<scratchpad<queue_type>> device_scratch) {
-      auto q = std::make_shared<mudock::scratchpad<queue_type>>(
-          conf, id, dev_type, device_scratch->get_memory_tracker());
+      auto q = std::make_shared<mudock::scratchpad<queue_type>>(conf, id, dev_type);
       return genetic<queue_type, scoring_t>(q, *protein, scoring_t<queue_type>(q, device_scratch, *protein));
     }
 
@@ -107,9 +103,7 @@ namespace mudock {
                                  " B, mem_per_ligand=",
                                  mem_per_ligand,
                                  " B, max_bucket_size=",
-                                 max_bucket_size,
-                                 ", estimated_worker_batch_bytes=",
-                                 max_bucket_size * mem_per_ligand);
+                                 max_bucket_size);
       return resolve_stage_bucket_size(
           genetic<queue_type, scoring_t>::stage_name,
           atoms,

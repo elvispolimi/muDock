@@ -1,4 +1,3 @@
-#include <algorithm>
 #include <mudock/compute/reorder_buffer.hpp>
 #include <mudock/log.hpp>
 #include <mudock/sycl_implementation/queue_sycl.hpp>
@@ -9,10 +8,8 @@
 
 namespace mudock {
 
-  queue_sycl::queue_sycl(const int _id,
-                         const device_type dev_type,
-                         std::shared_ptr<device_memory_tracker> tracker)
-      : queue(_id, dev_type, std::move(tracker)), impl_(std::make_unique<impl>(_id, dev_type)) {
+  queue_sycl::queue_sycl(const int _id, const device_type dev_type)
+      : queue(_id, dev_type), impl_(std::make_unique<impl>(_id, dev_type)) {
     assert((dev_type == device_type::GPU || dev_type == device_type::CPU) &&
            "SYCL supports only CPUs or GPUs devices");
   };
@@ -24,17 +21,11 @@ namespace mudock {
     *ptr = sycl::malloc_device(bytes, impl_->get_queue());
     if (!*ptr)
       throw std::bad_alloc{};
-    impl_->allocated_bytes += bytes;
-    impl_->peak_allocated_bytes = std::max(impl_->peak_allocated_bytes, impl_->allocated_bytes);
-    memory_tracker->allocate(bytes);
   }
 
-  void queue_sycl::free(void** ptr, const size_t bytes) {
+  void queue_sycl::free(void** ptr) {
     if (*ptr != nullptr) {
       sycl::free(*ptr, impl_->get_queue());
-      assert(impl_->allocated_bytes >= bytes);
-      impl_->allocated_bytes -= bytes;
-      memory_tracker->release(bytes);
       *ptr = nullptr;
     }
   }
@@ -61,6 +52,4 @@ namespace mudock {
     // Setup default queue/device if you want a global singleton.
   }
 
-  std::size_t queue_sycl::allocated_bytes() const { return impl_->allocated_bytes; }
-  std::size_t queue_sycl::peak_allocated_bytes() const { return impl_->peak_allocated_bytes; }
 } // namespace mudock
