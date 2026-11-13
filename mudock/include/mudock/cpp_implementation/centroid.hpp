@@ -23,16 +23,4 @@ namespace mudock {
             std::accumulate(z, z + num_atoms, fp_type{0}) / static_cast<fp_type>(num_atoms)};
   }
 
-  // Compatibility wrapper. This is a geometric centroid, despite the historical name.
-  inline point<fp_type, 3> compute_center_of_mass(const std::span<const fp_type> x,
-                                                  const std::span<const fp_type> y,
-                                                  const std::span<const fp_type> z) {
-    return compute_centroid(x, y, z);
-  }
-
-  inline point<fp_type, 3>
-      compute_center_of_mass(const fp_type* x, const fp_type* y, const fp_type* z, const int num_atoms) {
-    return compute_centroid(x, y, z, num_atoms);
-  }
-
 } // namespace mudock

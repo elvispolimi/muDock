@@ -47,7 +47,7 @@ list(
   "${header_path}/${header_prefix}/compute/geometric_transform.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/chromosome.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/vectorization.hpp"
-  "${header_path}/${header_prefix}/cpp_implementation/center_of_mass.hpp"
+  "${header_path}/${header_prefix}/cpp_implementation/centroid.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/non_bonds.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/buffer_cpp.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/queue_cpp.hpp"

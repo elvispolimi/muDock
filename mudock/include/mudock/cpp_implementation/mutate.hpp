@@ -1,7 +1,7 @@
 #pragma once
 
 #include <mudock/cpp_implementation/chromosome.hpp>
-#include <mudock/cpp_implementation/center_of_mass.hpp>
+#include <mudock/cpp_implementation/centroid.hpp>
 #include <mudock/cpp_implementation/vectorization.hpp>
 #include <mudock/type_alias.hpp>
 

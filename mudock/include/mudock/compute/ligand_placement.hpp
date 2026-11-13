@@ -1,6 +1,6 @@
 #pragma once
 
-#include <mudock/cpp_implementation/center_of_mass.hpp>
+#include <mudock/cpp_implementation/centroid.hpp>
 #include <mudock/grid/point3D.hpp>
 #include <mudock/molecule.hpp>
 #include <optional>

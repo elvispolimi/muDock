@@ -5,7 +5,7 @@
 #include <mudock/compute/buffer.hpp>
 #include <mudock/compute/devices_memory.hpp>
 #include <mudock/compute/genetic.hpp>
-#include <mudock/cpp_implementation/center_of_mass.hpp>
+#include <mudock/cpp_implementation/centroid.hpp>
 #include <mudock/cpp_implementation/chromosome.hpp>
 #include <mudock/cpp_implementation/genetic_cpp.hpp>
 #include <mudock/cpp_implementation/queue_cpp.hpp>
