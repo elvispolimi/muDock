@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <atomic>
-#include <cstdint>
+#include <cstddef>
 #include <functional>
 #include <memory>
 #include <mudock/batch.hpp>
@@ -16,7 +16,7 @@
 namespace mudock {
 
   namespace reorder_buffer_details {
-    inline std::atomic<std::uint64_t> next_trace_id{1};
+    inline std::atomic<std::size_t> next_trace_id{1};
   }
 
   // this is a buffer that re-arrange the ligands to cluster them in the same batch, if they have similar

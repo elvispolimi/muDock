@@ -1,7 +1,7 @@
 #pragma once
 
 #include <array>
-#include <cstdint>
+#include <cstddef>
 #include <memory>
 
 namespace mudock {
@@ -19,7 +19,7 @@ namespace mudock {
     int num_atoms          = 0;
     int batch_max_atoms    = 0;
     int batch_max_rotamers = 0;
-    std::uint64_t trace_id = 0;
+    std::size_t trace_id = 0;
 
     batch()  = default;
     ~batch() = default;

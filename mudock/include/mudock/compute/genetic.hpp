@@ -5,7 +5,7 @@
 #include <algorithm>
 #include <chrono>
 #include <concepts>
-#include <cstdint>
+#include <cstddef>
 #include <limits>
 #include <memory>
 #include <mudock/batch.hpp>
@@ -270,7 +270,7 @@ namespace mudock {
     }
 
   private:
-    std::uint64_t trace_id = 0;
+    std::size_t trace_id = 0;
     scoring_t<queue_t> score_stage;
     geometric<queue_t> geom_trans;
     std::unique_ptr<genetic_kernel<queue_t>> kernel;
