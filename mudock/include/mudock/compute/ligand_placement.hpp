@@ -36,10 +36,10 @@ namespace mudock {
     std::optional<point3D> target;
   };
 
-  inline point3D apply_ligand_placement(static_molecule& ligand,
-                                        const ligand_placement& placement,
-                                        const point3D protein_center) {
-    if (placement.mode == ligand_placement_mode::preserve) return point3D{};
+  inline void apply_ligand_placement(static_molecule& ligand,
+                                     const ligand_placement& placement,
+                                     const point3D protein_center) {
+    if (placement.mode == ligand_placement_mode::preserve) return;
 
     const auto target = placement.mode == ligand_placement_mode::center_bbox ?
                             std::optional<point3D>{protein_center} : placement.target;
@@ -52,7 +52,6 @@ namespace mudock {
       ligand.y(atom) += offset.y();
       ligand.z(atom) += offset.z();
     }
-    return offset;
   }
 
 } // namespace mudock
