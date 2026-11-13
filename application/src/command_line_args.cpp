@@ -17,6 +17,8 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
   double time_limit_sec{};
   double observer_sec{};
   double max_translation_half_width{};
+  std::size_t measure_ligands{};
+  std::size_t measure_batches{};
   std::string search_name = std::string{to_string(args.search)};
   std::string score_name  = std::string{to_string(args.scoring)};
   std::string placement_name = std::string{mudock::to_string(args.placement_mode)};
@@ -51,6 +53,22 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
   arguments_description.add_options()("observer",
                                       po::value(&observer_sec),
                                       "Optional throughput observer interval in seconds");
+  arguments_description.add_options()(
+      "measure_ligands",
+      po::value(&measure_ligands),
+      "Optional number of successfully completed ligands to measure; stop without output drain when reached. With --measure_batches, both thresholds must be reached");
+  arguments_description.add_options()(
+      "measure_batches",
+      po::value(&measure_batches),
+      "Optional number of successfully completed batches to measure; stop without output drain when reached. With --measure_ligands, both thresholds must be reached");
+  arguments_description.add_options()(
+      "batch_trace",
+      po::bool_switch(&args.batch_trace),
+      "Log per-batch lifecycle events with a unique ID and monotonic nanosecond timestamps");
+  arguments_description.add_options()(
+      "measure_force_exit",
+      po::bool_switch(&args.measure_force_exit),
+      "Terminate the process immediately when a steady-state measurement target is reached");
   arguments_description.add_options()("search",
                                       po::value(&search_name)->default_value(search_name),
                                       "Search algorithm to apply: none|genetic");
@@ -147,6 +165,17 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
     if (!(max_translation_half_width > 0.0))
       throw std::runtime_error("--max-search-box must be greater than zero");
     args.knobs.max_translation_half_width = static_cast<mudock::fp_type>(max_translation_half_width);
+  if (vm.count("measure_ligands")) {
+    if (measure_ligands == 0) {
+      throw std::invalid_argument("measure_ligands must be greater than zero");
+    }
+    args.measure_ligands = std::optional<std::size_t>{measure_ligands};
+  }
+  if (vm.count("measure_batches")) {
+    if (measure_batches == 0) {
+      throw std::invalid_argument("measure_batches must be greater than zero");
+    }
+    args.measure_batches = std::optional<std::size_t>{measure_batches};
   }
   args.search  = mudock::parse_search_algorithm(search_name);
   args.scoring = mudock::parse_scoring_function(score_name);

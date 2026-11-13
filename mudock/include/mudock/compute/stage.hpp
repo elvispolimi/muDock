@@ -35,6 +35,8 @@ namespace mudock {
 
     void invalid_scratch() { scratch->invalidate(); }
 
+    [[nodiscard]] auto get_queue() const { return scratch->get_queue(); }
+
   protected:
     std::shared_ptr<scratchpad<queue_type>> scratch;
 

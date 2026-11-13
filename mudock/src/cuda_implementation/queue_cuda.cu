@@ -102,8 +102,6 @@ namespace mudock {
   };
 
   void queue_cuda::alloc(void** ptr, const size_t bytes) {
-    // TOOD check if required
-    queue_cuda::free(ptr);
     MUDOCK_CHECK(cudaMallocAsync(ptr, bytes, impl_->stream));
   };
   void queue_cuda::free(void** ptr) {

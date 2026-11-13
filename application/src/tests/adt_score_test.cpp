@@ -3,6 +3,7 @@
 #include <boost/program_options.hpp>
 #include <cstdlib>
 #include <filesystem>
+#include <format>
 #include <memory>
 #include <mudock/chem/autodock_ligand.hpp>
 #include <mudock/chem/autodock_protein.hpp>

@@ -3,6 +3,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <filesystem>
+#include <format>
 #include <memory>
 #include <mudock/chem/autodock_grid_types.hpp>
 #include <mudock/chem/autodock_protein.hpp>

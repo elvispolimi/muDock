@@ -1,4 +1,9 @@
 build*/
+results*
+script*
+**.md
+**.pdf
+profil*
 .vscode/
 *.cache/
 .gdb_history

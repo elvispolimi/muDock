@@ -18,7 +18,6 @@ namespace mudock {
   queue_sycl::queue_sycl(queue_sycl&&) noexcept = default;
 
   void queue_sycl::alloc(void** ptr, size_t bytes) {
-    queue_sycl::free(ptr);
     *ptr = sycl::malloc_device(bytes, impl_->get_queue());
     if (!*ptr)
       throw std::bad_alloc{};
@@ -52,4 +51,5 @@ namespace mudock {
   void queue_sycl::operator()() {
     // Setup default queue/device if you want a global singleton.
   }
+
 } // namespace mudock
