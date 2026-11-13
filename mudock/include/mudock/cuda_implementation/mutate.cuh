@@ -15,7 +15,7 @@ namespace mudock {
                                                           const fp_type offset_y,
                                                           const fp_type offset_z,
                                                           const int num_atoms) {
-    MUDOCK_PRAGMA_UNROLL(MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, BLOCK_SIZE))
+    MUDOCK_PRAGMA_TEMPLATE_UNROLL(MAX_ATOMS, BLOCK_SIZE)
     for (int i = 0; i < MAX_ATOMS; i += BLOCK_SIZE) {
       const int atom_index = i + threadIdx.x;
       if (atom_index < num_atoms) {
@@ -36,7 +36,7 @@ namespace mudock {
                                                        const int num_atoms) {
     // compute the molecule center of mass
     fp_type c_x{0}, c_y{0}, c_z{0};
-    MUDOCK_PRAGMA_UNROLL(MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, BLOCK_SIZE))
+    MUDOCK_PRAGMA_TEMPLATE_UNROLL(MAX_ATOMS, BLOCK_SIZE)
     for (int i = 0; i < MAX_ATOMS; i += BLOCK_SIZE) {
       const int atom_index = i + threadIdx.x;
       if (atom_index < num_atoms) {
@@ -78,7 +78,7 @@ namespace mudock {
     const auto m22 = cx * cy;
 
     // apply the rotation matrix
-    MUDOCK_PRAGMA_UNROLL(MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, BLOCK_SIZE))
+    MUDOCK_PRAGMA_TEMPLATE_UNROLL(MAX_ATOMS, BLOCK_SIZE)
     for (int i = 0; i < MAX_ATOMS; i += BLOCK_SIZE) {
       const int atom_index = i + threadIdx.x;
       if (atom_index < num_atoms) {
@@ -143,7 +143,7 @@ namespace mudock {
         ((origz * (u2 + v2) - w * (origx * u + origy * v)) * one_minus_c + (origx * v - origy * u) * ls) / l2;
 
     // apply the rotation matrix
-    MUDOCK_PRAGMA_UNROLL(MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, BLOCK_SIZE))
+    MUDOCK_PRAGMA_TEMPLATE_UNROLL(MAX_ATOMS, BLOCK_SIZE)
     for (int i = 0; i < MAX_ATOMS; i += BLOCK_SIZE) {
       const int atom_index = i + threadIdx.x;
       if (atom_index < num_atoms && bitmask[atom_index] != 0) {
@@ -196,7 +196,7 @@ namespace mudock {
       fp_type* __restrict__ y_scratch_chromosome = l_scratch_y + chromosome_index * atom_stride;
       fp_type* __restrict__ z_scratch_chromosome = l_scratch_z + chromosome_index * atom_stride;
       // Copy original coordinates
-      MUDOCK_PRAGMA_UNROLL(MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, BLOCK_SIZE))
+      MUDOCK_PRAGMA_TEMPLATE_UNROLL(MAX_ATOMS, BLOCK_SIZE)
       for (int i = 0; i < MAX_ATOMS; i += BLOCK_SIZE) {
         const int atom_index = i + local_thread_id;
         if (atom_index < num_atoms) {

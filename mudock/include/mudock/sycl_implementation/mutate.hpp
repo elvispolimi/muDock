@@ -21,8 +21,8 @@ namespace mudock {
                                       const fp_type* offset_z,
                                       const int num_atoms,
                                       sycl::nd_item<3> it) {
-    MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
-    for (int i = static_cast<int>(it.get_local_id(0)); i < MAX_ATOMS; i += MUDOCK_SYCL_WG_SIZE) {
+    MUDOCK_PRAGMA_TEMPLATE_UNROLL(MAX_ATOMS, MUDOCK_SYCL_WG_SIZE)
+    for (int i = static_cast<int>(it.get_local_id(2)); i < MAX_ATOMS; i += MUDOCK_SYCL_WG_SIZE) {
       if (i < num_atoms) {
         x[i] += *offset_x;
         y[i] += *offset_y;
@@ -41,20 +41,18 @@ namespace mudock {
                                    const int num_atoms,
                                    sycl::nd_item<3> it) { // compute the angles sine and cosine
     // compute the molecule center of mass
-    const auto& sub_group = it.get_sub_group();
-
     fp_type c_x{0}, c_y{0}, c_z{0};
-    MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
-    for (int i = static_cast<int>(it.get_local_id(0)); i < MAX_ATOMS; i += MUDOCK_SYCL_WG_SIZE) {
+    MUDOCK_PRAGMA_TEMPLATE_UNROLL(MAX_ATOMS, MUDOCK_SYCL_WG_SIZE)
+    for (int i = static_cast<int>(it.get_local_id(2)); i < MAX_ATOMS; i += MUDOCK_SYCL_WG_SIZE) {
       if (i < num_atoms) {
         c_x += x[i];
         c_y += y[i];
         c_z += z[i];
       }
     }
-    c_x = sycl::reduce_over_group(sub_group, c_x, sycl::plus<fp_type>()) / static_cast<fp_type>(num_atoms);
-    c_y = sycl::reduce_over_group(sub_group, c_y, sycl::plus<fp_type>()) / static_cast<fp_type>(num_atoms);
-    c_z = sycl::reduce_over_group(sub_group, c_z, sycl::plus<fp_type>()) / static_cast<fp_type>(num_atoms);
+    c_x = sycl::reduce_over_group(it.get_group(), c_x, sycl::plus<fp_type>()) / static_cast<fp_type>(num_atoms);
+    c_y = sycl::reduce_over_group(it.get_group(), c_y, sycl::plus<fp_type>()) / static_cast<fp_type>(num_atoms);
+    c_z = sycl::reduce_over_group(it.get_group(), c_z, sycl::plus<fp_type>()) / static_cast<fp_type>(num_atoms);
 
     const auto rad_x = deg_to_rad(*angle_x), rad_y = deg_to_rad(*angle_y), rad_z = deg_to_rad(*angle_z);
     const auto cx = sycl::cos(rad_x), sx = sycl::sin(rad_x);
@@ -73,8 +71,8 @@ namespace mudock {
     const auto m22 = cx * cy;
 
     // apply the rotation matrix
-    MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
-    for (int i = static_cast<int>(it.get_local_id(0)); i < MAX_ATOMS; i += MUDOCK_SYCL_WG_SIZE) {
+    MUDOCK_PRAGMA_TEMPLATE_UNROLL(MAX_ATOMS, MUDOCK_SYCL_WG_SIZE)
+    for (int i = static_cast<int>(it.get_local_id(2)); i < MAX_ATOMS; i += MUDOCK_SYCL_WG_SIZE) {
       if (i < num_atoms) {
         const auto translated_x = x[i] - c_x, translated_y = y[i] - c_y, translated_z = z[i] - c_z;
         x[i] = translated_x * m00 + translated_y * m01 + translated_z * m02 + c_x;
@@ -135,8 +133,8 @@ namespace mudock {
         ((origz * (u2 + v2) - w * (origx * u + origy * v)) * one_minus_c + (origx * v - origy * u) * ls) / l2;
 
     // apply the rotation matrix
-    MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
-    for (int i = static_cast<int>(it.get_local_id(0)); i < MAX_ATOMS; i += MUDOCK_SYCL_WG_SIZE) {
+    MUDOCK_PRAGMA_TEMPLATE_UNROLL(MAX_ATOMS, MUDOCK_SYCL_WG_SIZE)
+    for (int i = static_cast<int>(it.get_local_id(2)); i < MAX_ATOMS; i += MUDOCK_SYCL_WG_SIZE) {
       if (i < num_atoms && bitmask[i] != 0) {
         const auto prev_x = x[i], prev_y = y[i], prev_z = z[i];
         x[i] = prev_x * m00 + prev_y * m01 + prev_z * m02 + m03;
@@ -165,9 +163,9 @@ namespace mudock {
                     const int* __restrict__ frag_indices_start,
                     const int* __restrict__ num_rotamers_b,
                     const int* __restrict__ num_atoms_b) const {
-      const int ligand_id       = static_cast<int>(it.get_group(0));
-      const int local_thread_id = static_cast<int>(it.get_local_id(0));
-      assert(it.get_local_range(0) == MUDOCK_SYCL_WG_SIZE &&
+      const int ligand_id       = static_cast<int>(it.get_group(2));
+      const int local_thread_id = static_cast<int>(it.get_local_id(2));
+      assert(it.get_local_range(2) == MUDOCK_SYCL_WG_SIZE &&
              "SYCL WG size and the number of thread per block does not coincide");
 
       const int num_atoms    = num_atoms_b[ligand_id];
@@ -192,7 +190,7 @@ namespace mudock {
         fp_type* __restrict__ z_scratch_chromosome = l_scratch_z + chromosome_index * atom_stride;
 
         // Copy original coordinates
-        MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
+        MUDOCK_PRAGMA_TEMPLATE_UNROLL(MAX_ATOMS, MUDOCK_SYCL_WG_SIZE)
         for (int atom_index = local_thread_id; atom_index < MAX_ATOMS; atom_index += MUDOCK_SYCL_WG_SIZE) {
           if (atom_index < num_atoms) {
             x_scratch_chromosome[atom_index] = l_original_x[atom_index];

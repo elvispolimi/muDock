@@ -72,9 +72,9 @@ namespace mudock {
                     chromosome* __restrict__ chromosomes,
                     XORWOWState* __restrict__ state,
                     fp_type* __restrict__ ligand_scores) const {
-      const int ligand_id        = static_cast<int>(it.get_group(0));
-      const int local_thread_id  = static_cast<int>(it.get_local_id(0));
-      const int thread_per_block = static_cast<int>(it.get_local_range(0));
+      const int ligand_id        = static_cast<int>(it.get_group(2));
+      const int local_thread_id  = static_cast<int>(it.get_local_id(2));
+      const int thread_per_block = static_cast<int>(it.get_local_range(2));
       const int global_thread_id = local_thread_id + thread_per_block * ligand_id;
 
       const int num_rotamers       = ligand_num_rotamers[ligand_id];
@@ -118,9 +118,9 @@ namespace mudock {
                     chromosome* __restrict__ next_chromosomes,
                     XORWOWState* __restrict__ state,
                     fp_type* __restrict__ ligand_scores) const {
-      const int ligand_id        = static_cast<int>(it.get_group(0));
-      const int local_thread_id  = static_cast<int>(it.get_local_id(0));
-      const int thread_per_block = static_cast<int>(it.get_local_range(0));
+      const int ligand_id        = static_cast<int>(it.get_group(2));
+      const int local_thread_id  = static_cast<int>(it.get_local_id(2));
+      const int thread_per_block = static_cast<int>(it.get_local_range(2));
       const int global_thread_id = local_thread_id + thread_per_block * ligand_id;
 
       const int num_rotamers                      = ligand_num_rotamers[ligand_id];
@@ -173,17 +173,17 @@ namespace mudock {
                     fp_type* __restrict__ ligand_best_scores,
                     chromosome* __restrict__ chromosomes,
                     chromosome* __restrict__ best_chromosomes) const {
-      const int ligand_id        = static_cast<int>(it.get_group(0));
-      const int local_thread_id  = static_cast<int>(it.get_local_id(0));
-      const int thread_per_block = static_cast<int>(it.get_local_range(0));
-      const auto& sub_group      = it.get_sub_group();
+      const int ligand_id        = static_cast<int>(it.get_group(2));
+      const int local_thread_id  = static_cast<int>(it.get_local_id(2));
+      const int thread_per_block = static_cast<int>(it.get_local_range(2));
 
       const int num_rotamers                 = ligand_num_rotamers[ligand_id];
       chromosome* __restrict__ l_chromosomes = chromosomes + ligand_id * chromosome_number;
       fp_type* __restrict__ scores           = ligand_scores + chromosome_number * ligand_id;
 
-      // Compute the maximum value within the warp
-      // Assuming each warp has 32 threads
+      // The chromosome scan spans the whole work-group.  Reducing only over
+      // a subgroup can select a local minimum when the subgroup is narrower
+      // than the configured work-group, as on Intel PVC.
       int min_index = local_thread_id;
       fp_type min_score =
           min_index < chromosome_number ? scores[min_index] : std::numeric_limits<fp_type>::infinity();
@@ -194,7 +194,7 @@ namespace mudock {
           min_score = scores[chromosome_index];
         }
       }
-      const fp_type best_score = sycl::reduce_over_group(sub_group, min_score, sycl::minimum());
+      const fp_type best_score = sycl::reduce_over_group(it.get_group(), min_score, sycl::minimum());
 
       // TODO checks that only one can do it
       if (min_score == best_score) {
