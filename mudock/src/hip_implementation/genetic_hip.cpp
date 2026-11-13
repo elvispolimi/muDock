@@ -19,7 +19,7 @@ namespace mudock {
       // TODO value here for debug
       value = fp_type{0.4};
     } else {
-      value = curand_uniform(&state);
+      value = hiprand_uniform(&state);
     }
     return static_cast<T>((value * static_cast<fp_type>(max - min)) + min);
   }
