@@ -32,6 +32,8 @@ namespace mudock {
         if (ptr) {
           q->free((void**) &ptr);
         }
+        // Keep the object retryable if the new allocation throws.
+        alloc_size = 0;
         q->alloc((void**) &ptr, num_elements * sizeof(T));
         alloc_size = num_elements;
       }

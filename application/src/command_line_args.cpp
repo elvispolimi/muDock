@@ -41,11 +41,15 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
   arguments_description.add_options()(
       "measure_ligands",
       po::value(&measure_ligands),
-      "Optional number of completed ligands to measure from the first submitted batch; stop without output drain when reached");
+      "Optional number of successfully completed ligands to measure; stop without output drain when reached. With --measure_batches, both thresholds must be reached");
   arguments_description.add_options()(
       "measure_batches",
       po::value(&measure_batches),
-      "Optional number of completed batches to measure from the first submitted batch; stop without output drain when reached");
+      "Optional number of successfully completed batches to measure; stop without output drain when reached. With --measure_ligands, both thresholds must be reached");
+  arguments_description.add_options()(
+      "batch_trace",
+      po::bool_switch(&args.batch_trace),
+      "Log per-batch lifecycle events with a unique ID and monotonic nanosecond timestamps");
   arguments_description.add_options()(
       "measure_force_exit",
       po::bool_switch(&args.measure_force_exit),

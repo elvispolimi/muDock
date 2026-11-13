@@ -19,6 +19,7 @@ namespace mudock {
     int num_atoms          = 0;
     int batch_max_atoms    = 0;
     int batch_max_rotamers = 0;
+    std::uint64_t trace_id = 0;
 
     batch()  = default;
     ~batch() = default;
@@ -30,6 +31,8 @@ namespace mudock {
       other.num_atoms    = 0;
       batch_max_atoms    = other.batch_max_atoms;
       batch_max_rotamers = other.batch_max_rotamers;
+      trace_id           = other.trace_id;
+      other.trace_id     = 0;
     }
     batch(const batch& other)      = delete;
     batch& operator=(batch&&)      = default;

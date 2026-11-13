@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include <atomic>
 #include <cstdint>
 #include <functional>
 #include <memory>
@@ -13,6 +14,10 @@
 #include <vector>
 
 namespace mudock {
+
+  namespace reorder_buffer_details {
+    inline std::atomic<std::uint64_t> next_trace_id{1};
+  }
 
   // this is a buffer that re-arrange the ligands to cluster them in the same batch, if they have similar
   // features, i.e. a similar number of atoms and rotamers
@@ -39,6 +44,13 @@ namespace mudock {
     std::array<int, atoms_clusters.size()> max_sizes;
     std::array<batch<T>, atoms_clusters.size()> clusters;
     std::mutex mutex;
+    bool trace_batches = false;
+
+    void assign_trace_id(batch<T>& value) const {
+      if (trace_batches) {
+        value.trace_id = reorder_buffer_details::next_trace_id.fetch_add(1, std::memory_order_relaxed);
+      }
+    }
 
     // helper functor that given a random ligand, it will find the index of its cluster
     static constexpr auto get_flattened_index(const int num_atoms) {
@@ -56,7 +68,8 @@ namespace mudock {
   public:
     // the constructor will initialize the max_sizes array. The input is a function that given the number of
     // atoms and rotamers, will provide the batch size
-    reorder_buffer(std::function<int(const int)> get_size = {}) {
+    reorder_buffer(std::function<int(const int)> get_size = {}, const bool _trace_batches = false)
+        : trace_batches(_trace_batches) {
       // make sure to have a sizer function
       if (!get_size) {
         get_size = [](const int) -> int { return int{1}; };
@@ -85,8 +98,11 @@ namespace mudock {
       cluster.num_atoms += new_molecule->num_atoms();
       cluster.molecules[cluster.num_ligands] = std::move(new_molecule);
       ++cluster.num_ligands;
-      return cluster.num_ligands < max_sizes[cluster_index] ? std::make_pair(batch<T>{}, false)
-                                                            : std::make_pair(std::move(cluster), true);
+      if (cluster.num_ligands < max_sizes[cluster_index]) {
+        return std::make_pair(batch<T>{}, false);
+      }
+      assign_trace_id(cluster);
+      return std::make_pair(std::move(cluster), true);
     }
 
     // get the first half-empty butches inside this buffer
@@ -95,6 +111,7 @@ namespace mudock {
       for (auto& cluster: clusters) {
         const std::size_t num_ligands = cluster.num_ligands;
         if (num_ligands > std::size_t{0}) {
+          assign_trace_id(cluster);
           return std::make_pair(std::move(cluster), true);
         }
       }

@@ -43,7 +43,8 @@ namespace {
                                                                                  args.observer,
                                                                                  args.measure_ligands,
                                                                                  args.measure_batches,
-                                                                                 args.measure_force_exit);
+                                                                                 args.measure_force_exit,
+                                                                                 args.batch_trace);
                                      },
                                      format);
                                });

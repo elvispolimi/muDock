@@ -1,7 +1,8 @@
 #pragma once
 
-#include <memory>
+#include <atomic>
 #include <functional>
+#include <memory>
 #include <mudock/compute/reorder_buffer.hpp>
 #include <mudock/compute/safe_queue.hpp>
 #include <mudock/compute/stage.hpp>
@@ -13,7 +14,6 @@
 #include <mudock/molecule.hpp>
 
 namespace mudock {
-
   template<typename stage_t>
   class worker: public worker_interface {
     // this a reference to the input and output queues
@@ -29,7 +29,7 @@ namespace mudock {
     std::atomic<std::size_t>* in_flight_ligands = nullptr;
     std::atomic<std::size_t>* processed_atoms    = nullptr;
     std::function<void()> batch_submitted;
-    std::function<void()> batch_completed;
+    std::function<void(std::size_t)> batch_completed;
 
     void process(batch<static_molecule>& b) {
       if (batch_submitted) {
@@ -49,17 +49,15 @@ namespace mudock {
         error("Unable to virtual screen a batch due to ", e.what());
       }
 
-      if (processed_atoms != nullptr) {
+      if (batch_succeeded && processed_atoms != nullptr) {
         processed_atoms->fetch_add(static_cast<std::size_t>(b.num_atoms), std::memory_order_relaxed);
       }
-      info("Batch arrived: ligands=", b.num_ligands, ", atoms=", processed_atoms != nullptr ? processed_atoms->load(std::memory_order_relaxed) : 0);
 
       for (auto& batch_ligand: std::span(b.molecules.data(), b.num_ligands)) {
         output_stack->enqueue(batch_ligand);
       }
-
       if (batch_succeeded && batch_completed) {
-        batch_completed();
+        batch_completed(b.num_ligands);
       }
 
       if (in_flight_ligands != nullptr) {
@@ -75,7 +73,7 @@ namespace mudock {
            stage_t&& _pipeline,
            std::atomic<std::size_t>* active_ligands = nullptr,
            std::function<void()> on_batch_submitted = {},
-           std::function<void()> on_batch_completed = {},
+           std::function<void(std::size_t)> on_batch_completed = {},
            std::atomic<std::size_t>* total_processed_atoms = nullptr)
         : input_stack(input_molecules),
           output_stack(output_molecules),

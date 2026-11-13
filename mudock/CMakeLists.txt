@@ -410,28 +410,28 @@ if(MUDOCK_ENABLE_HIP)
   target_compile_options(
     libmudock
     PUBLIC
-      $<$<AND:$<COMPILE_LANGUAGE:HIP>,$<HIP_COMPILER_ID:NVIDIA>>:--expt-relaxed-constexpr
-      -rdc=true -Xptxas -v --resource-usage>)
-  # FIXME in a future release
+      $<$<AND:$<COMPILE_LANGUAGE:HIP>,$<HIP_COMPILER_ID:NVIDIA>>:--expt-relaxed-constexpr>
+      $<$<AND:$<COMPILE_LANGUAGE:HIP>,$<HIP_COMPILER_ID:NVIDIA>>:-rdc=true>
+      $<$<AND:$<COMPILE_LANGUAGE:HIP>,$<HIP_COMPILER_ID:NVIDIA>>:-Xptxas>
+      $<$<AND:$<COMPILE_LANGUAGE:HIP>,$<HIP_COMPILER_ID:NVIDIA>>:-v>
+      $<$<AND:$<COMPILE_LANGUAGE:HIP>,$<HIP_COMPILER_ID:NVIDIA>>:--resource-usage>)
   target_compile_options(
     libmudock
     PUBLIC
-      $<$<AND:$<COMPILE_LANGUAGE:HIP>,$<HIP_COMPILER_ID:Clang>>:
-      -fgpu-rdc
-      -Rpass=loop-unroll
-      -Rpass-missed=loop-unroll
-      -Rpass-analysis=loop-unroll
-      -Rpass-analysis=kernel-resource-usage>)
+      $<$<AND:$<COMPILE_LANGUAGE:HIP>,$<HIP_COMPILER_ID:Clang>>:-fgpu-rdc>
+      $<$<AND:$<COMPILE_LANGUAGE:HIP>,$<HIP_COMPILER_ID:Clang>>:-Rpass=loop-unroll>
+      $<$<AND:$<COMPILE_LANGUAGE:HIP>,$<HIP_COMPILER_ID:Clang>>:-Rpass-missed=loop-unroll>
+      $<$<AND:$<COMPILE_LANGUAGE:HIP>,$<HIP_COMPILER_ID:Clang>>:-Rpass-analysis=loop-unroll>
+      $<$<AND:$<COMPILE_LANGUAGE:HIP>,$<HIP_COMPILER_ID:Clang>>:-Rpass-analysis=kernel-resource-usage>)
   target_link_options(
     libmudock PUBLIC
     $<$<AND:$<COMPILE_LANGUAGE:HIP>,$<HIP_COMPILER_ID:Clang>>:-fgpu-rdc
     --hip-link>)
-  # With relocatable device code, kernel code generation happens during the
-  # final HIP link. COMPILE_LANGUAGE=HIP is not true for the final C++ link
-  # of the executable, so add the resource-usage remark explicitly here.
+  # Keep HIP device-link remarks restricted to HIP link steps;
+  # they must not leak into the host C++ link of consuming executables.
   if(CMAKE_HIP_COMPILER_ID STREQUAL "Clang")
     target_link_options(libmudock PUBLIC
-                        -Rpass-analysis=kernel-resource-usage)
+                        $<$<LINK_LANGUAGE:HIP>:-Rpass-analysis=kernel-resource-usage>)
   endif()
   target_compile_options(
     libmudock

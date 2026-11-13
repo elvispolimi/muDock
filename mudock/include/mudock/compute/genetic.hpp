@@ -3,7 +3,9 @@
 #include "mudock/knobs.hpp"
 
 #include <algorithm>
+#include <chrono>
 #include <concepts>
+#include <cstdint>
 #include <limits>
 #include <memory>
 #include <mudock/batch.hpp>
@@ -100,6 +102,8 @@ namespace mudock {
           best_chromosomes(_scratch->get_queue()),
           best_scores(_scratch->get_queue()) {};
     void prepare(batch<static_molecule>& batch) {
+      trace_id = batch.trace_id;
+      trace_event("batch_received");
       const knobs& configuration  = (*this->scratch).configuration;
       batch_ligands               = batch.num_ligands;
       num_generations             = static_cast<int>(configuration.num_generations);
@@ -145,6 +149,7 @@ namespace mudock {
 
       geom_trans.prepare(batch);
       score_stage.prepare(batch);
+      trace_event("input_copies_submitted");
     };
     void operator()() {
       auto& chromosomes_b              = (*this->scratch).template get<buffer_data_type::CHROMOSOMES>();
@@ -154,6 +159,7 @@ namespace mudock {
       assert(kernel && "Kernel method not yet prepared");
       kernel->set_population_buffers(current_population_p, next_population_p);
       geom_trans.set_chromosomes_buffer(current_population_p);
+      trace_event("compute_enqueue_begin");
       kernel->initialize();
       for (int generation = 0; generation < num_generations; ++generation) {
         geom_trans();
@@ -169,6 +175,7 @@ namespace mudock {
       }
       kernel->set_population_buffers(current_population_p, next_population_p);
       kernel->finalize();
+      trace_event("compute_enqueue_end");
     };
 
     static std::size_t get_shared_ligand_mem(const int max_atoms, const knobs conf) {
@@ -263,6 +270,7 @@ namespace mudock {
     }
 
   private:
+    std::uint64_t trace_id = 0;
     scoring_t<queue_t> score_stage;
     geometric<queue_t> geom_trans;
     std::unique_ptr<genetic_kernel<queue_t>> kernel;
@@ -273,19 +281,22 @@ namespace mudock {
     buffer_vector<chromosome, queue_t> best_chromosomes;
     buffer_vector<fp_type, queue_t> best_scores;
 
+    void trace_event(const char* event) const {
+      if (trace_id == 0)
+        return;
+      const auto timestamp_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                                    std::chrono::steady_clock::now().time_since_epoch())
+                                    .count();
+      info("Genetic: event=", event, " batch_id=", trace_id, " t_ns=", timestamp_ns);
+    }
+
     void teardown_impl(batch<static_molecule>& batch) {
       assert(batch.num_ligands == batch_ligands && "Genetic algorithm received different batch for teardown");
 
-      // TODO check if the copy can be changed with a swap
-      // auto& population_b = (*this->scratch).template get<buffer_data_type::CHROMOSOMES>();
-      // population_b.copy_device2device(best_chromosomes);
-      // geom_trans();
-      // score_stage();
-      // geom_trans.teardown(batch);
-      // score_stage.teardown(batch);
-
+      trace_event("copyback_begin");
       best_scores.copy_device2host();
       (*this->scratch).get_queue()->synchronize();
+      trace_event("compute_and_copyback_complete");
 
       for (int index{0}; index < batch_ligands; ++index) {
         auto& ligand = *batch.molecules[index];

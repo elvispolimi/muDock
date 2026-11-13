@@ -18,6 +18,7 @@ struct command_line_arguments {
   std::optional<std::size_t> measure_ligands = std::nullopt;
   std::optional<std::size_t> measure_batches = std::nullopt;
   bool measure_force_exit = false;
+  bool batch_trace = false;
   mudock::search_algorithm search       = mudock::search_algorithm::NONE;
   mudock::scoring_function scoring      = mudock::scoring_function::ADT;
   mudock::knobs knobs;
