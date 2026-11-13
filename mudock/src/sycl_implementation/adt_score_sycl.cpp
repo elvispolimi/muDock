@@ -121,8 +121,8 @@ namespace mudock {
               // Do not let NaN reach the integer grid indices below.
               elect_total_trilinear += EINTCLAMP;
               emap_total_trilinear += EINTCLAMP;
-            } else if (coord_tex[0] < minimum[0] || coord_tex[0] > maximum[0] || coord_tex[1] < minimum[1] ||
-                coord_tex[1] > maximum[1] || coord_tex[2] < minimum[2] || coord_tex[2] > maximum[2]) {
+            } else if (coord_tex[0] <= minimum[0] || coord_tex[0] >= maximum[0] || coord_tex[1] <= minimum[1] ||
+                coord_tex[1] >= maximum[1] || coord_tex[2] <= minimum[2] || coord_tex[2] >= maximum[2]) {
               // Is outside
               const auto diff_x          = coord_tex[0] - center[0];
               const auto diff_y          = coord_tex[1] - center[1];

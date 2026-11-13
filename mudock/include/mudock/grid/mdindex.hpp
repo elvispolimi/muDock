@@ -95,17 +95,20 @@ namespace mudock {
     }
     [[nodiscard]] std::size_t size_x() const { return _sizes[0]; }
 
-    template<typename = std::enable_if<(n > 1)>>
-    [[nodiscard]] std::size_t size_y() const {
+    [[nodiscard]] std::size_t size_y() const
+      requires(n > 1)
+    {
       return _sizes[1];
     }
-    template<typename = std::enable_if<(n > 2)>>
-    [[nodiscard]] std::size_t size_z() const {
+    [[nodiscard]] std::size_t size_z() const
+      requires(n > 2)
+    {
       return _sizes[2];
     }
 
-    template<typename = std::enable_if<(n > 2)>>
-    [[nodiscard]] std::size_t size_xy() const {
+    [[nodiscard]] std::size_t size_xy() const
+      requires(n > 2)
+    {
       return _coefs[2];
     }
 

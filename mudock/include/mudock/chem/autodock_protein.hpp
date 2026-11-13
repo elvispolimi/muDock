@@ -200,7 +200,7 @@ namespace mudock {
                     .apply([](fp_type x) { return std::ceil(x); })
                     .add({fp_type{1}})),
           data(index.size_x(), index.size_y(), index.size_z(), num_autodock_grids()),
-          _inv_resolution(1 / resolution),
+          _resolution(resolution),
           _min(min),
           _max(max),
           _center{max.difference(min).divide({fp_type{2}}).add(min)} {};
@@ -211,7 +211,7 @@ namespace mudock {
           _min,
           _max,
           _center,
-          _inv_resolution,
+          _resolution,
           data.get_slice(md_index<4>{index.size_x(), index.size_y(), index.size_z(), static_cast<int>(type)},
                          index)};
     };
@@ -221,7 +221,7 @@ namespace mudock {
           _min,
           _max,
           _center,
-          _inv_resolution,
+          _resolution,
           data.get_slice(md_index<4>{index.size_x(), index.size_y(), index.size_z(), static_cast<int>(type)},
                          index)};
     };
@@ -241,7 +241,7 @@ namespace mudock {
 
     md_index<3> index;
     md_container<std::vector<fp_type>, 4> data;
-    fp_type _inv_resolution = 2;
+    fp_type _resolution = fp_type{0.5};
     point<fp_type, 3> _min, _max, _center;
   };
 

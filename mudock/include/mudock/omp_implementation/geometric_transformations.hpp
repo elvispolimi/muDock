@@ -13,6 +13,34 @@ namespace mudock {
                                      const fp_type* offset_x,
                                      const fp_type* offset_y,
                                      const fp_type* offset_z,
+                                     const int num_atoms);
+
+  void inline recenter_molecule_omp(fp_type* __restrict__ x,
+                                    fp_type* __restrict__ y,
+                                    fp_type* __restrict__ z,
+                                    const int num_atoms,
+                                    const fp_type reference_x,
+                                    const fp_type reference_y,
+                                    const fp_type reference_z) {
+    fp_type center_x{0}, center_y{0}, center_z{0};
+#pragma omp parallel for reduction(+ : center_x, center_y, center_z)
+    for (int atom_index = 0; atom_index < num_atoms; ++atom_index) {
+      center_x += x[atom_index];
+      center_y += y[atom_index];
+      center_z += z[atom_index];
+    }
+    const fp_type offset_x = reference_x - center_x / num_atoms;
+    const fp_type offset_y = reference_y - center_y / num_atoms;
+    const fp_type offset_z = reference_z - center_z / num_atoms;
+    translate_molecule_omp(x, y, z, &offset_x, &offset_y, &offset_z, num_atoms);
+  }
+
+  void inline translate_molecule_omp(fp_type* __restrict__ x,
+                                     fp_type* __restrict__ y,
+                                     fp_type* __restrict__ z,
+                                     const fp_type* offset_x,
+                                     const fp_type* offset_y,
+                                     const fp_type* offset_z,
                                      const int num_atoms) {
 #pragma omp parallel for
     for (int i = 0; i < num_atoms; ++i) {
