@@ -165,6 +165,7 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
     if (!(max_translation_half_width > 0.0))
       throw std::runtime_error("--max-search-box must be greater than zero");
     args.knobs.max_translation_half_width = static_cast<mudock::fp_type>(max_translation_half_width);
+  }  
   if (vm.count("measure_ligands")) {
     if (measure_ligands == 0) {
       throw std::invalid_argument("measure_ligands must be greater than zero");
