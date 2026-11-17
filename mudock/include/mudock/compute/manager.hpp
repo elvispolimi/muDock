@@ -9,7 +9,7 @@
 #include <mudock/compute/pipeline.hpp>
 #include <mudock/compute/queue.hpp>
 #include <mudock/compute/safe_queue.hpp>
-#include <mudock/compute/scratchpad.hpp>
+#include <mudock/data_formats/data_store.hpp>
 #include <mudock/compute/stage.hpp>
 #include <mudock/compute/threadpool.hpp>
 #include <mudock/compute/worker.hpp>
@@ -73,9 +73,11 @@ namespace mudock {
                                 const std::function<void()>& on_batch_submitted = {},
                                 const std::function<void()>& on_batch_completed = {},
                                 std::atomic<std::size_t>* processed_atoms = nullptr) {
-    auto device_scratch = std::make_shared<scratchpad<queue_type, typename pipeline_t::scratchpad_layouts>>(
+    auto queue_data = std::make_shared<data_store<queue_type, typename pipeline_t::pipeline_data_layouts>>(
       knobs, 0, device_type::CPU);
-    auto q_b            = device_scratch->get_queue();
+    auto protein_data = std::make_shared<data_store<queue_type, protein_data_layouts>>(
+      knobs, 0, device_type::CPU, queue_data->get_memory_tracker());
+    auto q_b            = queue_data->get_queue();
     std::function<int(const int)> get_size = [q_b, &knobs](const int x) {
       return pipeline_t::template get_batch_size<queue_type>(x, q_b, knobs);
     };
@@ -87,7 +89,7 @@ namespace mudock {
           worker(input_molecules,
                  output_molecules,
                  rob,
-                 pipe.template get_pipeline<queue_type>(knobs, id, device_type::CPU, device_scratch),
+                 pipe.template get_pipeline<queue_type>(knobs, id, device_type::CPU, protein_data),
                  in_flight_ligands,
                  on_batch_submitted,
                  on_batch_completed,
@@ -126,14 +128,16 @@ namespace mudock {
                    " per device, with ",
                    mem_per_device,
                    " bytes each.");
-        auto device_scratch = std::make_shared<scratchpad<queue_type, typename pipeline_t::scratchpad_layouts>>(
+        auto queue_data = std::make_shared<data_store<queue_type, typename pipeline_t::pipeline_data_layouts>>(
           knobs, id, device_type::GPU, std::move(tracker));
+      auto protein_data = std::make_shared<data_store<queue_type, protein_data_layouts>>(
+        knobs, id, device_type::GPU, queue_data->get_memory_tracker());
       for (std::size_t i = 0; i < workers_per_device; ++i) {
         pool.add_worker(
             worker(input_molecules,
                    output_molecules,
                    rob,
-                   pipe.template get_pipeline<queue_type>(knobs, id, device_type::GPU, device_scratch),
+                   pipe.template get_pipeline<queue_type>(knobs, id, device_type::GPU, protein_data),
                    in_flight_ligands,
                    on_batch_submitted,
                    on_batch_completed,

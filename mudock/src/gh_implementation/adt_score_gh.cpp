@@ -62,9 +62,9 @@ namespace mudock {
     void calc_energy(const int batch_atoms,
                      const int batch_ligands,
                      const int scores_per_ligand,
-                     const fp_type* __restrict__ x_scratch_b,
-                     const fp_type* __restrict__ y_scratch_b,
-                     const fp_type* __restrict__ z_scratch_b,
+                     const fp_type* __restrict__ x_data_b,
+                     const fp_type* __restrict__ y_data_b,
+                     const fp_type* __restrict__ z_data_b,
                      const fp_type* __restrict__ vols_b,
                      const fp_type* __restrict__ solpars_b,
                      const fp_type* __restrict__ charges_b,
@@ -91,9 +91,9 @@ namespace mudock {
       const int num_nonbonds = num_nonbonds_b[ligand_index + 1] - num_nonbonds_b[ligand_index];
       const int num_rotamers = num_rotamers_b[ligand_index];
 
-      const fp_type* __restrict__ scratch_x = x_scratch_b + ligand_index * atom_stride * scores_per_ligand;
-      const fp_type* __restrict__ scratch_y = y_scratch_b + ligand_index * atom_stride * scores_per_ligand;
-      const fp_type* __restrict__ scratch_z = z_scratch_b + ligand_index * atom_stride * scores_per_ligand;
+      const fp_type* __restrict__  data_x = x_data_b + ligand_index * atom_stride * scores_per_ligand;
+      const fp_type* __restrict__  data_y = y_data_b + ligand_index * atom_stride * scores_per_ligand;
+      const fp_type* __restrict__  data_z = z_data_b + ligand_index * atom_stride * scores_per_ligand;
       const fp_type* __restrict__ vol_l     = vols_b + ligand_index * atom_stride;
       const fp_type* __restrict__ solpar_l  = solpars_b + ligand_index * atom_stride;
       const fp_type* __restrict__ charge_l  = charges_b + ligand_index * atom_stride;
@@ -106,9 +106,9 @@ namespace mudock {
 
       fp_type* __restrict__ scores_l = scores_b + ligand_index * scores_per_ligand;
       for (int scores_index = 0; scores_index < scores_per_ligand; ++scores_index) {
-        const fp_type* __restrict__ scratch_x_l = scratch_x + scores_index * batch_atoms;
-        const fp_type* __restrict__ scratch_y_l = scratch_y + scores_index * batch_atoms;
-        const fp_type* __restrict__ scratch_z_l = scratch_z + scores_index * batch_atoms;
+        const fp_type* __restrict__  data_x_l =  data_x + scores_index * batch_atoms;
+        const fp_type* __restrict__  data_y_l =  data_y + scores_index * batch_atoms;
+        const fp_type* __restrict__  data_z_l =  data_z + scores_index * batch_atoms;
 
         const HWY_FULL(fp_type) d;
         const HWY_FULL(int) di;
@@ -150,9 +150,9 @@ namespace mudock {
         for (size_t index = 0; index < num_atom_loops * Lanes(di); index += Lanes(di)) {
           const auto remaining = std::min<size_t>(Lanes(d), static_cast<size_t>(num_atoms) - index);
           // Load the x, y, z coordinates in a SIMD fashion
-          auto x                 = LoadN(d, scratch_x_l + index, remaining);
-          auto y                 = LoadN(d, scratch_y_l + index, remaining);
-          auto z                 = LoadN(d, scratch_z_l + index, remaining);
+          auto x                 = LoadN(d,  data_x_l + index, remaining);
+          auto y                 = LoadN(d,  data_y_l + index, remaining);
+          auto z                 = LoadN(d,  data_z_l + index, remaining);
           const auto valid_coord = FirstN(d, remaining);
           const auto atom_charge = LoadN(d, charge_l + index, remaining);
 
@@ -305,11 +305,11 @@ namespace mudock {
 
             // Load vectorized data for each coordinate difference between a1 and a2
             const auto diff_x =
-                Sub(GatherIndexN(d, scratch_x_l, a1, remaining), GatherIndexN(d, scratch_x_l, a2, remaining));
+                Sub(GatherIndexN(d,  data_x_l, a1, remaining), GatherIndexN(d,  data_x_l, a2, remaining));
             const auto diff_y =
-                Sub(GatherIndexN(d, scratch_y_l, a1, remaining), GatherIndexN(d, scratch_y_l, a2, remaining));
+                Sub(GatherIndexN(d,  data_y_l, a1, remaining), GatherIndexN(d,  data_y_l, a2, remaining));
             const auto diff_z =
-                Sub(GatherIndexN(d, scratch_z_l, a1, remaining), GatherIndexN(d, scratch_z_l, a2, remaining));
+                Sub(GatherIndexN(d,  data_z_l, a1, remaining), GatherIndexN(d,  data_z_l, a2, remaining));
 
             // Calculate squared distances
             const auto distance_two = Add(Mul(diff_x, diff_x), Add(Mul(diff_y, diff_y), Mul(diff_z, diff_z)));
@@ -398,9 +398,9 @@ namespace mudock {
                                       batch_atoms,
                                       batch_ligands,
                                       scores_per_ligand,
-                                      x_scratch_b,
-                                      y_scratch_b,
-                                      z_scratch_b,
+                                      x_data_b,
+                                      y_data_b,
+                                      z_data_b,
                                       vols_b,
                                       solpars_b,
                                       charges_b,

@@ -10,7 +10,7 @@
 #include <mudock/log.hpp>
 #if !defined(__CUDACC__) && !defined(__HIPCC__)
   #include <mudock/compute/buffer_utils.hpp>
-  #include <mudock/compute/scratchpad.hpp>
+  #include <mudock/data_formats/data_store.hpp>
   #include <mudock/compute/transform.hpp>
 #endif
 #include <mudock/cpp_implementation/center_of_mass.hpp>
@@ -38,9 +38,9 @@ namespace mudock {
                 const fp_type* __restrict__ x_coords_b_,
                 const fp_type* __restrict__ y_coords_b_,
                 const fp_type* __restrict__ z_coords_b_,
-                fp_type* __restrict__ x_scratch_b_,
-                fp_type* __restrict__ y_scratch_b_,
-                fp_type* __restrict__ z_scratch_b_,
+                fp_type* __restrict__ x_data_b_,
+                fp_type* __restrict__ y_data_b_,
+                fp_type* __restrict__ z_data_b_,
                 const int* __restrict__ ligand_fragments_b_,
                 const int* __restrict__ ligand_fragments_start_b_,
                 const int* __restrict__ frag_indices_start_b_,
@@ -56,9 +56,9 @@ namespace mudock {
           x_coords_b(x_coords_b_),
           y_coords_b(y_coords_b_),
           z_coords_b(z_coords_b_),
-          x_scratch_b(x_scratch_b_),
-          y_scratch_b(y_scratch_b_),
-          z_scratch_b(z_scratch_b_),
+          x_data_b(x_data_b_),
+          y_data_b(y_data_b_),
+          z_data_b(z_data_b_),
           ligand_fragments_b(ligand_fragments_b_),
           ligand_fragments_start_b(ligand_fragments_start_b_),
           frag_indices_start_b(frag_indices_start_b_),
@@ -86,9 +86,9 @@ namespace mudock {
     const fp_type* __restrict__ x_coords_b;
     const fp_type* __restrict__ y_coords_b;
     const fp_type* __restrict__ z_coords_b;
-    fp_type* __restrict__ x_scratch_b;
-    fp_type* __restrict__ y_scratch_b;
-    fp_type* __restrict__ z_scratch_b;
+    fp_type* __restrict__ x_data_b;
+    fp_type* __restrict__ y_data_b;
+    fp_type* __restrict__ z_data_b;
     const int* __restrict__ ligand_fragments_b;
     const int* __restrict__ ligand_fragments_start_b;
     const int* __restrict__ frag_indices_start_b;
@@ -98,12 +98,12 @@ namespace mudock {
   };
 
 #if !defined(__CUDACC__) && !defined(__HIPCC__)
-  template<typename queue_t, typename layout_set = all_scratch_layouts>
+  template<typename queue_t, typename layout_set = all_data_layouts>
     requires std::derived_from<queue_t, queue>
   struct geometric: public transform<queue_t, layout_set> {
-    geometric(std::shared_ptr<scratchpad<queue_t, layout_set>> _scratch, dynamic_molecule& protein)
-        : transform<queue_t, layout_set>(_scratch),
-          geometry_data(_scratch->get_queue()),
+    geometric(std::shared_ptr<data_store<queue_t, layout_set>> _data, dynamic_molecule& protein)
+        : transform<queue_t, layout_set>(_data),
+          geometry_data(_data->get_queue()),
           protein_center(protein.get_center()) {};
 
     void prepare(batch<static_molecule>& batch) {
@@ -113,21 +113,21 @@ namespace mudock {
       const int tot_atoms_in_batch            = batch_ligands * batch_atoms;
       const int tot_rotamers_atoms_in_batch   = tot_atoms_in_batch * batch_rotamers;
       const std::size_t tot_rotamers_in_batch = batch_ligands * batch_rotamers;
-      auto q                                  = (*this->scratch).get_queue();
+      auto q                                  = (*this->data).get_queue();
       const auto chromsomes_per_ligand =
-          std::max(1, static_cast<int>((*this->scratch).configuration.population_number));
+          std::max(1, static_cast<int>((*this->data).configuration.population_number));
       const auto expected_chromosomes =
           static_cast<std::size_t>(batch_ligands) * static_cast<std::size_t>(chromsomes_per_ligand);
       (void) expected_chromosomes;
-      assert(this->scratch->genetic().num_elements() ==
+      assert(this->data->host_view().genetic().metadata().size() ==
                  expected_chromosomes &&
              "Chromosomes buffer not allocated before geom transform construction");
 
       geometry_data.alloc(tot_rotamers_atoms_in_batch,
-              batch_ligands + 1,
-              tot_rotamers_in_batch,
-              tot_rotamers_in_batch,
-              batch_ligands + 1);
+                          batch_ligands + 1,
+                          static_cast<int>(tot_rotamers_in_batch),
+                          static_cast<int>(tot_rotamers_in_batch),
+                          batch_ligands + 1);
       auto geometry_host_view = geometry_data.host_view();
       geometry_host_view.fragments_start().values()[0] = 0;
       geometry_host_view.fragments_indices_start().values()[0] = 0;
@@ -168,19 +168,16 @@ namespace mudock {
       }
       geometry_data.copy_host2device();
 
-      load_num_rotamers<queue_t>(batch, this->scratch);
-      load_num_atoms<queue_t>(batch, this->scratch);
-      auto& x_scratch_b = this->scratch->scratch_coordinates();
-      if (load_coords<queue_t>(batch, this->scratch)) {
-        x_scratch_b.alloc(tot_atoms_in_batch * chromsomes_per_ligand);
-        x_scratch_b.set_valid();
-      }
+      load_num_rotamers<queue_t>(batch, this->data);
+      load_num_atoms<queue_t>(batch, this->data);
+      load_coords<queue_t>(batch, this->data);
+      this->data->copy_host2device();
 
       // Binding
-        auto batch_view = this->scratch->batch_info().device_view();
-        auto genetic_view = this->scratch->genetic().device_view();
-        auto coordinates_view = this->scratch->coordinates().device_view();
-        auto scratch_view = x_scratch_b.device_view();
+        auto batch_view = this->data->device_view().batch_info();
+        auto genetic_view = this->data->device_view().genetic();
+        auto coordinates_view = this->data->device_view().coordinates();
+        auto  data_view = this->data->device_view().scoring_coordinates();
         auto geometry_view = geometry_data.device_view();
         chromosome* chromosomes_p = genetic_view.chromosomes().data();
         int* num_atoms_p = batch_view.num_atoms().data();
@@ -188,9 +185,9 @@ namespace mudock {
         const fp_type* x_coords_p = coordinates_view.x().data();
         const fp_type* y_coords_p = coordinates_view.y().data();
         const fp_type* z_coords_p = coordinates_view.z().data();
-        fp_type* x_scratch_p = scratch_view.x().data();
-        fp_type* y_scratch_p = scratch_view.y().data();
-        fp_type* z_scratch_p = scratch_view.z().data();
+        fp_type* x_data_p =  data_view.x().data();
+        fp_type* y_data_p =  data_view.y().data();
+        fp_type* z_data_p =  data_view.z().data();
         int* ligand_fragments_p = geometry_view.fragments().values().data();
         int* ligand_fragments_start_p = geometry_view.fragments_start().values().data();
         int* frag_indices_start_p = geometry_view.fragments_indices_start().values().data();
@@ -206,9 +203,9 @@ namespace mudock {
                                                       x_coords_p,
                                                       y_coords_p,
                                                       z_coords_p,
-                                                      x_scratch_p,
-                                                      y_scratch_p,
-                                                      z_scratch_p,
+                                                      x_data_p,
+                                                      y_data_p,
+                                                      z_data_p,
                                                       ligand_fragments_p,
                                                       ligand_fragments_start_p,
                                                       frag_indices_start_p,
@@ -219,7 +216,7 @@ namespace mudock {
 
     void operator()() {
       assert(
-          (this->scratch->genetic().num_elements() % batch_ligands ==
+          (this->data->host_view().genetic().metadata().size() % batch_ligands ==
            0) &&
           "Number of chromosomes per ligand is not a multiple of the number of ligands expected to be docked");
 
@@ -287,18 +284,17 @@ namespace mudock {
 
     void teardown_impl(batch<static_molecule>& batch) {
       const auto chromsomes_per_ligand =
-          std::max(1, static_cast<int>((*this->scratch).configuration.population_number));
-      auto& scratch_coordinates = this->scratch->scratch_coordinates();
-      scratch_coordinates.copy_device2host();
-      (*this->scratch).get_queue()->synchronize();
-      auto scratch_view = scratch_coordinates.host_view();
+          std::max(1, static_cast<int>((*this->data).configuration.population_number));
+      this->data->copy_device2host();
+      (*this->data).get_queue()->synchronize();
+      auto  data_view = this->data->host_view().scoring_coordinates();
       for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
         auto& ligand           = *batch.molecules[ligand_index];
         const int num_atoms    = ligand.num_atoms();
         const int stride_atoms = ligand_index * batch_atoms * chromsomes_per_ligand;
-        std::memcpy(ligand.x(), scratch_view.x().data() + stride_atoms, num_atoms * sizeof(fp_type));
-        std::memcpy(ligand.y(), scratch_view.y().data() + stride_atoms, num_atoms * sizeof(fp_type));
-        std::memcpy(ligand.z(), scratch_view.z().data() + stride_atoms, num_atoms * sizeof(fp_type));
+        std::memcpy(ligand.x(),  data_view.x().data() + stride_atoms, num_atoms * sizeof(fp_type));
+        std::memcpy(ligand.y(),  data_view.y().data() + stride_atoms, num_atoms * sizeof(fp_type));
+        std::memcpy(ligand.z(),  data_view.z().data() + stride_atoms, num_atoms * sizeof(fp_type));
       }
     };
   };

@@ -88,8 +88,8 @@ namespace mudock {
     using size_result_type = decltype(std::declval<SoA&>().metadata().size());
 
     explicit soa_device_buffer(std::shared_ptr<queue_type> queue)
-    {
-      if (!queue)
+        : queue_(queue) {
+      if (!queue_)
         throw std::invalid_argument("A SOA device buffer requires a queue");
       if (queue->obj_required())
         storage_ = std::make_unique<object<std::byte>>(std::move(queue));
@@ -101,12 +101,17 @@ namespace mudock {
     soa_device_buffer& operator=(soa_device_buffer&&) = default;
 
     template<typename... SizeArgs>
-    void allocate(const SizeArgs&... sizes) {
-      if (storage_)
+    void allocate_or_alias(std::byte* host_data, const SizeArgs&... sizes) {
+      if (storage_) {
         storage_->alloc(detail::soa_layout_traits<SoA>::compute_data_size(sizes...));
-      else
-        fallback_.resize(detail::soa_layout_traits<SoA>::compute_data_size(sizes...));
-      soa_ = detail::soa_layout_traits<SoA>::make_layout(data(), sizes...);
+        data_ = storage_->dev_pointer();
+      } else {
+        // CPU queues execute directly on host memory.  The device view must
+        // alias the host allocation instead of creating a second fallback
+        // allocation and copying the complete SoA.
+        data_ = host_data;
+      }
+      soa_ = detail::soa_layout_traits<SoA>::make_layout(data_, sizes...);
       view_ = view_type{soa_};
     }
 
@@ -117,8 +122,6 @@ namespace mudock {
         throw std::invalid_argument("Host and device SOA buffers have different sizes");
       if (storage_)
         storage_->copy_host2device(host.data(), soa_.metadata().byteSize());
-      else
-        std::memcpy(fallback_.data(), host.data(), fallback_.size());
     }
 
     template<typename SoAHost>
@@ -128,12 +131,16 @@ namespace mudock {
         throw std::invalid_argument("Host and device SOA buffers have different sizes");
       if (storage_)
         storage_->copy_device2host(host.data());
-      else
-        std::memcpy(host.data(), fallback_.data(), fallback_.size());
     }
 
-    [[nodiscard]] std::byte* data() { return storage_ ? storage_->dev_pointer() : fallback_.data(); }
-    [[nodiscard]] const std::byte* data() const { return storage_ ? storage_->dev_pointer() : fallback_.data(); }
+    void copy_device2host(const void* device, void* host, const std::size_t bytes) const {
+      if (storage_)
+        queue_->copy_device2host(device, host, bytes);
+      // With a host alias, source and destination are the same allocation.
+    }
+
+    [[nodiscard]] std::byte* data() { return data_; }
+    [[nodiscard]] const std::byte* data() const { return data_; }
     [[nodiscard]] size_result_type size() const { return soa_.metadata().size(); }
     [[nodiscard]] SoA& soa() { return soa_; }
     [[nodiscard]] const SoA& soa() const { return soa_; }
@@ -141,13 +148,14 @@ namespace mudock {
     [[nodiscard]] const view_type& view() const { return view_; }
 
   private:
+    std::shared_ptr<queue_type> queue_;
     std::unique_ptr<object<std::byte>> storage_;
-    std::vector<std::byte> fallback_;
+    std::byte* data_ = nullptr;
     SoA soa_;
     view_type view_;
   };
 
-  // Combined host/device storage used by scratchpad and stage entries.
+  // Combined host/device storage used by data_store and stage entries.
   template<typename SoA, typename queue_type>
   class soa_buffer {
   public:
@@ -165,7 +173,7 @@ namespace mudock {
     template<typename... SizeArgs>
     void alloc(const SizeArgs&... sizes) {
       host_.allocate(sizes...);
-      device_.allocate(sizes...);
+      device_.allocate_or_alias(host_.data(), sizes...);
       host_view_ = typename soa_host_buffer<SoA>::view_type{host_.soa()};
       device_view_ = typename soa_device_buffer<SoA, queue_type>::view_type{device_.soa()};
     }
@@ -178,6 +186,15 @@ namespace mudock {
     void copy_device2host() {
       device_.copy_to_host(host_);
       valid_ = false;
+    }
+
+    template<typename BlockGetter>
+    void copy_device2host_block(BlockGetter getter) {
+      auto host_block = getter(host_.soa());
+      auto device_block = getter(device_.soa());
+      device_.copy_device2host(device_block.metadata().data(),
+                               host_block.metadata().data(),
+                               device_block.metadata().byteSize());
     }
 
     bool is_valid() const { return valid_; }

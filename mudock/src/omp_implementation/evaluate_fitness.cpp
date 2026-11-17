@@ -123,10 +123,10 @@ MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
                         const fp_type* __restrict__ original_ligand_x,
                         const fp_type* __restrict__ original_ligand_y,
                         const fp_type* __restrict__ original_ligand_z,
-                        fp_type* __restrict__ scratch_ligand_x,
-                        fp_type* __restrict__ scratch_ligand_y,
-                        fp_type* __restrict__ scratch_ligand_z,
-                        fp_type* __restrict__ scratch_chromosome,
+                        fp_type* __restrict__  data_ligand_x,
+                        fp_type* __restrict__  data_ligand_y,
+                        fp_type* __restrict__  data_ligand_z,
+                        fp_type* __restrict__  data_chromosome,
                         const fp_type* __restrict__ ligand_vol,
                         const fp_type* __restrict__ ligand_solpar,
                         const fp_type* __restrict__ ligand_charge,
@@ -176,9 +176,9 @@ MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
       const fp_type* l_original_ligand_x = original_ligand_x + ligand_id * atom_stride;
       const fp_type* l_original_ligand_y = original_ligand_y + ligand_id * atom_stride;
       const fp_type* l_original_ligand_z = original_ligand_z + ligand_id * atom_stride;
-      fp_type* l_scratch_ligand_x        = scratch_ligand_x + ligand_id * atom_stride;
-      fp_type* l_scratch_ligand_y        = scratch_ligand_y + ligand_id * atom_stride;
-      fp_type* l_scratch_ligand_z        = scratch_ligand_z + ligand_id * atom_stride;
+      fp_type* l_data_ligand_x        =  data_ligand_x + ligand_id * atom_stride;
+      fp_type* l_data_ligand_y        =  data_ligand_y + ligand_id * atom_stride;
+      fp_type* l_data_ligand_z        =  data_ligand_z + ligand_id * atom_stride;
       const fp_type* l_ligand_vol        = ligand_vol + ligand_id * atom_stride;
       const fp_type* l_ligand_solpar     = ligand_solpar + ligand_id * atom_stride;
       const fp_type* l_ligand_charge     = ligand_charge + ligand_id * atom_stride;
@@ -198,11 +198,11 @@ MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
       const int* l_ligand_nonbond_a2      = ligand_nonbond_a2 + ligand_id * nonbond_stride;
       XORWOWState* l_state                = state + ligand_id * omp_get_max_threads();
 
-      // Initialize scratchpads and generate initial population
-      fp_type* l_scratch_chromosome = scratch_chromosome + ligand_id * chromosome_number;
+      // Initialize data_stores and generate initial population
+      fp_type* l_data_chromosome =  data_chromosome + ligand_id * chromosome_number;
 #pragma omp parallel for
       for (int chromosome_index = 0; chromosome_index < chromosome_number; ++chromosome_index) {
-        l_scratch_chromosome[chromosome_index] =
+        l_data_chromosome[chromosome_index] =
             std::numeric_limits<fp_type>::infinity(); // Set initial score value
         chromosome& chromo = *(l_chromosomes + chromosome_index);
 MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
@@ -219,15 +219,15 @@ MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
         for (int chromosome_index = 0; chromosome_index < chromosome_number; ++chromosome_index) {
 #pragma omp parallel for
           for (int atom_index = 0; atom_index < num_atoms; ++atom_index) {
-            l_scratch_ligand_x[atom_index] = l_original_ligand_x[atom_index];
-            l_scratch_ligand_y[atom_index] = l_original_ligand_y[atom_index];
-            l_scratch_ligand_z[atom_index] = l_original_ligand_z[atom_index];
+            l_data_ligand_x[atom_index] = l_original_ligand_x[atom_index];
+            l_data_ligand_y[atom_index] = l_original_ligand_y[atom_index];
+            l_data_ligand_z[atom_index] = l_original_ligand_z[atom_index];
           }
 
           // Modify coordinates
-          apply_omp(l_scratch_ligand_x,
-                    l_scratch_ligand_y,
-                    l_scratch_ligand_z,
+          apply_omp(l_data_ligand_x,
+                    l_data_ligand_y,
+                    l_data_ligand_z,
                     *(l_chromosomes + chromosome_index),
                     l_fragments,
                     l_frag_start_atom_index,
@@ -242,9 +242,9 @@ MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
           fp_type dmap_total_trilinear  = 0;
 #pragma omp parallel for reduction(+ : elect_total_trilinear, emap_total_trilinear, dmap_total_trilinear)
           for (int atom_index = 0; atom_index < num_atoms; ++atom_index) {
-            fp_type coord_tex[3]{l_scratch_ligand_x[atom_index],
-                                 l_scratch_ligand_y[atom_index],
-                                 l_scratch_ligand_z[atom_index]};
+            fp_type coord_tex[3]{l_data_ligand_x[atom_index],
+                                 l_data_ligand_y[atom_index],
+                                 l_data_ligand_z[atom_index]};
 
             if (coord_tex[0] < minimum_x || coord_tex[0] > maximum_x || coord_tex[1] < minimum_y ||
                 coord_tex[1] > maximum_y || coord_tex[2] < minimum_z || coord_tex[2] > maximum_z) {
@@ -259,9 +259,9 @@ MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
             } else {
               // Is inside
               // Center atom coordinates on the grid center
-              coord_tex[0] = (l_scratch_ligand_x[atom_index] - minimum_x) * inv_spacing,
-              coord_tex[1] = (l_scratch_ligand_y[atom_index] - minimum_y) * inv_spacing;
-              coord_tex[2] = (l_scratch_ligand_z[atom_index] - minimum_z) * inv_spacing;
+              coord_tex[0] = (l_data_ligand_x[atom_index] - minimum_x) * inv_spacing,
+              coord_tex[1] = (l_data_ligand_y[atom_index] - minimum_y) * inv_spacing;
+              coord_tex[2] = (l_data_ligand_z[atom_index] - minimum_z) * inv_spacing;
               //  TODO check approximations with in hardware interpolation
               // elect_total_trilinear +=
               //     tex3D<fp_type>(electro_texture, coord_tex[0], coord_tex[1], coord_tex[2]) *
@@ -291,9 +291,9 @@ MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
 
           fp_type total_eintcal{0};
           if (num_rotamers > 0)
-            total_eintcal += calc_intra_energy(l_scratch_ligand_x,
-                                               l_scratch_ligand_y,
-                                               l_scratch_ligand_z,
+            total_eintcal += calc_intra_energy(l_data_ligand_x,
+                                               l_data_ligand_y,
+                                               l_data_ligand_z,
                                                l_ligand_vol,
                                                l_ligand_solpar,
                                                l_ligand_charge,
@@ -307,7 +307,7 @@ MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
                                                l_ligand_nonbond_a2);
 
           const fp_type tors_free_energy         = num_rotamers * autodock_parameters::coeff_tors;
-          l_scratch_chromosome[chromosome_index] = total_trilinear + total_eintcal + tors_free_energy;
+          l_data_chromosome[chromosome_index] = total_trilinear + total_eintcal + tors_free_energy;
         }
 
 // Generate the new population
@@ -319,11 +319,11 @@ MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
           const int best_individual_1 = tournament_selection_omp(l_state[omp_get_thread_num()],
                                                                  tournament_length,
                                                                  chromosome_number,
-                                                                 l_scratch_chromosome);
+                                                                 l_data_chromosome);
           const int best_individual_2 = tournament_selection_omp(l_state[omp_get_thread_num()],
                                                                  tournament_length,
                                                                  chromosome_number,
-                                                                 l_scratch_chromosome);
+                                                                 l_data_chromosome);
 
           // generate the offspring
           const int split_index = get_crossover_distribution(l_state[omp_get_thread_num()], &num_rotamers);
@@ -364,8 +364,8 @@ MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
       min_index_pair result = {std::numeric_limits<fp_type>::infinity(), -1};
 #pragma omp parallel for reduction(min_index : result)
       for (int chromosome_index = 0; chromosome_index < chromosome_number; ++chromosome_index) {
-        if (l_scratch_chromosome[chromosome_index] < result.value) {
-          result.value = l_scratch_chromosome[chromosome_index];
+        if (l_data_chromosome[chromosome_index] < result.value) {
+          result.value = l_data_chromosome[chromosome_index];
           result.index = chromosome_index;
         }
       }

@@ -18,9 +18,9 @@ namespace mudock {
                      const int *__restrict__ num_atoms_b_,
                      const int *__restrict__ num_rotamers_b_,
                      const int *__restrict__ num_nonbonds_b_,
-                     const fp_type *__restrict__ x_scratch_b_,
-                     const fp_type *__restrict__ y_scratch_b_,
-                     const fp_type *__restrict__ z_scratch_b_,
+                     const fp_type *__restrict__ x_data_b_,
+                     const fp_type *__restrict__ y_data_b_,
+                     const fp_type *__restrict__ z_data_b_,
                      const fp_type *__restrict__ vols_b_,
                      const fp_type *__restrict__ solpars_b_,
                      const fp_type *__restrict__ charges_b_,
@@ -45,9 +45,9 @@ namespace mudock {
           num_atoms_b(num_atoms_b_),
           num_rotamers_b(num_rotamers_b_),
           num_nonbonds_b(num_nonbonds_b_),
-          x_scratch_b(x_scratch_b_),
-          y_scratch_b(y_scratch_b_),
-          z_scratch_b(z_scratch_b_),
+          x_data_b(x_data_b_),
+          y_data_b(y_data_b_),
+          z_data_b(z_data_b_),
           vols_b(vols_b_),
           solpars_b(solpars_b_),
           charges_b(charges_b_),
@@ -83,9 +83,9 @@ namespace mudock {
     const int *__restrict__ num_atoms_b;
     const int *__restrict__ num_rotamers_b;
     const int *__restrict__ num_nonbonds_b;
-    const fp_type *__restrict__ x_scratch_b;
-    const fp_type *__restrict__ y_scratch_b;
-    const fp_type *__restrict__ z_scratch_b;
+    const fp_type *__restrict__ x_data_b;
+    const fp_type *__restrict__ y_data_b;
+    const fp_type *__restrict__ z_data_b;
     const fp_type *__restrict__ vols_b;
     const fp_type *__restrict__ solpars_b;
     const fp_type *__restrict__ charges_b;

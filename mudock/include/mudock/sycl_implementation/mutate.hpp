@@ -152,9 +152,9 @@ namespace mudock {
                     const fp_type* __restrict__ original_x,
                     const fp_type* __restrict__ original_y,
                     const fp_type* __restrict__ original_z,
-                    fp_type* __restrict__ scratch_x,
-                    fp_type* __restrict__ scratch_y,
-                    fp_type* __restrict__ scratch_z,
+                    fp_type* __restrict__  data_x,
+                    fp_type* __restrict__  data_y,
+                    fp_type* __restrict__  data_z,
                     const chromosome* __restrict__ chromosomes,
                     const int* __restrict__ fragments,
                     const int* __restrict__ ligand_fragments_start,
@@ -174,9 +174,9 @@ namespace mudock {
       const fp_type* __restrict__ l_original_x = original_x + ligand_id * atom_stride;
       const fp_type* __restrict__ l_original_y = original_y + ligand_id * atom_stride;
       const fp_type* __restrict__ l_original_z = original_z + ligand_id * atom_stride;
-      fp_type* __restrict__ l_scratch_x        = scratch_x + ligand_id * atom_stride * chromosome_number;
-      fp_type* __restrict__ l_scratch_y        = scratch_y + ligand_id * atom_stride * chromosome_number;
-      fp_type* __restrict__ l_scratch_z        = scratch_z + ligand_id * atom_stride * chromosome_number;
+      fp_type* __restrict__ l_data_x        =  data_x + ligand_id * atom_stride * chromosome_number;
+      fp_type* __restrict__ l_data_y        =  data_y + ligand_id * atom_stride * chromosome_number;
+      fp_type* __restrict__ l_data_z        =  data_z + ligand_id * atom_stride * chromosome_number;
       const chromosome* chromosomes_b          = chromosomes + ligand_id * chromosome_number;
       const auto* __restrict__ l_fragments     = fragments + ligand_fragments_start[ligand_id];
       const auto* __restrict__ l_frag_start_atom_index =
@@ -185,31 +185,31 @@ namespace mudock {
 
       for (int chromosome_index = 0; chromosome_index < chromosome_number; ++chromosome_index) {
         const chromosome& l_chromosomes            = chromosomes_b[chromosome_index];
-        fp_type* __restrict__ x_scratch_chromosome = l_scratch_x + chromosome_index * atom_stride;
-        fp_type* __restrict__ y_scratch_chromosome = l_scratch_y + chromosome_index * atom_stride;
-        fp_type* __restrict__ z_scratch_chromosome = l_scratch_z + chromosome_index * atom_stride;
+        fp_type* __restrict__ x_data_chromosome = l_data_x + chromosome_index * atom_stride;
+        fp_type* __restrict__ y_data_chromosome = l_data_y + chromosome_index * atom_stride;
+        fp_type* __restrict__ z_data_chromosome = l_data_z + chromosome_index * atom_stride;
 
         // Copy original coordinates
         MUDOCK_PRAGMA_TEMPLATE_UNROLL(MAX_ATOMS, MUDOCK_SYCL_WG_SIZE)
         for (int atom_index = local_thread_id; atom_index < MAX_ATOMS; atom_index += MUDOCK_SYCL_WG_SIZE) {
           if (atom_index < num_atoms) {
-            x_scratch_chromosome[atom_index] = l_original_x[atom_index];
-            y_scratch_chromosome[atom_index] = l_original_y[atom_index];
-            z_scratch_chromosome[atom_index] = l_original_z[atom_index];
+            x_data_chromosome[atom_index] = l_original_x[atom_index];
+            y_data_chromosome[atom_index] = l_original_y[atom_index];
+            z_data_chromosome[atom_index] = l_original_z[atom_index];
           }
         }
         // apply rigid transformations
-        translate_molecule_sycl<MAX_ATOMS>(x_scratch_chromosome,
-                                           y_scratch_chromosome,
-                                           z_scratch_chromosome,
+        translate_molecule_sycl<MAX_ATOMS>(x_data_chromosome,
+                                           y_data_chromosome,
+                                           z_data_chromosome,
                                            &l_chromosomes[0],
                                            &l_chromosomes[1],
                                            &l_chromosomes[2],
                                            num_atoms,
                                            it);
-        rotate_molecule_sycl<MAX_ATOMS>(x_scratch_chromosome,
-                                        y_scratch_chromosome,
-                                        z_scratch_chromosome,
+        rotate_molecule_sycl<MAX_ATOMS>(x_data_chromosome,
+                                        y_data_chromosome,
+                                        z_data_chromosome,
                                         &l_chromosomes[3],
                                         &l_chromosomes[4],
                                         &l_chromosomes[5],
@@ -220,9 +220,9 @@ namespace mudock {
         MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
         for (int i = 0; i < num_rotamers; ++i) {
           const int* bitmask = l_fragments + i * num_atoms;
-          rotate_fragment_sycl<MAX_ATOMS>(x_scratch_chromosome,
-                                          y_scratch_chromosome,
-                                          z_scratch_chromosome,
+          rotate_fragment_sycl<MAX_ATOMS>(x_data_chromosome,
+                                          y_data_chromosome,
+                                          z_data_chromosome,
                                           bitmask,
                                           l_frag_start_atom_index[i],
                                           l_frag_stop_atom_index[i],

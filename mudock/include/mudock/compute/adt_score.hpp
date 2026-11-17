@@ -2,18 +2,19 @@
 
 #include <cstddef>
 #include <cstring>
+#include <type_traits>
 #include <mudock/batch.hpp>
 #include <mudock/chem/autodock_grid_types.hpp>
 #include <mudock/chem/autodock_ligand.hpp>
 #include <mudock/chem/autodock_protein.hpp>
 #include <mudock/compute/adt_score_kernel.hpp>
-#include <mudock/compute/adt_score_soa.hpp>
+#include <mudock/data_formats/adt_score_soa.hpp>
 #include <mudock/compute/batch_multiple.hpp>
-#include <mudock/compute/scratchpad_layout_sets.hpp>
+#include <mudock/data_formats/data_layout_sets.hpp>
 #if !defined(__CUDACC__) && !defined(__HIPCC__)
   #include <mudock/compute/buffer_utils.hpp>
   #include <mudock/compute/scoring.hpp>
-  #include <mudock/compute/scratchpad.hpp>
+  #include <mudock/data_formats/data_store.hpp>
 #endif
 #include <mudock/log.hpp>
 #include <mudock/molecule.hpp>
@@ -21,37 +22,34 @@
 
 namespace mudock {
 
-  template<typename queue_type, typename layout_set = all_scratch_layouts>
+  template<typename queue_type, typename layout_set = scoring_data_layouts>
   batch_multiple get_adt_score_batch_multiple(const int, std::shared_ptr<queue_type>) {
     return {};
   }
 
 #if !defined(__CUDACC__) && !defined(__HIPCC__)
   // TODO check that the object type and the kernel impl are the same
-  template<typename queue_type, typename layout_set = all_scratch_layouts>
+  template<typename queue_type, typename layout_set = all_data_layouts,
+           typename protein_layout_set = protein_data_layouts>
   struct adt_score: public scoring<queue_type, layout_set> {
     static constexpr const char stage_name[] = "ADT";
 
-    adt_score(std::shared_ptr<scratchpad<queue_type, layout_set>> _scratch,
-          std::shared_ptr<scratchpad<queue_type, layout_set>> _device_scratch,
+    adt_score(std::shared_ptr<data_store<queue_type, layout_set>> _data,
+          std::shared_ptr<data_store<queue_type, protein_layout_set>> _protein_data,
               dynamic_molecule &protein)
-        : scoring<queue_type, layout_set>(_scratch),
-          atom_data(_scratch->get_queue()),
-          num_nonbond_data(_scratch->get_queue()),
-          nonbond_data(_scratch->get_queue()),
-          device_scratch(_device_scratch) {
-      if (!device_scratch->protein_maps().is_valid()) {
+        : scoring<queue_type, layout_set>(_data),
+          adt_data(_data->get_queue()),
+          protein_data(_protein_data) {
+      if (!protein_data->is_valid()) {
         autodock_protein adt_prot(protein);
 
-        auto &prot_bounds = device_scratch->protein_bounds();
-        auto &prot_dimensions = device_scratch->protein_dimensions();
-        auto &prot_grid_maps = device_scratch->protein_maps();
-
-        prot_bounds.alloc(3);
-        prot_dimensions.alloc(1);
-        prot_grid_maps.alloc(adt_prot.get_size_xyz() * num_autodock_grids());
-        auto bounds = prot_bounds.host_view();
-        auto dimensions = prot_dimensions.host_view();
+        protein_data->alloc(3,
+                              1,
+                              static_cast<int>(adt_prot.get_size_xyz() * num_autodock_grids()));
+        auto protein_view = protein_data->host_view();
+        auto bounds = protein_view.protein_bounds();
+        auto dimensions = protein_view.protein_dimensions();
+        auto maps = protein_view.protein_maps();
 
         std::memcpy(bounds.minimum().data(), adt_prot.get_min_p(), 3 * sizeof(fp_type));
         std::memcpy(bounds.maximum().data(), adt_prot.get_max_p(), 3 * sizeof(fp_type));
@@ -59,15 +57,13 @@ namespace mudock {
         dimensions.size_x()[0]   = static_cast<int>(adt_prot.get_size_x());
         dimensions.size_xy()[0]  = static_cast<int>(adt_prot.get_size_xy());
         dimensions.size_xyz()[0] = static_cast<int>(adt_prot.get_size_xyz());
-        std::memcpy(prot_grid_maps.host_view().maps().data(),
+        std::memcpy(maps.maps().data(),
                     adt_prot.get_maps_pointer(),
                     adt_prot.get_map_flat_size() * num_autodock_grids() * sizeof(fp_type));
 
-        prot_bounds.copy_host2device();
-        prot_dimensions.copy_host2device();
-        prot_grid_maps.copy_host2device();
+        protein_data->copy_host2device();
         // Workers use this device-shared pointer from their own queues.
-        device_scratch->get_queue()->synchronize();
+        protein_data->get_queue()->synchronize();
       }
     }
 
@@ -76,36 +72,30 @@ namespace mudock {
       batch_atoms                  = batch.batch_max_atoms;
       const int batch_non_bonds    = batch_ligands * batch_atoms * batch_atoms;
       const int tot_atoms_in_batch = batch_ligands * batch_atoms;
-      auto q                       = (*this->scratch).get_queue();
-
-      load_num_rotamers(batch, this->scratch);
-      load_num_atoms(batch, this->scratch);
+      auto q                       = (*this->data).get_queue();
 
       const int scores_per_ligand =
-          std::max(1, static_cast<int>((*this->scratch).configuration.population_number));
-
-      auto &score_data = this->scratch->scores();
-      if (load_scratchs<queue_type>(batch, this->scratch, scores_per_ligand)) {
-        if (!score_data.is_valid() ||
-            score_data.num_elements() != static_cast<size_t>(batch_ligands * scores_per_ligand)) {
-          score_data.alloc(batch_ligands * scores_per_ligand);
-          score_data.set_valid();
-        }
-      } else if (!score_data.is_valid() ||
-                 score_data.num_elements() != static_cast<size_t>(batch_ligands * scores_per_ligand)) {
-        score_data.alloc(batch_ligands * scores_per_ligand);
-        score_data.set_valid();
+          std::max(1, static_cast<int>((*this->data).configuration.population_number));
+      if constexpr (std::is_same_v<layout_set, scoring_data_layouts>) {
+        this->data->alloc(tot_atoms_in_batch * scores_per_ligand,
+                             batch_ligands,
+                             batch_ligands * scores_per_ligand);
       }
 
-      atom_data.alloc(tot_atoms_in_batch);
-      num_nonbond_data.alloc(batch_ligands + 1);
-      nonbond_data.alloc(batch_non_bonds);
-      auto atom_view = atom_data.host_view();
-      auto num_nonbond_view = num_nonbond_data.host_view();
-      auto nonbond_view = nonbond_data.host_view();
+      load_num_rotamers(batch, this->data);
+      load_num_atoms(batch, this->data);
+      load_scoring_coordinates<queue_type>(batch, this->data, scores_per_ligand);
+      this->data->copy_host2device();
+
+      adt_data.alloc(tot_atoms_in_batch, batch_ligands + 1, batch_non_bonds);
+      auto adt_view = adt_data.host_view();
+      auto atom_view = adt_view.atom_data();
+      auto num_nonbond_view = adt_view.num_nonbond_data();
+      auto nonbond_view = adt_view.nonbond_data();
       num_nonbond_view.num_nonbond()[0] = 0;
 
-        const int map_flat_size = device_scratch->protein_dimensions().host_view().size_xyz()[0];
+      auto protein_host_view = protein_data->host_view();
+      const int map_flat_size = protein_host_view.protein_dimensions().size_xyz()[0];
       for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
         auto &ligand = *batch.molecules[ligand_index];
 
@@ -145,30 +135,29 @@ namespace mudock {
                     num_atoms * sizeof(int));
       }
 
-      atom_data.copy_host2device();
-      num_nonbond_data.copy_host2device();
-      nonbond_data.copy_host2device();
+      adt_data.copy_host2device();
 
       // TODO ask Davide about this performance
       // Bind to the kernel function
-      const auto expected_scratch_elements =
+      const auto expected_data_elements =
           static_cast<std::size_t>(scores_per_ligand) * static_cast<std::size_t>(tot_atoms_in_batch);
-      (void) expected_scratch_elements;
-      assert(this->scratch->scratch_coordinates().num_elements() ==
-                 expected_scratch_elements &&
+      (void) expected_data_elements;
+      assert(this->data->host_view().scoring_coordinates().metadata().size() ==
+                 expected_data_elements &&
              "Number of scores per ligand does not match the allocated coordinates space");
 
-        auto batch_view = this->scratch->batch_info().device_view();
-        auto scratch_view = this->scratch->scratch_coordinates().device_view();
-        auto atom_device_view = atom_data.device_view();
-        auto num_nonbond_device_view = num_nonbond_data.device_view();
-        auto nonbond_device_view = nonbond_data.device_view();
+        auto batch_view = this->data->device_view().batch_info();
+        auto  data_view = this->data->device_view().scoring_coordinates();
+        auto adt_device_view = adt_data.device_view();
+        auto atom_device_view = adt_device_view.atom_data();
+        auto num_nonbond_device_view = adt_device_view.num_nonbond_data();
+        auto nonbond_device_view = adt_device_view.nonbond_data();
         const int *num_atoms_b = batch_view.num_atoms().data();
         const int *num_rotamers_b = batch_view.num_rotamers().data();
         const int *num_nonbonds_b  = num_nonbond_device_view.num_nonbond().data();
-        const fp_type *x_scratch_b = scratch_view.x().data();
-        const fp_type *y_scratch_b = scratch_view.y().data();
-        const fp_type *z_scratch_b = scratch_view.z().data();
+        const fp_type *x_data_b =  data_view.x().data();
+        const fp_type *y_data_b =  data_view.y().data();
+        const fp_type *z_data_b =  data_view.z().data();
 
         const fp_type *vols_b       = atom_device_view.vols().data();
         const fp_type *solpars_b    = atom_device_view.solpars().data();
@@ -180,12 +169,12 @@ namespace mudock {
         const fp_type *nonbond_cB_b = nonbond_device_view.cB().data();
         const int *nonbond_xB_b     = nonbond_device_view.xB().data();
 
-        auto &prot_grid_maps = device_scratch->protein_maps();
-      const fp_type *grid_maps = (*device_scratch).get_queue()->obj_required()
-                       ? prot_grid_maps.device_view().maps().data()
-                       : prot_grid_maps.host_view().maps().data();
-        auto bounds_view = device_scratch->protein_bounds().device_view();
-        auto dimensions_view = device_scratch->protein_dimensions().host_view();
+      auto protein_device_view = protein_data->device_view();
+      const fp_type *grid_maps = (*protein_data).get_queue()->obj_required()
+                       ? protein_device_view.protein_maps().maps().data()
+                       : protein_host_view.protein_maps().maps().data();
+        auto bounds_view = protein_device_view.protein_bounds();
+        auto dimensions_view = protein_host_view.protein_dimensions();
         const fp_type *minimum = bounds_view.minimum().data();
         const fp_type *maximum = bounds_view.maximum().data();
         const fp_type *center  = bounds_view.center().data();
@@ -193,7 +182,7 @@ namespace mudock {
         const int map_index_xy = dimensions_view.size_xy()[0];
         const int map_index_xyz = dimensions_view.size_xyz()[0];
 
-      fp_type *scores_b = score_data.device_view().scores().data();
+      fp_type *scores_b = this->data->device_view().scores().scores().data();
 
       kernel = std::make_unique<adt_score_kernel<queue_type>>(scores_per_ligand,
                                                               batch_ligands,
@@ -201,9 +190,9 @@ namespace mudock {
                                                               num_atoms_b,
                                                               num_rotamers_b,
                                                               num_nonbonds_b,
-                                                              x_scratch_b,
-                                                              y_scratch_b,
-                                                              z_scratch_b,
+                                                              x_data_b,
+                                                              y_data_b,
+                                                              z_data_b,
                                                               vols_b,
                                                               solpars_b,
                                                               charges_b,
@@ -229,24 +218,24 @@ namespace mudock {
                                  " atoms=",
                                  batch_atoms,
                                  " theoretical_bytes_per_ligand=",
-                                 get_ligand_mem(batch_atoms, (*this->scratch).configuration),
+                                 get_ligand_mem(batch_atoms, (*this->data).configuration),
                                  " queue_allocated_bytes=",
                                  q->allocated_bytes(),
                                  " queue_peak_allocated_bytes=",
                                  q->peak_allocated_bytes(),
                                  " device_shared_queue_bytes=",
-                                 device_scratch->get_queue()->allocated_bytes(),
+                                 protein_data->get_queue()->allocated_bytes(),
                                  " device_current_bytes=",
                                  q->device_allocated_bytes(),
                                  " device_peak_allocated_bytes=",
                                  q->device_peak_allocated_bytes());
     }
 
-    [[nodiscard]] auto get_device_shared_queue() const { return device_scratch->get_queue(); }
+    [[nodiscard]] auto get_device_shared_queue() const { return protein_data->get_queue(); }
 
     void operator()() {
       assert(
-          ((this->scratch->scores().num_elements() % batch_ligands) == 0) &&
+          ((this->data->host_view().scores().metadata().size() % batch_ligands) == 0) &&
           "Number of scores is not a multiple of ligands in the batch");
       assert(kernel && "Kernel method not yet prepared");
       (*kernel)();
@@ -300,21 +289,20 @@ namespace mudock {
     int batch_ligands;
     int batch_atoms;
 
-    soa_buffer<AdtAtomData<>, queue_type> atom_data;
-    soa_buffer<AdtNumNonbondData<>, queue_type> num_nonbond_data;
-    soa_buffer<AdtNonbondData<>, queue_type> nonbond_data;
+    soa_buffer<AdtScoreData<>, queue_type> adt_data;
 
-    std::shared_ptr<scratchpad<queue_type, layout_set>> device_scratch;
+    std::shared_ptr<data_store<queue_type, protein_layout_set>> protein_data;
     std::unique_ptr<adt_score_kernel<queue_type>> kernel;
 
     void teardown_impl(batch<static_molecule> &batch) override {
       assert(batch.num_ligands == batch_ligands && "Scoring algorithm received different batch for teardown");
 
-      auto &score_data = this->scratch->scores();
-      const int scores_per_ligand = static_cast<int>(score_data.num_elements() / batch_ligands);
-      score_data.copy_device2host();
-      (*this->scratch).get_queue()->synchronize();
-      auto score_view = score_data.host_view();
+      const int scores_per_ligand = static_cast<int>(
+          this->data->host_view().scores().metadata().size() / batch_ligands);
+      // TODO is it copying everything?? We need only scores
+      this->data->copy_device2host_scores();
+      (*this->data).get_queue()->synchronize();
+      auto score_view = this->data->host_view().scores();
       for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
         auto &ligand          = *batch.molecules[ligand_index];
         const int score_index = ligand_index * scores_per_ligand;

@@ -48,9 +48,9 @@ namespace mudock {
     void calc_energy(const int batch_atoms,
                      const int batch_ligands,
                      const int scores_per_ligand,
-                     const fp_type* __restrict__ x_scratch_b,
-                     const fp_type* __restrict__ y_scratch_b,
-                     const fp_type* __restrict__ z_scratch_b,
+                     const fp_type* __restrict__ x_data_b,
+                     const fp_type* __restrict__ y_data_b,
+                     const fp_type* __restrict__ z_data_b,
                      const fp_type* __restrict__ vols_b,
                      const fp_type* __restrict__ solpars_b,
                      const fp_type* __restrict__ charges_b,
@@ -84,9 +84,9 @@ namespace mudock {
       const int num_nonbonds = num_nonbonds_b[ligand_index + 1] - num_nonbonds_b[ligand_index];
       const int num_rotamers = num_rotamers_b[ligand_index];
 
-      const fp_type* __restrict__ scratch_x = x_scratch_b + ligand_index * atom_stride * scores_per_ligand;
-      const fp_type* __restrict__ scratch_y = y_scratch_b + ligand_index * atom_stride * scores_per_ligand;
-      const fp_type* __restrict__ scratch_z = z_scratch_b + ligand_index * atom_stride * scores_per_ligand;
+      const fp_type* __restrict__  data_x = x_data_b + ligand_index * atom_stride * scores_per_ligand;
+      const fp_type* __restrict__  data_y = y_data_b + ligand_index * atom_stride * scores_per_ligand;
+      const fp_type* __restrict__  data_z = z_data_b + ligand_index * atom_stride * scores_per_ligand;
       const fp_type* __restrict__ vol_l     = vols_b + ligand_index * atom_stride;
       const fp_type* __restrict__ solpar_l  = solpars_b + ligand_index * atom_stride;
       const fp_type* __restrict__ charge_l  = charges_b + ligand_index * atom_stride;
@@ -99,9 +99,9 @@ namespace mudock {
 
       fp_type* __restrict__ scores_l = scores_b + ligand_index * scores_per_ligand;
       for (int scores_index = 0; scores_index < scores_per_ligand; ++scores_index) {
-        const fp_type* __restrict__ scratch_x_l = scratch_x + scores_index * batch_atoms;
-        const fp_type* __restrict__ scratch_y_l = scratch_y + scores_index * batch_atoms;
-        const fp_type* __restrict__ scratch_z_l = scratch_z + scores_index * batch_atoms;
+        const fp_type* __restrict__  data_x_l =  data_x + scores_index * batch_atoms;
+        const fp_type* __restrict__  data_y_l =  data_y + scores_index * batch_atoms;
+        const fp_type* __restrict__  data_z_l =  data_z + scores_index * batch_atoms;
 
         const auto num_atom_loops = static_cast<size_t>((num_atoms + simd_size - 1) / simd_size);
         const auto num_non_bond_loops =
@@ -144,9 +144,9 @@ namespace mudock {
               xsimd::batch_bool<fp_type>::from_mask(full_bitmask >> (simd_size - remaining));
 
           // Load coordinates
-          auto x = xsimd::load_unaligned(scratch_x_l + index);
-          auto y = xsimd::select(remaining_mask, xsimd::load_unaligned(scratch_y_l + index), batch_type{0});
-          auto z = xsimd::load_unaligned(scratch_z_l + index);
+          auto x = xsimd::load_unaligned( data_x_l + index);
+          auto y = xsimd::select(remaining_mask, xsimd::load_unaligned( data_y_l + index), batch_type{0});
+          auto z = xsimd::load_unaligned( data_z_l + index);
           const auto atom_charge = xsimd::load_unaligned(charge_l + index);
 
           // Bounds check
@@ -286,9 +286,9 @@ namespace mudock {
             const auto a1 = xsimd::load_unaligned(nonbond_a1_l + i);
             const auto a2 = xsimd::load_unaligned(nonbond_a2_l + i);
 
-            const auto diff_x = batch_type::gather(scratch_x_l, a1) - batch_type::gather(scratch_x_l, a2);
-            const auto diff_y = batch_type::gather(scratch_y_l, a1) - batch_type::gather(scratch_y_l, a2);
-            const auto diff_z = batch_type::gather(scratch_z_l, a1) - batch_type::gather(scratch_z_l, a2);
+            const auto diff_x = batch_type::gather( data_x_l, a1) - batch_type::gather( data_x_l, a2);
+            const auto diff_y = batch_type::gather( data_y_l, a1) - batch_type::gather( data_y_l, a2);
+            const auto diff_z = batch_type::gather( data_z_l, a1) - batch_type::gather( data_z_l, a2);
 
             // Calculate squared distances
             const auto distance_two         = diff_x * diff_x + diff_y * diff_y + diff_z * diff_z;
@@ -368,9 +368,9 @@ namespace mudock {
                                       batch_atoms,
                                       batch_ligands,
                                       scores_per_ligand,
-                                      x_scratch_b,
-                                      y_scratch_b,
-                                      z_scratch_b,
+                                      x_data_b,
+                                      y_data_b,
+                                      z_data_b,
                                       vols_b,
                                       solpars_b,
                                       charges_b,

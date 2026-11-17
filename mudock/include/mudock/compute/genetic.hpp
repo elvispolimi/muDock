@@ -15,7 +15,7 @@
   #include <mudock/compute/docking.hpp>
   #include <mudock/compute/geometric_transform.hpp>
   #include <mudock/compute/scoring.hpp>
-  #include <mudock/compute/scratchpad.hpp>
+  #include <mudock/data_formats/data_store.hpp>
 #endif
 #include <mudock/compute/batch_multiple.hpp>
 #include <mudock/compute/queue.hpp>
@@ -87,45 +87,45 @@ namespace mudock {
 #if !defined(__CUDACC__) && !defined(__HIPCC__)
   template<typename queue_t,
            template<typename, typename> typename scoring_t,
-           typename layout_set = genetic_scratch_layouts>
+           typename layout_set = genetic_data_layouts>
     requires std::derived_from<queue_t, queue> &&
              std::derived_from<scoring_t<queue_t, layout_set>, scoring<queue_t, layout_set>>
   struct genetic: public docking<queue_t, layout_set> {
     static constexpr const char stage_name[] = "GENETIC";
 
-    genetic(std::shared_ptr<scratchpad<queue_t, layout_set>> _scratch,
+    genetic(std::shared_ptr<data_store<queue_t, layout_set>> _data,
             dynamic_molecule& protein,
         scoring_t<queue_t, layout_set> _scoring)
-      : docking<queue_t, layout_set>(_scratch),
+      : docking<queue_t, layout_set>(_data),
           score_stage(std::move(_scoring)),
-          geom_trans(_scratch, protein) {};
+          geom_trans(_data, protein) {};
     void prepare(batch<static_molecule>& batch) {
-      const knobs& configuration  = (*this->scratch).configuration;
+      const knobs& configuration  = (*this->data).configuration;
       batch_ligands               = batch.num_ligands;
       num_generations             = static_cast<int>(configuration.num_generations);
       const int population_number = static_cast<int>(configuration.population_number);
-      auto q                      = (*this->scratch).get_queue();
+      auto q                      = (*this->data).get_queue();
 
-      auto& batch_info = this->scratch->batch_info();
-      auto& genetic_data = this->scratch->genetic();
-      auto& scores_data = this->scratch->scores();
-      auto& best_data = this->scratch->best();
+      const int batch_atoms = batch.batch_max_atoms;
+      const int total_atoms = batch_ligands * batch_atoms;
+      this->data->alloc(total_atoms,
+                           total_atoms * population_number,
+                           batch_ligands,
+                           population_number * batch_ligands,
+                           population_number * batch_ligands,
+                           batch_ligands);
 
-      genetic_data.alloc(population_number * batch_ligands);
-      scores_data.alloc(population_number * batch_ligands);
-      best_data.alloc(batch_ligands);
-
-      load_num_rotamers<queue_t>(batch, this->scratch);
+      load_num_rotamers<queue_t>(batch, this->data);
 
       const auto seed =
           configuration.seed.has_value()
               ? configuration.seed.value()
               : static_cast<size_t>(std::chrono::high_resolution_clock::now().time_since_epoch().count());
 
-      auto batch_view = batch_info.device_view();
-      auto genetic_view = genetic_data.device_view();
-      auto scores_view = scores_data.device_view();
-      auto best_view = best_data.device_view();
+      auto batch_view = this->data->device_view().batch_info();
+      auto genetic_view = this->data->device_view().genetic();
+      auto scores_view = this->data->device_view().scores();
+      auto best_view = this->data->device_view().best();
       int* __restrict__ num_rotamers_p            = batch_view.num_rotamers().data();
       fp_type* __restrict__ scores_p              = scores_view.scores().data();
       fp_type* __restrict__ best_scores_p         = best_view.scores().data();
@@ -165,9 +165,8 @@ namespace mudock {
                                  q->device_peak_allocated_bytes());
     };
     void operator()() {
-      auto q                           = (*this->scratch).get_queue();
-      auto& genetic_data = this->scratch->genetic();
-      auto genetic_view = genetic_data.device_view();
+      auto q                           = (*this->data).get_queue();
+      auto genetic_view = this->data->device_view().genetic();
       chromosome* current_population_p = genetic_view.chromosomes().data();
       chromosome* next_population_p    = genetic_view.next_chromosomes().data();
 
@@ -212,7 +211,7 @@ namespace mudock {
       mem += sizeof(chromosome) * chromosomes_per_ligand;              // chromosomes
       mem += sizeof(fp_type) * chromosomes_per_ligand;                 // scores
       mem += 3 * sizeof(fp_type) * max_atoms;                          // coords
-      mem += 3 * sizeof(fp_type) * max_atoms * chromosomes_per_ligand; // coord scratch
+      mem += 3 * sizeof(fp_type) * max_atoms * chromosomes_per_ligand; // coord data
       return mem;
     }
 
@@ -306,17 +305,16 @@ namespace mudock {
       assert(batch.num_ligands == batch_ligands && "Genetic algorithm received different batch for teardown");
 
       // TODO check if the copy can be changed with a swap
-      // auto& population_b = (*this->scratch).template get<buffer_data_type::CHROMOSOMES>();
+      // auto& population_b = (*this->data).template get<buffer_data_type::CHROMOSOMES>();
       // population_b.copy_device2device(best_chromosomes);
       // geom_trans();
       // score_stage();
       // geom_trans.teardown(batch);
       // score_stage.teardown(batch);
 
-      auto& best_data = this->scratch->best();
-      best_data.copy_device2host();
-      (*this->scratch).get_queue()->synchronize();
-      auto best_view = best_data.host_view();
+      this->data->copy_device2host_best();
+      (*this->data).get_queue()->synchronize();
+      auto best_view = this->data->host_view().best();
 
       for (int index{0}; index < batch_ligands; ++index) {
         auto& ligand = *batch.molecules[index];

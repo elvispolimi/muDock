@@ -90,11 +90,11 @@ namespace mudock {
     chromosomes.alloc(population_stride * batch_ligands);
     ligand_scores.alloc(batch_ligands);
     best_chromosomes.alloc(batch_ligands);
-    // Scratchpad
-    scratch_ligand_x.alloc(tot_atoms_in_batch);
-    scratch_ligand_y.alloc(tot_atoms_in_batch);
-    scratch_ligand_z.alloc(tot_atoms_in_batch);
-    scratch_chromosome.alloc(total_chromosomes);
+    // Working data
+     data_ligand_x.alloc(tot_atoms_in_batch);
+     data_ligand_y.alloc(tot_atoms_in_batch);
+     data_ligand_z.alloc(tot_atoms_in_batch);
+     data_chromosome.alloc(total_chromosomes);
     // Support data precomputation
     map_texture_index.alloc(tot_atoms_in_batch);
 
@@ -247,10 +247,10 @@ namespace mudock {
     const auto *d_original_ligand_x       = original_ligand_x.dev_pointer();
     const auto *d_original_ligand_y       = original_ligand_y.dev_pointer();
     const auto *d_original_ligand_z       = original_ligand_z.dev_pointer();
-    auto *d_scratch_ligand_x              = scratch_ligand_x.dev_pointer();
-    auto *d_scratch_ligand_y              = scratch_ligand_y.dev_pointer();
-    auto *d_scratch_ligand_z              = scratch_ligand_z.dev_pointer();
-    auto *d_scratch_chromosome            = scratch_chromosome.dev_pointer();
+    auto *d_data_ligand_x              =  data_ligand_x.dev_pointer();
+    auto *d_data_ligand_y              =  data_ligand_y.dev_pointer();
+    auto *d_data_ligand_z              =  data_ligand_z.dev_pointer();
+    auto *d_data_chromosome            =  data_chromosome.dev_pointer();
     const auto *d_ligand_vol              = ligand_vol.dev_pointer();
     const auto *d_ligand_solpar           = ligand_solpar.dev_pointer();
     const auto *d_ligand_charge           = ligand_charge.dev_pointer();
@@ -287,10 +287,10 @@ namespace mudock {
                      d_original_ligand_x,
                      d_original_ligand_y,
                      d_original_ligand_z,
-                     d_scratch_ligand_x,
-                     d_scratch_ligand_y,
-                     d_scratch_ligand_z,
-                     d_scratch_chromosome,
+                     d_data_ligand_x,
+                     d_data_ligand_y,
+                     d_data_ligand_z,
+                     d_data_chromosome,
                      d_ligand_vol,
                      d_ligand_solpar,
                      d_ligand_charge,

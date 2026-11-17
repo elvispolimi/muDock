@@ -3,6 +3,7 @@
 #include <mudock/soa_template/soa_blocks.hpp>
 #include <mudock/soa_template/soa_layout.hpp>
 #include <mudock/type_alias.hpp>
+#include <mudock/data_formats/genetic_soa.hpp>
 
 namespace mudock {
 

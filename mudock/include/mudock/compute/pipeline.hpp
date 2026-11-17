@@ -6,7 +6,7 @@
 #include <mudock/compute/algorithm.hpp>
 #include <mudock/compute/bucket_size.hpp>
 #include <mudock/compute/genetic.hpp>
-#include <mudock/compute/scratchpad.hpp>
+#include <mudock/data_formats/data_store.hpp>
 #include <mudock/compute/stage.hpp>
 #include <mudock/devices.hpp>
 #include <mudock/molecule.hpp>
@@ -20,7 +20,7 @@ namespace mudock {
     stage<queue_type> get_pipeline(const knobs&,
                                    const int,
                                    const device_type,
-                                   std::shared_ptr<scratchpad<queue_type>>,
+                                   std::shared_ptr<data_store<queue_type>>,
                                    dynamic_molecule&) {}
 
     template<typename queue_type>
@@ -35,17 +35,17 @@ namespace mudock {
   template<template<typename, typename> typename scoring_t>
   struct scoring_pipeline: pipeline {
     using pipeline::pipeline;
-    using scratchpad_layouts = scoring_scratch_layouts;
+    using pipeline_data_layouts = scoring_data_layouts;
 
     template<typename queue_type>
-    scoring_t<queue_type, scoring_scratch_layouts> get_pipeline(const knobs& conf,
+    scoring_t<queue_type, scoring_data_layouts> get_pipeline(const knobs& conf,
                                        const int id,
                                        const device_type dev_type,
-                                       std::shared_ptr<scratchpad<queue_type, scoring_scratch_layouts>> device_scratch) {
-        return scoring_t<queue_type, scoring_scratch_layouts>(
-          std::make_shared<mudock::scratchpad<queue_type, scoring_scratch_layouts>>(
-                                       conf, id, dev_type, device_scratch->get_memory_tracker()),
-                                   device_scratch,
+                                       std::shared_ptr<data_store<queue_type, protein_data_layouts>> protein_data) {
+        return scoring_t<queue_type, scoring_data_layouts>(
+          std::make_shared<mudock::data_store<queue_type, scoring_data_layouts>>(
+                                       conf, id, dev_type, protein_data->get_memory_tracker()),
+                                   protein_data,
                                    *protein);
     }
 
@@ -55,10 +55,10 @@ namespace mudock {
                               const knobs& conf,
                               const size_t max_mem = 1000000000) {
         const size_t mem_per_ligand =
-          static_cast<size_t>(scoring_t<queue_type, scoring_scratch_layouts>::get_ligand_mem(atoms, conf));
+          static_cast<size_t>(scoring_t<queue_type, scoring_data_layouts>::get_ligand_mem(atoms, conf));
       const size_t max_bucket_size = std::max<size_t>(1, max_mem / mem_per_ligand);
       mudock::stage_bucket_trace("PIPELINE(",
-                                 scoring_t<queue_type, scoring_scratch_layouts>::stage_name,
+                                 scoring_t<queue_type, scoring_data_layouts>::stage_name,
                                  ") pre-resolve for ",
                                  atoms,
                                  " atoms: mem_budget=",
@@ -70,13 +70,13 @@ namespace mudock {
                                  ", estimated_worker_batch_bytes=",
                                  max_bucket_size * mem_per_ligand);
       return resolve_stage_bucket_size(
-          scoring_t<queue_type, scoring_scratch_layouts>::stage_name,
+          scoring_t<queue_type, scoring_data_layouts>::stage_name,
           atoms,
           max_bucket_size,
           mem_per_ligand,
           q->honors_stage_bucket_policy(),
           [&]() {
-            return scoring_t<queue_type, scoring_scratch_layouts>::get_batch_size(atoms, q, conf, max_bucket_size);
+            return scoring_t<queue_type, scoring_data_layouts>::get_batch_size(atoms, q, conf, max_bucket_size);
           });
     }
   };
@@ -84,17 +84,17 @@ namespace mudock {
   template<template<typename, typename> typename scoring_t>
   struct genetic_scoring_pipeline: pipeline {
     using pipeline::pipeline;
-    using scratchpad_layouts = genetic_scratch_layouts;
+    using pipeline_data_layouts = genetic_data_layouts;
 
     template<typename queue_type>
-    genetic<queue_type, scoring_t, genetic_scratch_layouts> get_pipeline(const knobs& conf,
+    genetic<queue_type, scoring_t, genetic_data_layouts> get_pipeline(const knobs& conf,
                                                 const int id,
                                                 const device_type dev_type,
-                                                std::shared_ptr<scratchpad<queue_type, genetic_scratch_layouts>> device_scratch) {
-        auto q = std::make_shared<mudock::scratchpad<queue_type, genetic_scratch_layouts>>(
-          conf, id, dev_type, device_scratch->get_memory_tracker());
-        return genetic<queue_type, scoring_t, genetic_scratch_layouts>(
-          q, *protein, scoring_t<queue_type, genetic_scratch_layouts>(q, device_scratch, *protein));
+                                                std::shared_ptr<data_store<queue_type, protein_data_layouts>> protein_data) {
+        auto q = std::make_shared<mudock::data_store<queue_type, genetic_data_layouts>>(
+          conf, id, dev_type, protein_data->get_memory_tracker());
+        return genetic<queue_type, scoring_t, genetic_data_layouts>(
+          q, *protein, scoring_t<queue_type, genetic_data_layouts>(q, protein_data, *protein));
     }
 
     template<typename queue_type>

@@ -4,11 +4,11 @@
 #include <cstddef>
 #include <memory>
 #include <mudock/batch.hpp>
-#include <mudock/compute/scratchpad.hpp>
+#include <mudock/data_formats/data_store.hpp>
 #include <mudock/molecule.hpp>
 
 namespace mudock {
-  template<typename queue_type, typename layout_set = all_scratch_layouts>
+  template<typename queue_type, typename layout_set = all_data_layouts>
   struct stage {
     static std::size_t get_shared_ligand_mem(const int, const knobs&) { return 0; }
     static std::size_t get_private_ligand_mem(const int, const knobs&) { return 0; }
@@ -23,22 +23,22 @@ namespace mudock {
       return static_cast<int>(std::max<size_t>(1, max_bucket_size));
     }
 
-    stage(std::shared_ptr<scratchpad<queue_type, layout_set>> _scratch): scratch(_scratch) {};
+    stage(std::shared_ptr<data_store<queue_type, layout_set>> _data): data(_data) {};
     virtual void prepare(batch<static_molecule>&) = 0;
     virtual void operator()()                     = 0;
     void teardown(batch<static_molecule>& b) {
       teardown_impl(b);
-      invalid_scratch();
+      invalid_data();
     };
 
     virtual ~stage() = default;
 
-    void invalid_scratch() { scratch->invalidate(); }
+    void invalid_data() { data->invalidate(); }
 
-    [[nodiscard]] auto get_queue() const { return scratch->get_queue(); }
+    [[nodiscard]] auto get_queue() const { return data->get_queue(); }
 
   protected:
-    std::shared_ptr<scratchpad<queue_type, layout_set>> scratch;
+    std::shared_ptr<data_store<queue_type, layout_set>> data;
 
     virtual void teardown_impl(batch<static_molecule>&) = 0;
   };
