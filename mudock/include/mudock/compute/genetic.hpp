@@ -3,7 +3,9 @@
 #include "mudock/knobs.hpp"
 
 #include <algorithm>
+#include <chrono>
 #include <concepts>
+#include <cstddef>
 #include <limits>
 #include <memory>
 #include <mudock/batch.hpp>
@@ -14,6 +16,7 @@
   #include <mudock/compute/buffer_utils.hpp>
   #include <mudock/compute/docking.hpp>
   #include <mudock/compute/geometric_transform.hpp>
+  #include <mudock/compute/ligand_placement.hpp>
   #include <mudock/compute/scoring.hpp>
   #include <mudock/data_formats/data_store.hpp>
 #endif
@@ -37,6 +40,7 @@ namespace mudock {
                    const int num_generations_,
                    const int tournament_length_,
                    const fp_type mutation_prob_,
+                   const fp_type max_translation_half_width_,
                    const size_t seed_,
                    chromosome* population_,
                    chromosome* next_population_,
@@ -50,6 +54,7 @@ namespace mudock {
           num_generations(num_generations_),
           tournament_length(tournament_length_),
           mutation_prob(mutation_prob_),
+          max_translation_half_width(max_translation_half_width_),
           population(population_),
           next_population(next_population_),
           num_rotamers_b(num_rotamers_b_),
@@ -74,6 +79,7 @@ namespace mudock {
     int num_generations;
     int tournament_length;
     fp_type mutation_prob;
+    fp_type max_translation_half_width;
     chromosome* __restrict__ population;
     chromosome* __restrict__ next_population;
     int* __restrict__ num_rotamers_b;
@@ -95,11 +101,14 @@ namespace mudock {
 
     genetic(std::shared_ptr<data_store<queue_t, layout_set>> _data,
             dynamic_molecule& protein,
-        scoring_t<queue_t, layout_set> _scoring)
+        scoring_t<queue_t, layout_set> _scoring,
+        ligand_placement _placement = {})
       : docking<queue_t, layout_set>(_data),
           score_stage(std::move(_scoring)),
-          geom_trans(_data, protein) {};
+          geom_trans(_data, protein, _placement) {};
     void prepare(batch<static_molecule>& batch) {
+      trace_id = batch.trace_id;
+      trace_event("batch_received");
       const knobs& configuration  = (*this->data).configuration;
       batch_ligands               = batch.num_ligands;
       num_generations             = static_cast<int>(configuration.num_generations);
@@ -136,6 +145,7 @@ namespace mudock {
                                                          configuration.num_generations,
                                                          configuration.tournament_length,
                                                          configuration.mutation_prob,
+                                                         configuration.max_translation_half_width.value_or(fp_type{0}),
                                                          seed,
                                                          genetic_view.chromosomes().data(),
                                                          genetic_view.next_chromosomes().data(),
@@ -147,22 +157,7 @@ namespace mudock {
 
       geom_trans.prepare(batch);
       score_stage.prepare(batch);
-      mudock::stage_bucket_trace("GENETIC memory device=",
-                                 q->get_id(),
-                                 " ligands=",
-                                 batch_ligands,
-                                 " theoretical_bytes_per_ligand=",
-                                 get_ligand_mem(batch.batch_max_atoms, configuration),
-                                 " queue_allocated_bytes=",
-                                 q->allocated_bytes(),
-                                 " queue_peak_allocated_bytes=",
-                                 q->peak_allocated_bytes(),
-                                 " device_shared_queue_bytes=",
-                                 score_stage.get_device_shared_queue()->allocated_bytes(),
-                                 " device_current_bytes=",
-                                 q->device_allocated_bytes(),
-                                 " device_peak_allocated_bytes=",
-                                 q->device_peak_allocated_bytes());
+      trace_event("input_copies_submitted");
     };
     void operator()() {
       auto q                           = (*this->data).get_queue();
@@ -173,20 +168,8 @@ namespace mudock {
       assert(kernel && "Kernel method not yet prepared");
       kernel->set_population_buffers(current_population_p, next_population_p);
       geom_trans.set_chromosomes_buffer(current_population_p);
+      trace_event("compute_enqueue_begin");
       kernel->initialize();
-      mudock::stage_bucket_trace("GENETIC runtime memory device=",
-                                 q->get_id(),
-                                 " worker_current_bytes=",
-                                 q->allocated_bytes(),
-                                 " worker_peak_allocated_bytes=",
-                                 q->peak_allocated_bytes(),
-                                 " device_current_bytes=",
-                                 q->device_allocated_bytes(),
-                                 " device_peak_allocated_bytes=",
-                                 q->device_peak_allocated_bytes(),
-                                 " shared_current_bytes=",
-                                 score_stage.get_device_shared_queue()->allocated_bytes());
-
       for (int generation = 0; generation < num_generations; ++generation) {
         geom_trans();
         score_stage();
@@ -201,6 +184,7 @@ namespace mudock {
       }
       kernel->set_population_buffers(current_population_p, next_population_p);
       kernel->finalize();
+      trace_event("compute_enqueue_end");
     };
 
     static std::size_t get_shared_ligand_mem(const int max_atoms, const knobs conf) {
@@ -295,12 +279,22 @@ namespace mudock {
     }
 
   private:
+    std::size_t trace_id = 0;
     scoring_t<queue_t, layout_set> score_stage;
     geometric<queue_t, layout_set> geom_trans;
     std::unique_ptr<genetic_kernel<queue_t>> kernel;
 
     int batch_ligands;
     int num_generations;
+    void trace_event(const char* event) const {
+      if (trace_id == 0)
+        return;
+      const auto timestamp_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                                    std::chrono::steady_clock::now().time_since_epoch())
+                                    .count();
+      info("Genetic: event=", event, " batch_id=", trace_id, " t_ns=", timestamp_ns);
+    }
+
     void teardown_impl(batch<static_molecule>& batch) {
       assert(batch.num_ligands == batch_ligands && "Genetic algorithm received different batch for teardown");
 
@@ -312,12 +306,25 @@ namespace mudock {
       // geom_trans.teardown(batch);
       // score_stage.teardown(batch);
 
+      trace_event("copyback_begin");
       this->data->copy_device2host_best();
       (*this->data).get_queue()->synchronize();
       auto best_view = this->data->host_view().best();
+      trace_event("compute_and_copyback_complete");
 
       for (int index{0}; index < batch_ligands; ++index) {
         auto& ligand = *batch.molecules[index];
+        geom_ligand geom{ligand};
+        const int num_rotamers = static_cast<int>(ligand.num_rotamers());
+        apply<cpu_vectorization::AUTO>(ligand.x(),
+                                       ligand.y(),
+                                       ligand.z(),
+                                       best_chromosomes()[index],
+                                       ligand.num_atoms(),
+                                       num_rotamers,
+                                       geom.fragments_masks(),
+                                       geom.fragmets_starts(),
+                                       geom.fragments_stops());
         ligand.properties.assign(property_type::SCORE, std::to_string(best_view.scores()[index]));
       }
     }

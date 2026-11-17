@@ -71,8 +71,9 @@ namespace mudock {
                                 pipeline_t& pipe,
                                 std::atomic<std::size_t>* in_flight_ligands = nullptr,
                                 const std::function<void()>& on_batch_submitted = {},
-                                const std::function<void()>& on_batch_completed = {},
-                                std::atomic<std::size_t>* processed_atoms = nullptr) {
+                                const std::function<void(std::size_t)>& on_batch_completed = {},
+                                std::atomic<std::size_t>* processed_atoms = nullptr,
+                                const bool trace_batches = false) {
     auto queue_data = std::make_shared<data_store<queue_type, typename pipeline_t::pipeline_data_layouts>>(
       knobs, 0, device_type::CPU);
     auto protein_data = std::make_shared<data_store<queue_type, protein_data_layouts>>(
@@ -81,7 +82,7 @@ namespace mudock {
     std::function<int(const int)> get_size = [q_b, &knobs](const int x) {
       return pipeline_t::template get_batch_size<queue_type>(x, q_b, knobs);
     };
-    auto rob = std::make_shared<reorder_buffer<static_molecule>>(get_size);
+    auto rob = std::make_shared<reorder_buffer<static_molecule>>(get_size, trace_batches);
 
     for (const auto id: parse_ids(parts[2])) {
       mudock::info("Starting CPU device ", id, ".");
@@ -107,8 +108,9 @@ namespace mudock {
                                 pipeline_t& pipe,
                                 std::atomic<std::size_t>* in_flight_ligands = nullptr,
                                 const std::function<void()>& on_batch_submitted = {},
-                                const std::function<void()>& on_batch_completed = {},
-                                std::atomic<std::size_t>* processed_atoms = nullptr) {
+                                const std::function<void(std::size_t)>& on_batch_completed = {},
+                                std::atomic<std::size_t>* processed_atoms = nullptr,
+                                const bool trace_batches = false) {
     const std::size_t workers_per_device =
         parse_positive_size_field(parts, 3, "workers_per_device", static_cast<std::size_t>(2));
     const std::size_t mem_per_device =
@@ -120,7 +122,7 @@ namespace mudock {
       std::function<int(const int)> get_size = [q_b, &knobs, mem_per_device](const int x) {
         return pipeline_t::template get_batch_size<queue_type>(x, q_b, knobs, mem_per_device);
       };
-      auto rob = std::make_shared<reorder_buffer<static_molecule>>(get_size);
+      auto rob = std::make_shared<reorder_buffer<static_molecule>>(get_size, trace_batches);
       mudock::info("Starting GPU device ",
                    id,
                    " with ",
@@ -156,8 +158,9 @@ namespace mudock {
                pipeline_t& pipe,
                std::atomic<std::size_t>* in_flight_ligands = nullptr,
                const std::function<void()>& on_batch_submitted = {},
-               const std::function<void()>& on_batch_completed = {},
-               std::atomic<std::size_t>* processed_atoms = nullptr) {
+               const std::function<void(std::size_t)>& on_batch_completed = {},
+               std::atomic<std::size_t>* processed_atoms = nullptr,
+               const bool trace_batches = false) {
     for (auto& configuration: configurations) {
       const auto parts = parse_worker_configuration(configuration);
       auto dev_t       = get_device_type(parts[1]);
@@ -177,7 +180,8 @@ namespace mudock {
                                                  in_flight_ligands,
                                                  on_batch_submitted,
                                                  on_batch_completed,
-                                                 processed_atoms);
+                                                 processed_atoms,
+                                                 trace_batches);
             }
           });
           break;
@@ -196,7 +200,8 @@ namespace mudock {
                                                  in_flight_ligands,
                                                  on_batch_submitted,
                                                  on_batch_completed,
-                                                 processed_atoms);
+                                                 processed_atoms,
+                                                 trace_batches);
             }
           });
           break;

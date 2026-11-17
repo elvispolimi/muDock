@@ -11,6 +11,7 @@
 #include <mudock/data_formats/adt_score_soa.hpp>
 #include <mudock/compute/batch_multiple.hpp>
 #include <mudock/data_formats/data_layout_sets.hpp>
+#include <mudock/compute/ligand_placement.hpp>
 #if !defined(__CUDACC__) && !defined(__HIPCC__)
   #include <mudock/compute/buffer_utils.hpp>
   #include <mudock/compute/scoring.hpp>
@@ -35,11 +36,13 @@ namespace mudock {
     static constexpr const char stage_name[] = "ADT";
 
     adt_score(std::shared_ptr<data_store<queue_type, layout_set>> _data,
-          std::shared_ptr<data_store<queue_type, protein_layout_set>> _protein_data,
-              dynamic_molecule &protein)
+              std::shared_ptr<data_store<queue_type, protein_layout_set>> _protein_data,
+              dynamic_molecule &protein,
+              ligand_placement _placement = {})
         : scoring<queue_type, layout_set>(_data),
           adt_data(_data->get_queue()),
-          protein_data(_protein_data) {
+          protein_data(_protein_data,
+          placement(_placement)) {
       if (!protein_data->is_valid()) {
         autodock_protein adt_prot(protein);
 
@@ -72,7 +75,11 @@ namespace mudock {
       batch_atoms                  = batch.batch_max_atoms;
       const int batch_non_bonds    = batch_ligands * batch_atoms * batch_atoms;
       const int tot_atoms_in_batch = batch_ligands * batch_atoms;
-      auto q                       = (*this->data).get_queue();
+      auto q                       = (*this->scratch).get_queue();
+
+      for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index)
+        // Correct protein center putting the real data structure
+        apply_ligand_placement(*batch.molecules[ligand_index], placement, protein_center);
 
       const int scores_per_ligand =
           std::max(1, static_cast<int>((*this->data).configuration.population_number));
@@ -248,7 +255,8 @@ namespace mudock {
     }
 
     static std::size_t get_private_ligand_mem(const int max_atoms, const knobs) {
-      const auto non_bonds_atoms = static_cast<std::size_t>(max_atoms) * max_atoms;
+      const std::size_t non_bonds_atoms = static_cast<std::size_t>(max_atoms) *
+                                          static_cast<std::size_t>(max_atoms);
       std::size_t mem{0};
       mem += sizeof(fp_type) * 3 * max_atoms;                         // vols, solpars, charges
       mem += sizeof(int) * max_atoms;                                 // map_offsets
@@ -292,6 +300,7 @@ namespace mudock {
     soa_buffer<AdtScoreData<>, queue_type> adt_data;
 
     std::shared_ptr<data_store<queue_type, protein_layout_set>> protein_data;
+    ligand_placement placement;
     std::unique_ptr<adt_score_kernel<queue_type>> kernel;
 
     void teardown_impl(batch<static_molecule> &batch) override {

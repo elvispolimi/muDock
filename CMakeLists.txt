@@ -82,7 +82,7 @@ endfunction()
 
 set(MUDOCK_DEFAULT_ATOM_CLUSTER_LEVEL "OFF")
 set(MUDOCK_DEFAULT_STAGE_BUCKET_POLICY "MAX_UTILIZATION")
-set(MUDOCK_DEFAULT_GENETIC_BUCKET_COMBINE "MIN")
+set(MUDOCK_DEFAULT_GENETIC_BUCKET_COMBINE "SCORE_ONLY")
 set(MUDOCK_DEFAULT_UNROLL_FACTOR "8")
 set(MUDOCK_DEFAULT_UNROLL_MODE "FIXED")
 
@@ -246,7 +246,6 @@ set_property(CACHE MUDOCK_GENETIC_BUCKET_COMBINE PROPERTY STRINGS MIN SCORE_ONLY
 option(MUDOCK_ENABLE_STAGE_BUCKET_TRACE
        "Enable detailed runtime logging for stage bucket selection"
        OFF)
-option(MUDOCK_DISABLE_UNROLL "Disable kernel loop unrolling" OFF)
 set(MUDOCK_UNROLL_MODE "${MUDOCK_DEFAULT_UNROLL_MODE}" CACHE STRING
     "Kernel unrolling mode: NONE|HINT|FIXED|TEMPLATE")
 set_property(CACHE MUDOCK_UNROLL_MODE PROPERTY STRINGS NONE HINT FIXED TEMPLATE)
@@ -494,10 +493,11 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # ##############################################################################
 
 # Third-party libraries that must be manually installed
-find_package(Boost QUIET CONFIG COMPONENTS program_options graph fiber)
+find_package(Boost QUIET CONFIG COMPONENTS program_options graph)
 if(NOT Boost_FOUND)
-  find_package(Boost REQUIRED COMPONENTS program_options graph fiber)
+  find_package(Boost REQUIRED COMPONENTS program_options graph)
 endif()
+find_package(Eigen3 NO_MODULE) # pre-req of OpenBabel
 find_package(OpenBabel3 REQUIRED)
 set(CMAKE_ENABLE_EXPORTS ON)
 
@@ -608,15 +608,9 @@ mudock_print_config("IPO Optimizations" "${MUDOCK_ENABLE_IPO}"
                     "MUDOCK_ENABLE_IPO")
 mudock_print_config("Likwid Profiling" "${MUDOCK_ENABLE_LIKWID}"
                     "MUDOCK_ENABLE_LIKWID")
-mudock_print_config("Disable kernel unrolling" "${MUDOCK_DISABLE_UNROLL}"
-                    "MUDOCK_DISABLE_UNROLL")
-set(_mudock_effective_unroll_mode "${MUDOCK_UNROLL_MODE}")
-if(MUDOCK_DISABLE_UNROLL)
-  set(_mudock_effective_unroll_mode "NONE")
-endif()
-mudock_print_config("Kernel unroll mode" "${_mudock_effective_unroll_mode}"
+mudock_print_config("Kernel unroll mode" "${MUDOCK_UNROLL_MODE}"
                     "MUDOCK_UNROLL_MODE")
-if(_mudock_effective_unroll_mode STREQUAL "FIXED")
+if(MUDOCK_UNROLL_MODE STREQUAL "FIXED")
   mudock_print_config("Kernel unroll factor" "${MUDOCK_UNROLL_FACTOR}"
                       "MUDOCK_UNROLL_FACTOR")
 endif()

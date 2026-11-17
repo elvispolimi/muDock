@@ -7,6 +7,7 @@
 #include <mudock/compute/bucket_size.hpp>
 #include <mudock/compute/genetic.hpp>
 #include <mudock/data_formats/data_store.hpp>
+#include <mudock/compute/ligand_placement.hpp>
 #include <mudock/compute/stage.hpp>
 #include <mudock/devices.hpp>
 #include <mudock/molecule.hpp>
@@ -14,7 +15,9 @@
 namespace mudock {
 
   struct pipeline {
-    pipeline(std::shared_ptr<dynamic_molecule> _protein): protein(_protein) {}
+    pipeline(std::shared_ptr<dynamic_molecule> _protein,
+             ligand_placement _placement = {}):
+        protein(_protein), placement(_placement) {}
 
     template<typename queue_type>
     stage<queue_type> get_pipeline(const knobs&,
@@ -30,12 +33,15 @@ namespace mudock {
 
   protected:
     std::shared_ptr<dynamic_molecule> protein;
+    ligand_placement placement;
   };
 
   template<template<typename, typename> typename scoring_t>
   struct scoring_pipeline: pipeline {
     using pipeline::pipeline;
     using pipeline_data_layouts = scoring_data_layouts;
+    scoring_pipeline(std::shared_ptr<dynamic_molecule> protein_ptr, ligand_placement placement_config = {})
+        : pipeline(std::move(protein_ptr), placement_config) {}
 
     template<typename queue_type>
     scoring_t<queue_type, scoring_data_layouts> get_pipeline(const knobs& conf,
@@ -46,7 +52,8 @@ namespace mudock {
           std::make_shared<mudock::data_store<queue_type, scoring_data_layouts>>(
                                        conf, id, dev_type, protein_data->get_memory_tracker()),
                                    protein_data,
-                                   *protein);
+                                   *protein,
+                                   placement);
     }
 
     template<typename queue_type>
@@ -85,6 +92,9 @@ namespace mudock {
   struct genetic_scoring_pipeline: pipeline {
     using pipeline::pipeline;
     using pipeline_data_layouts = genetic_data_layouts;
+    genetic_scoring_pipeline(std::shared_ptr<dynamic_molecule> protein_ptr,
+                             ligand_placement placement_config = {})
+        : pipeline(std::move(protein_ptr), placement_config) {}
 
     template<typename queue_type>
     genetic<queue_type, scoring_t, genetic_data_layouts> get_pipeline(const knobs& conf,
@@ -94,7 +104,8 @@ namespace mudock {
         auto q = std::make_shared<mudock::data_store<queue_type, genetic_data_layouts>>(
           conf, id, dev_type, protein_data->get_memory_tracker());
         return genetic<queue_type, scoring_t, genetic_data_layouts>(
-          q, *protein, scoring_t<queue_type, genetic_data_layouts>(q, protein_data, *protein));
+          q, *protein, scoring_t<queue_type, genetic_data_layouts>(q, protein_data, *protein, ligand_placement{ligand_placement_mode::preserve, std::nullopt}),
+          placement);
     }
 
     template<typename queue_type>

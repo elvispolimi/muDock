@@ -86,7 +86,7 @@ namespace mudock {
     const sycl::kernel krn = kb.get_kernel(kid);
 
     const std::size_t kernel_max_wg_size =
-        std::max<std::size_t>(1, krn.get_info<sycl::info::kernel_device_specific::data_group_size>(dev));
+        std::max<std::size_t>(1, krn.get_info<sycl::info::kernel_device_specific::work_group_size>(dev));
     if (wg_size > kernel_max_wg_size) {
       throw std::runtime_error(
           "MUDOCK_SYCL_WG_SIZE=" + std::to_string(wg_size) +

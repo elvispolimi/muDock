@@ -37,6 +37,7 @@ constexpr void constexpr_switch_bucket(F&& f, T value, V* values) {
 #define MUDOCK_STRINGIFY_INNER(x) #x
 #define MUDOCK_STRINGIFY(x) MUDOCK_STRINGIFY_INNER(x)
 #define MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, STEP) (((MAX_ATOMS) + (STEP)-1) / (STEP))
+<<<<<<< HEAD
 #if defined(MUDOCK_DISABLE_UNROLL) || defined(MUDOCK_UNROLL_NONE)
   #define MUDOCK_PRAGMA_UNROLL(...)
   #define MUDOCK_PRAGMA_TEMPLATE_UNROLL(...)
@@ -52,6 +53,28 @@ constexpr void constexpr_switch_bucket(F&& f, T value, V* values) {
   #define MUDOCK_PRAGMA_TEMPLATE_UNROLL(MAX_ATOMS, WORKERS) \
     _Pragma(MUDOCK_STRINGIFY(unroll MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, WORKERS)))
 #else
+=======
+#if defined(__GNUC__) && !defined(__clang__)
+  #define MUDOCK_PRAGMA_NOUNROLL _Pragma("GCC unroll 0")
+#else
+  #define MUDOCK_PRAGMA_NOUNROLL _Pragma("nounroll")
+#endif
+#if defined(MUDOCK_UNROLL_NONE)
+  #define MUDOCK_PRAGMA_UNROLL(...) MUDOCK_PRAGMA_NOUNROLL
+  #define MUDOCK_PRAGMA_TEMPLATE_UNROLL(...) MUDOCK_PRAGMA_NOUNROLL
+#elif defined(MUDOCK_UNROLL_HINT)
+  #define MUDOCK_PRAGMA_UNROLL(...) _Pragma("unroll")
+  #define MUDOCK_PRAGMA_TEMPLATE_UNROLL(...) _Pragma("unroll")
+#elif defined(MUDOCK_UNROLL_FIXED)
+  #define MUDOCK_PRAGMA_UNROLL(...) _Pragma(MUDOCK_STRINGIFY(unroll MUDOCK_UNROLL_FACTOR))
+  #define MUDOCK_PRAGMA_TEMPLATE_UNROLL(...) _Pragma(MUDOCK_STRINGIFY(unroll MUDOCK_UNROLL_FACTOR))
+#elif defined(MUDOCK_UNROLL_TEMPLATE)
+  // Generic loops have no template extent; retain a compiler hint for them.
+  #define MUDOCK_PRAGMA_UNROLL(...) _Pragma("unroll")
+  #define MUDOCK_PRAGMA_TEMPLATE_UNROLL(MAX_ATOMS, WORKERS) \
+    _Pragma(MUDOCK_STRINGIFY(unroll MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, WORKERS)))
+#else
+>>>>>>> origin/dev
   #define MUDOCK_PRAGMA_UNROLL(...)
   #define MUDOCK_PRAGMA_TEMPLATE_UNROLL(...)
 #endif

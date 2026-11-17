@@ -8,6 +8,7 @@
 #include <memory>
 #include <mudock/log.hpp>
 #include <mutex>
+#include <utility>
 
 namespace mudock {
 
@@ -119,32 +120,20 @@ namespace mudock {
     // allowed to dereference the pointer. If the operation fails, i.e. the termination signal is set, the owner
     // of the data is still the caller
     bool enqueue(value_ptr_type &input_data) {
-      std::function<void(std::size_t)> callback;
-      std::size_t count = 0;
-      {
-        // Try to enqueue the element (if there is enough space).
-        std::unique_lock<std::mutex> lock(queue_mutex);
-        while (!signal_terminate && (buffer.size() >= max_buffer_size)) { // spourious events might happens!
-          inwork_available.wait(lock); // release lock -> wait for a wake_up -> reaquire lock
-        }
-
-        // If the terminate signal is set, do not enqueue the element.
-        if (signal_terminate) {
-          return false;
-        }
-
-        buffer.emplace_front(std::move(input_data));
-        outwork_available.notify_one();
-        global_counter += 1;
-        count = global_counter;
-        callback = enqueue_callback;
+      // Try to enqueue the element (if there is enough space).
+      std::unique_lock<std::mutex> lock(queue_mutex);
+      while (!signal_terminate && (buffer.size() >= max_buffer_size)) { // spourious events might happens!
+        inwork_available.wait(lock); // release lock -> wait for a wake_up -> reaquire lock
       }
 
-      // Do not execute user code while holding queue_mutex. In particular,
-      // measurement callbacks may inspect or close this queue.
-      if (callback) {
-        callback(count);
+      // If the terminate signal is set, do not enqueue the element.
+      if (signal_terminate) {
+        return false;
       }
+
+      buffer.emplace_front(std::move(input_data));
+      outwork_available.notify_one();
+      global_counter += 1;
       return true;
     }
   };

@@ -50,7 +50,8 @@ namespace mudock {
                         std::optional<double> observer_sec = std::nullopt,
                         std::optional<std::size_t> measure_ligands = std::nullopt,
                         std::optional<std::size_t> measure_batches = std::nullopt,
-                        bool measure_force_exit = false) {
+                        bool measure_force_exit = false,
+                        bool trace_batches = false) {
     auto input_queue  = std::make_shared<mudock::safe_queue<mudock::static_molecule>>();
     auto output_queue = std::make_shared<mudock::safe_queue<mudock::static_molecule>>();
     input_queue->initialize(knobs.max_tbb_queue_size);
@@ -125,13 +126,6 @@ namespace mudock {
            ligand_measurement ? std::to_string(*measure_ligands) : std::string{"disabled"},
            ", measure_batches=",
            batch_measurement ? std::to_string(*measure_batches) : std::string{"disabled"});
-
-      output_queue->set_enqueue_callback([&](const std::size_t) {
-        if (!ligand_measurement || measurement.started_at_ns.load(std::memory_order_acquire) < 0)
-          return;
-        measurement.completed_ligands.fetch_add(1, std::memory_order_relaxed);
-        complete_if_ready();
-      });
     }
 
     const auto on_batch_submitted = [&] {
@@ -142,9 +136,12 @@ namespace mudock {
           expected, timestamp_ns(), std::memory_order_release, std::memory_order_relaxed);
     };
 
-    const auto on_batch_completed = [&] {
+    const auto on_batch_completed = [&](const std::size_t ligand_count) {
       if (measurement.started_at_ns.load(std::memory_order_acquire) < 0)
         return;
+      if (ligand_measurement) {
+        measurement.completed_ligands.fetch_add(ligand_count, std::memory_order_relaxed);
+      }
       measurement.completed_batches.fetch_add(1, std::memory_order_relaxed);
       complete_if_ready();
     };
@@ -272,7 +269,8 @@ namespace mudock {
               &in_flight_ligands,
               on_batch_submitted,
               on_batch_completed,
-              &processed_atoms);
+              &processed_atoms,
+              trace_batches);
       info("Manager done: workers created");
 
       oneapi::tbb::parallel_pipeline(

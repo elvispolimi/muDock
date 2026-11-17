@@ -57,7 +57,7 @@ list(
   "${header_path}/${header_prefix}/compute/geometric_transform.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/chromosome.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/vectorization.hpp"
-  "${header_path}/${header_prefix}/cpp_implementation/center_of_mass.hpp"
+  "${header_path}/${header_prefix}/cpp_implementation/centroid.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/non_bonds.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/buffer_cpp.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/queue_cpp.hpp"
@@ -344,10 +344,7 @@ elseif(MUDOCK_GENETIC_BUCKET_COMBINE STREQUAL "LCM")
 elseif(NOT MUDOCK_GENETIC_BUCKET_COMBINE STREQUAL "MIN")
   message(FATAL_ERROR "MUDOCK_GENETIC_BUCKET_COMBINE must be one of: MIN, SCORE_ONLY, GEOM_ONLY, LCM")
 endif()
-if(MUDOCK_DISABLE_UNROLL)
-  # Preserve the legacy switch: it has precedence over the mode selector.
-  target_compile_definitions(libmudock PUBLIC MUDOCK_DISABLE_UNROLL MUDOCK_UNROLL_NONE)
-elseif(MUDOCK_UNROLL_MODE STREQUAL "NONE")
+if(MUDOCK_UNROLL_MODE STREQUAL "NONE")
   target_compile_definitions(libmudock PUBLIC MUDOCK_UNROLL_NONE)
 elseif(MUDOCK_UNROLL_MODE STREQUAL "HINT")
   target_compile_definitions(libmudock PUBLIC MUDOCK_UNROLL_HINT)
@@ -427,22 +424,29 @@ if(MUDOCK_ENABLE_HIP)
   target_compile_options(
     libmudock
     PUBLIC
-      $<$<AND:$<COMPILE_LANGUAGE:HIP>,$<HIP_COMPILER_ID:NVIDIA>>:--expt-relaxed-constexpr
-      -rdc=true -Xptxas -v --resource-usage>)
-  # FIXME in a future release
+      $<$<AND:$<COMPILE_LANGUAGE:HIP>,$<HIP_COMPILER_ID:NVIDIA>>:--expt-relaxed-constexpr>
+      $<$<AND:$<COMPILE_LANGUAGE:HIP>,$<HIP_COMPILER_ID:NVIDIA>>:-rdc=true>
+      $<$<AND:$<COMPILE_LANGUAGE:HIP>,$<HIP_COMPILER_ID:NVIDIA>>:-Xptxas>
+      $<$<AND:$<COMPILE_LANGUAGE:HIP>,$<HIP_COMPILER_ID:NVIDIA>>:-v>
+      $<$<AND:$<COMPILE_LANGUAGE:HIP>,$<HIP_COMPILER_ID:NVIDIA>>:--resource-usage>)
   target_compile_options(
     libmudock
     PUBLIC
-      $<$<AND:$<COMPILE_LANGUAGE:HIP>,$<HIP_COMPILER_ID:Clang>>:
-      -fgpu-rdc
-      -Rpass=loop-unroll
-      -Rpass-missed=loop-unroll
-      -Rpass-analysis=loop-unroll
-      -Rpass-analysis=kernel-resource-usage>)
+      $<$<AND:$<COMPILE_LANGUAGE:HIP>,$<HIP_COMPILER_ID:Clang>>:-fgpu-rdc>
+      $<$<AND:$<COMPILE_LANGUAGE:HIP>,$<HIP_COMPILER_ID:Clang>>:-Rpass=loop-unroll>
+      $<$<AND:$<COMPILE_LANGUAGE:HIP>,$<HIP_COMPILER_ID:Clang>>:-Rpass-missed=loop-unroll>
+      $<$<AND:$<COMPILE_LANGUAGE:HIP>,$<HIP_COMPILER_ID:Clang>>:-Rpass-analysis=loop-unroll>
+      $<$<AND:$<COMPILE_LANGUAGE:HIP>,$<HIP_COMPILER_ID:Clang>>:-Rpass-analysis=kernel-resource-usage>)
   target_link_options(
     libmudock PUBLIC
     $<$<AND:$<COMPILE_LANGUAGE:HIP>,$<HIP_COMPILER_ID:Clang>>:-fgpu-rdc
     --hip-link>)
+  # Keep HIP device-link remarks restricted to HIP link steps;
+  # they must not leak into the host C++ link of consuming executables.
+  if(CMAKE_HIP_COMPILER_ID STREQUAL "Clang")
+    target_link_options(libmudock PUBLIC
+                        $<$<LINK_LANGUAGE:HIP>:-Rpass-analysis=kernel-resource-usage>)
+  endif()
   target_compile_options(
     libmudock
     PUBLIC

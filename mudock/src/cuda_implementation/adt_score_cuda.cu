@@ -152,9 +152,9 @@ namespace mudock {
           if (!isfinite(coord_tex[0]) || !isfinite(coord_tex[1]) || !isfinite(coord_tex[2])) {
             elect_total_trilinear += EINTCLAMP_CUDA;
             emap_total_trilinear += EINTCLAMP_CUDA;
-          } else if (coord_tex[0] < map_min_const[0] || coord_tex[0] > map_max_const[0] ||
-              coord_tex[1] < map_min_const[1] || coord_tex[1] > map_max_const[1] ||
-              coord_tex[2] < map_min_const[2] || coord_tex[2] > map_max_const[2]) {
+          } else if (coord_tex[0] <= map_min_const[0] || coord_tex[0] >= map_max_const[0] ||
+              coord_tex[1] <= map_min_const[1] || coord_tex[1] >= map_max_const[1] ||
+              coord_tex[2] <= map_min_const[2] || coord_tex[2] >= map_max_const[2]) {
             // Is outside
             const auto diff_x          = coord_tex[0] - map_center_const[0];
             const auto diff_y          = coord_tex[1] - map_center_const[1];

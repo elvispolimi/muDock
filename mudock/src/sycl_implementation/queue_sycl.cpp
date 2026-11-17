@@ -61,6 +61,4 @@ namespace mudock {
     // Setup default queue/device if you want a global singleton.
   }
 
-  std::size_t queue_sycl::allocated_bytes() const { return impl_->allocated_bytes; }
-  std::size_t queue_sycl::peak_allocated_bytes() const { return impl_->peak_allocated_bytes; }
 } // namespace mudock
