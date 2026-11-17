@@ -7,7 +7,7 @@
 
 namespace mudock {
   struct queue_sycl: queue {
-    queue_sycl(const int _id, const device_type dev_t, std::shared_ptr<device_memory_tracker> tracker = {});
+    queue_sycl(const int _id, const device_type dev_t);
     ~queue_sycl();
 
     // non-copyable, but movable (optional)

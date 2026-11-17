@@ -1,5 +1,7 @@
 #pragma once
 
+#include "mudock/compute/ligand_placement.hpp"
+
 #include "mudock/type_alias.hpp"
 
 #include <concepts>
@@ -105,8 +107,8 @@ namespace mudock {
               ligand_placement _placement = {})
         : transform<queue_t, layout_set>(_data),
           geometry_data(_data->get_queue()),
-          protein_center(protein.get_center(),
-          placement(_placement)) {};
+          protein_center(protein.get_center()),
+          placement(_placement) {};
 
     void prepare(batch<static_molecule>& batch) {
       batch_ligands                           = batch.num_ligands;

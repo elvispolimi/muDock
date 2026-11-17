@@ -30,7 +30,7 @@ namespace mudock {
 
 #if !defined(__CUDACC__) && !defined(__HIPCC__)
   // TODO check that the object type and the kernel impl are the same
-  template<typename queue_type, typename layout_set = all_data_layouts,
+  template<typename queue_type, typename layout_set = scoring_data_layouts,
            typename protein_layout_set = protein_data_layouts>
   struct adt_score: public scoring<queue_type, layout_set> {
     static constexpr const char stage_name[] = "ADT";
@@ -41,8 +41,9 @@ namespace mudock {
               ligand_placement _placement = {})
         : scoring<queue_type, layout_set>(_data),
           adt_data(_data->get_queue()),
-          protein_data(_protein_data,
-          placement(_placement)) {
+          protein_data(_protein_data),
+          protein_center(protein.get_center()),
+          placement(_placement) {
       if (!protein_data->is_valid()) {
         autodock_protein adt_prot(protein);
 
@@ -75,7 +76,7 @@ namespace mudock {
       batch_atoms                  = batch.batch_max_atoms;
       const int batch_non_bonds    = batch_ligands * batch_atoms * batch_atoms;
       const int tot_atoms_in_batch = batch_ligands * batch_atoms;
-      auto q                       = (*this->scratch).get_queue();
+      auto q                       = (*this->data).get_queue();
 
       for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index)
         // Correct protein center putting the real data structure
@@ -218,24 +219,6 @@ namespace mudock {
                                                               map_index_xyz,
                                                               scores_b,
                                                               q);
-      mudock::stage_bucket_trace("ADT memory device=",
-                                 q->get_id(),
-                                 " ligands=",
-                                 batch_ligands,
-                                 " atoms=",
-                                 batch_atoms,
-                                 " theoretical_bytes_per_ligand=",
-                                 get_ligand_mem(batch_atoms, (*this->data).configuration),
-                                 " queue_allocated_bytes=",
-                                 q->allocated_bytes(),
-                                 " queue_peak_allocated_bytes=",
-                                 q->peak_allocated_bytes(),
-                                 " device_shared_queue_bytes=",
-                                 protein_data->get_queue()->allocated_bytes(),
-                                 " device_current_bytes=",
-                                 q->device_allocated_bytes(),
-                                 " device_peak_allocated_bytes=",
-                                 q->device_peak_allocated_bytes());
     }
 
     [[nodiscard]] auto get_device_shared_queue() const { return protein_data->get_queue(); }
@@ -300,6 +283,7 @@ namespace mudock {
     soa_buffer<AdtScoreData<>, queue_type> adt_data;
 
     std::shared_ptr<data_store<queue_type, protein_layout_set>> protein_data;
+    point<fp_type, 3> protein_center;
     ligand_placement placement;
     std::unique_ptr<adt_score_kernel<queue_type>> kernel;
 

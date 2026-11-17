@@ -61,10 +61,6 @@ namespace mudock {
         batch_completed(b.num_ligands);
       }
 
-      if (batch_succeeded && batch_completed) {
-        batch_completed();
-      }
-
       if (in_flight_ligands != nullptr) {
         in_flight_ligands->fetch_sub(b.num_ligands, std::memory_order_relaxed);
       }

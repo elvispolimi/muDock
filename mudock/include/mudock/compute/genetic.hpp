@@ -319,7 +319,7 @@ namespace mudock {
         apply<cpu_vectorization::AUTO>(ligand.x(),
                                        ligand.y(),
                                        ligand.z(),
-                                       best_chromosomes()[index],
+                                       best_view.chromosomes()[index],
                                        ligand.num_atoms(),
                                        num_rotamers,
                                        geom.fragments_masks(),

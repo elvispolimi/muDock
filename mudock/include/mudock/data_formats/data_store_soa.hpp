@@ -31,10 +31,9 @@ namespace mudock {
   public:
     data_store_soa(const knobs& conf,
                    const int id,
-                   const device_type dev_type,
-                   std::shared_ptr<device_memory_tracker> tracker = {})
+                   const device_type dev_type)
         : configuration(conf),
-          q(std::make_shared<queue_type>(id, dev_type, std::move(tracker))),
+          q(std::make_shared<queue_type>(id, dev_type)),
           blocks_() {
       blocks_.initialize(q);
     }
@@ -42,7 +41,6 @@ namespace mudock {
     const knobs configuration;
 
     auto get_queue() { return q; }
-    auto get_memory_tracker() const { return q->get_memory_tracker(); }
 
     template<typename... SizeArgs>
     void alloc(const SizeArgs&... sizes) { blocks_.buffer->alloc(sizes...); }

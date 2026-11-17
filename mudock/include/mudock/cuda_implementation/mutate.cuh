@@ -211,9 +211,9 @@ namespace mudock {
       for (int i = 0; i < MAX_ATOMS; i += BLOCK_SIZE) {
         const int atom_index = i + local_thread_id;
         if (atom_index < num_atoms) {
-          reference_x += x_scratch_chromosome[atom_index];
-          reference_y += y_scratch_chromosome[atom_index];
-          reference_z += z_scratch_chromosome[atom_index];
+            reference_x += x_data_chromosome[atom_index];
+            reference_y += y_data_chromosome[atom_index];
+            reference_z += z_data_chromosome[atom_index];
         }
       }
       reference_x /= num_atoms;
@@ -247,9 +247,9 @@ namespace mudock {
       for (int i = 0; i < MAX_ATOMS; i += BLOCK_SIZE) {
         const int atom_index = i + local_thread_id;
         if (atom_index < num_atoms) {
-          transformed_x += x_scratch_chromosome[atom_index];
-          transformed_y += y_scratch_chromosome[atom_index];
-          transformed_z += z_scratch_chromosome[atom_index];
+            transformed_x += x_data_chromosome[atom_index];
+            transformed_y += y_data_chromosome[atom_index];
+            transformed_z += z_data_chromosome[atom_index];
         }
       }
       transformed_x /= num_atoms;
@@ -263,23 +263,23 @@ namespace mudock {
       transformed_x = __shfl_sync(0xffffffff, transformed_x, 0, BLOCK_SIZE);
       transformed_y = __shfl_sync(0xffffffff, transformed_y, 0, BLOCK_SIZE);
       transformed_z = __shfl_sync(0xffffffff, transformed_z, 0, BLOCK_SIZE);
-      translate_molecule_cuda<MAX_ATOMS>(x_scratch_chromosome,
-                                         y_scratch_chromosome,
-                                         z_scratch_chromosome,
+        translate_molecule_cuda<MAX_ATOMS>(x_data_chromosome,
+                                           y_data_chromosome,
+                                           z_data_chromosome,
                                          reference_x - transformed_x,
                                          reference_y - transformed_y,
                                          reference_z - transformed_z,
                                          num_atoms);
-      rotate_molecule_cuda<MAX_ATOMS>(x_scratch_chromosome,
-                                      y_scratch_chromosome,
-                                      z_scratch_chromosome,
+        rotate_molecule_cuda<MAX_ATOMS>(x_data_chromosome,
+                                        y_data_chromosome,
+                                        z_data_chromosome,
                                       l_chromosomes[3],
                                       l_chromosomes[4],
                                       l_chromosomes[5],
                                       num_atoms);
-      translate_molecule_cuda<MAX_ATOMS>(x_scratch_chromosome,
-                                         y_scratch_chromosome,
-                                         z_scratch_chromosome,
+        translate_molecule_cuda<MAX_ATOMS>(x_data_chromosome,
+                                           y_data_chromosome,
+                                           z_data_chromosome,
                                          l_chromosomes[0],
                                          l_chromosomes[1],
                                          l_chromosomes[2],

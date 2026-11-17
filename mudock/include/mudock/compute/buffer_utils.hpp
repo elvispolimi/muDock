@@ -12,22 +12,33 @@ namespace mudock {
     requires std::derived_from<queue_type, queue>
   bool load_coordinates(batch<static_molecule> &batch,
                         std::shared_ptr<data_store<queue_type, layout_set>> data,
-                        const int scores_per_ligand) {
+                        const int scores_per_ligand,
+                        const bool scoring_coordinates = false) {
     const auto batch_ligands      = batch.num_ligands;
     const auto batch_atoms        = batch.batch_max_atoms;
     // const auto tot_atoms_in_batch = batch_ligands * batch_atoms;
-    auto host_view = data->host_view().scoring_coordinates();
-    for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
-      auto &ligand = *batch.molecules[ligand_index];
-      const int num_atoms = ligand.num_atoms();
-      const auto x = ligand.x(), y = ligand.y(), z = ligand.z();
-      for (int score_index = 0; score_index < scores_per_ligand; ++score_index) {
-        const int score_offset = ligand_index * batch_atoms * scores_per_ligand +
-                                 score_index * batch_atoms;
-        std::memcpy(host_view.x().data() + score_offset, x, num_atoms * sizeof(fp_type));
-        std::memcpy(host_view.y().data() + score_offset, y, num_atoms * sizeof(fp_type));
-        std::memcpy(host_view.z().data() + score_offset, z, num_atoms * sizeof(fp_type));
+    const auto copy_coordinates = [&](auto host_view) {
+      for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
+        auto &ligand = *batch.molecules[ligand_index];
+        const int num_atoms = ligand.num_atoms();
+        const auto x = ligand.x(), y = ligand.y(), z = ligand.z();
+        for (int score_index = 0; score_index < scores_per_ligand; ++score_index) {
+          const int score_offset = ligand_index * batch_atoms * scores_per_ligand +
+                                   score_index * batch_atoms;
+          std::memcpy(host_view.x().data() + score_offset, x, num_atoms * sizeof(fp_type));
+          std::memcpy(host_view.y().data() + score_offset, y, num_atoms * sizeof(fp_type));
+          std::memcpy(host_view.z().data() + score_offset, z, num_atoms * sizeof(fp_type));
+        }
       }
+    };
+
+    if constexpr (requires { data->host_view().coordinates(); }) {
+      if (scoring_coordinates)
+        copy_coordinates(data->host_view().scoring_coordinates());
+      else
+        copy_coordinates(data->host_view().coordinates());
+    } else {
+      copy_coordinates(data->host_view().scoring_coordinates());
     }
     return true;
   };
@@ -43,7 +54,7 @@ namespace mudock {
   bool load_scoring_coordinates(batch<static_molecule> &batch,
                      std::shared_ptr<data_store<queue_type, layout_set>> data,
                      const int scores_per_ligand = 1) {
-    return load_coordinates(batch, data, scores_per_ligand);
+    return load_coordinates(batch, data, scores_per_ligand, true);
   }
 
   template<typename queue_type, typename layout_set = all_data_layouts>

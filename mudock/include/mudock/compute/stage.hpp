@@ -37,8 +37,6 @@ namespace mudock {
 
     [[nodiscard]] auto get_queue() const { return data->get_queue(); }
 
-    [[nodiscard]] auto get_queue() const { return scratch->get_queue(); }
-
   protected:
     std::shared_ptr<data_store<queue_type, layout_set>> data;
 

@@ -34,7 +34,7 @@ namespace mudock {
     }
 
     void alloc(void**, const size_t) {}
-    void free(void**, const size_t) {}
+    void free(void**) {}
     void set_to_value(void*, const size_t, const char) {}
     void copy_host2device(const void*, void*, const size_t) {}
     void copy_device2host(const void*, void*, const size_t) {}

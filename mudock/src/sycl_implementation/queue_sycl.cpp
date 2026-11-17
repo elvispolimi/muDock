@@ -10,9 +10,8 @@
 namespace mudock {
 
   queue_sycl::queue_sycl(const int _id,
-                         const device_type dev_type,
-                         std::shared_ptr<device_memory_tracker> tracker)
-      : queue(_id, dev_type, std::move(tracker)), impl_(std::make_unique<impl>(_id, dev_type)) {
+                         const device_type dev_type)
+      : queue(_id, dev_type), impl_(std::make_unique<impl>(_id, dev_type)) {
     assert((dev_type == device_type::GPU || dev_type == device_type::CPU) &&
            "SYCL supports only CPUs or GPUs devices");
   };
@@ -26,7 +25,6 @@ namespace mudock {
       throw std::bad_alloc{};
     impl_->allocated_bytes += bytes;
     impl_->peak_allocated_bytes = std::max(impl_->peak_allocated_bytes, impl_->allocated_bytes);
-    memory_tracker->allocate(bytes);
   }
 
   void queue_sycl::free(void** ptr, const size_t bytes) {
@@ -34,7 +32,6 @@ namespace mudock {
       sycl::free(*ptr, impl_->get_queue());
       assert(impl_->allocated_bytes >= bytes);
       impl_->allocated_bytes -= bytes;
-      memory_tracker->release(bytes);
       *ptr = nullptr;
     }
   }

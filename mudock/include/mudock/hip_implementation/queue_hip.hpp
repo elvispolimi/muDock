@@ -12,7 +12,7 @@
 
 namespace mudock {
   struct queue_hip: queue {
-    queue_hip(const int _id, const device_type dev_t, std::shared_ptr<device_memory_tracker> tracker = {});
+    queue_hip(const int _id, const device_type dev_t);
     ~queue_hip();
 
     // non-copyable, but movable (optional)

@@ -50,7 +50,7 @@ namespace mudock {
                                        std::shared_ptr<data_store<queue_type, protein_data_layouts>> protein_data) {
         return scoring_t<queue_type, scoring_data_layouts>(
           std::make_shared<mudock::data_store<queue_type, scoring_data_layouts>>(
-                                       conf, id, dev_type, protein_data->get_memory_tracker()),
+                                       conf, id, dev_type),
                                    protein_data,
                                    *protein,
                                    placement);
@@ -102,7 +102,7 @@ namespace mudock {
                                                 const device_type dev_type,
                                                 std::shared_ptr<data_store<queue_type, protein_data_layouts>> protein_data) {
         auto q = std::make_shared<mudock::data_store<queue_type, genetic_data_layouts>>(
-          conf, id, dev_type, protein_data->get_memory_tracker());
+          conf, id, dev_type);
         return genetic<queue_type, scoring_t, genetic_data_layouts>(
           q, *protein, scoring_t<queue_type, genetic_data_layouts>(q, protein_data, *protein, ligand_placement{ligand_placement_mode::preserve, std::nullopt}),
           placement);
