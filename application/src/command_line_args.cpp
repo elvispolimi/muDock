@@ -73,6 +73,10 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
       "queue_size",
       po::value(&args.knobs.max_tbb_queue_size)->default_value(args.knobs.max_tbb_queue_size),
       "Max number of ligands buffered in the TBB input/output queues");
+  knobs_description.add_options()(
+      "ligands_in_flight",
+      po::value(&args.knobs.max_ligands_in_flight)->default_value(args.knobs.max_ligands_in_flight),
+      "Max number of ligands concurrently in flight in the TBB flow-graph pipeline (global limiter cap)");
   // parse them
   po::options_description all("Allowed Options");
   all.add(arguments_description).add(knobs_description);

@@ -16,7 +16,6 @@ namespace mudock {
     std::size_t max_bytes_per_token = 1048576; // 1 MB
     std::size_t max_tbb_queue_size  = 100000;
 
-    // todo - strategy definition (user-defined vs. automatic; starvation warning)
     std::size_t max_ligands_in_flight = 100000;
   };
 
