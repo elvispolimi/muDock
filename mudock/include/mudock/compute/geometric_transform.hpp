@@ -112,6 +112,7 @@ namespace mudock {
     void prepare(batch<static_molecule>& batch) {
       batch_ligands                           = batch.num_ligands;
       batch_atoms                             = batch.batch_max_atoms;
+      const int batch_rotamers                = batch_atoms - 3;
       auto q                                  = (*this->data).get_queue();
       const auto chromsomes_per_ligand =
           std::max(1, static_cast<int>((*this->data).configuration.population_number));
