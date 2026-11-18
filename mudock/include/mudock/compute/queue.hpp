@@ -35,7 +35,7 @@ namespace mudock {
 
     virtual void operator()() = 0;
 
-    virtual bool obj_required() = 0;
+    virtual bool uses_device_memory() = 0;
 
     virtual bool honors_stage_bucket_policy() const = 0;
 

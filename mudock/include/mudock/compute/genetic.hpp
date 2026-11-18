@@ -101,11 +101,13 @@ namespace mudock {
 
     genetic(std::shared_ptr<data_store<queue_t, layout_set>> _data,
             dynamic_molecule& protein,
-        scoring_t<queue_t, layout_set> _scoring,
+            scoring_t<queue_t, layout_set> _scoring,
         ligand_placement _placement = {})
       : docking<queue_t, layout_set>(_data),
           score_stage(std::move(_scoring)),
-          geom_trans(_data, protein, _placement) {};
+          geom_trans(_data, protein, _placement) 
+          {};
+          
     void prepare(batch<static_molecule>& batch) {
       trace_id = batch.trace_id;
       trace_event("batch_received");
@@ -114,15 +116,6 @@ namespace mudock {
       num_generations             = static_cast<int>(configuration.num_generations);
       const int population_number = static_cast<int>(configuration.population_number);
       auto q                      = (*this->data).get_queue();
-
-      const int batch_atoms = batch.batch_max_atoms;
-      const int total_atoms = batch_ligands * batch_atoms;
-      this->data->alloc(total_atoms,
-                           total_atoms * population_number,
-                           batch_ligands,
-                           population_number * batch_ligands,
-                           population_number * batch_ligands,
-                           batch_ligands);
 
       load_num_rotamers<queue_t>(batch, this->data);
 

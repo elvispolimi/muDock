@@ -36,6 +36,7 @@ namespace mudock {
     void invalid_data() { data->invalidate(); }
 
     [[nodiscard]] auto get_queue() const { return data->get_queue(); }
+    [[nodiscard]] auto get_data() const { return data; }
 
   protected:
     std::shared_ptr<data_store<queue_type, layout_set>> data;

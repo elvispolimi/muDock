@@ -88,15 +88,21 @@ namespace mudock {
 
     for (const auto id: parse_ids(parts[2])) {
       mudock::info("Starting CPU device ", id, ".");
+      auto pipeline_stage = pipe.template get_pipeline<queue_type>(knobs, id, device_type::CPU, protein_data);
+      auto stage_data = pipeline_stage.get_data();
+      auto allocate_data = [&pipe, stage_data](batch<static_molecule>& batch) {
+        pipe.allocate_data(stage_data, batch);
+      };
       pool.add_worker(
           worker(input_molecules,
                  output_molecules,
                  rob,
-                 pipe.template get_pipeline<queue_type>(knobs, id, device_type::CPU, protein_data),
+                 std::move(pipeline_stage),
                  in_flight_ligands,
                  on_batch_submitted,
                  on_batch_completed,
-                 processed_atoms));
+                 processed_atoms,
+                 std::move(allocate_data)));
     }
   };
 
@@ -140,15 +146,21 @@ namespace mudock {
                                                                          id,
                                                                          device_type::GPU);
       for (std::size_t i = 0; i < workers_per_device; ++i) {
+        auto pipeline_stage = pipe.template get_pipeline<queue_type>(knobs, id, device_type::GPU, protein_data);
+        auto stage_data = pipeline_stage.get_data();
+        auto allocate_data = [&pipe, stage_data](batch<static_molecule>& batch) {
+          pipe.allocate_data(stage_data, batch);
+        };
         pool.add_worker(
             worker(input_molecules,
                    output_molecules,
                    rob,
-                   pipe.template get_pipeline<queue_type>(knobs, id, device_type::GPU, protein_data),
+                   std::move(pipeline_stage),
                    in_flight_ligands,
                    on_batch_submitted,
                    on_batch_completed,
-                   processed_atoms));
+                   processed_atoms,
+                   std::move(allocate_data)));
       }
     }
   };

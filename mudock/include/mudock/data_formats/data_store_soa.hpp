@@ -49,6 +49,10 @@ namespace mudock {
     void set_valid() { blocks_.buffer->set_valid(); }
     void set_not_valid() { blocks_.buffer->set_not_valid(); }
     void copy_host2device() { blocks_.buffer->copy_host2device(); }
+    template<typename BlockGetter>
+    void copy_host2device_block(BlockGetter getter) {
+      blocks_.buffer->copy_host2device_block(std::move(getter));
+    }
     void copy_device2host() { blocks_.buffer->copy_device2host(); }
     void copy_device2host_scores() {
       blocks_.buffer->copy_device2host_block([](auto& data) -> decltype(auto) { return data.scores(); });

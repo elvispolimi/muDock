@@ -8,7 +8,6 @@
 #include <mudock/chem/autodock_ligand.hpp>
 #include <mudock/chem/autodock_protein.hpp>
 #include <mudock/compute/adt_score_kernel.hpp>
-#include <mudock/data_formats/adt_score_soa.hpp>
 #include <mudock/compute/batch_multiple.hpp>
 #include <mudock/data_formats/data_layout_sets.hpp>
 #include <mudock/compute/ligand_placement.hpp>
@@ -40,7 +39,6 @@ namespace mudock {
               dynamic_molecule &protein,
               ligand_placement _placement = {})
         : scoring<queue_type, layout_set>(_data),
-          adt_data(_data->get_queue()),
           protein_data(_protein_data),
           protein_center(protein.get_center()),
           placement(_placement) {
@@ -58,9 +56,9 @@ namespace mudock {
         std::memcpy(bounds.minimum().data(), adt_prot.get_min_p(), 3 * sizeof(fp_type));
         std::memcpy(bounds.maximum().data(), adt_prot.get_max_p(), 3 * sizeof(fp_type));
         std::memcpy(bounds.center().data(), adt_prot.get_center_p(), 3 * sizeof(fp_type));
-        dimensions.size_x()[0]   = static_cast<int>(adt_prot.get_size_x());
-        dimensions.size_xy()[0]  = static_cast<int>(adt_prot.get_size_xy());
-        dimensions.size_xyz()[0] = static_cast<int>(adt_prot.get_size_xyz());
+        dimensions.size_x()   = static_cast<int>(adt_prot.get_size_x());
+        dimensions.size_xy()  = static_cast<int>(adt_prot.get_size_xy());
+        dimensions.size_xyz() = static_cast<int>(adt_prot.get_size_xyz());
         std::memcpy(maps.maps().data(),
                     adt_prot.get_maps_pointer(),
                     adt_prot.get_map_flat_size() * num_autodock_grids() * sizeof(fp_type));
@@ -74,9 +72,8 @@ namespace mudock {
     void prepare(batch<static_molecule> &batch) {
       batch_ligands                = batch.num_ligands;
       batch_atoms                  = batch.batch_max_atoms;
-      const int batch_non_bonds    = batch_ligands * batch_atoms * batch_atoms;
       const int tot_atoms_in_batch = batch_ligands * batch_atoms;
-      auto q                       = (*this->data).get_queue();
+      auto q                       = (*this).get_queue();
 
       for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index)
         // Correct protein center putting the real data structure
@@ -84,26 +81,18 @@ namespace mudock {
 
       const int scores_per_ligand =
           std::max(1, static_cast<int>((*this->data).configuration.population_number));
-      if constexpr (std::is_same_v<layout_set, scoring_data_layouts>) {
-        this->data->alloc(tot_atoms_in_batch * scores_per_ligand,
-                             batch_ligands,
-                             batch_ligands * scores_per_ligand);
-      }
-
       load_num_rotamers(batch, this->data);
       load_num_atoms(batch, this->data);
       load_scoring_coordinates<queue_type>(batch, this->data, scores_per_ligand);
-      this->data->copy_host2device();
 
-      adt_data.alloc(tot_atoms_in_batch, batch_ligands + 1, batch_non_bonds);
-      auto adt_view = adt_data.host_view();
+      auto adt_view = this->data->host_view();
       auto atom_view = adt_view.atom_data();
       auto num_nonbond_view = adt_view.num_nonbond_data();
       auto nonbond_view = adt_view.nonbond_data();
       num_nonbond_view.num_nonbond()[0] = 0;
 
       auto protein_host_view = protein_data->host_view();
-      const int map_flat_size = protein_host_view.protein_dimensions().size_xyz()[0];
+      const int map_flat_size = protein_host_view.protein_dimensions().size_xyz();
       for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
         auto &ligand = *batch.molecules[ligand_index];
 
@@ -143,7 +132,21 @@ namespace mudock {
                     num_atoms * sizeof(int));
       }
 
-      adt_data.copy_host2device();
+      this->data->copy_host2device_block([](auto& data) -> decltype(auto) {
+        return data.batch_info();
+      });
+      this->data->copy_host2device_block([](auto& data) -> decltype(auto) {
+        return data.scoring_coordinates();
+      });
+      this->data->copy_host2device_block([](auto& data) -> decltype(auto) {
+        return data.atom_data();
+      });
+      this->data->copy_host2device_block([](auto& data) -> decltype(auto) {
+        return data.num_nonbond_data();
+      });
+      this->data->copy_host2device_block([](auto& data) -> decltype(auto) {
+        return data.nonbond_data();
+      });
 
       // TODO ask Davide about this performance
       // Bind to the kernel function
@@ -156,7 +159,7 @@ namespace mudock {
 
         auto batch_view = this->data->device_view().batch_info();
         auto  data_view = this->data->device_view().scoring_coordinates();
-        auto adt_device_view = adt_data.device_view();
+        auto adt_device_view = this->data->device_view();
         auto atom_device_view = adt_device_view.atom_data();
         auto num_nonbond_device_view = adt_device_view.num_nonbond_data();
         auto nonbond_device_view = adt_device_view.nonbond_data();
@@ -178,7 +181,7 @@ namespace mudock {
         const int *nonbond_xB_b     = nonbond_device_view.xB().data();
 
       auto protein_device_view = protein_data->device_view();
-      const fp_type *grid_maps = (*protein_data).get_queue()->obj_required()
+      const fp_type *grid_maps = (*protein_data).get_queue()->uses_device_memory()
                        ? protein_device_view.protein_maps().maps().data()
                        : protein_host_view.protein_maps().maps().data();
         auto bounds_view = protein_device_view.protein_bounds();
@@ -186,9 +189,9 @@ namespace mudock {
         const fp_type *minimum = bounds_view.minimum().data();
         const fp_type *maximum = bounds_view.maximum().data();
         const fp_type *center  = bounds_view.center().data();
-        const int map_index_x = dimensions_view.size_x()[0];
-        const int map_index_xy = dimensions_view.size_xy()[0];
-        const int map_index_xyz = dimensions_view.size_xyz()[0];
+        const int map_index_x = dimensions_view.size_x();
+        const int map_index_xy = dimensions_view.size_xy();
+        const int map_index_xyz = dimensions_view.size_xyz();
 
       fp_type *scores_b = this->data->device_view().scores().scores().data();
 
@@ -280,9 +283,8 @@ namespace mudock {
     int batch_ligands;
     int batch_atoms;
 
-    soa_buffer<AdtScoreData<>, queue_type> adt_data;
-
     std::shared_ptr<data_store<queue_type, protein_layout_set>> protein_data;
+    // duplicato con geom
     point<fp_type, 3> protein_center;
     ligand_placement placement;
     std::unique_ptr<adt_score_kernel<queue_type>> kernel;

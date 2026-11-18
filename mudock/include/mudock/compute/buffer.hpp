@@ -136,7 +136,7 @@ namespace mudock {
   public:
     buffer_impl(std::shared_ptr<queue_t> _queue, const int dim = 0): valid(false) {
       q = _queue;
-      if (q->obj_required()) {
+      if (q->uses_device_memory()) {
         obj = std::make_unique<object<T>>(_queue);
       }
       if (!dim)

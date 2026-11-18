@@ -26,6 +26,10 @@ namespace mudock {
                                    std::shared_ptr<data_store<queue_type>>,
                                    dynamic_molecule&) {}
 
+    template<typename queue_type, typename layout_set>
+    void allocate_data(const std::shared_ptr<data_store<queue_type, layout_set>>&,
+                       const batch<static_molecule>&) const {}
+
     template<typename queue_type>
     static int get_batch_size(const int, std::shared_ptr<queue_type>, const knobs&, const size_t) {
       return 1;
@@ -42,6 +46,22 @@ namespace mudock {
     using pipeline_data_layouts = scoring_data_layouts;
     scoring_pipeline(std::shared_ptr<dynamic_molecule> protein_ptr, ligand_placement placement_config = {})
         : pipeline(std::move(protein_ptr), placement_config) {}
+
+    template<typename queue_type>
+    void allocate_data(const std::shared_ptr<data_store<queue_type, scoring_data_layouts>>& data,
+                       const batch<static_molecule>& batch) const {
+      const int batch_ligands = batch.num_ligands;
+      const int batch_atoms = batch.batch_max_atoms;
+      const int scores_per_ligand =
+          std::max(1, static_cast<int>(data->configuration.population_number));
+      const int total_atoms = batch_ligands * batch_atoms;
+      data->alloc(total_atoms * scores_per_ligand,
+                  batch_ligands,
+                  batch_ligands * scores_per_ligand,
+                  total_atoms,
+                  batch_ligands + 1,
+                  batch_ligands * batch_atoms * batch_atoms);
+    }
 
     template<typename queue_type>
     scoring_t<queue_type, scoring_data_layouts> get_pipeline(const knobs& conf,
@@ -95,6 +115,31 @@ namespace mudock {
     genetic_scoring_pipeline(std::shared_ptr<dynamic_molecule> protein_ptr,
                              ligand_placement placement_config = {})
         : pipeline(std::move(protein_ptr), placement_config) {}
+
+    template<typename queue_type>
+    void allocate_data(const std::shared_ptr<data_store<queue_type, genetic_data_layouts>>& data,
+                       const batch<static_molecule>& batch) const {
+      const int batch_ligands = batch.num_ligands;
+      const int batch_atoms = batch.batch_max_atoms;
+      const int population_number = static_cast<int>(data->configuration.population_number);
+      const int total_atoms = batch_ligands * batch_atoms;
+      const int batch_rotamers = batch_atoms - 3;
+
+      data->alloc(total_atoms,
+                  total_atoms * population_number,
+                  batch_ligands,
+                  population_number * batch_ligands,
+                  population_number * batch_ligands,
+                  batch_ligands,
+                  total_atoms,
+                  batch_ligands + 1,
+                  batch_ligands * batch_atoms * batch_atoms,
+                  total_atoms * batch_rotamers,
+                  batch_ligands + 1,
+                  batch_ligands * batch_rotamers,
+                  batch_ligands * batch_rotamers,
+                  batch_ligands + 1);
+    }
 
     template<typename queue_type>
     genetic<queue_type, scoring_t, genetic_data_layouts> get_pipeline(const knobs& conf,

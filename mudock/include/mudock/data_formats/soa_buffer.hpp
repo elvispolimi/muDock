@@ -4,7 +4,6 @@
 #include <cstddef>
 #include <cstring>
 #include <memory>
-#include <mudock/compute/object.hpp>
 #include <stdexcept>
 #include <type_traits>
 #include <utility>
@@ -60,7 +59,9 @@ namespace mudock {
 
     template<typename... SizeArgs>
     void allocate(const SizeArgs&... sizes) {
-      storage_.resize(detail::soa_layout_traits<SoA>::compute_data_size(sizes...));
+      storage_.resize(detail::soa_layout_traits<SoA>::compute_data_size(sizes...)
+                      //max_bytes
+                      );
       soa_ = detail::soa_layout_traits<SoA>::make_layout(storage_.data(), sizes...);
       view_ = view_type{soa_};
     }
@@ -91,20 +92,38 @@ namespace mudock {
         : queue_(queue) {
       if (!queue_)
         throw std::invalid_argument("A SOA device buffer requires a queue");
-      if (queue->obj_required())
-        storage_ = std::make_unique<object<std::byte>>(std::move(queue));
     }
 
     soa_device_buffer(const soa_device_buffer&) = delete;
     soa_device_buffer& operator=(const soa_device_buffer&) = delete;
-    soa_device_buffer(soa_device_buffer&&) = default;
-    soa_device_buffer& operator=(soa_device_buffer&&) = default;
+    soa_device_buffer(soa_device_buffer&& other) noexcept
+        : queue_(std::move(other.queue_)),
+          data_(other.data_),
+          soa_(other.soa_),
+          view_(other.view_) {
+      other.data_ = nullptr;
+    }
+
+    soa_device_buffer& operator=(soa_device_buffer&& other) noexcept {
+      if (this == &other)
+        return *this;
+      release();
+      queue_ = std::move(other.queue_);
+      data_ = other.data_;
+      soa_ = other.soa_;
+      view_ = other.view_;
+      other.data_ = nullptr;
+      return *this;
+    }
+
+    ~soa_device_buffer() { release(); }
 
     template<typename... SizeArgs>
     void allocate_or_alias(std::byte* host_data, const SizeArgs&... sizes) {
-      if (storage_) {
-        storage_->alloc(detail::soa_layout_traits<SoA>::compute_data_size(sizes...));
-        data_ = storage_->dev_pointer();
+      release();
+      const auto bytes = detail::soa_layout_traits<SoA>::compute_data_size(sizes...);
+      if (queue_->uses_device_memory()) {
+        queue_->alloc(reinterpret_cast<void**>(&data_), bytes);
       } else {
         // CPU queues execute directly on host memory.  The device view must
         // alias the host allocation instead of creating a second fallback
@@ -120,8 +139,13 @@ namespace mudock {
       static_assert(std::is_same_v<SoAHost, SoA>);
       if (size() != host.size())
         throw std::invalid_argument("Host and device SOA buffers have different sizes");
-      if (storage_)
-        storage_->copy_host2device(host.data(), soa_.metadata().byteSize());
+      if (queue_->uses_device_memory())
+        queue_->copy_host2device(host.data(), data_, soa_.metadata().byteSize());
+    }
+
+    void copy_host2device(const void* host, void* device, const std::size_t bytes) {
+      if (queue_->uses_device_memory())
+        queue_->copy_host2device(host, device, bytes);
     }
 
     template<typename SoAHost>
@@ -129,12 +153,12 @@ namespace mudock {
       static_assert(std::is_same_v<SoAHost, SoA>);
       if (size() != host.size())
         throw std::invalid_argument("Host and device SOA buffers have different sizes");
-      if (storage_)
-        storage_->copy_device2host(host.data());
+      if (queue_->uses_device_memory())
+        queue_->copy_device2host(data_, host.data(), soa_.metadata().byteSize());
     }
 
     void copy_device2host(const void* device, void* host, const std::size_t bytes) const {
-      if (storage_)
+      if (queue_->uses_device_memory())
         queue_->copy_device2host(device, host, bytes);
       // With a host alias, source and destination are the same allocation.
     }
@@ -149,10 +173,16 @@ namespace mudock {
 
   private:
     std::shared_ptr<queue_type> queue_;
-    std::unique_ptr<object<std::byte>> storage_;
     std::byte* data_ = nullptr;
     SoA soa_;
     view_type view_;
+
+    void release() noexcept {
+      if (data_ != nullptr && queue_ && queue_->uses_device_memory()) {
+        queue_->free(reinterpret_cast<void**>(&data_));
+      }
+      data_ = nullptr;
+    }
   };
 
   // Combined host/device storage used by data_store and stage entries.
@@ -181,6 +211,15 @@ namespace mudock {
     void copy_host2device() {
       device_.copy_from_host(host_);
       valid_ = true;
+    }
+
+    template<typename BlockGetter>
+    void copy_host2device_block(BlockGetter getter) {
+      auto host_block = getter(host_.soa());
+      auto device_block = getter(device_.soa());
+      device_.copy_host2device(host_block.metadata().data(),
+                               device_block.metadata().data(),
+                               device_block.metadata().byteSize());
     }
 
     void copy_device2host() {

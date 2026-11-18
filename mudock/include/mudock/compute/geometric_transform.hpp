@@ -106,20 +106,12 @@ namespace mudock {
     geometric(std::shared_ptr<data_store<queue_t, layout_set>> _data, dynamic_molecule& protein,
               ligand_placement _placement = {})
         : transform<queue_t, layout_set>(_data),
-          geometry_data(_data->get_queue()),
           protein_center(protein.get_center()),
           placement(_placement) {};
 
     void prepare(batch<static_molecule>& batch) {
       batch_ligands                           = batch.num_ligands;
       batch_atoms                             = batch.batch_max_atoms;
-      const int batch_rotamers                = batch_atoms - 3;
-      const std::size_t tot_atoms_in_batch = static_cast<std::size_t>(batch_ligands) *
-                                             static_cast<std::size_t>(batch_atoms);
-      const std::size_t tot_rotamers_atoms_in_batch =
-          tot_atoms_in_batch * static_cast<std::size_t>(batch_rotamers);
-      const std::size_t tot_rotamers_in_batch =
-          static_cast<std::size_t>(batch_ligands) * static_cast<std::size_t>(batch_rotamers);
       auto q                                  = (*this->data).get_queue();
       const auto chromsomes_per_ligand =
           std::max(1, static_cast<int>((*this->data).configuration.population_number));
@@ -130,12 +122,7 @@ namespace mudock {
                  expected_chromosomes &&
              "Chromosomes buffer not allocated before geom transform construction");
 
-      geometry_data.alloc(tot_rotamers_atoms_in_batch,
-                          batch_ligands + 1,
-                          static_cast<int>(tot_rotamers_in_batch),
-                          static_cast<int>(tot_rotamers_in_batch),
-                          batch_ligands + 1);
-      auto geometry_host_view = geometry_data.host_view();
+      auto geometry_host_view = this->data->host_view();
       geometry_host_view.fragments_start().values()[0] = 0;
       geometry_host_view.fragments_indices_start().values()[0] = 0;
 
@@ -169,19 +156,37 @@ namespace mudock {
         geometry_host_view.fragments_indices_start().values()[ligand_index + 1] =
             static_cast<int>(geometry_host_view.fragments_indices_start().values()[ligand_index] + num_rotamers);
       }
-      geometry_data.copy_host2device();
-
       load_num_rotamers<queue_t>(batch, this->data);
       load_num_atoms<queue_t>(batch, this->data);
       load_coords<queue_t>(batch, this->data);
-      this->data->copy_host2device();
+      this->data->copy_host2device_block([](auto& data) -> decltype(auto) {
+        return data.coordinates();
+      });
+      this->data->copy_host2device_block([](auto& data) -> decltype(auto) {
+        return data.batch_info();
+      });
+      this->data->copy_host2device_block([](auto& data) -> decltype(auto) {
+        return data.fragments();
+      });
+      this->data->copy_host2device_block([](auto& data) -> decltype(auto) {
+        return data.fragments_start();
+      });
+      this->data->copy_host2device_block([](auto& data) -> decltype(auto) {
+        return data.fragments_start_atoms();
+      });
+      this->data->copy_host2device_block([](auto& data) -> decltype(auto) {
+        return data.fragments_stop_atoms();
+      });
+      this->data->copy_host2device_block([](auto& data) -> decltype(auto) {
+        return data.fragments_indices_start();
+      });
 
       // Binding
         auto batch_view = this->data->device_view().batch_info();
         auto genetic_view = this->data->device_view().genetic();
         auto coordinates_view = this->data->device_view().coordinates();
         auto  data_view = this->data->device_view().scoring_coordinates();
-        auto geometry_view = geometry_data.device_view();
+        auto geometry_view = this->data->device_view();
         chromosome* chromosomes_p = genetic_view.chromosomes().data();
         int* num_atoms_p = batch_view.num_atoms().data();
         int* num_rotamers_p = batch_view.num_rotamers().data();
@@ -278,8 +283,6 @@ namespace mudock {
     }
 
   private:
-    soa_buffer<GeometryData<>, queue_t> geometry_data;
-
     int batch_ligands;
     int batch_atoms;
     point<fp_type, 3> protein_center;
