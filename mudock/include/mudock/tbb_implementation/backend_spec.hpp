@@ -22,6 +22,8 @@ namespace mudock::stream_engine {
     static constexpr std::size_t default_workers_per_device = 2;
     static constexpr std::size_t default_memory_bytes       = 1'000'000'000;
 
+    std::string configuration;
+
     implementation_type impl;
     device_type dev;
     std::vector<int> ids;
@@ -76,6 +78,7 @@ namespace mudock::stream_engine {
     }
 
     return backend_spec{
+        .configuration      = configuration,
         .impl               = get_impl_type(parts[0]),
         .dev                = get_device_type(parts[1]),
         .ids                = parse_ids(parts[2]),

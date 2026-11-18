@@ -1,15 +1,15 @@
 #pragma once
 
-#include <atomic>
 #include <cstddef>
 #include <limits>
 #include <memory>
-#include <mudock/format/supported_format.hpp>
 #include <mudock/knobs.hpp>
 #include <mudock/log.hpp>
 #include <mudock/tbb_implementation/backend_subgraph.hpp>
 #include <mudock/tbb_implementation/parser_body.hpp>
 #include <mudock/tbb_implementation/reader_body.hpp>
+#include <mudock/tbb_implementation/run_metrics.hpp>
+#include <mudock/tbb_implementation/run_metrics_report.hpp>
 #include <mudock/tbb_implementation/runtime_services.hpp>
 #include <mudock/tbb_implementation/stream_engine_types.hpp>
 #include <mudock/tbb_implementation/writer_body.hpp>
@@ -32,23 +32,21 @@ namespace mudock {
 
     tbb_flow::graph g;
 
-    std::atomic<std::size_t> skipped_ligands{0};
+    observability::run_metrics metrics;
 
     // --- [SETUP] - Create graph nodes
-    reader_in ligand_reader(g, reader_body<format>{knobs.max_bytes_per_token, in, end});
+    reader_in ligand_reader(g, reader_body<format>{knobs.max_bytes_per_token, in, metrics, end});
 
     global_ligands_ln global_ligands_limiter(g, knobs.max_ligands_in_flight);
 
-    parser_mfn ligand_parser(g,
-                             tbb_flow::unlimited,
-                             parser_body<format>{global_ligands_limiter, skipped_ligands});
+    parser_mfn ligand_parser(g, tbb_flow::unlimited, parser_body<format>{global_ligands_limiter, metrics});
 
     parsed_ligands_buf parsed_ligands_buffer(g);
 
-    auto backends = build_backend_subgraphs(g, knobs, pipeline, configurations);
+    auto backends = build_backend_subgraphs(g, knobs, pipeline, configurations, metrics);
 
-    writer_state writer_state;
-    writer_fn writer(g, tbb_flow::serial, writer_body{writer_state, global_ligands_limiter});
+    writer_state writing;
+    writer_fn writer(g, tbb_flow::serial, writer_body{writing, global_ligands_limiter, metrics});
 
     // --- [SETUP] - Wire graph nodes
     tbb_flow::make_edge(ligand_reader, global_ligands_limiter);
@@ -63,6 +61,22 @@ namespace mudock {
       timer.start(time_limit_sec, [&, limit = *time_limit_sec]() {
         g.cancel();
         info(std::format("Time limit of {} s reached: cancelling graph ...", limit));
+      });
+    }
+
+    // --- [SETUP] - Start observer for periodic metrics snapshots, if specified
+    detail::periodic_observer observer;
+    metrics.start_time = std::chrono::steady_clock::now();
+    if (observer_sec && *observer_sec > 0.0) {
+      info(std::format("Observer enabled: every {} s", *observer_sec));
+      auto prev = metrics.snapshot();
+      auto curr = observability::run_metrics_snapshot{};
+      observer.start(observer_sec, [&metrics, prev, curr]() mutable {
+        metrics.snapshot_into(curr);
+        observability::log_runtime(curr);
+        observability::log_cumulative(curr);
+        observability::log_rolling(curr, prev);
+        std::swap(prev, curr);
       });
     }
 
@@ -81,9 +95,11 @@ namespace mudock {
 
     // --- [SCREENING] - Phase 3: flush writer's buffer
     info("Flushing writer's buffer ...");
-    writer_state.flush();
+    writing.flush();
 
-    // todo - observer
+    // --- [DONE] - Final run summary
+    observer.stop();
+    observability::log_summary(metrics.snapshot());
   }
 
 } // namespace mudock

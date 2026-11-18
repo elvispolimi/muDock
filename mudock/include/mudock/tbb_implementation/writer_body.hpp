@@ -6,6 +6,7 @@
 #include <iostream>
 #include <mudock/molecule.hpp>
 #include <mudock/molecule/properties.hpp>
+#include <mudock/tbb_implementation/run_metrics.hpp>
 #include <oneapi/tbb/flow_graph.h>
 #include <string>
 
@@ -46,13 +47,18 @@ namespace mudock::stream_engine {
   class writer_body {
     writer_state& state_;
     global_ligands_ln& global_ligands_limiter_;
+    observability::run_metrics& metrics_;
 
   public:
-    writer_body(writer_state& state, global_ligands_ln& global_ligands_limiter)
-        : state_(state), global_ligands_limiter_(global_ligands_limiter) {}
+    writer_body(writer_state& state,
+                global_ligands_ln& global_ligands_limiter,
+                observability::run_metrics& metrics)
+        : state_(state), global_ligands_limiter_(global_ligands_limiter), metrics_(metrics) {}
 
     tbb_flow::continue_msg operator()(lig_ptr ligand) const {
       state_.append(*ligand);
+      metrics_.ligands_written.increase();
+      metrics_.in_flight.decrease();
       global_ligands_limiter_.decrementer().try_put(tbb_flow::continue_msg{});
       return {};
     }

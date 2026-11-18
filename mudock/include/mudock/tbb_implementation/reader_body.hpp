@@ -7,6 +7,7 @@
 #include <istream>
 #include <limits>
 #include <mudock/format/supported_format.hpp>
+#include <mudock/tbb_implementation/run_metrics.hpp>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -22,6 +23,7 @@ namespace mudock::stream_engine {
     const std::size_t max_bytes_per_token_;
     std::istream& stream_;
     std::size_t end_;
+    observability::run_metrics& metrics_;
 
     // Reader state: mutable because of the TBB input-node `operator() const`.
     mutable std::string buffered_text_;
@@ -31,8 +33,9 @@ namespace mudock::stream_engine {
   public:
     explicit reader_body(std::size_t max_bytes_per_token,
                          std::istream& in,
+                         observability::run_metrics& metrics,
                          std::size_t end = std::numeric_limits<std::size_t>::max())
-        : max_bytes_per_token_(max_bytes_per_token), stream_(in) {
+        : max_bytes_per_token_(max_bytes_per_token), stream_(in), metrics_(metrics) {
       if (end != std::numeric_limits<std::size_t>::max()) {
         end_ = end;
         return;
@@ -47,6 +50,7 @@ namespace mudock::stream_engine {
     std::string operator()(oneapi::tbb::flow_control& fc) const {
       while (true) {
         if (auto token = try_emit_token()) {
+          metrics_.ligands_read.increase();
           return std::move(*token);
         }
         if (!read_more()) {
@@ -100,6 +104,7 @@ namespace mudock::stream_engine {
         flushed_   = true;
         auto token = std::move(buffered_text_);
         buffered_text_.clear();
+        metrics_.ligands_read.increase();
         return token;
       }
       fc.stop();

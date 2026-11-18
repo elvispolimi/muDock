@@ -49,6 +49,10 @@ namespace mudock::stream_engine {
     std::unique_ptr<batch_buf> batch_buffer;
     std::vector<std::unique_ptr<screener_mfn>> screeners;
 
+    observability::backend_metrics* metrics;
+
+    explicit backend_subgraph(observability::backend_metrics& _metrics): metrics(&_metrics) {}
+
     /**
      * Connect this subgraph into the enclosing graph.
      */
@@ -61,11 +65,14 @@ namespace mudock::stream_engine {
       }
     }
 
-    /**
-     * Flush the ROB's pending batches into the subgraph's batch_buffer.
-     */
+    /// Flush the ROB's pending batches into the subgraph's batch_buffer.
     void flush_batches() {
-      batching->flush_all([this](const lig_batch_ptr& batch) { batch_buffer->try_put(batch); });
+      std::size_t count = 0;
+      batching->flush_all([this, &count](const lig_batch_ptr& batch) {
+        ++count;
+        batch_buffer->try_put(batch);
+      });
+      metrics->batches_emitted.increase(count);
     }
   };
 
@@ -80,7 +87,11 @@ namespace mudock::stream_engine {
   backend_subgraph build_cpu_subgraph(tbb_flow::graph& g,
                                       const knobs& knobs,
                                       pipeline_t& pipeline,
-                                      const backend_spec& spec) {
+                                      const backend_spec& spec,
+                                      observability::run_metrics& metrics) {
+    auto& backend_metrics = *metrics.backends.emplace_back(
+        std::make_unique<observability::backend_metrics>(spec.configuration, spec.ids.size()));
+
     auto device_scratch = std::make_shared<scratchpad<queue_type>>(knobs, 0, device_type::CPU);
     auto q_b            = device_scratch->get_queue();
     std::function<int(const int)> get_size = [q_b, &knobs](const int atoms) {
@@ -89,10 +100,12 @@ namespace mudock::stream_engine {
     using stage_t =
         decltype(pipeline.template get_pipeline<queue_type>(knobs, 0, device_type::CPU, device_scratch));
 
-    backend_subgraph cpu_subgraph;
+    backend_subgraph cpu_subgraph(backend_metrics);
     cpu_subgraph.batching = std::make_unique<batcher_state>(std::move(get_size));
     cpu_subgraph.batcher =
-        std::make_unique<batcher_mfn>(g, tbb_flow::serial, batcher_body{*cpu_subgraph.batching});
+        std::make_unique<batcher_mfn>(g,
+                                      tbb_flow::serial,
+                                      batcher_body{*cpu_subgraph.batching, backend_metrics});
     cpu_subgraph.batch_buffer = std::make_unique<batch_buf>(g);
 
     cpu_subgraph.screening.reserve(spec.ids.size());
@@ -105,7 +118,9 @@ namespace mudock::stream_engine {
       auto& cpu_screener_state = static_cast<screener_state<stage_t>&>(*cpu_subgraph.screening.emplace_back(
           std::make_unique<screener_state<stage_t>>(std::move(cpu_screener_stage))));
       cpu_subgraph.screeners.push_back(
-          std::make_unique<screener_mfn>(g, /*concurrency=*/1, screener_body<stage_t>{cpu_screener_state}));
+          std::make_unique<screener_mfn>(g,
+                                         /*concurrency=*/1,
+                                         screener_body<stage_t>{cpu_screener_state, backend_metrics}));
     }
 
     return cpu_subgraph;
@@ -122,11 +137,16 @@ namespace mudock::stream_engine {
   std::vector<backend_subgraph> build_gpu_subgraph(tbb_flow::graph& g,
                                                    const knobs& knobs,
                                                    pipeline_t& pipeline,
-                                                   const backend_spec& spec) {
+                                                   const backend_spec& spec,
+                                                   observability::run_metrics& metrics) {
     std::vector<backend_subgraph> gpu_subgraphs;
     gpu_subgraphs.reserve(spec.ids.size());
 
     for (const auto id: spec.ids) {
+      auto& backend_metrics = *metrics.backends.emplace_back(
+          std::make_unique<observability::backend_metrics>(std::format("{}#{}", spec.configuration, id),
+                                                           spec.workers_per_device));
+
       auto device_scratch = std::make_shared<scratchpad<queue_type>>(knobs, id, device_type::GPU);
       auto q_b            = device_scratch->get_queue();
       std::function<int(const int)> get_size =
@@ -141,10 +161,12 @@ namespace mudock::stream_engine {
                        spec.workers_per_device,
                        spec.memory_bytes));
 
-      backend_subgraph gpu_subgraph;
+      backend_subgraph gpu_subgraph(backend_metrics);
       gpu_subgraph.batching = std::make_unique<batcher_state>(std::move(get_size));
       gpu_subgraph.batcher =
-          std::make_unique<batcher_mfn>(g, tbb_flow::serial, batcher_body{*gpu_subgraph.batching});
+          std::make_unique<batcher_mfn>(g,
+                                        tbb_flow::serial,
+                                        batcher_body{*gpu_subgraph.batching, backend_metrics});
       gpu_subgraph.batch_buffer = std::make_unique<batch_buf>(g);
 
       gpu_subgraph.screening.reserve(spec.workers_per_device);
@@ -156,7 +178,9 @@ namespace mudock::stream_engine {
         auto& gpu_screener_state = static_cast<screener_state<stage_t>&>(*gpu_subgraph.screening.emplace_back(
             std::make_unique<screener_state<stage_t>>(std::move(gpu_screener_stage))));
         gpu_subgraph.screeners.push_back(
-            std::make_unique<screener_mfn>(g, /*concurrency=*/1, screener_body<stage_t>{gpu_screener_state}));
+            std::make_unique<screener_mfn>(g,
+                                           /*concurrency=*/1,
+                                           screener_body<stage_t>{gpu_screener_state, backend_metrics}));
       }
 
       gpu_subgraphs.push_back(std::move(gpu_subgraph));
@@ -173,14 +197,15 @@ namespace mudock::stream_engine {
   backend_subgraph dispatch_cpu_subgraph(tbb_flow::graph& g,
                                          const knobs& knobs,
                                          pipeline_t& pipeline,
-                                         const backend_spec& spec) {
+                                         const backend_spec& spec,
+                                         observability::run_metrics& metrics) {
     std::optional<backend_subgraph> cpu_subgraph;
 
     constexpr_for<0, num_cpu_kernel_type(), 1>([&](const auto kernel) {
       constexpr auto kernel_type = cpu_kernel_type[kernel];
       if (kernel_type == spec.impl) {
         using queue_type_t = typename kernel_type_traits<kernel_type>::type;
-        cpu_subgraph.emplace(build_cpu_subgraph<queue_type_t>(g, knobs, pipeline, spec));
+        cpu_subgraph.emplace(build_cpu_subgraph<queue_type_t>(g, knobs, pipeline, spec, metrics));
       }
     });
 
@@ -199,14 +224,15 @@ namespace mudock::stream_engine {
   std::vector<backend_subgraph> dispatch_gpu_subgraph(tbb_flow::graph& g,
                                                       const knobs& knobs,
                                                       pipeline_t& pipeline,
-                                                      const backend_spec& spec) {
+                                                      const backend_spec& spec,
+                                                      observability::run_metrics& metrics) {
     std::vector<backend_subgraph> gpu_subgraphs;
 
     constexpr_for<0, num_gpu_kernel_type(), 1>([&](const auto kernel) {
       constexpr auto kernel_type = gpu_kernel_type[kernel];
       if (kernel_type == spec.impl) {
         using queue_type_t = typename kernel_type_traits<kernel_type>::type;
-        gpu_subgraphs      = build_gpu_subgraph<queue_type_t>(g, knobs, pipeline, spec);
+        gpu_subgraphs      = build_gpu_subgraph<queue_type_t>(g, knobs, pipeline, spec, metrics);
       }
     });
 
@@ -227,7 +253,8 @@ namespace mudock::stream_engine {
   std::vector<backend_subgraph> build_backend_subgraphs(tbb_flow::graph& g,
                                                         const knobs& knobs,
                                                         pipeline_t& pipeline,
-                                                        const std::vector<std::string>& configurations) {
+                                                        const std::vector<std::string>& configurations,
+                                                        observability::run_metrics& metrics) {
     std::vector<backend_subgraph> backend_subgraphs;
 
     for (const auto& configuration: configurations) {
@@ -237,11 +264,11 @@ namespace mudock::stream_engine {
 
       switch (spec.dev) {
         case device_type::CPU: {
-          backend_subgraphs.push_back(dispatch_cpu_subgraph(g, knobs, pipeline, spec));
+          backend_subgraphs.push_back(dispatch_cpu_subgraph(g, knobs, pipeline, spec, metrics));
           break;
         }
         case device_type::GPU: {
-          auto gpu_subgraphs = dispatch_gpu_subgraph(g, knobs, pipeline, spec);
+          auto gpu_subgraphs = dispatch_gpu_subgraph(g, knobs, pipeline, spec, metrics);
           backend_subgraphs.insert(backend_subgraphs.end(),
                                    std::make_move_iterator(gpu_subgraphs.begin()),
                                    std::make_move_iterator(gpu_subgraphs.end()));

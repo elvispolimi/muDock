@@ -6,6 +6,7 @@
 #include <memory>
 #include <mudock/compute/reorder_buffer.hpp>
 #include <mudock/molecule.hpp>
+#include <mudock/tbb_implementation/run_metrics.hpp>
 #include <optional>
 #include <utility>
 
@@ -47,12 +48,16 @@ namespace mudock::stream_engine {
    */
   class batcher_body {
     batcher_state& state_;
+    observability::backend_metrics& metrics_;
 
   public:
-    explicit batcher_body(batcher_state& state): state_(state) {}
+    explicit batcher_body(batcher_state& state, observability::backend_metrics& metrics)
+        : state_(state), metrics_(metrics) {}
 
     void operator()(lig_ptr ligand, batcher_mfn::output_ports_type& out) const {
+      metrics_.ligands_batched.increase();
       if (const auto batch = state_.add(std::move(ligand))) {
+        metrics_.batches_emitted.increase();
         std::get<0>(out).try_put(*batch);
       }
     }

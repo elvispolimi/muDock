@@ -2,6 +2,7 @@
 
 #include "stream_engine_types.hpp"
 
+#include <mudock/tbb_implementation/run_metrics.hpp>
 #include <utility>
 
 namespace mudock::stream_engine {
@@ -38,17 +39,22 @@ namespace mudock::stream_engine {
   template<typename stage_t>
   class screener_body {
     screener_state<stage_t>& state_;
+    observability::backend_metrics& metrics_;
 
   public:
-    explicit screener_body(screener_state<stage_t>& state): state_(state) {}
+    explicit screener_body(screener_state<stage_t>& state, observability::backend_metrics& metrics)
+        : state_(state), metrics_(metrics) {}
 
     void operator()(lig_batch_ptr batch, screener_mfn::output_ports_type& out) const {
+      const auto n = static_cast<std::size_t>(batch->num_ligands);
+      metrics_.ligands_screening_in_flight.increase(n);
       state_.screen(*batch);
-      for (size_t i = 0; i < static_cast<size_t>(batch->num_ligands); ++i) {
+      metrics_.ligands_screening_in_flight.decrease(n);
+      metrics_.batches_screened.increase();
+      metrics_.ligands_screened.increase(n);
+
+      for (std::size_t i = 0; i < n; ++i) {
         auto& lig = batch->molecules[i];
-        if (!lig) {
-          continue;
-        }
         std::get<0>(out).try_put(lig_ptr{std::move(lig)});
       }
     }
