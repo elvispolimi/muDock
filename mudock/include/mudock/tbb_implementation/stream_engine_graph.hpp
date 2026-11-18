@@ -2,7 +2,6 @@
 
 #include <cstddef>
 #include <limits>
-#include <memory>
 #include <mudock/knobs.hpp>
 #include <mudock/log.hpp>
 #include <mudock/tbb_implementation/backend_subgraph.hpp>
@@ -20,14 +19,22 @@
 
 namespace mudock {
 
+  /**
+   * Optional run-time knobs for `run_stream_engine_graph`.
+   * Defaults correspond to "no byte-range cap", "no deadline", and "no periodic observer".
+   */
+  struct run_options {
+    std::size_t end                      = std::numeric_limits<std::size_t>::max();
+    std::optional<double> time_limit_sec = std::nullopt;
+    std::optional<double> observer_sec   = std::nullopt;
+  };
+
   template<supported_format format, typename pipeline_t>
   void run_stream_engine_graph(std::istream& in,
                                const std::vector<std::string>& configurations,
                                const knobs& knobs,
                                pipeline_t& pipeline,
-                               std::size_t end                      = std::numeric_limits<std::size_t>::max(),
-                               std::optional<double> time_limit_sec = std::nullopt,
-                               std::optional<double> observer_sec   = std::nullopt) {
+                               run_options opts = {}) {
     using namespace stream_engine;
 
     tbb_flow::graph g;
@@ -35,7 +42,7 @@ namespace mudock {
     observability::run_metrics metrics;
 
     // --- [SETUP] - Create graph nodes
-    reader_in ligand_reader(g, reader_body<format>{knobs.max_bytes_per_token, in, metrics, end});
+    reader_in ligand_reader(g, reader_body<format>{knobs.max_bytes_per_token, in, metrics, opts.end});
 
     global_ligands_ln global_ligands_limiter(g, knobs.max_ligands_in_flight);
 
@@ -56,22 +63,22 @@ namespace mudock {
 
     // --- [SETUP] - Start timer for time limit, if specified
     detail::deadline_timer timer;
-    if (time_limit_sec && *time_limit_sec > 0.0) {
-      info(std::format("Time limit enabled: {} s", *time_limit_sec));
-      timer.start(time_limit_sec, [&, limit = *time_limit_sec]() {
+    if (opts.time_limit_sec && *opts.time_limit_sec > 0.0) {
+      info(std::format("Time limit enabled: {} s", *opts.time_limit_sec));
+      timer.start(opts.time_limit_sec, [&, limit = *opts.time_limit_sec]() {
         g.cancel();
         info(std::format("Time limit of {} s reached: cancelling graph ...", limit));
       });
     }
 
-    // --- [SETUP] - Start observer for periodic metrics snapshots, if specified
+    // --- [SETUP] - Start observer for periodic metrics snapshots if specified, ignoring setup time
     detail::periodic_observer observer;
     metrics.start_time = std::chrono::steady_clock::now();
-    if (observer_sec && *observer_sec > 0.0) {
-      info(std::format("Observer enabled: every {} s", *observer_sec));
+    if (opts.observer_sec && *opts.observer_sec > 0.0) {
+      info(std::format("Observer enabled: every {} s", *opts.observer_sec));
       auto prev = metrics.snapshot();
       auto curr = observability::run_metrics_snapshot{};
-      observer.start(observer_sec, [&metrics, prev, curr]() mutable {
+      observer.start(opts.observer_sec, [&metrics, prev, curr]() mutable {
         metrics.snapshot_into(curr);
         observability::log_runtime(curr);
         observability::log_cumulative(curr);

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <format>
 #include <mudock/compute/parse_ids.hpp>
 #include <mudock/devices.hpp>
 #include <mudock/implementation_types.hpp>
@@ -31,31 +32,37 @@ namespace mudock::stream_engine {
     std::size_t memory_bytes;
   };
 
-  /**
-   * Basically copied from legacy `manager::parse_worker_configuration`,
-   * so the graph path can eventually be independent of `mudock/compute/manager.hpp`.
-   */
-  inline std::size_t parse_positive_size_field(const std::vector<std::string>& parts,
-                                               const std::size_t index,
-                                               const char* field_name,
-                                               const std::size_t default_value) {
-    if (parts.size() <= index) {
-      return default_value;
+  namespace setup {
+
+    /**
+     * Parse `parts[index]` as a strictly positive `std::size_t`.
+     *
+     * Basically copied from legacy `manager::parse_worker_configuration`,
+     * so the graph path can eventually be independent of `mudock/compute/manager.hpp`.
+     */
+    inline std::size_t parse_positive_size_field(const std::vector<std::string>& parts,
+                                                 const std::size_t index,
+                                                 const char* field_name,
+                                                 const std::size_t default_value) {
+      if (parts.size() <= index) {
+        return default_value;
+      }
+
+      std::size_t value = 0;
+      try {
+        value = std::stoull(parts[index]);
+      } catch (const std::exception&) {
+        throw std::runtime_error(std::format("Invalid {} value '{}'.", field_name, parts[index]));
+      }
+
+      if (value == 0) {
+        throw std::runtime_error(std::format("{} must be greater than zero.", field_name));
+      }
+
+      return value;
     }
 
-    std::size_t value = 0;
-    try {
-      value = std::stoull(parts[index]);
-    } catch (const std::exception&) {
-      throw std::runtime_error(std::string{"Invalid "} + field_name + " value '" + parts[index] + "'.");
-    }
-
-    if (value == 0) {
-      throw std::runtime_error(std::string{field_name} + " must be greater than zero.");
-    }
-
-    return value;
-  }
+  } // namespace setup
 
   /**
    * Tokenize and validate a backend spec string of the form
@@ -69,12 +76,14 @@ namespace mudock::stream_engine {
     for (auto v: configuration | std::views::split(':')) parts.emplace_back(v.begin(), v.end());
 
     if (parts.size() < 3 || parts.size() > 5) {
-      throw std::runtime_error("Invalid backend spec '" + configuration +
-                               "'. Expected IMPLEMENTATION:DEVICE:IDS[:WORKERS][:MEMORY_BYTES].");
+      throw std::runtime_error(std::format(
+          "Invalid backend spec '{}'. Expected IMPLEMENTATION:DEVICE:IDS[:WORKERS][:MEMORY_BYTES].",
+          configuration));
     }
     if (parts[0].empty() || parts[1].empty() || parts[2].empty()) {
-      throw std::runtime_error("Invalid backend spec '" + configuration +
-                               "'. Implementation, device, and ids must be non-empty.");
+      throw std::runtime_error(
+          std::format("Invalid backend spec '{}'. Implementation, device, and ids must be non-empty.",
+                      configuration));
     }
 
     return backend_spec{
@@ -82,12 +91,12 @@ namespace mudock::stream_engine {
         .impl               = get_impl_type(parts[0]),
         .dev                = get_device_type(parts[1]),
         .ids                = parse_ids(parts[2]),
-        .workers_per_device = parse_positive_size_field(parts,
-                                                        3,
-                                                        "workers_per_device",
-                                                        backend_spec::default_workers_per_device),
+        .workers_per_device = setup::parse_positive_size_field(parts,
+                                                               3,
+                                                               "workers_per_device",
+                                                               backend_spec::default_workers_per_device),
         .memory_bytes =
-            parse_positive_size_field(parts, 4, "memory_bytes", backend_spec::default_memory_bytes),
+            setup::parse_positive_size_field(parts, 4, "memory_bytes", backend_spec::default_memory_bytes),
     };
   }
 

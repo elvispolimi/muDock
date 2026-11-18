@@ -34,13 +34,14 @@ namespace {
                                      [&](const auto format_index) {
                                        constexpr auto selected_format = static_cast<mudock::supported_format>(
                                            decltype(format_index)::value);
-                                       mudock::run_stream_engine_graph<selected_format>(in,
-                                                                                        args.device_confs,
-                                                                                        args.knobs,
-                                                                                        pipe,
-                                                                                        range_end,
-                                                                                        args.time_limit_sec,
-                                                                                        args.observer);
+                                       mudock::run_stream_engine_graph<selected_format>(
+                                           in,
+                                           args.device_confs,
+                                           args.knobs,
+                                           pipe,
+                                           mudock::run_options{.end            = range_end,
+                                                               .time_limit_sec = args.time_limit_sec,
+                                                               .observer_sec   = args.observer});
                                      },
                                      format);
                                });
