@@ -18,7 +18,7 @@
   #include <mudock/compute/geometric_transform.hpp>
   #include <mudock/compute/ligand_placement.hpp>
   #include <mudock/compute/scoring.hpp>
-  #include <mudock/compute/scratchpad.hpp>
+  #include <mudock/data_formats/data_store.hpp>
 #endif
 #include <mudock/compute/batch_multiple.hpp>
 #include <mudock/compute/queue.hpp>
@@ -91,52 +91,47 @@ namespace mudock {
   };
 
 #if !defined(__CUDACC__) && !defined(__HIPCC__)
-  template<typename queue_t, template<typename> typename scoring_t>
-    requires std::derived_from<queue_t, queue> && std::derived_from<scoring_t<queue_t>, scoring<queue_t>>
-  struct genetic: public docking<queue_t> {
+  template<typename queue_t,
+           template<typename, typename> typename scoring_t,
+           typename layout_set = genetic_data_layouts>
+    requires std::derived_from<queue_t, queue> &&
+             std::derived_from<scoring_t<queue_t, layout_set>, scoring<queue_t, layout_set>>
+  struct genetic: public docking<queue_t, layout_set> {
     static constexpr const char stage_name[] = "GENETIC";
 
-    genetic(std::shared_ptr<scratchpad<queue_t>> _scratch,
+    genetic(std::shared_ptr<data_store<queue_t, layout_set>> _data,
             dynamic_molecule& protein,
-            scoring_t<queue_t> _scoring,
-            ligand_placement _placement = {})
-        : docking<queue_t>(_scratch),
+            scoring_t<queue_t, layout_set> _scoring,
+        ligand_placement _placement = {})
+      : docking<queue_t, layout_set>(_data),
           score_stage(std::move(_scoring)),
-          geom_trans(_scratch, protein, _placement),
-          next_population(_scratch->get_queue()),
-          best_chromosomes(_scratch->get_queue()),
-          best_scores(_scratch->get_queue()) {};
+          geom_trans(_data, protein, _placement) 
+          {};
+          
     void prepare(batch<static_molecule>& batch) {
       trace_id = batch.trace_id;
       trace_event("batch_received");
-      const knobs& configuration  = (*this->scratch).configuration;
+      const knobs& configuration  = (*this->data).configuration;
       batch_ligands               = batch.num_ligands;
       num_generations             = static_cast<int>(configuration.num_generations);
       const int population_number = static_cast<int>(configuration.population_number);
-      auto q                      = (*this->scratch).get_queue();
+      auto q                      = (*this->data).get_queue();
 
-      auto& num_rotamers_b = (*this->scratch).template get<buffer_data_type::NUM_ROTAMERS>();
-      auto& chromosomes_b  = (*this->scratch).template get<buffer_data_type::CHROMOSOMES>();
-      auto& scores_b       = (*this->scratch).template get<buffer_data_type::SCORES>();
-
-      num_rotamers_b.alloc(batch_ligands);
-      chromosomes_b.alloc(population_number * batch_ligands);
-      next_population.alloc(population_number * batch_ligands);
-      scores_b.alloc(population_number * batch_ligands);
-      best_scores.alloc(batch_ligands);
-      best_chromosomes.alloc(batch_ligands);
-
-      load_num_rotamers<queue_t>(batch, this->scratch);
+      load_num_rotamers<queue_t>(batch, this->data);
 
       const auto seed =
           configuration.seed.has_value()
               ? configuration.seed.value()
               : static_cast<size_t>(std::chrono::high_resolution_clock::now().time_since_epoch().count());
 
-      int* __restrict__ num_rotamers_p            = num_rotamers_b.dev_pointer();
-      fp_type* __restrict__ scores_p              = scores_b.dev_pointer();
-      fp_type* __restrict__ best_scores_p         = best_scores.dev_pointer();
-      chromosome* __restrict__ best_chromosomes_p = best_chromosomes.dev_pointer();
+      auto batch_view = this->data->device_view().batch_info();
+      auto genetic_view = this->data->device_view().genetic();
+      auto scores_view = this->data->device_view().scores();
+      auto best_view = this->data->device_view().best();
+      int* __restrict__ num_rotamers_p            = batch_view.num_rotamers().data();
+      fp_type* __restrict__ scores_p              = scores_view.scores().data();
+      fp_type* __restrict__ best_scores_p         = best_view.scores().data();
+      chromosome* __restrict__ best_chromosomes_p = best_view.chromosomes().data();
 
       kernel = std::make_unique<genetic_kernel<queue_t>>(batch_ligands,
                                                          population_number,
@@ -145,8 +140,8 @@ namespace mudock {
                                                          configuration.mutation_prob,
                                                          configuration.max_translation_half_width.value_or(fp_type{0}),
                                                          seed,
-                                                         chromosomes_b.dev_pointer(),
-                                                         next_population.dev_pointer(),
+                                                         genetic_view.chromosomes().data(),
+                                                         genetic_view.next_chromosomes().data(),
                                                          num_rotamers_p,
                                                          scores_p,
                                                          best_scores_p,
@@ -158,9 +153,10 @@ namespace mudock {
       trace_event("input_copies_submitted");
     };
     void operator()() {
-      auto& chromosomes_b              = (*this->scratch).template get<buffer_data_type::CHROMOSOMES>();
-      chromosome* current_population_p = chromosomes_b.dev_pointer();
-      chromosome* next_population_p    = next_population.dev_pointer();
+      auto q                           = (*this->data).get_queue();
+      auto genetic_view = this->data->device_view().genetic();
+      chromosome* current_population_p = genetic_view.chromosomes().data();
+      chromosome* next_population_p    = genetic_view.next_chromosomes().data();
 
       assert(kernel && "Kernel method not yet prepared");
       kernel->set_population_buffers(current_population_p, next_population_p);
@@ -192,7 +188,7 @@ namespace mudock {
       mem += sizeof(chromosome) * chromosomes_per_ligand;              // chromosomes
       mem += sizeof(fp_type) * chromosomes_per_ligand;                 // scores
       mem += 3 * sizeof(fp_type) * max_atoms;                          // coords
-      mem += 3 * sizeof(fp_type) * max_atoms * chromosomes_per_ligand; // coord scratch
+      mem += 3 * sizeof(fp_type) * max_atoms * chromosomes_per_ligand; // coord data
       return mem;
     }
 
@@ -201,8 +197,8 @@ namespace mudock {
       mem += sizeof(chromosome) * std::max(1, static_cast<int>(conf.population_number)); // next population
       mem += sizeof(chromosome);                                                         // best chromosomes
       mem += sizeof(fp_type);                                                            // best scores
-      mem += scoring_t<queue_t>::get_private_ligand_mem(max_atoms, conf);
-      mem += geometric<queue_t>::get_private_ligand_mem(max_atoms, conf);
+      mem += scoring_t<queue_t, layout_set>::get_private_ligand_mem(max_atoms, conf);
+      mem += geometric<queue_t, layout_set>::get_private_ligand_mem(max_atoms, conf);
       return mem;
     }
 
@@ -216,9 +212,9 @@ namespace mudock {
                                          const size_t max_bucket_size) {
       (void) max_bucket_size;
       const auto score_bucket_info =
-          normalize_batch_multiple(scoring_t<queue_t>::get_batch_size(atoms, q, conf, max_bucket_size));
+          normalize_batch_multiple(scoring_t<queue_t, layout_set>::get_batch_size(atoms, q, conf, max_bucket_size));
       const auto geom_bucket_info =
-          normalize_batch_multiple(geometric<queue_t>::get_batch_size(atoms, q, conf, max_bucket_size));
+          normalize_batch_multiple(geometric<queue_t, layout_set>::get_batch_size(atoms, q, conf, max_bucket_size));
       const int score_total = score_bucket_info.total_multiple();
       const int geom_total  = geom_bucket_info.total_multiple();
 
@@ -277,16 +273,12 @@ namespace mudock {
 
   private:
     std::size_t trace_id = 0;
-    scoring_t<queue_t> score_stage;
-    geometric<queue_t> geom_trans;
+    scoring_t<queue_t, layout_set> score_stage;
+    geometric<queue_t, layout_set> geom_trans;
     std::unique_ptr<genetic_kernel<queue_t>> kernel;
 
     int batch_ligands;
     int num_generations;
-    buffer_vector<chromosome, queue_t> next_population;
-    buffer_vector<chromosome, queue_t> best_chromosomes;
-    buffer_vector<fp_type, queue_t> best_scores;
-
     void trace_event(const char* event) const {
       if (trace_id == 0)
         return;
@@ -299,10 +291,18 @@ namespace mudock {
     void teardown_impl(batch<static_molecule>& batch) {
       assert(batch.num_ligands == batch_ligands && "Genetic algorithm received different batch for teardown");
 
+      // TODO check if the copy can be changed with a swap
+      // auto& population_b = (*this->data).template get<buffer_data_type::CHROMOSOMES>();
+      // population_b.copy_device2device(best_chromosomes);
+      // geom_trans();
+      // score_stage();
+      // geom_trans.teardown(batch);
+      // score_stage.teardown(batch);
+
       trace_event("copyback_begin");
-      best_scores.copy_device2host();
-      best_chromosomes.copy_device2host();
-      (*this->scratch).get_queue()->synchronize();
+      this->data->copy_device2host_best();
+      (*this->data).get_queue()->synchronize();
+      auto best_view = this->data->host_view().best();
       trace_event("compute_and_copyback_complete");
 
       for (int index{0}; index < batch_ligands; ++index) {
@@ -312,13 +312,13 @@ namespace mudock {
         apply<cpu_vectorization::AUTO>(ligand.x(),
                                        ligand.y(),
                                        ligand.z(),
-                                       best_chromosomes()[index],
+                                       best_view.chromosomes()[index],
                                        ligand.num_atoms(),
                                        num_rotamers,
                                        geom.fragments_masks(),
                                        geom.fragmets_starts(),
                                        geom.fragments_stops());
-        ligand.properties.assign(property_type::SCORE, std::to_string(best_scores()[index]));
+        ligand.properties.assign(property_type::SCORE, std::to_string(best_view.scores()[index]));
       }
     }
   }; // namespace mudock

@@ -82,9 +82,9 @@ namespace mudock {
   template<int MAX_ATOMS>
   __global__ void calc_energy(const int atom_stride,
                               const int scores_per_ligand,
-                              const fp_type* __restrict__ scratch_x,
-                              const fp_type* __restrict__ scratch_y,
-                              const fp_type* __restrict__ scratch_z,
+                              const fp_type* __restrict__  data_x,
+                              const fp_type* __restrict__  data_y,
+                              const fp_type* __restrict__  data_z,
                               const fp_type* __restrict__ vol,
                               const fp_type* __restrict__ solpar,
                               const fp_type* __restrict__ charge,
@@ -120,9 +120,9 @@ namespace mudock {
     const int num_rotamers = num_rotamers_b[ligand_id];
     const int stride       = ligand_id * atom_stride;
 
-    const fp_type* l_scratch_x = scratch_x + stride * scores_per_ligand;
-    const fp_type* l_scratch_y = scratch_y + stride * scores_per_ligand;
-    const fp_type* l_scratch_z = scratch_z + stride * scores_per_ligand;
+    const fp_type* l_data_x =  data_x + stride * scores_per_ligand;
+    const fp_type* l_data_y =  data_y + stride * scores_per_ligand;
+    const fp_type* l_data_z =  data_z + stride * scores_per_ligand;
     const fp_type* l_vol       = vol + stride;
     const fp_type* l_solpar    = solpar + stride;
     const fp_type* l_charge    = charge + stride;
@@ -138,9 +138,9 @@ namespace mudock {
 
     for (int scores_index = 0; scores_index < scores_per_ligand; ++scores_index) {
       // Copy original coordinates
-      const fp_type* ligand_x = l_scratch_x + scores_index * atom_stride;
-      const fp_type* ligand_y = l_scratch_y + scores_index * atom_stride;
-      const fp_type* ligand_z = l_scratch_z + scores_index * atom_stride;
+      const fp_type* ligand_x = l_data_x + scores_index * atom_stride;
+      const fp_type* ligand_y = l_data_y + scores_index * atom_stride;
+      const fp_type* ligand_z = l_data_z + scores_index * atom_stride;
 
       // Calculate energy
       fp_type elect_total_trilinear = 0, emap_total_trilinear = 0, dmap_total_trilinear = 0;
@@ -283,9 +283,9 @@ namespace mudock {
 
     void* args[] = {(void*) &batch_atoms,
                     (void*) &scores_per_ligand,
-                    (void*) &x_scratch_b,
-                    (void*) &y_scratch_b,
-                    (void*) &z_scratch_b,
+                    (void*) &x_data_b,
+                    (void*) &y_data_b,
+                    (void*) &z_data_b,
                     (void*) &vols_b,
                     (void*) &solpars_b,
                     (void*) &charges_b,

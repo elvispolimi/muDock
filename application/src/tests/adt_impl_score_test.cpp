@@ -9,7 +9,7 @@
 #include <mudock/compute/adt_score.hpp>
 #include <mudock/compute/manager.hpp>
 #include <mudock/compute/pipeline.hpp>
-#include <mudock/compute/scratchpad.hpp>
+#include <mudock/data_formats/data_store.hpp>
 #include <mudock/format/reader.hpp>
 #include <mudock/knobs.hpp>
 #include <mudock/log.hpp>

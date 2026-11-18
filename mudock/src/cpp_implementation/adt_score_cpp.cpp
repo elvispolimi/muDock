@@ -29,9 +29,9 @@ namespace mudock {
     void calc_energy(const int batch_atoms,
                      const int batch_ligands,
                      const int scores_per_ligand,
-                     const fp_type *__restrict__ x_scratch_b,
-                     const fp_type *__restrict__ y_scratch_b,
-                     const fp_type *__restrict__ z_scratch_b,
+                     const fp_type *__restrict__ x_data_b,
+                     const fp_type *__restrict__ y_data_b,
+                     const fp_type *__restrict__ z_data_b,
                      const fp_type *__restrict__ vols_b,
                      const fp_type *__restrict__ solpars_b,
                      const fp_type *__restrict__ charges_b,
@@ -58,9 +58,9 @@ namespace mudock {
       const int num_nonbonds = num_nonbonds_b[ligand_index + 1] - num_nonbonds_b[ligand_index];
       const int num_rotamers = num_rotamers_b[ligand_index];
 
-      const fp_type *__restrict__ scratch_x = x_scratch_b + atom_stride * scores_per_ligand;
-      const fp_type *__restrict__ scratch_y = y_scratch_b + atom_stride * scores_per_ligand;
-      const fp_type *__restrict__ scratch_z = z_scratch_b + atom_stride * scores_per_ligand;
+      const fp_type *__restrict__  data_x = x_data_b + atom_stride * scores_per_ligand;
+      const fp_type *__restrict__  data_y = y_data_b + atom_stride * scores_per_ligand;
+      const fp_type *__restrict__  data_z = z_data_b + atom_stride * scores_per_ligand;
       const fp_type *__restrict__ vol_l     = vols_b + atom_stride;
       const fp_type *__restrict__ solpar_l  = solpars_b + atom_stride;
       const fp_type *__restrict__ charge_l  = charges_b + atom_stride;
@@ -73,9 +73,9 @@ namespace mudock {
 
       fp_type *__restrict__ scores_l = scores_b + ligand_index * scores_per_ligand;
       for (int scores_index = 0; scores_index < scores_per_ligand; ++scores_index) {
-        const fp_type *__restrict__ scratch_x_l = scratch_x + scores_index * batch_atoms;
-        const fp_type *__restrict__ scratch_y_l = scratch_y + scores_index * batch_atoms;
-        const fp_type *__restrict__ scratch_z_l = scratch_z + scores_index * batch_atoms;
+        const fp_type *__restrict__  data_x_l =  data_x + scores_index * batch_atoms;
+        const fp_type *__restrict__  data_y_l =  data_y + scores_index * batch_atoms;
+        const fp_type *__restrict__  data_z_l =  data_z + scores_index * batch_atoms;
 
         fp_type elect_total_trilinear = 0;
         fp_type emap_total_trilinear  = 0;
@@ -85,7 +85,7 @@ namespace mudock {
 
 #pragma omp simd
         for (int index = 0; index < num_atoms; ++index) {
-          fp_type coord[3]{scratch_x_l[index], scratch_y_l[index], scratch_z_l[index]};
+          fp_type coord[3]{ data_x_l[index],  data_y_l[index],  data_z_l[index]};
 
           if (coord[0] <= minimum[0] || coord[0] >= maximum[0] || coord[1] <= minimum[1] ||
               coord[1] >= maximum[1] || coord[2] <= minimum[2] || coord[2] >= maximum[2]) {
@@ -151,9 +151,9 @@ namespace mudock {
             const int &a1 = nonbond_a1_l[i];
             const int &a2 = nonbond_a2_l[i];
 
-            const auto diff_x                = scratch_x_l[a1] - scratch_x_l[a2];
-            const auto diff_y                = scratch_y_l[a1] - scratch_y_l[a2];
-            const auto diff_z                = scratch_z_l[a1] - scratch_z_l[a2];
+            const auto diff_x                =  data_x_l[a1] -  data_x_l[a2];
+            const auto diff_y                =  data_y_l[a1] -  data_y_l[a2];
+            const auto diff_z                =  data_z_l[a1] -  data_z_l[a2];
             const fp_type distance_two       = diff_x * diff_x + diff_y * diff_y + diff_z * diff_z;
             const fp_type distance_two_clamp = std::max(distance_two, RMIN_ELEC_SQUARE);
             const fp_type distance           = std::sqrt(distance_two_clamp);
@@ -213,9 +213,9 @@ namespace mudock {
                                       batch_atoms,
                                       batch_ligands,
                                       scores_per_ligand,
-                                      x_scratch_b,
-                                      y_scratch_b,
-                                      z_scratch_b,
+                                      x_data_b,
+                                      y_data_b,
+                                      z_data_b,
                                       vols_b,
                                       solpars_b,
                                       charges_b,

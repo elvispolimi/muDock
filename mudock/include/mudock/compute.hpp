@@ -17,7 +17,7 @@
 #include <mudock/compute/reorder_buffer.hpp>
 #include <mudock/compute/safe_stack.hpp>
 #include <mudock/compute/scoring.hpp>
-#include <mudock/compute/scratchpad.hpp>
+#include <mudock/data_formats/data_store.hpp>
 #include <mudock/compute/stage.hpp>
 #include <mudock/compute/threadpool.hpp>
 #include <mudock/compute/transform.hpp>

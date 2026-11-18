@@ -14,9 +14,9 @@ namespace mudock {
                         const fp_type* __restrict__ x_coords_b,
                         const fp_type* __restrict__ y_coords_b,
                         const fp_type* __restrict__ z_coords_b,
-                        fp_type* __restrict__ x_scratch_b,
-                        fp_type* __restrict__ y_scratch_b,
-                        fp_type* __restrict__ z_scratch_b,
+                        fp_type* __restrict__ x_data_b,
+                        fp_type* __restrict__ y_data_b,
+                        fp_type* __restrict__ z_data_b,
                         const int* __restrict__ ligand_fragments_b,
                         const int* __restrict__ ligand_fragments_start_b,
                         const int* __restrict__ frag_indices_start_b,
@@ -35,25 +35,25 @@ namespace mudock {
       const int* frag_start_indices = frag_start_indices_b + frag_indices_start_b[ligand_index];
       const int* frag_stop_indices  = frag_stop_indices_b + frag_indices_start_b[ligand_index];
 
-      fp_type* __restrict__ x_scratch = x_scratch_b + ligand_index * batch_atoms * chromsomes_per_ligand;
-      fp_type* __restrict__ y_scratch = y_scratch_b + ligand_index * batch_atoms * chromsomes_per_ligand;
-      fp_type* __restrict__ z_scratch = z_scratch_b + ligand_index * batch_atoms * chromsomes_per_ligand;
+      fp_type* __restrict__ x_data = x_data_b + ligand_index * batch_atoms * chromsomes_per_ligand;
+      fp_type* __restrict__ y_data = y_data_b + ligand_index * batch_atoms * chromsomes_per_ligand;
+      fp_type* __restrict__ z_data = z_data_b + ligand_index * batch_atoms * chromsomes_per_ligand;
       for (int element_index = 0; element_index < chromsomes_per_ligand; ++element_index) {
-        fp_type* __restrict__ x_scratch_chromosome = x_scratch + element_index * batch_atoms;
-        fp_type* __restrict__ y_scratch_chromosome = y_scratch + element_index * batch_atoms;
-        fp_type* __restrict__ z_scratch_chromosome = z_scratch + element_index * batch_atoms;
+        fp_type* __restrict__ x_data_chromosome = x_data + element_index * batch_atoms;
+        fp_type* __restrict__ y_data_chromosome = y_data + element_index * batch_atoms;
+        fp_type* __restrict__ z_data_chromosome = z_data + element_index * batch_atoms;
 
-        std::copy(x_coords, x_coords + num_atoms, x_scratch_chromosome);
-        std::copy(y_coords, y_coords + num_atoms, y_scratch_chromosome);
-        std::copy(z_coords, z_coords + num_atoms, z_scratch_chromosome);
+        std::copy(x_coords, x_coords + num_atoms, x_data_chromosome);
+        std::copy(y_coords, y_coords + num_atoms, y_data_chromosome);
+        std::copy(z_coords, z_coords + num_atoms, z_data_chromosome);
 
         // TODO try with loop perforation
         const chromosome& chrom = chromosomes[element_index];
 
         // FIXME with different vectorization type
-        apply<cpu_vectorization::XSIMD>(x_scratch_chromosome,
-                                        y_scratch_chromosome,
-                                        z_scratch_chromosome,
+        apply<cpu_vectorization::XSIMD>(x_data_chromosome,
+                                        y_data_chromosome,
+                                        z_data_chromosome,
                                         chrom,
                                         num_atoms,
                                         num_rotamers,
@@ -77,9 +77,9 @@ namespace mudock {
                                        x_coords_b,
                                        y_coords_b,
                                        z_coords_b,
-                                       x_scratch_b,
-                                       y_scratch_b,
-                                       z_scratch_b,
+                                       x_data_b,
+                                       y_data_b,
+                                       z_data_b,
                                        ligand_fragments_b,
                                        ligand_fragments_start_b,
                                        frag_indices_start_b,

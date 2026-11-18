@@ -42,9 +42,9 @@ namespace mudock {
     void operator()(sycl::nd_item<3> it,
                     const int atom_stride,
                     const int scores_per_ligand,
-                    const fp_type* scratch_x,
-                    const fp_type* scratch_y,
-                    const fp_type* scratch_z,
+                    const fp_type*  data_x,
+                    const fp_type*  data_y,
+                    const fp_type*  data_z,
                     const fp_type* vol_b,
                     const fp_type* solpar_b,
                     const fp_type* charge_b,
@@ -84,9 +84,9 @@ namespace mudock {
       const int num_rotamers = num_rotamers_b[ligand_id];
       const int stride       = ligand_id * atom_stride;
 
-      const fp_type* l_scratch_x = scratch_x + stride * scores_per_ligand;
-      const fp_type* l_scratch_y = scratch_y + stride * scores_per_ligand;
-      const fp_type* l_scratch_z = scratch_z + stride * scores_per_ligand;
+      const fp_type* l_data_x =  data_x + stride * scores_per_ligand;
+      const fp_type* l_data_y =  data_y + stride * scores_per_ligand;
+      const fp_type* l_data_z =  data_z + stride * scores_per_ligand;
       const fp_type* l_vol       = vol_b + stride;
       const fp_type* l_solpar    = solpar_b + stride;
       const fp_type* l_charge    = charge_b + stride;
@@ -102,9 +102,9 @@ namespace mudock {
 
       for (int scores_index = 0; scores_index < scores_per_ligand; ++scores_index) {
         // Copy original coordinates
-        const fp_type* ligand_x = l_scratch_x + scores_index * atom_stride;
-        const fp_type* ligand_y = l_scratch_y + scores_index * atom_stride;
-        const fp_type* ligand_z = l_scratch_z + scores_index * atom_stride;
+        const fp_type* ligand_x = l_data_x + scores_index * atom_stride;
+        const fp_type* ligand_y = l_data_y + scores_index * atom_stride;
+        const fp_type* ligand_z = l_data_z + scores_index * atom_stride;
 
         // Calculate energy
         fp_type elect_total_trilinear = 0;
@@ -267,9 +267,9 @@ namespace mudock {
                                                    MUDOCK_SYCL_WG_SIZE,
                                                    batch_atoms,
                                                    scores_per_ligand,
-                                                   x_scratch_b,
-                                                   y_scratch_b,
-                                                   z_scratch_b,
+                                                   x_data_b,
+                                                   y_data_b,
+                                                   z_data_b,
                                                    vols_b,
                                                    solpars_b,
                                                    charges_b,

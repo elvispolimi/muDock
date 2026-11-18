@@ -219,7 +219,7 @@ namespace mudock {
     return adt_protein;
   }
 
-  struct voxel_scratchpad {
+  struct voxel_data_store {
     fp_type hbondmin{999999};
     fp_type hbondmax{-999999};
     fp_type hbondflag{false};
@@ -279,7 +279,7 @@ namespace mudock {
     for (std::size_t index_z = 0; index_z < size_z; ++index_z) {
       for (std::size_t index_y = 0; index_y < size_y; ++index_y) {
         for (std::size_t index_x = 0; index_x < size_x; ++index_x) {
-          std::array<voxel_scratchpad, num_autodock_ff_grids()> voxel_scratchs;
+          std::array<voxel_data_store, num_autodock_ff_grids()> voxel_datas;
           // get the voxel point
           const auto voxel_point = get_eletrostatic().to_coord(static_cast<fp_type>(index_x),
                                                                static_cast<fp_type>(index_y),
@@ -414,7 +414,7 @@ namespace mudock {
                                                   num_radius_tick_elect - 1);
 
                 for (int grid_index = 0; grid_index < num_autodock_ff_grids(); ++grid_index) {
-                  auto& voxel_scratch                = voxel_scratchs[grid_index];
+                  auto& voxel_data                = voxel_datas[grid_index];
                   const autodock_grid_type grid_type = static_cast<autodock_grid_type>(grid_index);
                   const auto& ligand_desc            = get_description(autodock_ff_from_grid(grid_type));
 
@@ -427,31 +427,31 @@ namespace mudock {
                     rsph         = std::clamp(rsph, static_cast<fp_type>(0), static_cast<fp_type>(1));
                     if ((ligand_desc.hbond == 3 || ligand_desc.hbond == 5)         /*AS or A2*/
                         && (protein_desc.hbond == 1 || protein_desc.hbond == 2)) { /*DS or D1*/
-                      voxel_scratch.energy +=
+                      voxel_data.energy +=
                           vdw_hb_value * Hramp * (racc + (static_cast<fp_type>(1) - racc) * rsph);
                     } else if ((ligand_desc.hbond == 4)                                   /*A1*/
                                && (protein_desc.hbond == 1 || protein_desc.hbond == 2)) { /*DS,D1*/
-                      voxel_scratch.hbondmin =
-                          std::min(voxel_scratch.hbondmin,
+                      voxel_data.hbondmin =
+                          std::min(voxel_data.hbondmin,
                                    vdw_hb_value * (racc + (static_cast<fp_type>(1) - racc) * rsph));
-                      voxel_scratch.hbondmax =
-                          std::max(voxel_scratch.hbondmax,
+                      voxel_data.hbondmax =
+                          std::max(voxel_data.hbondmax,
                                    vdw_hb_value * (racc + (static_cast<fp_type>(1) - racc) * rsph));
-                      voxel_scratch.hbondflag = true;
+                      voxel_data.hbondflag = true;
                     } else if ((ligand_desc.hbond == 1 || ligand_desc.hbond == 2) &&
                                (protein_desc.hbond > 2)) { /*DS,D1 vs AS,A1,A2*/
                       const fp_type temp_hbond_enrg =
                           vdw_hb_value * (rdon + (static_cast<fp_type>(1) - rdon) * rsph);
-                      voxel_scratch.hbondmin  = std::min(voxel_scratch.hbondmin, temp_hbond_enrg);
-                      voxel_scratch.hbondmax  = std::max(voxel_scratch.hbondmax, temp_hbond_enrg);
-                      voxel_scratch.hbondflag = true;
+                      voxel_data.hbondmin  = std::min(voxel_data.hbondmin, temp_hbond_enrg);
+                      voxel_data.hbondmax  = std::max(voxel_data.hbondmax, temp_hbond_enrg);
+                      voxel_data.hbondflag = true;
                     } else { /*end of is_hbonder*/
-                      voxel_scratch.energy += vdw_hb_value;
+                      voxel_data.energy += vdw_hb_value;
                     }
                   } else {
-                    voxel_scratch.energy += vdw_hb_value;
+                    voxel_data.energy += vdw_hb_value;
                   } /* end hbonder tests */
-                  voxel_scratch.energy +=
+                  voxel_data.energy +=
                       ligand_desc.solpar * protein_desc.vol * desolvation_energies[indx_r] +
                       (protein_desc.solpar + solpar_q * std::fabs(charge[i])) * ligand_desc.vol *
                           desolvation_energies[indx_r];
@@ -460,8 +460,8 @@ namespace mudock {
             }
 
             for (int grid_index = 0; grid_index < num_autodock_ff_grids(); ++grid_index) {
-              auto& voxel_scratch = voxel_scratchs[grid_index];
-              auto energy         = voxel_scratch.energy + voxel_scratch.hbondmin + voxel_scratch.hbondmax;
+              auto& voxel_data = voxel_datas[grid_index];
+              auto energy         = voxel_data.energy + voxel_data.hbondmin + voxel_data.hbondmax;
 
               if (std::fabs(energy) < precision)
                 energy = 0;

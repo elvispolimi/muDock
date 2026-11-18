@@ -4,6 +4,7 @@
 #include <condition_variable>
 #include <cstdint>
 #include <deque>
+#include <functional>
 #include <memory>
 #include <mudock/log.hpp>
 #include <mutex>
@@ -23,6 +24,10 @@ namespace mudock {
     // tto signal when to exit
     bool signal_terminate;
 
+    // Optional callback invoked after global_counter is incremented. It is
+    // copied under queue_mutex and called after the mutex is released.
+    std::function<void(std::size_t)> enqueue_callback;
+
     // these variables avoids busy waiting and actually prevent the thread to consume CPU cycles
     mutable std::mutex queue_mutex;
     std::condition_variable inwork_available;
@@ -41,6 +46,11 @@ namespace mudock {
     inline void initialize(const std::size_t max_queue_size) {
       std::unique_lock<std::mutex> lock(queue_mutex);
       max_buffer_size = max_queue_size;
+    }
+
+    inline void set_enqueue_callback(std::function<void(std::size_t)> callback) {
+      std::unique_lock<std::mutex> lock(queue_mutex);
+      enqueue_callback = std::move(callback);
     }
 
     inline std::size_t size(void) const {

@@ -21,9 +21,9 @@ namespace mudock {
     ELEMENTS,
     CHROMOSOMES,
     SCORES,
-    X_SCRATCH,
-    Y_SCRATCH,
-    Z_SCRATCH,
+    X_WORK,
+    Y_WORK,
+    Z_WORK,
     NUM_ATOMS,
     NUM_ROTAMERS,
     PROT_MIN,
@@ -77,16 +77,16 @@ namespace mudock {
     using type = buffer_type_traits_impl<buffer_data_type::SCORES, fp_type>::type;
   };
   template<>
-  struct buffer_type_traits<buffer_data_type::X_SCRATCH> {
-    using type = buffer_type_traits_impl<buffer_data_type::X_SCRATCH, fp_type>::type;
+  struct buffer_type_traits<buffer_data_type::X_WORK> {
+    using type = buffer_type_traits_impl<buffer_data_type::X_WORK, fp_type>::type;
   };
   template<>
-  struct buffer_type_traits<buffer_data_type::Y_SCRATCH> {
-    using type = buffer_type_traits_impl<buffer_data_type::Y_SCRATCH, fp_type>::type;
+  struct buffer_type_traits<buffer_data_type::Y_WORK> {
+    using type = buffer_type_traits_impl<buffer_data_type::Y_WORK, fp_type>::type;
   };
   template<>
-  struct buffer_type_traits<buffer_data_type::Z_SCRATCH> {
-    using type = buffer_type_traits_impl<buffer_data_type::Z_SCRATCH, fp_type>::type;
+  struct buffer_type_traits<buffer_data_type::Z_WORK> {
+    using type = buffer_type_traits_impl<buffer_data_type::Z_WORK, fp_type>::type;
   };
   template<>
   struct buffer_type_traits<buffer_data_type::NUM_ATOMS> {
@@ -136,7 +136,7 @@ namespace mudock {
   public:
     buffer_impl(std::shared_ptr<queue_t> _queue, const int dim = 0): valid(false) {
       q = _queue;
-      if (q->obj_required()) {
+      if (q->uses_device_memory()) {
         obj = std::make_unique<object<T>>(_queue);
       }
       if (!dim)

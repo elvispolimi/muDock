@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <mudock/compute/devices_memory.hpp>
 #include <mudock/compute/reorder_buffer.hpp>
 #include <mudock/hip_implementation/hip_utils.hpp>
@@ -44,6 +45,8 @@ namespace mudock {
   struct queue_hip::impl {
     hipStream_t stream;
     int device_id;
+    std::size_t allocated_bytes{0};
+    std::size_t peak_allocated_bytes{0};
     impl(const int id) {
       device_id = id;
       MUDOCK_CHECK(hipSetDevice(static_cast<int>(id)));
@@ -52,7 +55,8 @@ namespace mudock {
     ~impl() noexcept(false) { MUDOCK_CHECK(hipStreamDestroy(stream)); };
   };
 
-  queue_hip::queue_hip(const int _id, const device_type dev_type)
+  queue_hip::queue_hip(const int _id,
+                       const device_type dev_type)
       : queue(_id, dev_type), impl_(std::make_unique<impl>(_id)) {
     assert(dev_type == device_type::GPU && "HIP supports only GPUs devices");
   };
@@ -99,10 +103,14 @@ namespace mudock {
 
   void queue_hip::alloc(void** ptr, const size_t bytes) {
     MUDOCK_CHECK(hipMallocAsync(ptr, bytes, impl_->stream));
+    impl_->allocated_bytes += bytes;
+    impl_->peak_allocated_bytes = std::max(impl_->peak_allocated_bytes, impl_->allocated_bytes);
   };
-  void queue_hip::free(void** ptr) {
+  void queue_hip::free(void** ptr, const size_t bytes) {
     if (*ptr != nullptr) {
       MUDOCK_CHECK(hipFreeAsync(*ptr, impl_->stream));
+      assert(impl_->allocated_bytes >= bytes);
+      impl_->allocated_bytes -= bytes;
       *ptr = nullptr;
     }
   };
@@ -123,5 +131,8 @@ namespace mudock {
   };
 
   void queue_hip::synchronize() { MUDOCK_CHECK(hipStreamSynchronize(impl_->stream)); };
+
+  // std::size_t queue_hip::allocated_bytes() const { return impl_->allocated_bytes; }
+  // std::size_t queue_hip::peak_allocated_bytes() const { return impl_->peak_allocated_bytes; }
 
 } // namespace mudock

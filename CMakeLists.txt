@@ -517,7 +517,6 @@ if(NOT MUDOCK_ENABLE_HIP AND (("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
     global_c_cxx_flags
     -Wall
     -Wextra
-    -Wshadow
     -Wdouble-promotion
     -Wconversion
     )

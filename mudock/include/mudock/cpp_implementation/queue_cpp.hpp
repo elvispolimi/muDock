@@ -39,7 +39,7 @@ namespace mudock {
     void copy_host2device(const void*, void*, const size_t) {}
     void copy_device2host(const void*, void*, const size_t) {}
     void copy_device2device(const void*, void*, const size_t) {}
-    bool obj_required() { return false; }
+    bool uses_device_memory() override { return false; }
     bool honors_stage_bucket_policy() const override { return false; }
 
     void operator()() {

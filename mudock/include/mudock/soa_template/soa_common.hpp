@@ -1,0 +1,1057 @@
+#pragma once
+
+/*
+ * Definitions of SoA common parameters for SoA class generators
+ */
+
+#include <array>
+#include <cstdint>
+#include <cassert>
+#include <cstring>
+#include <memory>
+#include <ostream>
+#include <sstream>
+#include <span>
+#include <source_location>
+#include <tuple>
+#include <type_traits>
+#include <utility>
+
+#include <boost/preprocessor.hpp>
+
+// CUDA attributes
+#if defined(__CUDACC__) || defined(__HIPCC__)
+#define SOA_HOST_ONLY __host__
+#define SOA_DEVICE_ONLY __device__
+#define SOA_HOST_DEVICE __host__ __device__
+#define SOA_INLINE __forceinline__
+#else
+#define SOA_HOST_ONLY
+#define SOA_DEVICE_ONLY
+#define SOA_HOST_DEVICE
+#define SOA_INLINE inline __attribute__((always_inline))
+#endif
+
+// Exception throwing (or willful crash in kernels)
+#if defined(__CUDACC__) && defined(__CUDA_ARCH__)
+
+#define SOA_THROW_OUT_OF_RANGE(A, I, R)                                     \
+  {                                                                         \
+    if constexpr (decltype(I)::mode == mudock::soa::RangeChecking::extended) { \
+      printf("%s: index %d out of range %d at file %s line %d\n",           \
+             (A),                                                           \
+             (I.value_),                                                    \
+             (R),                                                           \
+             (I.location_.file_name()),                                     \
+             (I.location_.line()));                                         \
+    } else {                                                                \
+      printf("%s: index %d out of range %d\n", (A), (I.value_), (R));       \
+    }                                                                       \
+    __trap();                                                               \
+  }
+
+#elif defined(__HIPCC__) && defined(__HIP_DEVICE_COMPILE__)
+
+#define SOA_THROW_OUT_OF_RANGE(A, I, R)                                     \
+  {                                                                         \
+    if constexpr (decltype(I)::mode == mudock::soa::RangeChecking::extended) { \
+      printf("%s: index %d out of range %d at file %s line %d\n",           \
+             (A),                                                           \
+             (I.value_),                                                    \
+             (R),                                                           \
+             (I.location_.file_name()),                                     \
+             (I.location_.line()));                                         \
+    } else {                                                                \
+      printf("%s: index %d out of range %d\n", (A), (I.value_), (R));       \
+    }                                                                       \
+    abort();                                                                \
+  }
+
+#else
+#define SOA_THROW_OUT_OF_RANGE(A, I, R)                                       \
+  {                                                                           \
+    mudock::soa::detail::throwOutOfRangeError<decltype(I)::mode>((A), (I), (R)); \
+  }
+#endif
+
+/* declare "scalars" (one value shared across the whole SoA) and "columns" (one value per element) */
+#define _VALUE_TYPE_SCALAR 0
+#define _VALUE_TYPE_COLUMN 1
+#define _VALUE_TYPE_EIGEN_COLUMN 2
+#define _VALUE_TYPE_METHOD 3
+#define _VALUE_TYPE_CONST_METHOD 4
+#define _VALUE_TYPE_BLOCK 5
+#define _VALUE_TYPE_VIEW_METHOD 6
+#define _VALUE_TYPE_CONST_VIEW_METHOD 7
+
+/* declare the value of last valid column */
+#define _VALUE_LAST_COLUMN_TYPE _VALUE_TYPE_EIGEN_COLUMN
+
+/* declare a macro useful for passing a valid but not used value*/
+#define _VALUE_TYPE_UNUSED BOOST_PP_LIMIT_MAG
+
+namespace mudock::soa {
+
+  // size_type for indices. Compatible with ROOT Int_t, but limited to 2G entries
+  using size_type = int32_t;
+  // byte_size_type for byte counts. Not creating an artificial limit (and not ROOT serialized).
+  using byte_size_type = std::size_t;
+
+  enum class SoAColumnType {
+    scalar = _VALUE_TYPE_SCALAR,
+    column = _VALUE_TYPE_COLUMN,
+    eigen = _VALUE_TYPE_EIGEN_COLUMN
+  };
+
+  namespace RestrictQualify {
+    constexpr bool enabled = true;
+    constexpr bool disabled = false;
+    constexpr bool Default = enabled;
+  }  // namespace RestrictQualify
+
+  namespace RangeChecking {
+
+    enum class Mode { Disabled, Enabled, Extended };
+
+    constexpr Mode disabled = Mode::Disabled;
+    constexpr Mode enabled = Mode::Enabled;
+    constexpr Mode extended = Mode::Extended;
+
+    constexpr Mode Default = enabled;
+
+  }  // namespace RangeChecking
+
+  template <typename T, bool RESTRICT_QUALIFY>
+  struct add_restrict {};
+
+  template <typename T>
+  struct add_restrict<T, RestrictQualify::enabled> {
+    using Value = T;
+    using Pointer = T* __restrict__;
+    using Reference = T& __restrict__;
+    using ConstValue = const T;
+    using PointerToConst = const T* __restrict__;
+    using ReferenceToConst = const T& __restrict__;
+  };
+
+  template <typename T>
+  struct add_restrict<T, RestrictQualify::disabled> {
+    using Value = T;
+    using Pointer = T*;
+    using Reference = T&;
+    using ConstValue = const T;
+    using PointerToConst = const T*;
+    using ReferenceToConst = const T&;
+  };
+
+  // Matryoshka template to avoid commas inside macros
+  template <std::size_t ALIGNMENT>
+  struct LayoutParameters {
+    template <bool ALIGNMENT_ENFORCEMENT>
+    struct AlignmentEnforcement {
+      template <template <std::size_t, bool> typename T>
+      using Layout = T<ALIGNMENT, ALIGNMENT_ENFORCEMENT>;
+    };
+  };
+
+  // Templated parameter sets for scalars, columns and Eigen columns
+  template <SoAColumnType COLUMN_TYPE, typename T>
+  struct SoAParametersImpl {
+    static constexpr SoAColumnType columnType = COLUMN_TYPE;
+
+    using ValueType = std::remove_cvref_t<T>;
+    using ScalarType = T;
+
+    using ConstType = SoAParametersImpl<columnType, const ValueType>;
+    friend ConstType;
+
+    // default constructor
+    SoAParametersImpl() = default;
+
+    // constructor from address and size
+    SOA_HOST_DEVICE SOA_INLINE constexpr SoAParametersImpl(ScalarType* addr) : addr_(addr) {}
+
+    SOA_HOST_DEVICE SOA_INLINE constexpr SoAParametersImpl(SoAParametersImpl<COLUMN_TYPE, ValueType> const& params)
+        : addr_(const_cast<ScalarType*>(params.addr_)) {}
+
+    SOA_HOST_DEVICE SOA_INLINE ScalarType* data() const { return addr_; }
+
+  public:
+    // scalar or column
+    ScalarType* addr_ = nullptr;
+  };
+
+  // Templated parameter specialisation for Eigen columns
+  template <typename T>
+  struct SoAParametersImpl<SoAColumnType::eigen, T> {
+    static constexpr SoAColumnType columnType = SoAColumnType::eigen;
+
+    using ValueType = std::remove_cvref_t<T>;
+    using ScalarType = typename T::Scalar;
+
+    using ConstType = SoAParametersImpl<columnType, const ValueType>;
+    friend ConstType;
+
+    // default constructor
+    SoAParametersImpl() = default;
+
+    // constructor from individual address, stride and size
+    SOA_HOST_DEVICE SOA_INLINE constexpr SoAParametersImpl(ScalarType* addr, byte_size_type stride)
+        : addr_(addr), stride_(stride) {}
+    SOA_HOST_DEVICE SOA_INLINE constexpr SoAParametersImpl(
+        SoAParametersImpl<SoAColumnType::eigen, ValueType> const& params)
+        : addr_(const_cast<ScalarType*>(params.addr_)), stride_(params.stride_) {}
+
+    SOA_HOST_DEVICE SOA_INLINE ScalarType* data() const { return addr_; }
+    SOA_HOST_DEVICE SOA_INLINE byte_size_type stride() const { return stride_; }
+
+  public:
+    // address, stride and size
+    ScalarType* addr_ = nullptr;
+    byte_size_type stride_ = 0;
+  };
+
+  template <SoAColumnType COLUMN_TYPE, typename T>
+    requires std::same_as<std::remove_const_t<T>, T>
+  using SoAConstParametersImpl = SoAParametersImpl<COLUMN_TYPE, const T>;
+
+  // Matryoshka template to avoid commas inside macros
+  template <SoAColumnType COLUMN_TYPE>
+  struct SoAConstParameters_ColumnType {
+    template <typename T>
+    using DataType = SoAConstParametersImpl<COLUMN_TYPE, T>;
+  };
+
+  // Matryoshka template to avoid commas inside macros
+  template <SoAColumnType COLUMN_TYPE>
+  struct SoAParameters_ColumnType {
+    template <typename T>
+    using DataType = SoAParametersImpl<COLUMN_TYPE, T>;
+  };
+
+  template <typename COLUMN>
+  struct Tuple {
+    using Type = std::tuple<COLUMN, size_type>;
+  };
+
+  template <typename COLUMN>
+  struct ConstTuple {
+    using Type = std::tuple<typename COLUMN::ConstType, size_type>;
+  };
+
+  // Helper converting a const parameter set to a non-const parameter set, to be used only in the constructor of non-const "element"
+  namespace {
+    template <typename T>
+    constexpr inline std::remove_const_t<T>* non_const_ptr(T* p) {
+      return const_cast<std::remove_const_t<T>*>(p);
+    }
+  }  // namespace
+
+  template <SoAColumnType COLUMN_TYPE, typename T>
+  SOA_HOST_DEVICE SOA_INLINE constexpr SoAParametersImpl<COLUMN_TYPE, T> const_cast_SoAParametersImpl(
+      SoAConstParametersImpl<COLUMN_TYPE, T> const& o) {
+    return SoAParametersImpl<COLUMN_TYPE, T>{non_const_ptr(o.addr_)};
+  }
+
+  template <typename T>
+  SOA_HOST_DEVICE SOA_INLINE constexpr SoAParametersImpl<SoAColumnType::eigen, T> const_cast_SoAParametersImpl(
+      SoAConstParametersImpl<SoAColumnType::eigen, T> const& o) {
+    return SoAParametersImpl<SoAColumnType::eigen, T>{non_const_ptr(o.addr_), o.stride_};
+  }
+
+  // Helper template managing the value at index idx within a column.
+  // The optional compile time alignment parameter enables informing the
+  // compiler of alignment (enforced by caller).
+  template <SoAColumnType COLUMN_TYPE,
+            typename T,
+            byte_size_type ALIGNMENT,
+            bool RESTRICT_QUALIFY = RestrictQualify::disabled>
+  class SoAValue {
+    // Eigen is implemented in a specialization
+    static_assert(COLUMN_TYPE != SoAColumnType::eigen);
+
+  public:
+    using Restr = add_restrict<T, RESTRICT_QUALIFY>;
+    using Val = typename Restr::Value;
+    using Ptr = typename Restr::Pointer;
+    using Ref = typename Restr::Reference;
+    using PtrToConst = typename Restr::PointerToConst;
+    using RefToConst = typename Restr::ReferenceToConst;
+
+    SOA_HOST_DEVICE SOA_INLINE SoAValue(size_type i, T* col) : idx_(i), col_(col) {}
+
+    SOA_HOST_DEVICE SOA_INLINE SoAValue(size_type i, SoAParametersImpl<COLUMN_TYPE, T> params)
+        : idx_(i), col_(params.addr_) {}
+
+    SOA_HOST_DEVICE SOA_INLINE Ref operator()() {
+      // Ptr type will add the restrict qualifyer if needed
+      Ptr col = col_;
+      return col[idx_];
+    }
+
+    SOA_HOST_DEVICE SOA_INLINE RefToConst operator()() const {
+      // PtrToConst type will add the restrict qualifyer if needed
+      PtrToConst col = col_;
+      return col[idx_];
+    }
+
+    SOA_HOST_DEVICE SOA_INLINE Ptr operator&() { return &col_[idx_]; }
+
+    SOA_HOST_DEVICE SOA_INLINE PtrToConst operator&() const { return &col_[idx_]; }
+
+    /* This was an attempt to implement the syntax
+     *
+     *     old_value = view.x
+     *     view.x = new_value
+     *
+     * instead of
+     *
+     *     old_value = view.x()
+     *     view.x() = new_value
+     *
+     *  but it was found to break in some corner cases.
+     *  We keep them commented out for the time being.
+
+    SOA_HOST_DEVICE SOA_INLINE operator T&() { return col_[idx_]; }
+
+    template <typename T2>
+    SOA_HOST_DEVICE SOA_INLINE Ref operator=(const T2& v) {
+      return col_[idx_] = v;
+    }
+    */
+
+    using valueType = Val;
+
+    static constexpr auto valueSize = sizeof(T);
+
+  private:
+    size_type idx_;
+    T* col_;
+  };
+
+  // Eigen/Core should be pre-included before the SoA headers to enable support for Eigen columns.
+#ifdef EIGEN_WORLD_VERSION
+  // Helper template managing an Eigen-type value at index idx within a column.
+  template <class C, byte_size_type ALIGNMENT, bool RESTRICT_QUALIFY>
+  class SoAValue<SoAColumnType::eigen, C, ALIGNMENT, RESTRICT_QUALIFY> {
+  public:
+    using Type = C;
+    using MapType = Eigen::Map<C, 0, Eigen::InnerStride<Eigen::Dynamic>>;
+    using CMapType = const Eigen::Map<const C, 0, Eigen::InnerStride<Eigen::Dynamic>>;
+    using Restr = add_restrict<typename C::Scalar, RESTRICT_QUALIFY>;
+    using Val = typename Restr::Value;
+    using Ptr = typename Restr::Pointer;
+    using Ref = typename Restr::Reference;
+    using PtrToConst = typename Restr::PointerToConst;
+    using RefToConst = typename Restr::ReferenceToConst;
+
+    SOA_HOST_DEVICE SOA_INLINE SoAValue(size_type i, typename C::Scalar* col, byte_size_type stride)
+        : val_(col + i, C::RowsAtCompileTime, C::ColsAtCompileTime, Eigen::InnerStride<Eigen::Dynamic>(stride)),
+          crCol_(col),
+          cVal_(crCol_ + i, C::RowsAtCompileTime, C::ColsAtCompileTime, Eigen::InnerStride<Eigen::Dynamic>(stride)),
+          stride_(stride) {}
+
+    SOA_HOST_DEVICE SOA_INLINE SoAValue(size_type i, SoAParametersImpl<SoAColumnType::eigen, C> params)
+        : val_(params.addr_ + i,
+               C::RowsAtCompileTime,
+               C::ColsAtCompileTime,
+               Eigen::InnerStride<Eigen::Dynamic>(params.stride_)),
+          crCol_(params.addr_),
+          cVal_(crCol_ + i,
+                C::RowsAtCompileTime,
+                C::ColsAtCompileTime,
+                Eigen::InnerStride<Eigen::Dynamic>(params.stride_)),
+          stride_(params.stride_) {}
+
+    SOA_HOST_DEVICE SOA_INLINE MapType& operator()() { return val_; }
+
+    SOA_HOST_DEVICE SOA_INLINE const CMapType& operator()() const { return cVal_; }
+
+    SOA_HOST_DEVICE SOA_INLINE operator C() { return val_; }
+
+    SOA_HOST_DEVICE SOA_INLINE operator const C() const { return cVal_; }
+
+    SOA_HOST_DEVICE SOA_INLINE C* operator&() { return &val_; }
+
+    SOA_HOST_DEVICE SOA_INLINE const C* operator&() const { return &cVal_; }
+
+    template <class C2>
+    SOA_HOST_DEVICE SOA_INLINE MapType& operator=(const C2& v) {
+      return val_ = v;
+    }
+
+    using ValueType = typename C::Scalar;
+    static constexpr auto valueSize = sizeof(typename C::Scalar);
+    SOA_HOST_DEVICE SOA_INLINE byte_size_type stride() const { return stride_; }
+
+  private:
+    MapType val_;
+    const Ptr crCol_;
+    CMapType cVal_;
+    byte_size_type stride_;
+  };
+#else
+  // Raise a compile-time error
+  template <class C, byte_size_type ALIGNMENT, bool RESTRICT_QUALIFY>
+  class SoAValue<SoAColumnType::eigen, C, ALIGNMENT, RESTRICT_QUALIFY> {
+    static_assert(!sizeof(C),
+                  "Eigen/Core should be pre-included before the SoA headers to enable support for Eigen columns.");
+  };
+#endif
+
+  // Matryoshka template to avoid commas inside macros
+  template <SoAColumnType COLUMN_TYPE>
+  struct SoAValue_ColumnType {
+    template <typename T>
+    struct DataType {
+      template <byte_size_type ALIGNMENT>
+      struct Alignment {
+        template <bool RESTRICT_QUALIFY>
+        using Value = SoAValue<COLUMN_TYPE, T, ALIGNMENT, RESTRICT_QUALIFY>;
+      };
+    };
+  };
+
+  // Helper template managing a const value at index idx within a column.
+  template <SoAColumnType COLUMN_TYPE,
+            typename T,
+            byte_size_type ALIGNMENT,
+            bool RESTRICT_QUALIFY = RestrictQualify::disabled>
+  class SoAConstValue {
+    // Eigen is implemented in a specialization
+    static_assert(COLUMN_TYPE != SoAColumnType::eigen);
+
+  public:
+    using Restr = add_restrict<T, RESTRICT_QUALIFY>;
+    using Val = typename Restr::Value;
+    using Ptr = typename Restr::Pointer;
+    using Ref = typename Restr::Reference;
+    using PtrToConst = typename Restr::PointerToConst;
+    using RefToConst = typename Restr::ReferenceToConst;
+    using Params = SoAParametersImpl<COLUMN_TYPE, T>;
+    using ConstParams = SoAConstParametersImpl<COLUMN_TYPE, T>;
+
+    SOA_HOST_DEVICE SOA_INLINE SoAConstValue(size_type i, const T* col) : idx_(i), col_(col) {}
+
+    SOA_HOST_DEVICE SOA_INLINE SoAConstValue(size_type i, SoAParametersImpl<COLUMN_TYPE, T> params)
+        : idx_(i), col_(params.addr_) {}
+
+    SOA_HOST_DEVICE SOA_INLINE SoAConstValue(size_type i, SoAConstParametersImpl<COLUMN_TYPE, T> params)
+        : idx_(i), col_(params.addr_) {}
+
+    SOA_HOST_DEVICE SOA_INLINE RefToConst operator()() const {
+      // Ptr type will add the restrict qualifyer if needed
+      PtrToConst col = col_;
+      return col[idx_];
+    }
+
+    SOA_HOST_DEVICE SOA_INLINE const T* operator&() const { return &col_[idx_]; }
+
+    /* This was an attempt to implement the syntax
+     *
+     *     old_value = view.x
+     *
+     * instead of
+     *
+     *     old_value = view.x()
+     *
+     *  but it was found to break in some corner cases.
+     *  We keep them commented out for the time being.
+
+    SOA_HOST_DEVICE SOA_INLINE operator T&() { return col_[idx_]; }
+    */
+
+    using valueType = T;
+    static constexpr auto valueSize = sizeof(T);
+
+  private:
+    size_type idx_;
+    const T* col_;
+  };
+
+  // Eigen/Core should be pre-included before the SoA headers to enable support for Eigen columns.
+#ifdef EIGEN_WORLD_VERSION
+  // Helper template managing a const Eigen-type value at index idx within a column.
+  template <class C, byte_size_type ALIGNMENT, bool RESTRICT_QUALIFY>
+  class SoAConstValue<SoAColumnType::eigen, C, ALIGNMENT, RESTRICT_QUALIFY> {
+  public:
+    using Type = C;
+    using CMapType = Eigen::Map<const C, 0, Eigen::InnerStride<Eigen::Dynamic>>;
+    using RefToConst = const CMapType&;
+    using ConstParams = SoAConstParametersImpl<SoAColumnType::eigen, C>;
+
+    SOA_HOST_DEVICE SOA_INLINE SoAConstValue(size_type i, typename C::Scalar* col, byte_size_type stride)
+        : crCol_(col),
+          cVal_(crCol_ + i, C::RowsAtCompileTime, C::ColsAtCompileTime, Eigen::InnerStride<Eigen::Dynamic>(stride)),
+          stride_(stride) {}
+
+    SOA_HOST_DEVICE SOA_INLINE SoAConstValue(size_type i, SoAConstParametersImpl<SoAColumnType::eigen, C> params)
+        : crCol_(params.addr_),
+          cVal_(crCol_ + i,
+                C::RowsAtCompileTime,
+                C::ColsAtCompileTime,
+                Eigen::InnerStride<Eigen::Dynamic>(params.stride_)),
+          stride_(params.stride_) {}
+
+    SOA_HOST_DEVICE SOA_INLINE const CMapType& operator()() const { return cVal_; }
+
+    SOA_HOST_DEVICE SOA_INLINE operator const C() const { return cVal_; }
+
+    SOA_HOST_DEVICE SOA_INLINE const C* operator&() const { return &cVal_; }
+
+    using ValueType = typename C::Scalar;
+    static constexpr auto valueSize = sizeof(typename C::Scalar);
+
+    SOA_HOST_DEVICE SOA_INLINE byte_size_type stride() const { return stride_; }
+
+  private:
+    const typename C::Scalar* __restrict__ crCol_;
+    CMapType cVal_;
+    byte_size_type stride_;
+  };
+#else
+  // Raise a compile-time error
+  template <class C, byte_size_type ALIGNMENT, bool RESTRICT_QUALIFY>
+  class SoAConstValue<SoAColumnType::eigen, C, ALIGNMENT, RESTRICT_QUALIFY> {
+    static_assert(!sizeof(C),
+                  "Eigen/Core should be pre-included before the SoA headers to enable support for Eigen columns.");
+  };
+#endif
+
+  // Matryoshka template to avoid commas inside macros
+  template <SoAColumnType COLUMN_TYPE>
+  struct SoAConstValue_ColumnType {
+    template <typename T>
+    struct DataType {
+      template <byte_size_type ALIGNMENT>
+      struct Alignment {
+        template <bool RESTRICT_QUALIFY>
+        using ConstValue = SoAConstValue<COLUMN_TYPE, T, ALIGNMENT, RESTRICT_QUALIFY>;
+      };
+    };
+  };
+
+  // Helper template to avoid commas inside macros
+#ifdef EIGEN_WORLD_VERSION
+  template <class C>
+  struct EigenConstMapMaker {
+    using Type = Eigen::Map<const C, Eigen::AlignmentType::Unaligned, Eigen::InnerStride<Eigen::Dynamic>>;
+
+    class DataHolder {
+    public:
+      DataHolder(const typename C::Scalar* data) : data_(data) {}
+
+      EigenConstMapMaker::Type withStride(byte_size_type stride) {
+        return EigenConstMapMaker::Type(
+            data_, C::RowsAtCompileTime, C::ColsAtCompileTime, Eigen::InnerStride<Eigen::Dynamic>(stride));
+      }
+
+    private:
+      const typename C::Scalar* const data_;
+    };
+
+    static DataHolder withData(const typename C::Scalar* data) { return DataHolder(data); }
+  };
+#else
+  template <class C>
+  struct EigenConstMapMaker {
+    // Eigen/Core should be pre-included before the SoA headers to enable support for Eigen columns.
+    static_assert(!sizeof(C),
+                  "Eigen/Core should be pre-included before the SoA headers to enable support for Eigen columns.");
+  };
+#endif
+
+  // Helper function to compute aligned size
+  // this is an integer division -> it rounds size to the next multiple of alignment
+  constexpr inline byte_size_type alignSize(byte_size_type size, byte_size_type alignment) {
+    assert(alignment > 0 && "Alignment for SoA must be > 0");
+    return ((size + alignment - 1) / alignment) * alignment;
+  }
+
+}  // namespace mudock::soa
+
+#define SOA_SCALAR(TYPE, NAME) (_VALUE_TYPE_SCALAR, TYPE, NAME, ~)
+#define SOA_COLUMN(TYPE, NAME) (_VALUE_TYPE_COLUMN, TYPE, NAME, ~)
+#define SOA_EIGEN_COLUMN(TYPE, NAME) (_VALUE_TYPE_EIGEN_COLUMN, TYPE, NAME, ~)
+#define SOA_ELEMENT_METHODS(...) (_VALUE_TYPE_METHOD, _, _, (__VA_ARGS__))
+#define SOA_CONST_ELEMENT_METHODS(...) (_VALUE_TYPE_CONST_METHOD, _, _, (__VA_ARGS__))
+#define SOA_BLOCK(NAME, LAYOUT_NAME) (_VALUE_TYPE_BLOCK, NAME, LAYOUT_NAME)
+#define SOA_VIEW_METHODS(...) (_VALUE_TYPE_VIEW_METHOD, _, _, (__VA_ARGS__))
+#define SOA_CONST_VIEW_METHODS(...) (_VALUE_TYPE_CONST_VIEW_METHOD, _, _, (__VA_ARGS__))
+
+/* Macro generating customized methods for the element */
+#define GENERATE_METHODS(R, DATA, FIELD)                                         \
+  BOOST_PP_IF(BOOST_PP_EQUAL(BOOST_PP_TUPLE_ELEM(0, FIELD), _VALUE_TYPE_METHOD), \
+              BOOST_PP_TUPLE_ELEM(3, FIELD),                                     \
+              BOOST_PP_EMPTY())
+
+/* Macro generating customized methods for the const element*/
+#define GENERATE_CONST_METHODS(R, DATA, FIELD)                                         \
+  BOOST_PP_IF(BOOST_PP_EQUAL(BOOST_PP_TUPLE_ELEM(0, FIELD), _VALUE_TYPE_CONST_METHOD), \
+              BOOST_PP_TUPLE_ELEM(3, FIELD),                                           \
+              BOOST_PP_EMPTY())
+
+/* Macro generating customized methods for the View of an SoA */
+#define GENERATE_VIEW_METHODS(R, DATA, FIELD)                                         \
+  BOOST_PP_IF(BOOST_PP_EQUAL(BOOST_PP_TUPLE_ELEM(0, FIELD), _VALUE_TYPE_VIEW_METHOD), \
+              BOOST_PP_TUPLE_ELEM(3, FIELD),                                          \
+              BOOST_PP_EMPTY())
+
+/* Macro generating customized methods for the ConstView of an SoA */
+#define GENERATE_CONST_VIEW_METHODS(R, DATA, FIELD)                                         \
+  BOOST_PP_IF(BOOST_PP_EQUAL(BOOST_PP_TUPLE_ELEM(0, FIELD), _VALUE_TYPE_CONST_VIEW_METHOD), \
+              BOOST_PP_TUPLE_ELEM(3, FIELD),                                                \
+              BOOST_PP_EMPTY())
+
+/* Preprocessing loop for managing functions generation: only macros containing valid content are expanded */
+#define ENUM_FOR_PRED(R, STATE) BOOST_PP_LESS(BOOST_PP_TUPLE_ELEM(0, STATE), BOOST_PP_TUPLE_ELEM(1, STATE))
+
+#define ENUM_FOR_OP(R, STATE) \
+  (BOOST_PP_INC(BOOST_PP_TUPLE_ELEM(0, STATE)), BOOST_PP_TUPLE_ELEM(1, STATE), BOOST_PP_TUPLE_ELEM(2, STATE))
+
+#define ENUM_FOR_MACRO(R, STATE) \
+  BOOST_PP_TUPLE_ENUM(BOOST_PP_SEQ_ELEM(BOOST_PP_TUPLE_ELEM(0, STATE), BOOST_PP_TUPLE_ELEM(2, STATE)))
+
+#define ENUM_IF_VALID(...)                                                                      \
+  BOOST_PP_FOR((0, BOOST_PP_VARIADIC_SIZE(__VA_ARGS__), BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__)), \
+               ENUM_FOR_PRED,                                                                   \
+               ENUM_FOR_OP,                                                                     \
+               ENUM_FOR_MACRO)
+
+/* Iterate on the macro MACRO and return the result as a comma separated list, converting
+   the boost sequence into tuples and then into list */
+#define _ITERATE_ON_ALL_COMMA(MACRO, DATA, ...) \
+  BOOST_PP_TUPLE_ENUM(BOOST_PP_SEQ_TO_TUPLE(_ITERATE_ON_ALL(MACRO, DATA, __VA_ARGS__)))
+
+/* Iterate MACRO on all elements of the boost sequence */
+#define _ITERATE_ON_ALL(MACRO, DATA, ...) BOOST_PP_SEQ_FOR_EACH(MACRO, DATA, BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__))
+
+/* Switch on macros depending on scalar / column type */
+#define _SWITCH_ON_TYPE(VALUE_TYPE, IF_SCALAR, IF_COLUMN, IF_EIGEN_COLUMN) \
+  BOOST_PP_IF(                                                             \
+      BOOST_PP_EQUAL(VALUE_TYPE, _VALUE_TYPE_SCALAR),                      \
+      IF_SCALAR,                                                           \
+      BOOST_PP_IF(                                                         \
+          BOOST_PP_EQUAL(VALUE_TYPE, _VALUE_TYPE_COLUMN),                  \
+          IF_COLUMN,                                                       \
+          BOOST_PP_IF(BOOST_PP_EQUAL(VALUE_TYPE, _VALUE_TYPE_EIGEN_COLUMN), IF_EIGEN_COLUMN, BOOST_PP_EMPTY())))
+
+// Extract the type, name and layout from a block specification
+#define _BLOCK_GET_TYPE(SPEC) BOOST_PP_TUPLE_ELEM(0, SPEC)
+#define _BLOCK_GET_NAME(SPEC) BOOST_PP_TUPLE_ELEM(1, SPEC)
+#define _BLOCK_GET_LAYOUT(SPEC) BOOST_PP_TUPLE_ELEM(2, SPEC)
+
+// Check if argument is a block specification
+#define _IS_BLOCK(SPEC) BOOST_PP_LESS_EQUAL(_BLOCK_GET_TYPE(SPEC), _VALUE_TYPE_BLOCK)
+
+// Execute MACRO if specification is a block specification, otherwise do nothing
+#define _EXEC_IF_BLOCK(SPEC, MACRO, ARGS) BOOST_PP_IF(_IS_BLOCK(SPEC), MACRO ARGS, BOOST_PP_EMPTY())
+
+#define _APPLY_ONLY_FOR_SCALAR(VALUE_TYPE, CODE) BOOST_PP_IF(BOOST_PP_EQUAL(VALUE_TYPE, _VALUE_TYPE_SCALAR), CODE, )
+
+#define _APPLY_FOR_NON_SCALAR(VALUE_TYPE, CODE) BOOST_PP_IF(BOOST_PP_EQUAL(VALUE_TYPE, _VALUE_TYPE_SCALAR), , CODE)
+
+/* Produces text input token if input sequence is not empty */
+#define _APPEND_TOKEN_1(PARAM_NAME)
+#define _APPEND_TOKEN_0(PARAM_NAME) PARAM_NAME
+#define _APPEND_TOKEN(SEQ, PARAM_NAME) BOOST_PP_CAT(_APPEND_TOKEN_, BOOST_PP_IS_EMPTY(SEQ))(PARAM_NAME)
+
+/* Appends comma if input sequence is not empty */
+#define _APPEND_COMMA_1(SEQ)
+#define _APPEND_COMMA_0(SEQ) , BOOST_PP_SEQ_ENUM(SEQ)
+#define _APPEND_COMMA(SEQ) BOOST_PP_CAT(_APPEND_COMMA_, BOOST_PP_IS_EMPTY(SEQ))(SEQ)
+
+/* Appends list initializer token ":" if input sequence is not empty */
+#define _APPEND_LIST_INIT_1(SEQ)
+#define _APPEND_LIST_INIT_0(SEQ) : BOOST_PP_SEQ_ENUM(SEQ)
+#define _APPEND_LIST_INIT(SEQ) BOOST_PP_CAT(_APPEND_LIST_INIT_, BOOST_PP_IS_EMPTY(SEQ))(SEQ)
+
+namespace mudock::soa {
+
+  /* Column accessors: templates implementing the global accesors (soa::x() and soa::x(index) */
+  enum class SoAAccessType : bool { mutableAccess, constAccess };
+
+  template <typename, SoAColumnType, SoAAccessType, byte_size_type, bool>
+  struct SoAColumnAccessorsImpl {};
+
+  // TODO from Eric Cano:
+  //   - add alignment support
+  //   - SFINAE-based const/non const variants
+
+  // Column
+  template <typename T, byte_size_type alignment, bool restrictQualify>
+  struct SoAColumnAccessorsImpl<T, SoAColumnType::column, SoAAccessType::mutableAccess, alignment, restrictQualify> {
+    SOA_HOST_DEVICE SOA_INLINE SoAColumnAccessorsImpl(const SoAParametersImpl<SoAColumnType::column, T>& params,
+                                                      size_type size)
+        : params_(params), size_(size) {}
+    SOA_HOST_DEVICE SOA_INLINE std::span<T> operator()() { return std::span<T>(params_.addr_, size_); }
+
+    using NoParamReturnType = std::span<T>;
+    using ParamReturnType = T&;
+    SOA_HOST_DEVICE SOA_INLINE T& operator()(size_type index) { return params_.addr_[index]; }
+
+  private:
+    SoAParametersImpl<SoAColumnType::column, T> params_;
+    size_type size_ = 0;
+  };
+
+  // Const column
+  template <typename T, byte_size_type alignment, bool restrictQualify>
+  struct SoAColumnAccessorsImpl<T, SoAColumnType::column, SoAAccessType::constAccess, alignment, restrictQualify> {
+    SOA_HOST_DEVICE SOA_INLINE SoAColumnAccessorsImpl(const SoAConstParametersImpl<SoAColumnType::column, T>& params,
+                                                      size_type size)
+        : params_(params), size_(size) {}
+    SOA_HOST_DEVICE SOA_INLINE std::span<const T> operator()() const {
+      return std::span<const T>(params_.addr_, size_);
+    }
+    using NoParamReturnType = std::span<const T>;
+    using ParamReturnType = const T&;
+    SOA_HOST_DEVICE SOA_INLINE T const& operator()(size_type index) const { return params_.addr_[index]; }
+
+  private:
+    SoAConstParametersImpl<SoAColumnType::column, T> params_;
+    const size_type size_ = 0;
+  };
+
+  // Scalar
+  template <typename T, byte_size_type alignment, bool restrictQualify>
+  struct SoAColumnAccessorsImpl<T, SoAColumnType::scalar, SoAAccessType::mutableAccess, alignment, restrictQualify> {
+    SOA_HOST_DEVICE SOA_INLINE SoAColumnAccessorsImpl(const SoAParametersImpl<SoAColumnType::scalar, T>& params)
+        : params_(params) {}
+    SOA_HOST_DEVICE SOA_INLINE T& operator()() { return *params_.addr_; }
+    using NoParamReturnType = T&;
+    using ParamReturnType = void;
+    SOA_HOST_DEVICE SOA_INLINE void operator()(size_type index) const {
+      assert(false && "Indexed access impossible for SoA scalars.");
+    }
+
+  private:
+    SoAParametersImpl<SoAColumnType::scalar, T> params_;
+  };
+
+  // Const scalar
+  template <typename T, byte_size_type alignment, bool restrictQualify>
+  struct SoAColumnAccessorsImpl<T, SoAColumnType::scalar, SoAAccessType::constAccess, alignment, restrictQualify> {
+    SOA_HOST_DEVICE SOA_INLINE SoAColumnAccessorsImpl(const SoAConstParametersImpl<SoAColumnType::scalar, T>& params)
+        : params_(params) {}
+    SOA_HOST_DEVICE SOA_INLINE T const& operator()() const { return *params_.addr_; }
+    using NoParamReturnType = T const&;
+    using ParamReturnType = void;
+    SOA_HOST_DEVICE SOA_INLINE void operator()(size_type index) const {
+      assert(false && "Indexed access impossible for SoA scalars.");
+    }
+
+  private:
+    SoAConstParametersImpl<SoAColumnType::scalar, T> params_;
+  };
+
+  // Eigen-type
+  template <typename T, byte_size_type alignment, bool restrictQualify>
+  struct SoAColumnAccessorsImpl<T, SoAColumnType::eigen, SoAAccessType::mutableAccess, alignment, restrictQualify> {
+    SOA_HOST_DEVICE SOA_INLINE SoAColumnAccessorsImpl(const SoAParametersImpl<SoAColumnType::eigen, T>& params,
+                                                      size_type size)
+        : params_(params), size_(size) {}
+    SOA_HOST_DEVICE SOA_INLINE std::span<typename T::Scalar> operator()() {
+      return std::span<typename T::Scalar>(params_.addr_, size_);
+    }
+    using NoParamReturnType = std::span<typename T::Scalar>;
+    using ParamReturnType = typename SoAValue<SoAColumnType::eigen, T, alignment, restrictQualify>::MapType;
+    SOA_HOST_DEVICE SOA_INLINE ParamReturnType operator()(size_type index) {
+      return SoAValue<SoAColumnType::eigen, T, alignment, restrictQualify>(index, params_)();
+    }
+
+  private:
+    SoAParametersImpl<SoAColumnType::eigen, T> params_;
+    size_type size_ = 0;
+  };
+
+  // Const Eigen-type
+  template <typename T, byte_size_type alignment, bool restrictQualify>
+  struct SoAColumnAccessorsImpl<T, SoAColumnType::eigen, SoAAccessType::constAccess, alignment, restrictQualify> {
+    SOA_HOST_DEVICE SOA_INLINE SoAColumnAccessorsImpl(const SoAConstParametersImpl<SoAColumnType::eigen, T>& params,
+                                                      size_type size)
+        : params_(params), size_(size) {}
+    SOA_HOST_DEVICE SOA_INLINE std::span<typename T::Scalar const> operator()() const {
+      return std::span<typename T::Scalar const>(params_.addr_, size_);
+    }
+    using NoParamReturnType = std::span<typename T::Scalar const>;
+    using ParamReturnType = typename SoAValue<SoAColumnType::eigen, T, alignment, restrictQualify>::CMapType;
+    SOA_HOST_DEVICE SOA_INLINE ParamReturnType operator()(size_type index) const {
+      return SoAConstValue<SoAColumnType::eigen, T, alignment, restrictQualify>(index, params_)();
+    }
+
+  private:
+    SoAConstParametersImpl<SoAColumnType::eigen, T> params_;
+    const size_type size_ = 0;
+  };
+
+  /* A helper template stager to avoid commas inside macros */
+  template <typename T>
+  struct SoAAccessors {
+    template <auto columnType>
+    struct ColumnType {
+      template <auto accessType>
+      struct AccessType {
+        template <auto alignment>
+        struct Alignment {
+          template <auto restrictQualify>
+          struct RestrictQualifier
+              : public SoAColumnAccessorsImpl<T, columnType, accessType, alignment, restrictQualify> {
+            using SoAColumnAccessorsImpl<T, columnType, accessType, alignment, restrictQualify>::SoAColumnAccessorsImpl;
+          };
+        };
+      };
+    };
+  };
+
+  /* Enum parameters allowing templated control of layout/view behaviors */
+  /* Alignment enforcement verifies every column is aligned, and
+   * hints the compiler that it can expect column pointers to be aligned */
+  struct AlignmentEnforcement {
+    static constexpr bool relaxed = false;
+    static constexpr bool enforced = true;
+  };
+
+  struct CacheLineSize {
+    static constexpr byte_size_type NvidiaGPU = 128;
+    static constexpr byte_size_type IntelCPU = 64;
+    static constexpr byte_size_type AMDCPU = 64;
+    static constexpr byte_size_type ARMCPU = 64;
+    static constexpr byte_size_type defaultSize = NvidiaGPU;
+  };
+
+}  // namespace mudock::soa
+
+// Small wrapper for stream insertion of SoA printing
+template <typename SOA,
+          typename SFINAE =
+              typename std::enable_if_t<std::is_invocable_v<decltype(&SOA::soaToStreamInternal), SOA&, std::ostream&>>>
+SOA_HOST_ONLY std::ostream& operator<<(std::ostream& os, const SOA& soa) {
+  soa.soaToStreamInternal(os);
+  return os;
+}
+
+namespace mudock::soa::detail {
+
+  template <RangeChecking::Mode M>
+  struct IndexWithSourceLocation {
+    static constexpr auto mode = M;
+
+    SOA_HOST_DEVICE constexpr IndexWithSourceLocation(mudock::soa::size_type value) noexcept : value_{value} {}
+
+    mudock::soa::size_type value_;
+  };
+
+  template <RangeChecking::Mode M>
+    requires(M == RangeChecking::extended)
+  struct IndexWithSourceLocation<M> {
+    static constexpr auto mode = M;
+
+    SOA_HOST_DEVICE constexpr IndexWithSourceLocation(
+        mudock::soa::size_type value, std::source_location location = std::source_location::current()) noexcept
+        : value_{value}, location_{location} {}
+
+    mudock::soa::size_type value_;
+    std::source_location location_;
+  };
+
+  template <RangeChecking::Mode M>
+  [[noreturn]] void throwOutOfRangeError(const char* message,
+                                         const IndexWithSourceLocation<M>& index,
+                                         mudock::soa::size_type range);
+
+  // Helper function to check alignment of a pointer. Returns true if the pointer is not aligned to the specified alignment.
+  [[noreturn]] void throwRuntimeError(const char* message);
+
+  template <typename T>
+  SOA_INLINE void checkAlignment(const T* addr, byte_size_type alignment, const char* message) {
+    if (reinterpret_cast<uintptr_t>(addr) % alignment)
+      throwRuntimeError(message);
+  }
+
+  template <typename ColumnType>
+  struct PrintColumn;
+
+  // Helper struct for streaming columns
+  template <typename T>
+  struct PrintColumn<mudock::soa::SoAParametersImpl<mudock::soa::SoAColumnType::scalar, T>> {
+    void operator()(std::ostream& soa_impl_os,
+                    std::string_view name,
+                    mudock::soa::byte_size_type& soa_impl_offset,
+                    mudock::soa::size_type,
+                    mudock::soa::byte_size_type alignment) {
+      const auto size = sizeof(T);
+      soa_impl_os << " Scalar " << name << " at offset " << soa_impl_offset << " has size " << size << " and padding "
+                  << mudock::soa::alignSize(size, alignment) - size << std::endl;
+      soa_impl_offset += mudock::soa::alignSize(size, alignment);
+    }
+  };
+
+  template <typename T>
+  struct PrintColumn<mudock::soa::SoAParametersImpl<mudock::soa::SoAColumnType::column, T>> {
+    void operator()(std::ostream& soa_impl_os,
+                    std::string_view name,
+                    mudock::soa::byte_size_type& soa_impl_offset,
+                    mudock::soa::size_type elements,
+                    mudock::soa::byte_size_type alignment) {
+      const auto size = sizeof(T) * elements;
+      soa_impl_os << " Column " << name << " at offset " << soa_impl_offset << " has size " << size << " and padding "
+                  << mudock::soa::alignSize(size, alignment) - size << std::endl;
+      soa_impl_offset += mudock::soa::alignSize(size, alignment);
+    }
+  };
+
+  template <typename T>
+  struct PrintColumn<mudock::soa::SoAParametersImpl<mudock::soa::SoAColumnType::eigen, T>> {
+    void operator()(std::ostream& soa_impl_os,
+                    std::string_view name,
+                    mudock::soa::byte_size_type& soa_impl_offset,
+                    mudock::soa::size_type elements,
+                    mudock::soa::byte_size_type alignment) {
+      const auto size = elements * sizeof(typename T::Scalar);
+      soa_impl_os << " Eigen value " << name << " at offset " << soa_impl_offset << " has dimension "
+                  << "(" << T::RowsAtCompileTime << " x " << T::ColsAtCompileTime << ")"
+                  << " and per column size " << size << " and padding " << mudock::soa::alignSize(size, alignment) - size
+                  << std::endl;
+      soa_impl_offset += mudock::soa::alignSize(size, alignment) * T::RowsAtCompileTime * T::ColsAtCompileTime;
+    }
+  };
+
+  // Helper struct for computing the pitch of each column
+  template <typename ColumnType>
+  struct ComputePitch;
+
+  template <typename T>
+  struct ComputePitch<mudock::soa::SoAParametersImpl<mudock::soa::SoAColumnType::scalar, T>> {
+    SOA_HOST_DEVICE constexpr mudock::soa::byte_size_type operator()(mudock::soa::size_type,
+                                                                  mudock::soa::byte_size_type alignment) const {
+      return mudock::soa::alignSize(sizeof(T), alignment);
+    }
+  };
+
+  template <typename T>
+  struct ComputePitch<mudock::soa::SoAParametersImpl<mudock::soa::SoAColumnType::column, T>> {
+    SOA_HOST_DEVICE constexpr mudock::soa::byte_size_type operator()(mudock::soa::size_type elements,
+                                                                  mudock::soa::byte_size_type alignment) const {
+      return mudock::soa::alignSize(elements * sizeof(T), alignment);
+    }
+  };
+
+  template <typename T>
+  struct ComputePitch<mudock::soa::SoAParametersImpl<mudock::soa::SoAColumnType::eigen, T>> {
+    SOA_HOST_DEVICE constexpr mudock::soa::byte_size_type operator()(mudock::soa::size_type elements,
+                                                                  mudock::soa::byte_size_type alignment) const {
+      return mudock::soa::alignSize(elements * sizeof(typename T::Scalar), alignment) * T::RowsAtCompileTime *
+             T::ColsAtCompileTime;
+    }
+  };
+
+  // Helper type trait for obtaining the underlying type of an enum, or the type itself if it's not an enum
+  template <typename T>
+  struct EnumTraits {
+    using type = T;
+    using value_type = T;
+  };
+
+  template <typename T>
+    requires std::is_enum_v<T>
+  struct EnumTraits<T> {
+    using type = T;
+    using value_type = std::underlying_type_t<T>;
+  };
+
+  // Helper type trait for obtaining a span type for a column
+  template <typename ColumnType>
+  struct GetSpanType;
+
+  template <typename T>
+  struct GetSpanType<mudock::soa::SoAParametersImpl<mudock::soa::SoAColumnType::scalar, T>> {
+    using type = std::span<T, 1>;
+  };
+
+  template <typename T>
+  struct GetSpanType<mudock::soa::SoAParametersImpl<mudock::soa::SoAColumnType::column, T>> {
+    using type = std::span<T>;
+  };
+
+  template <typename T>
+  struct GetSpanType<mudock::soa::SoAParametersImpl<mudock::soa::SoAColumnType::eigen, T>> {
+    using type = std::span<typename T::Scalar>;
+  };
+
+  template <typename ColumnType>
+  using SpanType = GetSpanType<ColumnType>::type;
+
+  // Helper type trait for obtaining a const-span type for a column
+  template <typename ColumnType>
+  struct GetConstSpanType;
+
+  template <typename T>
+  struct GetConstSpanType<mudock::soa::SoAParametersImpl<mudock::soa::SoAColumnType::scalar, T>> {
+    using type = std::span<std::add_const_t<T>, 1>;
+  };
+
+  template <typename T>
+  struct GetConstSpanType<mudock::soa::SoAParametersImpl<mudock::soa::SoAColumnType::column, T>> {
+    using type = std::span<std::add_const_t<T>>;
+  };
+
+  template <typename T>
+  struct GetConstSpanType<mudock::soa::SoAParametersImpl<mudock::soa::SoAColumnType::eigen, T>> {
+    using type = std::span<std::add_const_t<typename T::Scalar>>;
+  };
+
+  template <typename ColumnType>
+  using ConstSpanType = GetConstSpanType<ColumnType>::type;
+
+  // Helper functions for constructing a span from a column
+  template <typename T>
+  auto getSpanToColumn(const mudock::soa::SoAParametersImpl<mudock::soa::SoAColumnType::scalar, T>& column,
+                       mudock::soa::size_type,
+                       mudock::soa::byte_size_type alignment) {
+    return std::span(column.addr_, 1);
+  }
+
+  template <typename T>
+  auto getSpanToColumn(const mudock::soa::SoAParametersImpl<mudock::soa::SoAColumnType::column, T>& column,
+                       mudock::soa::size_type elements,
+                       mudock::soa::byte_size_type alignment) {
+    return std::span(column.addr_, elements);
+  }
+
+  template <typename T>
+  auto getSpanToColumn(const mudock::soa::SoAParametersImpl<mudock::soa::SoAColumnType::eigen, T>& column,
+                       mudock::soa::size_type elements,
+                       mudock::soa::byte_size_type alignment) {
+    return std::span(column.addr_,
+                     mudock::soa::alignSize(elements * sizeof(typename T::Scalar), alignment) * T::RowsAtCompileTime *
+                         T::ColsAtCompileTime / sizeof(typename T::Scalar));
+  }
+
+  // Helper function for extracting the number of blocks of a layout. Falls back to 1 if the layout does not define a static member blocksNumber.
+  template <typename T>
+  constexpr size_type nBlocks() {
+    if constexpr (requires { T::blocksNumber; })
+      return T::blocksNumber;
+    else
+      return static_cast<size_type>(1);
+  }
+
+  // Case 1: type has blocksNumber → returns a sub-array
+  template <typename T, size_type N>
+    requires requires { T::blocksNumber; }
+  [[nodiscard]] constexpr std::array<size_type, T::blocksNumber> extractSegment(const std::array<size_type, N>& sizes,
+                                                                                size_type offset) {
+    return [&]<std::size_t... I>(std::index_sequence<I...>) {
+      return std::array<size_type, T::blocksNumber>{sizes[offset + I]...};
+    }(std::make_index_sequence<T::blocksNumber>{});
+  }
+
+  // Case 2: fallback (single block) → returns a scalar
+  template <typename T, size_type N>
+    requires(!requires { T::blocksNumber; })
+  [[nodiscard]] constexpr size_type extractSegment(const std::array<size_type, N>& sizes, size_type offset) {
+    return sizes[offset];
+  }
+
+}  // namespace mudock::soa::detail

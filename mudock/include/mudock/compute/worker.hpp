@@ -3,6 +3,7 @@
 #include <atomic>
 #include <functional>
 #include <memory>
+#include <functional>
 #include <mudock/compute/reorder_buffer.hpp>
 #include <mudock/compute/safe_queue.hpp>
 #include <mudock/compute/stage.hpp>
@@ -30,6 +31,7 @@ namespace mudock {
     std::atomic<std::size_t>* processed_atoms    = nullptr;
     std::function<void()> batch_submitted;
     std::function<void(std::size_t)> batch_completed;
+    std::function<void(batch<static_molecule>&)> allocate_data;
 
     void process(batch<static_molecule>& b) {
       if (batch_submitted) {
@@ -41,6 +43,9 @@ namespace mudock {
 
       bool batch_succeeded = true;
       try {
+        if (allocate_data) {
+          allocate_data(b);
+        }
         pipeline.prepare(b);
         pipeline();
         pipeline.teardown(b);
@@ -74,7 +79,8 @@ namespace mudock {
            std::atomic<std::size_t>* active_ligands = nullptr,
            std::function<void()> on_batch_submitted = {},
            std::function<void(std::size_t)> on_batch_completed = {},
-           std::atomic<std::size_t>* total_processed_atoms = nullptr)
+           std::atomic<std::size_t>* total_processed_atoms = nullptr,
+           std::function<void(batch<static_molecule>&)> allocate_data = {})
         : input_stack(input_molecules),
           output_stack(output_molecules),
           rob(rb),
@@ -82,7 +88,8 @@ namespace mudock {
           in_flight_ligands(active_ligands),
           processed_atoms(total_processed_atoms),
           batch_submitted(std::move(on_batch_submitted)),
-          batch_completed(std::move(on_batch_completed)) {}
+          batch_completed(std::move(on_batch_completed)),
+          allocate_data(std::move(allocate_data)) {}
 
     void main() {
       // process the input ligands

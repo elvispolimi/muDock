@@ -6,8 +6,8 @@
 #include <mudock/compute/algorithm.hpp>
 #include <mudock/compute/bucket_size.hpp>
 #include <mudock/compute/genetic.hpp>
+#include <mudock/data_formats/data_store.hpp>
 #include <mudock/compute/ligand_placement.hpp>
-#include <mudock/compute/scratchpad.hpp>
 #include <mudock/compute/stage.hpp>
 #include <mudock/devices.hpp>
 #include <mudock/molecule.hpp>
@@ -23,8 +23,12 @@ namespace mudock {
     stage<queue_type> get_pipeline(const knobs&,
                                    const int,
                                    const device_type,
-                                   std::shared_ptr<scratchpad<queue_type>>,
+                                   std::shared_ptr<data_store<queue_type>>,
                                    dynamic_molecule&) {}
+
+    template<typename queue_type, typename layout_set>
+    void allocate_data(const std::shared_ptr<data_store<queue_type, layout_set>>&,
+                       const batch<static_molecule>&) const {}
 
     template<typename queue_type>
     static int get_batch_size(const int, std::shared_ptr<queue_type>, const knobs&, const size_t) {
@@ -36,18 +40,38 @@ namespace mudock {
     ligand_placement placement;
   };
 
-  template<template<typename> typename scoring_t>
+  template<template<typename, typename> typename scoring_t>
   struct scoring_pipeline: pipeline {
+    using pipeline::pipeline;
+    using pipeline_data_layouts = scoring_data_layouts;
     scoring_pipeline(std::shared_ptr<dynamic_molecule> protein_ptr, ligand_placement placement_config = {})
         : pipeline(std::move(protein_ptr), placement_config) {}
 
     template<typename queue_type>
-    scoring_t<queue_type> get_pipeline(const knobs& conf,
+    void allocate_data(const std::shared_ptr<data_store<queue_type, scoring_data_layouts>>& data,
+                       const batch<static_molecule>& batch) const {
+      const int batch_ligands = batch.num_ligands;
+      const int batch_atoms = batch.batch_max_atoms;
+      const int scores_per_ligand =
+          std::max(1, static_cast<int>(data->configuration.population_number));
+      const int total_atoms = batch_ligands * batch_atoms;
+      data->alloc(total_atoms * scores_per_ligand,
+                  batch_ligands,
+                  batch_ligands * scores_per_ligand,
+                  total_atoms,
+                  batch_ligands + 1,
+                  batch_ligands * batch_atoms * batch_atoms);
+    }
+
+    template<typename queue_type>
+    scoring_t<queue_type, scoring_data_layouts> get_pipeline(const knobs& conf,
                                        const int id,
                                        const device_type dev_type,
-                                       std::shared_ptr<scratchpad<queue_type>> device_scratch) {
-      return scoring_t<queue_type>(std::make_shared<mudock::scratchpad<queue_type>>(conf, id, dev_type),
-                                   device_scratch,
+                                       std::shared_ptr<data_store<queue_type, protein_data_layouts>> protein_data) {
+        return scoring_t<queue_type, scoring_data_layouts>(
+          std::make_shared<mudock::data_store<queue_type, scoring_data_layouts>>(
+                                       conf, id, dev_type),
+                                   protein_data,
                                    *protein,
                                    placement);
     }
@@ -57,10 +81,11 @@ namespace mudock {
                               std::shared_ptr<queue_type> q,
                               const knobs& conf,
                               const size_t max_mem = 1000000000) {
-      const size_t mem_per_ligand  = static_cast<size_t>(scoring_t<queue_type>::get_ligand_mem(atoms, conf));
+        const size_t mem_per_ligand =
+          static_cast<size_t>(scoring_t<queue_type, scoring_data_layouts>::get_ligand_mem(atoms, conf));
       const size_t max_bucket_size = std::max<size_t>(1, max_mem / mem_per_ligand);
       mudock::stage_bucket_trace("PIPELINE(",
-                                 scoring_t<queue_type>::stage_name,
+                                 scoring_t<queue_type, scoring_data_layouts>::stage_name,
                                  ") pre-resolve for ",
                                  atoms,
                                  " atoms: mem_budget=",
@@ -68,34 +93,63 @@ namespace mudock {
                                  " B, mem_per_ligand=",
                                  mem_per_ligand,
                                  " B, max_bucket_size=",
-                                 max_bucket_size);
+                                 max_bucket_size,
+                                 ", estimated_worker_batch_bytes=",
+                                 max_bucket_size * mem_per_ligand);
       return resolve_stage_bucket_size(
-          scoring_t<queue_type>::stage_name,
+          scoring_t<queue_type, scoring_data_layouts>::stage_name,
           atoms,
           max_bucket_size,
           mem_per_ligand,
           q->honors_stage_bucket_policy(),
-          [&]() { return scoring_t<queue_type>::get_batch_size(atoms, q, conf, max_bucket_size); });
+          [&]() {
+            return scoring_t<queue_type, scoring_data_layouts>::get_batch_size(atoms, q, conf, max_bucket_size);
+          });
     }
   };
 
-  template<template<typename> typename scoring_t>
+  template<template<typename, typename> typename scoring_t>
   struct genetic_scoring_pipeline: pipeline {
+    using pipeline::pipeline;
+    using pipeline_data_layouts = genetic_data_layouts;
     genetic_scoring_pipeline(std::shared_ptr<dynamic_molecule> protein_ptr,
                              ligand_placement placement_config = {})
         : pipeline(std::move(protein_ptr), placement_config) {}
 
     template<typename queue_type>
-    genetic<queue_type, scoring_t> get_pipeline(const knobs& conf,
+    void allocate_data(const std::shared_ptr<data_store<queue_type, genetic_data_layouts>>& data,
+                       const batch<static_molecule>& batch) const {
+      const int batch_ligands = batch.num_ligands;
+      const int batch_atoms = batch.batch_max_atoms;
+      const int population_number = static_cast<int>(data->configuration.population_number);
+      const int total_atoms = batch_ligands * batch_atoms;
+      const int batch_rotamers = batch_atoms - 3;
+
+      data->alloc(total_atoms,
+                  total_atoms * population_number,
+                  batch_ligands,
+                  population_number * batch_ligands,
+                  population_number * batch_ligands,
+                  batch_ligands,
+                  total_atoms,
+                  batch_ligands + 1,
+                  batch_ligands * batch_atoms * batch_atoms,
+                  total_atoms * batch_rotamers,
+                  batch_ligands + 1,
+                  batch_ligands * batch_rotamers,
+                  batch_ligands * batch_rotamers,
+                  batch_ligands + 1);
+    }
+
+    template<typename queue_type>
+    genetic<queue_type, scoring_t, genetic_data_layouts> get_pipeline(const knobs& conf,
                                                 const int id,
                                                 const device_type dev_type,
-                                                std::shared_ptr<scratchpad<queue_type>> device_scratch) {
-      auto q = std::make_shared<mudock::scratchpad<queue_type>>(conf, id, dev_type);
-      return genetic<queue_type, scoring_t>(
-          q,
-          *protein,
-          scoring_t<queue_type>(
-              q, device_scratch, *protein, ligand_placement{ligand_placement_mode::preserve, std::nullopt}),
+                                                std::shared_ptr<data_store<queue_type, protein_data_layouts>> protein_data) {
+        auto q = std::make_shared<mudock::data_store<queue_type, genetic_data_layouts>>(
+          conf, id, dev_type);
+        return genetic<queue_type, scoring_t, genetic_data_layouts>(
+          q, *protein, scoring_t<queue_type, genetic_data_layouts>(q, protein_data, *protein, ligand_placement{ligand_placement_mode::preserve, std::nullopt}),
           placement);
     }
 
@@ -116,7 +170,9 @@ namespace mudock {
                                  " B, mem_per_ligand=",
                                  mem_per_ligand,
                                  " B, max_bucket_size=",
-                                 max_bucket_size);
+                                 max_bucket_size,
+                                 ", estimated_worker_batch_bytes=",
+                                 max_bucket_size * mem_per_ligand);
       return resolve_stage_bucket_size(
           genetic<queue_type, scoring_t>::stage_name,
           atoms,

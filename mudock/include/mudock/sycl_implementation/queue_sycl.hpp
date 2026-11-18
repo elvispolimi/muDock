@@ -25,17 +25,20 @@ namespace mudock {
     inline void invoke_kernel(const int gridDim, const int blockDim, Args&&... args);
 
     void alloc(void**, const size_t) override;
-    void free(void**) override;
+    void free(void**, const size_t bytes) override;
     void set_to_value(void*, const size_t, const char) override;
     void copy_host2device(const void*, void*, const size_t) override;
     void copy_device2host(const void*, void*, const size_t) override;
     void copy_device2device(const void*, void*, const size_t) override;
-    bool obj_required() override { return true; }
+    bool uses_device_memory() override { return true; }
     bool honors_stage_bucket_policy() const override { return dev_type == device_type::GPU; }
 
     void operator()() override;
 
     void synchronize() override;
+
+    std::size_t allocated_bytes() const override;
+    std::size_t peak_allocated_bytes() const override;
 
     template<class kernel_name>
     batch_multiple get_batch_multiple();

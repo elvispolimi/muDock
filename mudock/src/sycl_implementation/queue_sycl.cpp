@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <mudock/compute/reorder_buffer.hpp>
 #include <mudock/log.hpp>
 #include <mudock/sycl_implementation/queue_sycl.hpp>
@@ -8,7 +9,8 @@
 
 namespace mudock {
 
-  queue_sycl::queue_sycl(const int _id, const device_type dev_type)
+  queue_sycl::queue_sycl(const int _id,
+                         const device_type dev_type)
       : queue(_id, dev_type), impl_(std::make_unique<impl>(_id, dev_type)) {
     assert((dev_type == device_type::GPU || dev_type == device_type::CPU) &&
            "SYCL supports only CPUs or GPUs devices");
@@ -21,11 +23,15 @@ namespace mudock {
     *ptr = sycl::malloc_device(bytes, impl_->get_queue());
     if (!*ptr)
       throw std::bad_alloc{};
+    impl_->allocated_bytes += bytes;
+    impl_->peak_allocated_bytes = std::max(impl_->peak_allocated_bytes, impl_->allocated_bytes);
   }
 
-  void queue_sycl::free(void** ptr) {
+  void queue_sycl::free(void** ptr, const size_t bytes) {
     if (*ptr != nullptr) {
       sycl::free(*ptr, impl_->get_queue());
+      assert(impl_->allocated_bytes >= bytes);
+      impl_->allocated_bytes -= bytes;
       *ptr = nullptr;
     }
   }

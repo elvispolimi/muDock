@@ -48,9 +48,9 @@ namespace mudock {
     wrappers_container atom_texs;
     omp_wrapper<std::vector, int> map_texture_index;
 
-    // Scratchpads
-    omp_object<fp_type> scratch_chromosome;
-    omp_object<fp_type> scratch_ligand_x, scratch_ligand_y, scratch_ligand_z;
+    // Working data
+    omp_object<fp_type>  data_chromosome;
+    omp_object<fp_type>  data_ligand_x,  data_ligand_y,  data_ligand_z;
 
     // Random generation
     omp_random_object omp_states;

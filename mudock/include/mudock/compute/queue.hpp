@@ -1,12 +1,16 @@
 #pragma once
 
 #include <cstddef>
+#include <atomic>
+#include <memory>
 #include <mudock/devices.hpp>
 
 namespace mudock {
 
   struct queue {
-    queue(const int _id, const device_type d_t): id(_id), dev_type(d_t) {};
+    queue(const int _id,
+          const device_type d_t)
+        : id(_id), dev_type(d_t) {};
     virtual ~queue() = default;
 
     queue(const queue&)            = delete;
@@ -23,7 +27,7 @@ namespace mudock {
     // }
     // Allocation requires a null pointer; object<T> owns growth/free policy.
     virtual void alloc(void**, const size_t)                          = 0;
-    virtual void free(void**)                                         = 0;
+    virtual void free(void**)                     = 0;
     virtual void set_to_value(void*, const size_t, const char)        = 0;
     virtual void copy_host2device(const void*, void*, const size_t)   = 0;
     virtual void copy_device2host(const void*, void*, const size_t)   = 0;
@@ -31,7 +35,7 @@ namespace mudock {
 
     virtual void operator()() = 0;
 
-    virtual bool obj_required() = 0;
+    virtual bool uses_device_memory() = 0;
 
     virtual bool honors_stage_bucket_policy() const = 0;
 

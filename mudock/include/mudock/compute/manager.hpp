@@ -9,10 +9,10 @@
 #include <mudock/compute/pipeline.hpp>
 #include <mudock/compute/queue.hpp>
 #include <mudock/compute/safe_queue.hpp>
-#include <mudock/compute/scratchpad.hpp>
 #include <mudock/compute/stage.hpp>
 #include <mudock/compute/threadpool.hpp>
 #include <mudock/compute/worker.hpp>
+#include <mudock/data_formats/data_store.hpp>
 #include <mudock/devices.hpp>
 #include <mudock/grid.hpp>
 #include <mudock/implementations.hpp>
@@ -49,7 +49,7 @@ namespace mudock {
       return default_value;
     }
 
-    const auto text = parts[index];
+    const auto text   = parts[index];
     std::size_t value = 0;
     const auto result = std::from_chars(text.data(), text.data() + text.size(), value);
     if (result.ec != std::errc{} || result.ptr != text.data() + text.size()) {
@@ -69,13 +69,18 @@ namespace mudock {
                                 std::shared_ptr<safe_queue<static_molecule>>& input_molecules,
                                 std::shared_ptr<safe_queue<static_molecule>>& output_molecules,
                                 pipeline_t& pipe,
-                                std::atomic<std::size_t>* in_flight_ligands = nullptr,
-                                const std::function<void()>& on_batch_submitted = {},
+                                std::atomic<std::size_t>* in_flight_ligands                = nullptr,
+                                const std::function<void()>& on_batch_submitted            = {},
                                 const std::function<void(std::size_t)>& on_batch_completed = {},
-                                std::atomic<std::size_t>* processed_atoms = nullptr,
-                                const bool trace_batches = false) {
-    auto device_scratch = std::make_shared<scratchpad<queue_type>>(knobs, 0, device_type::CPU);
-    auto q_b            = device_scratch->get_queue();
+                                std::atomic<std::size_t>* processed_atoms                  = nullptr,
+                                const bool trace_batches                                   = false) {
+    auto queue_data = std::make_shared<data_store<queue_type, typename pipeline_t::pipeline_data_layouts>>(
+        knobs,
+        0,
+        device_type::CPU);
+    auto protein_data =
+        std::make_shared<data_store<queue_type, protein_data_layouts>>(knobs, 0, device_type::CPU);
+    auto q_b                               = queue_data->get_queue();
     std::function<int(const int)> get_size = [q_b, &knobs](const int x) {
       return pipeline_t::template get_batch_size<queue_type>(x, q_b, knobs);
     };
@@ -83,15 +88,21 @@ namespace mudock {
 
     for (const auto id: parse_ids(parts[2])) {
       mudock::info("Starting CPU device ", id, ".");
+      auto pipeline_stage = pipe.template get_pipeline<queue_type>(knobs, id, device_type::CPU, protein_data);
+      auto stage_data = pipeline_stage.get_data();
+      auto allocate_data = [&pipe, stage_data](batch<static_molecule>& batch) {
+        pipe.allocate_data(stage_data, batch);
+      };
       pool.add_worker(
           worker(input_molecules,
                  output_molecules,
                  rob,
-                 pipe.template get_pipeline<queue_type>(knobs, id, device_type::CPU, device_scratch),
+                 std::move(pipeline_stage),
                  in_flight_ligands,
                  on_batch_submitted,
                  on_batch_completed,
-                 processed_atoms));
+                 processed_atoms,
+                 std::move(allocate_data)));
     }
   };
 
@@ -103,11 +114,11 @@ namespace mudock {
                                 std::shared_ptr<safe_queue<static_molecule>>& input_molecules,
                                 std::shared_ptr<safe_queue<static_molecule>>& output_molecules,
                                 pipeline_t& pipe,
-                                std::atomic<std::size_t>* in_flight_ligands = nullptr,
-                                const std::function<void()>& on_batch_submitted = {},
+                                std::atomic<std::size_t>* in_flight_ligands                = nullptr,
+                                const std::function<void()>& on_batch_submitted            = {},
                                 const std::function<void(std::size_t)>& on_batch_completed = {},
-                                std::atomic<std::size_t>* processed_atoms = nullptr,
-                                const bool trace_batches = false) {
+                                std::atomic<std::size_t>* processed_atoms                  = nullptr,
+                                const bool trace_batches                                   = false) {
     const std::size_t workers_per_device =
         parse_positive_size_field(parts, 3, "workers_per_device", static_cast<std::size_t>(2));
     const std::size_t mem_per_device =
@@ -126,17 +137,30 @@ namespace mudock {
                    " per device, with ",
                    mem_per_device,
                    " bytes each.");
-      auto device_scratch = std::make_shared<scratchpad<queue_type>>(knobs, id, device_type::GPU);
+      auto queue_data = std::make_shared<data_store<queue_type, typename pipeline_t::pipeline_data_layouts>>(
+          knobs,
+          id,
+          device_type::GPU);
+      auto protein_data =
+          std::make_shared<data_store<queue_type, protein_data_layouts>>(knobs,
+                                                                         id,
+                                                                         device_type::GPU);
       for (std::size_t i = 0; i < workers_per_device; ++i) {
+        auto pipeline_stage = pipe.template get_pipeline<queue_type>(knobs, id, device_type::GPU, protein_data);
+        auto stage_data = pipeline_stage.get_data();
+        auto allocate_data = [&pipe, stage_data](batch<static_molecule>& batch) {
+          pipe.allocate_data(stage_data, batch);
+        };
         pool.add_worker(
             worker(input_molecules,
                    output_molecules,
                    rob,
-                   pipe.template get_pipeline<queue_type>(knobs, id, device_type::GPU, device_scratch),
+                   std::move(pipeline_stage),
                    in_flight_ligands,
                    on_batch_submitted,
                    on_batch_completed,
-                   processed_atoms));
+                   processed_atoms,
+                   std::move(allocate_data)));
       }
     }
   };
@@ -149,11 +173,11 @@ namespace mudock {
                std::shared_ptr<safe_queue<static_molecule>>& input_molecules,
                std::shared_ptr<safe_queue<static_molecule>>& output_molecules,
                pipeline_t& pipe,
-               std::atomic<std::size_t>* in_flight_ligands = nullptr,
-               const std::function<void()>& on_batch_submitted = {},
+               std::atomic<std::size_t>* in_flight_ligands                = nullptr,
+               const std::function<void()>& on_batch_submitted            = {},
                const std::function<void(std::size_t)>& on_batch_completed = {},
-               std::atomic<std::size_t>* processed_atoms = nullptr,
-               const bool trace_batches = false) {
+               std::atomic<std::size_t>* processed_atoms                  = nullptr,
+               const bool trace_batches                                   = false) {
     for (auto& configuration: configurations) {
       const auto parts = parse_worker_configuration(configuration);
       auto dev_t       = get_device_type(parts[1]);
