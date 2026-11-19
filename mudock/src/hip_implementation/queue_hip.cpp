@@ -98,8 +98,6 @@ namespace mudock {
   };
 
   void queue_hip::alloc(void** ptr, const size_t bytes) {
-    // TOOD check if required
-    queue_hip::free(ptr);
     MUDOCK_CHECK(hipMallocAsync(ptr, bytes, impl_->stream));
   };
   void queue_hip::free(void** ptr) {

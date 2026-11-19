@@ -32,3 +32,13 @@ set_target_properties(
               CXX_STANDARD_REQUIRED ON
               CXX_EXTENSIONS OFF)
 target_link_libraries(test_score_adt_impl libmudock Boost::program_options)
+
+add_executable_mudock(test_placement
+                      "${CMAKE_CURRENT_SOURCE_DIR}/placement_test.cpp")
+set_target_properties(
+  test_placement
+  PROPERTIES CXX_STANDARD 20
+             CXX_STANDARD_REQUIRED ON
+             CXX_EXTENSIONS OFF)
+target_link_libraries(test_placement libmudock)
+add_test(NAME test_placement COMMAND test_placement)

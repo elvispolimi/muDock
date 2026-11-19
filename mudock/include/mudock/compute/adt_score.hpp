@@ -8,6 +8,7 @@
 #include <mudock/chem/autodock_protein.hpp>
 #include <mudock/compute/adt_score_kernel.hpp>
 #include <mudock/compute/batch_multiple.hpp>
+#include <mudock/compute/ligand_placement.hpp>
 #if !defined(__CUDACC__) && !defined(__HIPCC__)
   #include <mudock/compute/buffer_utils.hpp>
   #include <mudock/compute/scoring.hpp>
@@ -32,7 +33,8 @@ namespace mudock {
 
     adt_score(std::shared_ptr<scratchpad<queue_type>> _scratch,
               std::shared_ptr<scratchpad<queue_type>> _device_scratch,
-              dynamic_molecule &protein)
+              dynamic_molecule &protein,
+              ligand_placement _placement = {})
         : scoring<queue_type>(_scratch),
           vols(_scratch->get_queue()),
           solpars(_scratch->get_queue()),
@@ -44,7 +46,9 @@ namespace mudock {
           nonbond_cA(_scratch->get_queue()),
           nonbond_cB(_scratch->get_queue()),
           nonbond_xB(_scratch->get_queue()),
-          device_scratch(_device_scratch) {
+          device_scratch(_device_scratch),
+          placement(_placement),
+          protein_center(protein.get_center()) {
       if (!(*device_scratch).template exists<buffer_data_type::PROT_GRID_MAPS>()) {
         autodock_protein adt_prot(protein);
 
@@ -80,8 +84,9 @@ namespace mudock {
         prot_index_x.copy_host2device();
         prot_index_xy.copy_host2device();
         prot_index_xyz.copy_host2device();
-        // On CPU is not required and on GPUS we have probably to laod texture memory etc...
-        // prot_grid_maps.copy_host2device();
+        prot_grid_maps.copy_host2device();
+        // Workers use this device-shared pointer from their own queues.
+        device_scratch->get_queue()->synchronize();
       }
     }
 
@@ -91,6 +96,9 @@ namespace mudock {
       const int batch_non_bonds    = batch_ligands * batch_atoms * batch_atoms;
       const int tot_atoms_in_batch = batch_ligands * batch_atoms;
       auto q                       = (*this->scratch).get_queue();
+
+      for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index)
+        apply_ligand_placement(*batch.molecules[ligand_index], placement, protein_center);
 
       load_num_rotamers(batch, this->scratch);
       load_num_atoms(batch, this->scratch);
@@ -202,9 +210,10 @@ namespace mudock {
       const fp_type *nonbond_cB_b = nonbond_cB.dev_pointer();
       const int *nonbond_xB_b     = nonbond_xB.dev_pointer();
 
-      // Use host pointer as on CPP you can use it, on GPU they will load their own memory
-      const fp_type *grid_maps =
-          (*device_scratch).template get<buffer_data_type::PROT_GRID_MAPS>().host_pointer();
+      auto &prot_grid_maps = (*device_scratch).template get<buffer_data_type::PROT_GRID_MAPS>();
+      const fp_type *grid_maps = (*device_scratch).get_queue()->obj_required()
+                                     ? prot_grid_maps.dev_pointer()
+                                     : prot_grid_maps.host_pointer();
       const fp_type *minimum = (*device_scratch).template get<buffer_data_type::PROT_MIN>().dev_pointer();
       const fp_type *maximum = (*device_scratch).template get<buffer_data_type::PROT_MAX>().dev_pointer();
       const fp_type *center  = (*device_scratch).template get<buffer_data_type::PROT_CENTER>().dev_pointer();
@@ -246,6 +255,7 @@ namespace mudock {
                                                               q);
     }
 
+
     void operator()() {
       assert(
           (((*this->scratch).template get<buffer_data_type::SCORES>().num_elements() % batch_ligands) == 0) &&
@@ -256,29 +266,25 @@ namespace mudock {
 
     static std::size_t get_shared_ligand_mem(const int max_atoms, const knobs conf) {
       const int scores_per_ligand = std::max(1, static_cast<int>(conf.population_number));
-      return sizeof(int) + sizeof(int) + sizeof(fp_type) * scores_per_ligand +
-             3 * sizeof(fp_type) * max_atoms * scores_per_ligand;
+      return sizeof(int) * 2 + sizeof(fp_type) * scores_per_ligand +
+             sizeof(fp_type) * 3 * max_atoms * scores_per_ligand;
     }
 
     static std::size_t get_private_ligand_mem(const int max_atoms, const knobs) {
-      const int non_bonds_atoms = max_atoms * max_atoms;
+      const std::size_t non_bonds_atoms = static_cast<std::size_t>(max_atoms) *
+                                          static_cast<std::size_t>(max_atoms);
       std::size_t mem{0};
-      mem += sizeof(fp_type) * max_atoms;       // vols
-      mem += sizeof(fp_type) * max_atoms;       // solpars
-      mem += sizeof(fp_type) * max_atoms;       // charges
-      mem += sizeof(int) * max_atoms;           // map_offsets
-      mem += sizeof(int);                       // num_nonbond
-      mem += sizeof(int) * non_bonds_atoms;     // nonbond_a1
-      mem += sizeof(int) * non_bonds_atoms;     // nonbond_a2
-      mem += sizeof(fp_type) * non_bonds_atoms; // nonbond_cA
-      mem += sizeof(fp_type) * non_bonds_atoms; // nonbond_cB
-      mem += sizeof(int) * non_bonds_atoms;     // nonbond_xB
+      mem += sizeof(fp_type) * 3 * max_atoms;                         // vols, solpars, charges
+      mem += sizeof(int) * max_atoms;                                 // map_offsets
+      mem += sizeof(int);                                           // num_nonbond (plus one fixed batch sentinel)
+      mem += sizeof(int) * 2 * non_bonds_atoms;                       // nonbond_a1, nonbond_a2
+      mem += sizeof(fp_type) * 2 * non_bonds_atoms;                   // nonbond_cA, nonbond_cB
+      mem += sizeof(int) * non_bonds_atoms;                           // nonbond_xB
       return mem;
     }
 
-    static int get_ligand_mem(const int max_atoms, const knobs conf) {
-      return static_cast<int>(get_shared_ligand_mem(max_atoms, conf) +
-                              get_private_ligand_mem(max_atoms, conf));
+    static std::size_t get_ligand_mem(const int max_atoms, const knobs conf) {
+      return get_shared_ligand_mem(max_atoms, conf) + get_private_ligand_mem(max_atoms, conf);
     }
 
     static batch_multiple get_batch_size(const int atoms,
@@ -319,6 +325,8 @@ namespace mudock {
     buffer_vector<int, queue_type> nonbond_xB;
 
     std::shared_ptr<scratchpad<queue_type>> device_scratch;
+    ligand_placement placement;
+    point3D protein_center;
     std::unique_ptr<adt_score_kernel<queue_type>> kernel;
 
     void teardown_impl(batch<static_molecule> &batch) override {

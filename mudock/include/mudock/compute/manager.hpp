@@ -1,6 +1,8 @@
 #pragma once
 
+#include <charconv>
 #include <concepts>
+#include <functional>
 #include <memory>
 #include <mudock/compute/buffer.hpp>
 #include <mudock/compute/parse_ids.hpp>
@@ -47,10 +49,10 @@ namespace mudock {
       return default_value;
     }
 
+    const auto text = parts[index];
     std::size_t value = 0;
-    try {
-      value = std::stoull(parts[index]);
-    } catch (const std::exception&) {
+    const auto result = std::from_chars(text.data(), text.data() + text.size(), value);
+    if (result.ec != std::errc{} || result.ptr != text.data() + text.size()) {
       throw std::runtime_error(std::string{"Invalid "} + field_name + " value '" + parts[index] + "'.");
     }
     if (value == 0) {
@@ -67,13 +69,17 @@ namespace mudock {
                                 std::shared_ptr<safe_queue<static_molecule>>& input_molecules,
                                 std::shared_ptr<safe_queue<static_molecule>>& output_molecules,
                                 pipeline_t& pipe,
-                                std::atomic<std::size_t>* in_flight_ligands = nullptr) {
+                                std::atomic<std::size_t>* in_flight_ligands = nullptr,
+                                const std::function<void()>& on_batch_submitted = {},
+                                const std::function<void(std::size_t)>& on_batch_completed = {},
+                                std::atomic<std::size_t>* processed_atoms = nullptr,
+                                const bool trace_batches = false) {
     auto device_scratch = std::make_shared<scratchpad<queue_type>>(knobs, 0, device_type::CPU);
     auto q_b            = device_scratch->get_queue();
     std::function<int(const int)> get_size = [q_b, &knobs](const int x) {
       return pipeline_t::template get_batch_size<queue_type>(x, q_b, knobs);
     };
-    auto rob = std::make_shared<reorder_buffer<static_molecule>>(get_size);
+    auto rob = std::make_shared<reorder_buffer<static_molecule>>(get_size, trace_batches);
 
     for (const auto id: parse_ids(parts[2])) {
       mudock::info("Starting CPU device ", id, ".");
@@ -82,7 +88,10 @@ namespace mudock {
                  output_molecules,
                  rob,
                  pipe.template get_pipeline<queue_type>(knobs, id, device_type::CPU, device_scratch),
-                 in_flight_ligands));
+                 in_flight_ligands,
+                 on_batch_submitted,
+                 on_batch_completed,
+                 processed_atoms));
     }
   };
 
@@ -94,7 +103,11 @@ namespace mudock {
                                 std::shared_ptr<safe_queue<static_molecule>>& input_molecules,
                                 std::shared_ptr<safe_queue<static_molecule>>& output_molecules,
                                 pipeline_t& pipe,
-                                std::atomic<std::size_t>* in_flight_ligands = nullptr) {
+                                std::atomic<std::size_t>* in_flight_ligands = nullptr,
+                                const std::function<void()>& on_batch_submitted = {},
+                                const std::function<void(std::size_t)>& on_batch_completed = {},
+                                std::atomic<std::size_t>* processed_atoms = nullptr,
+                                const bool trace_batches = false) {
     const std::size_t workers_per_device =
         parse_positive_size_field(parts, 3, "workers_per_device", static_cast<std::size_t>(2));
     const std::size_t mem_per_device =
@@ -105,7 +118,7 @@ namespace mudock {
       std::function<int(const int)> get_size = [q_b, &knobs, mem_per_device](const int x) {
         return pipeline_t::template get_batch_size<queue_type>(x, q_b, knobs, mem_per_device);
       };
-      auto rob = std::make_shared<reorder_buffer<static_molecule>>(get_size);
+      auto rob = std::make_shared<reorder_buffer<static_molecule>>(get_size, trace_batches);
       mudock::info("Starting GPU device ",
                    id,
                    " with ",
@@ -120,7 +133,10 @@ namespace mudock {
                    output_molecules,
                    rob,
                    pipe.template get_pipeline<queue_type>(knobs, id, device_type::GPU, device_scratch),
-                   in_flight_ligands));
+                   in_flight_ligands,
+                   on_batch_submitted,
+                   on_batch_completed,
+                   processed_atoms));
       }
     }
   };
@@ -133,7 +149,11 @@ namespace mudock {
                std::shared_ptr<safe_queue<static_molecule>>& input_molecules,
                std::shared_ptr<safe_queue<static_molecule>>& output_molecules,
                pipeline_t& pipe,
-               std::atomic<std::size_t>* in_flight_ligands = nullptr) {
+               std::atomic<std::size_t>* in_flight_ligands = nullptr,
+               const std::function<void()>& on_batch_submitted = {},
+               const std::function<void(std::size_t)>& on_batch_completed = {},
+               std::atomic<std::size_t>* processed_atoms = nullptr,
+               const bool trace_batches = false) {
     for (auto& configuration: configurations) {
       const auto parts = parse_worker_configuration(configuration);
       auto dev_t       = get_device_type(parts[1]);
@@ -150,7 +170,11 @@ namespace mudock {
                                                  input_molecules,
                                                  output_molecules,
                                                  pipe,
-                                                 in_flight_ligands);
+                                                 in_flight_ligands,
+                                                 on_batch_submitted,
+                                                 on_batch_completed,
+                                                 processed_atoms,
+                                                 trace_batches);
             }
           });
           break;
@@ -166,7 +190,11 @@ namespace mudock {
                                                  input_molecules,
                                                  output_molecules,
                                                  pipe,
-                                                 in_flight_ligands);
+                                                 in_flight_ligands,
+                                                 on_batch_submitted,
+                                                 on_batch_completed,
+                                                 processed_atoms,
+                                                 trace_batches);
             }
           });
           break;

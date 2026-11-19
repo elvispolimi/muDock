@@ -81,7 +81,7 @@ The pipeline is intentionally split into clean stages (input parsing, scoring, s
 Required:
 - CMake 3.25+
 - A C++20-capable compiler (GCC/Clang/IntelLLVM)
-- Boost (components: `program_options`, `graph`, `context`; `fiber` is also used when SYCL is enabled)
+- Boost (components: `program_options`, `graph`, `context`)
 - oneTBB
 - OpenBabel3
 
@@ -133,8 +133,9 @@ Most useful configuration options:
 - `MUDOCK_SYCL_WG_SIZE` — SYCL work-group size override
 - `MUDOCK_ATOM_CLUSTER_LEVEL` — ligand atom-cluster granularity: `OFF`, `MEDIUM`, `LARGE`, `EXTREME`
 - `MUDOCK_STAGE_BUCKET_POLICY` — stage bucket sizing policy: `DEVICE_ALIGNED`, `SM_ALIGNED`, `MAX_UTILIZATION`
-- `MUDOCK_STAGE_BUCKET_OVERRIDE`, `MUDOCK_STAGE_BUCKET_MULTIPLE_OVERRIDE` — explicit stage bucket overrides
-- `MUDOCK_DISABLE_UNROLL`, `MUDOCK_UNROLL_FACTOR` — control kernel loop unrolling
+- `MUDOCK_STAGE_BUCKET_OVERRIDE` — explicit stage bucket size, capped by the worker memory budget
+- `MUDOCK_STAGE_BUCKET_MULTIPLE_OVERRIDE` — explicit stage bucket multiplier, also capped by the worker memory budget
+- `MUDOCK_UNROLL_MODE`, `MUDOCK_UNROLL_FACTOR` — control kernel loop unrolling
 - `MUDOCK_ENABLE_STAGE_BUCKET_TRACE` — print stage bucket decisions at runtime
 - `MUDOCK_ENABLE_LIKWID` — LIKWID profiling
 - `MUDOCK_CPU_ARCHITECTURES`, `MUDOCK_CPU_TARGET`, `MUDOCK_CPU_TUNE` — fine-tune CPU code generation

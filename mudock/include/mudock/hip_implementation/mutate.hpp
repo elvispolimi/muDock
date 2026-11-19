@@ -16,7 +16,7 @@ namespace mudock {
                                                          const fp_type offset_y,
                                                          const fp_type offset_z,
                                                          const int num_atoms) {
-    MUDOCK_PRAGMA_UNROLL(MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, BLOCK_SIZE))
+    MUDOCK_PRAGMA_TEMPLATE_UNROLL(MAX_ATOMS, BLOCK_SIZE)
     for (int i = 0; i < MAX_ATOMS; i += BLOCK_SIZE) {
       const int atom_index = i + threadIdx.x;
       if (atom_index < num_atoms) {
@@ -37,7 +37,7 @@ namespace mudock {
                                                       const int num_atoms) {
     // compute the molecule center of mass
     fp_type c_x{0}, c_y{0}, c_z{0};
-    MUDOCK_PRAGMA_UNROLL(MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, BLOCK_SIZE))
+    MUDOCK_PRAGMA_TEMPLATE_UNROLL(MAX_ATOMS, BLOCK_SIZE)
     for (int i = 0; i < MAX_ATOMS; i += BLOCK_SIZE) {
       const int atom_index = i + threadIdx.x;
       if (atom_index < num_atoms) {
@@ -79,7 +79,7 @@ namespace mudock {
     const auto m22 = cx * cy;
 
     // apply the rotation matrix
-    MUDOCK_PRAGMA_UNROLL(MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, BLOCK_SIZE))
+    MUDOCK_PRAGMA_TEMPLATE_UNROLL(MAX_ATOMS, BLOCK_SIZE)
     for (int i = 0; i < MAX_ATOMS; i += BLOCK_SIZE) {
       const int atom_index = i + threadIdx.x;
       if (atom_index < num_atoms) {
@@ -143,7 +143,7 @@ namespace mudock {
         ((origz * (u2 + v2) - w * (origx * u + origy * v)) * one_minus_c + (origx * v - origy * u) * ls) / l2;
 
     // apply the rotation matrix
-    MUDOCK_PRAGMA_UNROLL(MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, BLOCK_SIZE))
+    MUDOCK_PRAGMA_TEMPLATE_UNROLL(MAX_ATOMS, BLOCK_SIZE)
     for (int i = 0; i < MAX_ATOMS; i += BLOCK_SIZE) {
       const int atom_index = i + threadIdx.x;
       if (atom_index < num_atoms && bitmask[atom_index] != 0) {
@@ -198,7 +198,7 @@ namespace mudock {
       fp_type* __restrict__ z_scratch_chromosome = l_scratch_z + chromosome_index * atom_stride;
 
       // Copy original coordinates
-      MUDOCK_PRAGMA_UNROLL(MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, BLOCK_SIZE))
+      MUDOCK_PRAGMA_TEMPLATE_UNROLL(MAX_ATOMS, BLOCK_SIZE)
       for (int i = 0; i < MAX_ATOMS; i += BLOCK_SIZE) {
         const int atom_index = i + local_thread_id;
         if (atom_index < num_atoms) {
@@ -207,21 +207,27 @@ namespace mudock {
           z_scratch_chromosome[atom_index] = l_original_z[atom_index];
         }
       }
-      // apply rigid transformations
-      translate_molecule_hip<MAX_ATOMS>(x_scratch_chromosome,
-                                        y_scratch_chromosome,
-                                        z_scratch_chromosome,
-                                        l_chromosomes[0],
-                                        l_chromosomes[1],
-                                        l_chromosomes[2],
-                                        num_atoms);
-      rotate_molecule_hip<MAX_ATOMS>(x_scratch_chromosome,
-                                     y_scratch_chromosome,
-                                     z_scratch_chromosome,
-                                     l_chromosomes[3],
-                                     l_chromosomes[4],
-                                     l_chromosomes[5],
-                                     num_atoms);
+      fp_type reference_x{0}, reference_y{0}, reference_z{0};
+      MUDOCK_PRAGMA_UNROLL(MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, BLOCK_SIZE))
+      for (int i = 0; i < MAX_ATOMS; i += BLOCK_SIZE) {
+        const int atom_index = i + local_thread_id;
+        if (atom_index < num_atoms) {
+          reference_x += x_scratch_chromosome[atom_index];
+          reference_y += y_scratch_chromosome[atom_index];
+          reference_z += z_scratch_chromosome[atom_index];
+        }
+      }
+      reference_x /= num_atoms;
+      reference_y /= num_atoms;
+      reference_z /= num_atoms;
+      for (int offset = BLOCK_SIZE / 2; offset > 0; offset /= 2) {
+        reference_x += SHFL_DOWN(BITLANE_MASK, reference_x, offset, BLOCK_SIZE);
+        reference_y += SHFL_DOWN(BITLANE_MASK, reference_y, offset, BLOCK_SIZE);
+        reference_z += SHFL_DOWN(BITLANE_MASK, reference_z, offset, BLOCK_SIZE);
+      }
+      reference_x = SHFL(BITLANE_MASK, reference_x, 0, BLOCK_SIZE);
+      reference_y = SHFL(BITLANE_MASK, reference_y, 0, BLOCK_SIZE);
+      reference_z = SHFL(BITLANE_MASK, reference_z, 0, BLOCK_SIZE);
 
       // change the molecule shape
       MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
@@ -236,6 +242,49 @@ namespace mudock {
                                        l_chromosomes[6 + i],
                                        num_atoms);
       }
+
+      fp_type transformed_x{0}, transformed_y{0}, transformed_z{0};
+      MUDOCK_PRAGMA_UNROLL(MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, BLOCK_SIZE))
+      for (int i = 0; i < MAX_ATOMS; i += BLOCK_SIZE) {
+        const int atom_index = i + local_thread_id;
+        if (atom_index < num_atoms) {
+          transformed_x += x_scratch_chromosome[atom_index];
+          transformed_y += y_scratch_chromosome[atom_index];
+          transformed_z += z_scratch_chromosome[atom_index];
+        }
+      }
+      transformed_x /= num_atoms;
+      transformed_y /= num_atoms;
+      transformed_z /= num_atoms;
+      for (int offset = BLOCK_SIZE / 2; offset > 0; offset /= 2) {
+        transformed_x += SHFL_DOWN(BITLANE_MASK, transformed_x, offset, BLOCK_SIZE);
+        transformed_y += SHFL_DOWN(BITLANE_MASK, transformed_y, offset, BLOCK_SIZE);
+        transformed_z += SHFL_DOWN(BITLANE_MASK, transformed_z, offset, BLOCK_SIZE);
+      }
+      transformed_x = SHFL(BITLANE_MASK, transformed_x, 0, BLOCK_SIZE);
+      transformed_y = SHFL(BITLANE_MASK, transformed_y, 0, BLOCK_SIZE);
+      transformed_z = SHFL(BITLANE_MASK, transformed_z, 0, BLOCK_SIZE);
+      translate_molecule_hip<MAX_ATOMS>(x_scratch_chromosome,
+                                        y_scratch_chromosome,
+                                        z_scratch_chromosome,
+                                        reference_x - transformed_x,
+                                        reference_y - transformed_y,
+                                        reference_z - transformed_z,
+                                        num_atoms);
+      rotate_molecule_hip<MAX_ATOMS>(x_scratch_chromosome,
+                                     y_scratch_chromosome,
+                                     z_scratch_chromosome,
+                                     l_chromosomes[3],
+                                     l_chromosomes[4],
+                                     l_chromosomes[5],
+                                     num_atoms);
+      translate_molecule_hip<MAX_ATOMS>(x_scratch_chromosome,
+                                        y_scratch_chromosome,
+                                        z_scratch_chromosome,
+                                        l_chromosomes[0],
+                                        l_chromosomes[1],
+                                        l_chromosomes[2],
+                                        num_atoms);
     }
   };
 

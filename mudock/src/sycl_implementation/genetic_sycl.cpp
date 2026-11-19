@@ -46,6 +46,14 @@ namespace mudock {
   inline fp_type get_mutation_coin_distribution(XORWOWState& state) {
     return random_gen_sycl<fp_type>(state, 0, 1);
   };
+
+  template<bool bounded>
+  inline void limit_translation(chromosome& chrom, const fp_type half_width) {
+    if constexpr (!bounded) return;
+    chrom[0] = sycl::clamp(chrom[0], -half_width, half_width);
+    chrom[1] = sycl::clamp(chrom[1], -half_width, half_width);
+    chrom[2] = sycl::clamp(chrom[2], -half_width, half_width);
+  }
   inline int get_crossover_distribution(XORWOWState& state, const int* num_rotamers) {
     return random_gen_sycl<int>(state, 0, 6 + *num_rotamers);
   };
@@ -65,16 +73,18 @@ namespace mudock {
     return best_individual;
   }
 
+  template<bool bounded>
   struct initialize_gpu {
     void operator()(sycl::nd_item<3> it,
                     const int chromosome_number,
                     const int* __restrict__ ligand_num_rotamers,
                     chromosome* __restrict__ chromosomes,
                     XORWOWState* __restrict__ state,
-                    fp_type* __restrict__ ligand_scores) const {
-      const int ligand_id        = static_cast<int>(it.get_group(0));
-      const int local_thread_id  = static_cast<int>(it.get_local_id(0));
-      const int thread_per_block = static_cast<int>(it.get_local_range(0));
+                    fp_type* __restrict__ ligand_scores,
+                    const fp_type max_translation_half_width) const {
+      const int ligand_id        = static_cast<int>(it.get_group(2));
+      const int local_thread_id  = static_cast<int>(it.get_local_id(2));
+      const int thread_per_block = static_cast<int>(it.get_local_range(2));
       const int global_thread_id = local_thread_id + thread_per_block * ligand_id;
 
       const int num_rotamers       = ligand_num_rotamers[ligand_id];
@@ -98,6 +108,7 @@ namespace mudock {
         for (int i{0}; i < 3; ++i) { // initialize the rigid translation
           chromo[i] = get_init_change_distribution(l_state) * coordinate_step;
         }
+        limit_translation<bounded>(chromo, max_translation_half_width);
         MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
         for (int i{3}; i < 6 + num_rotamers; ++i) { // initialize the rotations
           chromo[i] = get_init_change_distribution(l_state) * angle_step;
@@ -108,6 +119,7 @@ namespace mudock {
     }
   };
 
+  template<bool bounded>
   struct iterate_gpu {
     void operator()(sycl::nd_item<3> it,
                     const int tournament_length,
@@ -117,10 +129,11 @@ namespace mudock {
                     chromosome* __restrict__ chromosomes,
                     chromosome* __restrict__ next_chromosomes,
                     XORWOWState* __restrict__ state,
-                    fp_type* __restrict__ ligand_scores) const {
-      const int ligand_id        = static_cast<int>(it.get_group(0));
-      const int local_thread_id  = static_cast<int>(it.get_local_id(0));
-      const int thread_per_block = static_cast<int>(it.get_local_range(0));
+                    fp_type* __restrict__ ligand_scores,
+                    const fp_type max_translation_half_width) const {
+      const int ligand_id        = static_cast<int>(it.get_group(2));
+      const int local_thread_id  = static_cast<int>(it.get_local_id(2));
+      const int thread_per_block = static_cast<int>(it.get_local_range(2));
       const int global_thread_id = local_thread_id + thread_per_block * ligand_id;
 
       const int num_rotamers                      = ligand_num_rotamers[ligand_id];
@@ -152,8 +165,9 @@ namespace mudock {
         MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
         for (int i{0}; i < 3; ++i) {
           if (get_mutation_coin_distribution(l_state) < mutation_prob)
-            next_chromosome[i] += get_mutation_change_distribution(l_state) * coordinate_step;
+          next_chromosome[i] += get_mutation_change_distribution(l_state) * coordinate_step;
         }
+        limit_translation<bounded>(next_chromosome, max_translation_half_width);
         MUDOCK_PRAGMA_UNROLL(MUDOCK_UNROLL_FACTOR)
         for (int i{3}; i < 6 + num_rotamers; ++i) {
           if (get_mutation_coin_distribution(l_state) < mutation_prob) {
@@ -173,17 +187,17 @@ namespace mudock {
                     fp_type* __restrict__ ligand_best_scores,
                     chromosome* __restrict__ chromosomes,
                     chromosome* __restrict__ best_chromosomes) const {
-      const int ligand_id        = static_cast<int>(it.get_group(0));
-      const int local_thread_id  = static_cast<int>(it.get_local_id(0));
-      const int thread_per_block = static_cast<int>(it.get_local_range(0));
-      const auto& sub_group      = it.get_sub_group();
+      const int ligand_id        = static_cast<int>(it.get_group(2));
+      const int local_thread_id  = static_cast<int>(it.get_local_id(2));
+      const int thread_per_block = static_cast<int>(it.get_local_range(2));
 
       const int num_rotamers                 = ligand_num_rotamers[ligand_id];
       chromosome* __restrict__ l_chromosomes = chromosomes + ligand_id * chromosome_number;
       fp_type* __restrict__ scores           = ligand_scores + chromosome_number * ligand_id;
 
-      // Compute the maximum value within the warp
-      // Assuming each warp has 32 threads
+      // The chromosome scan spans the whole work-group.  Reducing only over
+      // a subgroup can select a local minimum when the subgroup is narrower
+      // than the configured work-group, as on Intel PVC.
       int min_index = local_thread_id;
       fp_type min_score =
           min_index < chromosome_number ? scores[min_index] : std::numeric_limits<fp_type>::infinity();
@@ -194,7 +208,7 @@ namespace mudock {
           min_score = scores[chromosome_index];
         }
       }
-      const fp_type best_score = sycl::reduce_over_group(sub_group, min_score, sycl::minimum());
+      const fp_type best_score = sycl::reduce_over_group(it.get_group(), min_score, sycl::minimum());
 
       // TODO checks that only one can do it
       if (min_score == best_score) {
@@ -209,16 +223,31 @@ namespace mudock {
   template<>
   void genetic_kernel<queue_sycl>::operator()() {
     auto& random_memory = get_sycl_random_memory();
-    q->invoke_kernel<iterate_gpu>(batch_ligands,
-                                  MUDOCK_SYCL_WG_SIZE,
-                                  tournament_length,
-                                  mutation_prob,
-                                  population_number,
-                                  num_rotamers_b,
-                                  population,
-                                  next_population,
-                                  random_memory.get_data()->dev_pointer(),
-                                  scores_b);
+    if (max_translation_half_width > fp_type{0}) {
+      q->invoke_kernel<iterate_gpu<true>>(batch_ligands,
+                                           MUDOCK_SYCL_WG_SIZE,
+                                           tournament_length,
+                                           mutation_prob,
+                                           population_number,
+                                           num_rotamers_b,
+                                           population,
+                                           next_population,
+                                           random_memory.get_data()->dev_pointer(),
+                                           scores_b,
+                                           max_translation_half_width);
+    } else {
+      q->invoke_kernel<iterate_gpu<false>>(batch_ligands,
+                                           MUDOCK_SYCL_WG_SIZE,
+                                           tournament_length,
+                                           mutation_prob,
+                                           population_number,
+                                           num_rotamers_b,
+                                           population,
+                                           next_population,
+                                           random_memory.get_data()->dev_pointer(),
+                                           scores_b,
+                                           max_translation_half_width);
+    }
   }
   template<>
   void genetic_kernel<queue_sycl>::initialize() {
@@ -228,13 +257,25 @@ namespace mudock {
     // TODO chek assumption on num_threads
     random_memory.get_data()->alloc(batch_ligands * MUDOCK_SYCL_WG_SIZE, seed);
 
-    q->invoke_kernel<initialize_gpu>(batch_ligands,
-                                     MUDOCK_SYCL_WG_SIZE,
-                                     population_number,
-                                     num_rotamers_b,
-                                     population,
-                                     random_memory.get_data()->dev_pointer(),
-                                     scores_b);
+    if (max_translation_half_width > fp_type{0}) {
+      q->invoke_kernel<initialize_gpu<true>>(batch_ligands,
+                                             MUDOCK_SYCL_WG_SIZE,
+                                             population_number,
+                                             num_rotamers_b,
+                                             population,
+                                             random_memory.get_data()->dev_pointer(),
+                                             scores_b,
+                                             max_translation_half_width);
+    } else {
+      q->invoke_kernel<initialize_gpu<false>>(batch_ligands,
+                                             MUDOCK_SYCL_WG_SIZE,
+                                             population_number,
+                                             num_rotamers_b,
+                                             population,
+                                             random_memory.get_data()->dev_pointer(),
+                                             scores_b,
+                                             max_translation_half_width);
+    }
   }
   template<>
   void genetic_kernel<queue_sycl>::finalize() {

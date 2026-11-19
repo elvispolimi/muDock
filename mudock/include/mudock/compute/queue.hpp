@@ -21,6 +21,7 @@ namespace mudock {
     // void launch_kernel(void* f, void* args[] = nullptr, int batch = 0) {
     //   this->launch_kernel_impl(f, args, std::string_view{Region}, batch);
     // }
+    // Allocation requires a null pointer; object<T> owns growth/free policy.
     virtual void alloc(void**, const size_t)                          = 0;
     virtual void free(void**)                                         = 0;
     virtual void set_to_value(void*, const size_t, const char)        = 0;

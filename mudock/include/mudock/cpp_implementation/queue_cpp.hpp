@@ -10,7 +10,7 @@
 
 namespace mudock {
   struct queue_cpp: queue {
-    queue_cpp(const int _id, [[maybe_unused]] const device_type _dev_type): queue(_id, _dev_type) {
+    queue_cpp(const int _id, const device_type _dev_type): queue(_id, _dev_type) {
       assert(dev_type == device_type::CPU && "CPP version supports only CPUs devices");
     };
 
@@ -51,5 +51,6 @@ namespace mudock {
     }
 
     void synchronize() {};
+
   };
 } // namespace mudock

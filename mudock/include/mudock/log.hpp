@@ -1,9 +1,9 @@
 #pragma once
 
-#include <chrono>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
+#include <time.h>
 #include <utility>
 
 namespace mudock {
@@ -17,11 +17,15 @@ namespace mudock {
     }
 
     class timer {
-      static std::chrono::steady_clock::time_point start;
+      static timespec start;
 
     public:
       static inline float get() {
-        return std::chrono::duration<float>(std::chrono::steady_clock::now() - start).count();
+        timespec current{};
+        clock_gettime(CLOCK_MONOTONIC, &current);
+        const auto seconds = current.tv_sec - start.tv_sec;
+        const auto nanoseconds = current.tv_nsec - start.tv_nsec;
+        return static_cast<float>(seconds) + static_cast<float>(nanoseconds) * 1.0e-9F;
       }
     };
 

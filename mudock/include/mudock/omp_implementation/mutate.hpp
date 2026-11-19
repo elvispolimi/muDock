@@ -20,9 +20,16 @@ namespace mudock {
                         const int num_rotamers,
                         const int stride_atoms,
                         const int num_atoms) {
-    // apply rigid transformations
-    translate_molecule_omp(x, y, z, &chromosome[0], &chromosome[1], &chromosome[2], num_atoms);
-    rotate_molecule_omp(x, y, z, &chromosome[3], &chromosome[4], &chromosome[5], num_atoms);
+    fp_type reference_x{0}, reference_y{0}, reference_z{0};
+#pragma omp parallel for reduction(+ : reference_x, reference_y, reference_z)
+    for (int atom_index = 0; atom_index < num_atoms; ++atom_index) {
+      reference_x += x[atom_index];
+      reference_y += y[atom_index];
+      reference_z += z[atom_index];
+    }
+    reference_x /= num_atoms;
+    reference_y /= num_atoms;
+    reference_z /= num_atoms;
 
     // change the molecule shape
     for (int i = 0; i < num_rotamers; ++i) {
@@ -36,6 +43,12 @@ namespace mudock {
                           &chromosome[6 + i],
                           num_atoms);
     }
+
+    recenter_molecule_omp(x, y, z, num_atoms, reference_x, reference_y, reference_z);
+
+    // Apply rigid transformations after the conformation is recentered.
+    rotate_molecule_omp(x, y, z, &chromosome[3], &chromosome[4], &chromosome[5], num_atoms);
+    translate_molecule_omp(x, y, z, &chromosome[0], &chromosome[1], &chromosome[2], num_atoms);
   }
 
 } // namespace mudock

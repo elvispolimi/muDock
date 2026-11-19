@@ -1,5 +1,5 @@
 #include <cassert>
-#include <mudock/cpp_implementation/center_of_mass.hpp>
+#include <mudock/cpp_implementation/centroid.hpp>
 #include <mudock/cpp_implementation/mutate_cpp.hpp>
 #include <mudock/cpp_implementation/vectorization.hpp>
 #include <mudock/grid.hpp>

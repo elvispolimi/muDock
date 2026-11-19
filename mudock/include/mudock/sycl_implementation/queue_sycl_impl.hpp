@@ -20,6 +20,7 @@ namespace mudock {
     sycl::device get_device() { return d; }
     sycl::queue get_queue() { return q; };
 
+
   private:
     sycl::queue q;
     sycl::device d;
