@@ -9,7 +9,7 @@
 #include <limits>
 #include <memory>
 #include <mudock/batch.hpp>
-#include <mudock/chem/autodock_protein.hpp>
+#include <mudock/chem/autodock_grid.hpp>
 #include <numeric>
 #include <stdexcept>
 #if !defined(__CUDACC__) && !defined(__HIPCC__)
@@ -97,12 +97,12 @@ namespace mudock {
     static constexpr const char stage_name[] = "GENETIC";
 
     genetic(std::shared_ptr<scratchpad<queue_t>> _scratch,
-            dynamic_molecule& protein,
+            point3D docking_center,
             scoring_t<queue_t> _scoring,
             ligand_placement _placement = {})
         : docking<queue_t>(_scratch),
           score_stage(std::move(_scoring)),
-          geom_trans(_scratch, protein, _placement),
+          geom_trans(_scratch, docking_center, _placement),
           next_population(_scratch->get_queue()),
           best_chromosomes(_scratch->get_queue()),
           best_scores(_scratch->get_queue()) {};

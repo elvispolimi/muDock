@@ -1,12 +1,10 @@
 #pragma once
 
-#include <mudock/chem/assign_autodock_babel_types.hpp>
-#include <mudock/chem/autodock_babel_types.hpp>
 #include <mudock/chem/autodock_grid_types.hpp>
 #include <mudock/chem/autodock_layer.hpp>
 #include <mudock/chem/autodock_ligand.hpp>
+#include <mudock/chem/autodock_grid.hpp>
 #include <mudock/chem/autodock_parameters.hpp>
-#include <mudock/chem/autodock_protein.hpp>
 #include <mudock/chem/autodock_types.hpp>
 #include <mudock/chem/bond_types.hpp>
 #include <mudock/chem/cleanup.hpp>

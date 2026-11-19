@@ -25,7 +25,7 @@ Required:
 - A C++20-capable compiler (GCC/Clang/IntelLLVM)
 - Boost (components: `program_options`, `graph`, `context`)
 - oneTBB
-- OpenBabel3
+- RDKit (C++ libraries: GraphMol and FileParsers)
 
 Required when using the bundled CMake presets:
 - Ninja
@@ -106,7 +106,7 @@ cmake --build /path/to/muDock/build
 Main application:
 
 ```bash
-./build/application/muDock --protein /path/to/protein.pdb --ligand /path/to/ligands.mol2 --use CPP:CPU:0
+./build/application/muDock --dpf /path/to/receptor.dpf --ligand /path/to/ligands.pdbqt --use CPP:CPU:0
 ```
 
 The `--use` flag maps implementations to devices using:
@@ -127,21 +127,14 @@ For the TBB stream frontend, the most useful extra runtime flags are:
 - `--observer` — print periodic throughput and backlog information
 - `--time_limit_sec` — stop admitting new work after a time limit and drain what is already in flight
 
-Converter:
-
-```bash
-./build/application/converter --input input.mol2 --output output.pdbqt
-```
-
 Supported formats (by file extension):
 - `mol2`
 - `pdbqt`
 - `pdb`
-- `adtmol2`
+- `mol`
+- `sdf`
 
-Note on ligand parsing: `adtmol2` and `mol2` now use muDock's native parser and can be split and parsed in parallel. `adtmol2` still carries extra AutoDock-specific fields, while plain `mol2` remains a generic interchange format.
-
-`mol2` writing is also available natively. The TBB stream frontend and the MPI frontend accept both `adtmol2` and `mol2` streams.
+AutoDock scoring requires a prepared `.pdbqt` ligand and a DPF whose `fld` directive points to precomputed AutoGrid maps. muDock preserves ligand PDBQT atom types, partial charges, coordinates, and torsion-tree records; prepare ligands externally (for example, with Meeko). The receptor structure is not needed at runtime for ADT scoring because its contributions are already encoded in the maps. `--protein` remains available to scoring functions that need the molecular structure. Generic PDB, MOL, SDF, and MOL2 parsing is available for non-scoring uses. MOL2 records are parsed natively; RDKit parses PDB, MOL, and SDF records.
 
 ## Tests
 
@@ -214,7 +207,6 @@ ctest --preset dev-cpu-debug
 
 - If CMake cannot find Boost through `BoostConfig.cmake`, muDock now falls back to CMake's standard `FindBoost` module automatically.
 - If `ctest` reports no tests, confirm you configured with `MUDOCK_ENABLE_TEST=ON` or used the provided CPU debug presets.
-- If OpenBabel is found at configure time but fails at runtime, verify that the runtime package is installed in addition to the development headers.
 - If Apptainer image builds are blocked by permissions, retry with `apptainer build --fakeroot ...` or follow your cluster's container policy.
 
 ## References

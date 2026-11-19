@@ -12,6 +12,7 @@ static constexpr auto use_cpu_conf = std::string_view{"CPP:CPU:0"};
 
 struct command_line_arguments {
   std::filesystem::path protein_path    = std::filesystem::path{"protein.pdb"};
+  std::optional<std::filesystem::path> dpf_path;
   std::filesystem::path ligand_path     = std::filesystem::path{"ligand.mol2"};
   std::filesystem::path probe_path;
   std::vector<std::string> device_confs = {std::string{use_cpu_conf}};

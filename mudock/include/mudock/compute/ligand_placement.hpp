@@ -38,11 +38,11 @@ namespace mudock {
 
   inline void apply_ligand_placement(static_molecule& ligand,
                                      const ligand_placement& placement,
-                                     const point3D protein_center) {
+                                     const point3D default_target) {
     if (placement.mode == ligand_placement_mode::preserve) return;
 
     const auto target = placement.mode == ligand_placement_mode::center_bbox ?
-                            std::optional<point3D>{protein_center} : placement.target;
+                            std::optional<point3D>{default_target} : placement.target;
     if (!target.has_value()) throw std::runtime_error("Ligand placement target is missing");
 
     const auto centroid = compute_centroid(ligand.x(), ligand.y(), ligand.z(), ligand.num_atoms());

@@ -70,10 +70,6 @@ endif()
 # ##############################################################################
 # ### Declare the install step
 # ##############################################################################
-add_executable_mudock(converter "${CMAKE_CURRENT_SOURCE_DIR}/src/converter.cpp")
-mudock_configure_application_target(converter "${header_path}")
-mudock_link_application_target(converter)
-
 # ##############################################################################
 # ### Declare the install step
 # ##############################################################################

@@ -44,6 +44,10 @@ namespace mudock {
     // the intra-molecular connections
     bonds_array_type<bond> bond_descriptions;
     int bonds_size = int{0};
+    // AutoDock's TORSDOF is a scoring input and is not always identical to the
+    // number of rotatable bonds represented in the kinematic tree.
+    int autodock_torsdof = -1;
+    bool has_prepared_autodock_types = false;
 
     atoms_array_type<std::string> atom_names;
     atoms_array_type<sybyl_atom_type> atom_sybyl_types;
@@ -67,6 +71,12 @@ namespace mudock {
         return b.can_rotate;
       });
     }
+    [[nodiscard]] constexpr int torsdof() const {
+      return autodock_torsdof >= 0 ? autodock_torsdof : static_cast<int>(num_rotamers());
+    }
+    constexpr void set_torsdof(const int value) { autodock_torsdof = value; }
+    [[nodiscard]] constexpr bool has_prepared_types() const { return has_prepared_autodock_types; }
+    constexpr void set_prepared_types(const bool value) { has_prepared_autodock_types = value; }
 
     point<fp_type, 3> get_center() const {
       // FIX ME I don't like it here, I do not undestand why it is needed by ADT

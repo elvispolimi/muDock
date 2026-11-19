@@ -22,6 +22,7 @@ namespace {
   int run_selected_pipeline(std::istream& in,
                             const mudock::supported_format format,
                             const command_line_arguments& args,
+                            std::shared_ptr<mudock::autodock_grid> grid,
                             std::shared_ptr<mudock::dynamic_molecule> protein,
                             const mudock::ligand_placement placement,
                             const std::uint64_t range_end) {
@@ -37,24 +38,32 @@ namespace {
                                args.scoring,
                                format,
                                [&]<typename pipeline_t>(const auto, const auto) {
-                                 pipeline_t pipe{protein, placement};
-                                 constexpr_switch<0, mudock::get_num_supported_format(), 1>(
-                                     [&](const auto format_index) {
-                                       constexpr auto selected_format =
-                                           static_cast<mudock::supported_format>(decltype(format_index)::value);
-                                       mudock::run_tbb_pipeline<selected_format>(in,
-                                                                                 args.device_confs,
-                                                                                 args.knobs,
-                                                                                 pipe,
-                                                                                 range_end,
-                                                                                 args.time_limit_sec,
-                                                                                 args.observer,
-                                                                                 args.measure_ligands,
-                                                                                 args.measure_batches,
-                                                                                 args.measure_force_exit,
-                                                                                 args.batch_trace);
-                                     },
-                                     format);
+                                 auto run = [&](pipeline_t& pipe) {
+                                   constexpr_switch<0, mudock::get_num_supported_format(), 1>(
+                                       [&](const auto format_index) {
+                                         constexpr auto selected_format =
+                                             static_cast<mudock::supported_format>(decltype(format_index)::value);
+                                         mudock::run_tbb_pipeline<selected_format>(in,
+                                                                                   args.device_confs,
+                                                                                   args.knobs,
+                                                                                   pipe,
+                                                                                   range_end,
+                                                                                   args.time_limit_sec,
+                                                                                   args.observer,
+                                                                                   args.measure_ligands,
+                                                                                   args.measure_batches,
+                                                                                   args.measure_force_exit,
+                                                                                   args.batch_trace);
+                                       },
+                                       format);
+                                 };
+                                 if (args.scoring == mudock::scoring_function::ADT) {
+                                   pipeline_t pipe{grid, placement};
+                                   run(pipe);
+                                 } else {
+                                   pipeline_t pipe{protein, placement};
+                                   run(pipe);
+                                 }
                                });
 
     return EXIT_SUCCESS;
@@ -63,6 +72,11 @@ namespace {
 
 int main(int argc, char** argv) {
   const auto args                         = parse_command_line_arguments(argc, argv);
+  if (args.scoring == mudock::scoring_function::ADT && !args.dpf_path)
+    throw std::invalid_argument("AutoDock scoring requires --dpf with precomputed AutoGrid maps");
+  if (args.scoring == mudock::scoring_function::ADT &&
+      mudock::parse_supported_format(args.ligand_path) != mudock::supported_format::PDBQT)
+    throw std::invalid_argument("AutoDock scoring requires preprocessed .pdbqt ligand input");
   std::optional<mudock::byte_range> range = std::nullopt;
   std::optional<int> rank                 = std::nullopt;
   const auto in_format                    = mudock::parse_supported_format(args.ligand_path);
@@ -99,9 +113,15 @@ int main(int argc, char** argv) {
 
   MUDOCK_MARKER_INIT;
 
-  mudock::info("Reading and parsing protein ", args.protein_path, " ...");
-  auto protein =
-      std::make_shared<mudock::dynamic_molecule>(mudock::parser<mudock::dynamic_molecule>(args.protein_path));
+  std::shared_ptr<mudock::autodock_grid> grid;
+  std::shared_ptr<mudock::dynamic_molecule> protein;
+  if (args.scoring == mudock::scoring_function::ADT) {
+    mudock::info("Reading AutoGrid maps referenced by ", args.dpf_path->string(), " ...");
+    grid = std::make_shared<mudock::autodock_grid>(mudock::load_autogrid_maps(*args.dpf_path));
+  } else {
+    mudock::info("Reading protein structure ", args.protein_path, " ...");
+    protein = std::make_shared<mudock::dynamic_molecule>(mudock::parser<mudock::dynamic_molecule>(args.protein_path));
+  }
 
   mudock::ligand_placement placement{args.placement_mode, args.placement_point};
   if (args.placement_mode == mudock::ligand_placement_mode::probe) {
@@ -147,7 +167,7 @@ int main(int argc, char** argv) {
   in.seekg(static_cast<std::streamoff>(effective_range.begin), std::ios::beg);
 
   const int status =
-      run_selected_pipeline(in, in_format, args, std::move(protein), placement, effective_range.end);
+      run_selected_pipeline(in, in_format, args, std::move(grid), std::move(protein), placement, effective_range.end);
   MUDOCK_MARKER_CLOSE;
   if (status == EXIT_SUCCESS) {
     mudock::info("All Done!");

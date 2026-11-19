@@ -8,15 +8,13 @@ set(header_prefix "mudock")
 list(
   APPEND
   header_files
-  "${header_path}/${header_prefix}/chem/assign_autodock_babel_types.hpp"
-  "${header_path}/${header_prefix}/chem/autodock_babel_types.hpp"
   "${header_path}/${header_prefix}/chem/autodock_grid_types.hpp"
+  "${header_path}/${header_prefix}/chem/autodock_grid.hpp"
   "${header_path}/${header_prefix}/chem/autodock_layer.hpp"
   "${header_path}/${header_prefix}/chem/autodock_ligand.hpp"
   "${header_path}/${header_prefix}/chem/autodock_parameters.hpp"
   "${header_path}/${header_prefix}/chem/sybyl_atom_types.hpp"
   "${header_path}/${header_prefix}/chem/residue_types.hpp"
-  "${header_path}/${header_prefix}/chem/autodock_protein.hpp"
   "${header_path}/${header_prefix}/chem/autodock_types.hpp"
   "${header_path}/${header_prefix}/chem/bond_types.hpp"
   "${header_path}/${header_prefix}/chem/cleanup.hpp"
@@ -60,13 +58,13 @@ list(
   "${header_path}/${header_prefix}/format/concept.hpp"
   "${header_path}/${header_prefix}/format/dot.hpp"
   "${header_path}/${header_prefix}/format/mol2.hpp"
+  "${header_path}/${header_prefix}/format/autogrid.hpp"
+  "${header_path}/${header_prefix}/format/mdl.hpp"
   "${header_path}/${header_prefix}/format/pdb.hpp"
   "${header_path}/${header_prefix}/format/supported_format.hpp"
-  "${header_path}/${header_prefix}/format/adt_mol2.hpp"
   "${header_path}/${header_prefix}/format/writer.hpp"
   "${header_path}/${header_prefix}/format/pdbqt.hpp"
   "${header_path}/${header_prefix}/format/reader.hpp"
-  "${header_path}/${header_prefix}/format/ob_wrapper.hpp"
   "${header_path}/${header_prefix}/grid/pi.hpp"
   "${header_path}/${header_prefix}/grid/mdindex.hpp"
   "${header_path}/${header_prefix}/grid/mdspan.hpp"
@@ -101,10 +99,6 @@ set(source_path "${CMAKE_CURRENT_SOURCE_DIR}/src")
 list(
   APPEND
   source_files
-  "${source_path}/chem/assign_autodock_babel_types.cpp"
-  "${source_path}/chem/assign_autodock_types.cpp"
-  "${source_path}/chem/autodock_babel_types.cpp"
-  "${source_path}/chem/autodock_protein.cpp"
   "${source_path}/chem/autodock_ligand.cpp"
   "${source_path}/chem/sybyl_atom_types.cpp"
   "${source_path}/chem/residue_types.cpp"
@@ -116,13 +110,11 @@ list(
   "${source_path}/compute/algorithm.cpp"
   "${source_path}/format/dot.cpp"
   "${source_path}/format/mol2.cpp"
-  "${source_path}/format/adt_mol2.cpp"
-  "${source_path}/format/ob_wrapper.cpp"
+  "${source_path}/format/autogrid.cpp"
   "${source_path}/format/pdb.cpp"
   "${source_path}/format/pdbqt.cpp"
   "${source_path}/format/supported_format.cpp"
   "${source_path}/format/reader.cpp"
-  "${source_path}/format/writer.cpp"
   "${source_path}/molecule/fragments.cpp"
   "${source_path}/molecule/graph.cpp"
   "${source_path}/molecule/property_table.cpp"
@@ -133,16 +125,6 @@ list(
   "${source_path}/cpp_implementation/genetic_cpp.cpp"
   "${source_path}/tbb_implementation/runtime_services.cpp"
 )
-
-set(mudock_precompute_opt_sources
-    "${source_path}/chem/autodock_protein.cpp")
-
-if(OVERRIDE_PRECOMPUTE_OPT)
-  foreach(precompute_source IN LISTS mudock_precompute_opt_sources)
-    set_source_files_properties("${precompute_source}"
-                                PROPERTIES COMPILE_OPTIONS "-O2")
-  endforeach()
-endif()
 
 if(MUDOCK_ENABLE_MPI)
   list(
@@ -282,7 +264,6 @@ add_library(libmudock STATIC ${source_files} ${header_files})
 add_library(mudock::libmudock ALIAS libmudock)
 set_target_properties(libmudock PROPERTIES PUBLIC_HEADER "${headers}")
 target_include_directories(libmudock PUBLIC "${header_path}")
-target_include_directories(libmudock SYSTEM PUBLIC ${OpenBabel3_INCLUDE_DIRS})
 set_target_properties(libmudock PROPERTIES PREFIX "" OUTPUT_NAME "libmudock")
 set_target_properties(
   libmudock
@@ -290,7 +271,7 @@ set_target_properties(
              CXX_STANDARD_REQUIRED ON
              CXX_EXTENSIONS OFF
              POSITION_INDEPENDENT_CODE ON)
-target_link_libraries(libmudock PUBLIC Boost::graph ${OpenBabel3_LIBRARIES} TBB::tbb)
+target_link_libraries(libmudock PUBLIC TBB::tbb RDKit::FileParsers RDKit::GraphMol)
 if(NOT MUDOCK_ENABLE_OMP)
   target_compile_options(libmudock PRIVATE -Wno-unknown-pragmas)
 endif()

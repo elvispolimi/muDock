@@ -26,10 +26,13 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
   arguments_description.add_options()("help,h", "print this help message");
   arguments_description.add_options()("protein,p",
                                       po::value(&args.protein_path)->default_value(args.protein_path),
-                                      "Path to the protein file (in PDB)");
+                                      "Path to the protein structure, for scoring functions that use it");
+  arguments_description.add_options()("dpf",
+                                      po::value<std::filesystem::path>(),
+                                      "AutoDock DPF referencing precomputed AutoGrid maps (required for ADT)");
   arguments_description.add_options()("ligand,l",
                                       po::value(&args.ligand_path)->default_value(args.ligand_path),
-                                      "Path to the ligands file (in MOL2)");
+                                      "Path to the prepared ligand file/stream (in PDBQT)");
   arguments_description.add_options()(
       "placement",
       po::value(&placement_name)->default_value(placement_name),
@@ -121,8 +124,7 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
     std::cout << "This application reads ligands from --ligand/-l and prints one score per output line."
               << std::endl;
     std::cout << std::endl;
-    std::cout << "USAGE: " << argv[0] << " --protein|-p " << args.protein_path << " --ligand|-l "
-              << args.ligand_path << " --use " << use_cpu_conf
+    std::cout << "USAGE: " << argv[0] << " --dpf maps.dpf --ligand|-l " << args.ligand_path << " --use " << use_cpu_conf
               << " [--search none|genetic] [--score adt] [MORE_CONFIGS...] [KNOBS] " << std::endl;
     std::cout << std::endl;
     std::cout << arguments_description << std::endl;
@@ -130,7 +132,7 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
     std::cout << knobs_description << std::endl;
     std::cout << std::endl;
     std::cout << "Pipeline selection:" << std::endl
-              << "  --search none --score adt      adt scoring only" << std::endl
+              << "  --search none --score adt      adt scoring only (uses AutoGrid maps from --dpf)" << std::endl
               << "  --search genetic --score adt   genetic + adt" << std::endl;
     std::cout << std::endl;
     std::cout << "The use flag accepts one or more configurations that describe which implementation"
@@ -152,6 +154,7 @@ command_line_arguments parse_command_line_arguments(const int argc, char* argv[]
 
   // make sure that the arguments make sense before returning them
   po::notify(vm);
+  if (vm.count("dpf")) args.dpf_path = vm["dpf"].as<std::filesystem::path>();
   if (vm.count("seed")) {
     args.knobs.seed = std::optional<size_t>{seed};
   }

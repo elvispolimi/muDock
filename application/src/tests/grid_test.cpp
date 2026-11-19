@@ -1,113 +1,91 @@
 #include <boost/program_options.hpp>
-#include <cassert>
 #include <cmath>
+#include <chrono>
 #include <cstdlib>
 #include <filesystem>
-#include <format>
-#include <memory>
+#include <fstream>
 #include <mudock/chem/autodock_grid_types.hpp>
-#include <mudock/chem/autodock_protein.hpp>
-#include <mudock/cpp_implementation/queue_cpp.hpp>
-#include <mudock/format.hpp>
-#include <mudock/format/reader.hpp>
-#include <mudock/log.hpp>
-#include <mudock/mudock.hpp>
-#include <mudock/type_alias.hpp>
-#include <mudock/utils.hpp>
+#include <mudock/format/autogrid.hpp>
 #include <stdexcept>
 #include <string>
-#include <tests/autogrid.hpp>
-#include <utility>
-
-#ifndef MUDOCK_CTEST_SKIP_RETURN_CODE
-#  error "MUDOCK_CTEST_SKIP_RETURN_CODE must be defined by CMake."
-#endif
-
-namespace {
-// CTest treats this exit code as "skipped" when the grid test is not applicable.
-constexpr int ctest_skip_return_code = MUDOCK_CTEST_SKIP_RETURN_CODE;
-}
-
-template<class T>
-inline T round3dp(const T x) {
-  return ((std::floor((x) *T{1000.0} + T{0.5})) / T{1000.0});
-}
 
 int main(int argc, char* argv[]) {
+  namespace po = boost::program_options;
+  std::filesystem::path dpf_path{"rec.dpf"};
+  po::options_description options("Available options");
+  options.add_options()("help", "print this help message");
+  options.add_options()("dpf", po::value(&dpf_path)->default_value(dpf_path), "Path to the AutoDock DPF");
+  po::variables_map values;
+  po::store(po::command_line_parser(argc, argv).options(options).run(), values);
+  po::notify(values);
+
+  const auto grid = mudock::load_autogrid_maps(dpf_path);
+  if (grid.get_size_x() != 97 || grid.index.size_y() != 91 || grid.index.size_z() != 93)
+    throw std::runtime_error("Unexpected 1fkb AutoGrid dimensions");
+  const auto center = grid.get_center();
+  if (std::abs(center.x() - mudock::fp_type{3}) > mudock::fp_type{1e-6f} ||
+      std::abs(center.y() - mudock::fp_type{7}) > mudock::fp_type{1e-6f} ||
+      std::abs(center.z() - mudock::fp_type{12.5}) > mudock::fp_type{1e-6f})
+    throw std::runtime_error("Unexpected 1fkb AutoGrid center");
+  if (!grid.has_map(mudock::autodock_grid_type::A) || !grid.has_map(mudock::autodock_grid_type::ELEC) ||
+      !grid.has_map(mudock::autodock_grid_type::DESOLV))
+    throw std::runtime_error("AutoGrid loader did not register expected channels");
+  const auto affinity = grid.get_atom_map(mudock::autodock_grid_type::A);
+  if (std::abs(affinity.get(0, 0, 0)) > mudock::fp_type{1e-6f})
+    throw std::runtime_error("Unexpected first value in 1fkb A affinity map");
+
+  const auto test_dir = std::filesystem::temp_directory_path() /
+                        ("mudock_invalid_grid_test_" +
+                         std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
+  std::filesystem::create_directory(test_dir);
+  const auto invalid_dpf = test_dir / "invalid.dpf";
   {
-    const mudock::point3D min{mudock::fp_type{1}, mudock::fp_type{2}, mudock::fp_type{3}};
-    const mudock::point3D max{mudock::fp_type{5}, mudock::fp_type{6}, mudock::fp_type{7}};
-    const mudock::point3D center{mudock::fp_type{3}, mudock::fp_type{4}, mudock::fp_type{5}};
-    mudock::space_grid grid{min, max, center, mudock::fp_type{0.5}, 8, 8, 8};
-
-    const auto coordinate = grid.to_coord(2, 3, 4);
-    assert(coordinate.x() == mudock::fp_type{2.0});
-    assert(coordinate.y() == mudock::fp_type{3.5});
-    assert(coordinate.z() == mudock::fp_type{5.0});
-
-    grid.get(2, 3, 4) = mudock::fp_type{42};
-    assert(grid.get(coordinate) == mudock::fp_type{42});
-    assert(grid.get(mudock::point3D{mudock::fp_type{1.49f},
-                                    mudock::fp_type{2.49f},
-                                    mudock::fp_type{3.49f}}) == mudock::fp_type{0});
+    std::ofstream output(invalid_dpf);
+    output << "autodock_parameter_version 4.2\n";
   }
-
-  if constexpr (std::is_same<mudock::fp_type, double>::value) {
-    namespace po                     = boost::program_options;
-    std::filesystem::path pdbqt_path = std::filesystem::path{"protein.pdbqt"};
-    std::filesystem::path fld_path   = std::filesystem::path{"maps.fld"};
-
-    po::options_description arguments_description("Available options");
-    arguments_description.add_options()("help", "print this help message");
-    arguments_description.add_options()("pdbqt",
-                                        po::value(&pdbqt_path)->default_value(pdbqt_path),
-                                        "Path to the protein file (in PDBQT)");
-    arguments_description.add_options()("autogrid",
-                                        po::value(&fld_path)->default_value(fld_path),
-                                        "Path to the .fld file");
-    // parse them
-    po::options_description all("Allowed Options");
-    all.add(arguments_description);
-    po::variables_map vm;
-    po::store(po::command_line_parser(argc, argv).options(all).run(), vm);
-
-    po::notify(vm);
-
-    mudock::dynamic_molecule protein = mudock::parser<mudock::dynamic_molecule>(pdbqt_path);
-    mudock::autodock_protein adt_protein{protein};
-
-    mudock::autodock_grid protein_autogrid = load_autogrid_map_fld(fld_path);
-
-    for (int map_index = 0; map_index < mudock::num_autodock_grids(); ++map_index) {
-      const auto map_type           = static_cast<mudock::autodock_grid_type>(map_index);
-      const auto reference_grid_map = adt_protein.get_atom_map(map_type);
-      const auto autogrid_map       = protein_autogrid.get_atom_map(map_type);
-
-      for (std::size_t k = 0; k < std::min(reference_grid_map.size<2>(), autogrid_map.size<2>()); ++k)
-        for (std::size_t j = 0; j < std::min(reference_grid_map.size<1>(), autogrid_map.size<1>()); ++j)
-          for (std::size_t i = 0; i < std::min(reference_grid_map.size<0>(), autogrid_map.size<0>()); ++i) {
-            const auto reference_round = static_cast<float>(round3dp(reference_grid_map.get(i, j, k)));
-            const auto autogrid_round  = static_cast<float>(autogrid_map.get(i, j, k));
-            const auto max_absolute = std::max(std::fabs(reference_round), std::fabs(autogrid_round)) / 100;
-            const auto delta        = std::clamp(max_absolute, 0.01f, 1.0f);
-            if (std::fabs(reference_round - autogrid_round) > delta) {
-              mudock::error(std::format(
-                  "Difference betweem maps {} at ({},{},{}): muDock {} autogrid {} with an error threshold of {}",
-                  mudock::get_description(map_type).name,
-                  i,
-                  j,
-                  k,
-                  reference_round,
-                  autogrid_round,
-                  delta));
-              throw std::runtime_error("Error in Map");
-            }
-          }
-    }
-    mudock::info(std::format("Succesfully verified grid maps in {}", fld_path.string()));
-  } else {
-    mudock::info("Grid test requires mudock::fp_type to be double");
-    return ctest_skip_return_code;
+  bool rejected_missing_fld = false;
+  try {
+    (void) mudock::load_autogrid_maps(invalid_dpf);
+  } catch (const std::runtime_error&) {
+    rejected_missing_fld = true;
   }
+  if (!rejected_missing_fld) throw std::runtime_error("AutoGrid loader accepted a DPF without fld");
+
+  {
+    std::ofstream output(invalid_dpf);
+    output << "fld missing_maps.fld\n";
+  }
+  bool rejected_missing_maps = false;
+  try {
+    (void) mudock::load_autogrid_maps(invalid_dpf);
+  } catch (const std::runtime_error&) {
+    rejected_missing_maps = true;
+  }
+  if (!rejected_missing_maps) throw std::runtime_error("AutoGrid loader accepted a missing FLD file");
+
+  {
+    std::ofstream dpf(invalid_dpf);
+    dpf << "fld truncated.fld\n";
+    std::ofstream fld(test_dir / "truncated.fld");
+    fld << "dim1=2\ndim2=2\ndim3=2\n"
+           "coord 1 file=coords.xyz filetype=ascii offset=0\n"
+           "label=A-affinity\nlabel=Electrostatics\nlabel=Desolvation\n"
+           "variable 1 file=A.map filetype=ascii skip=6\n"
+           "variable 2 file=e.map filetype=ascii skip=6\n"
+           "variable 3 file=d.map filetype=ascii skip=6\n";
+    std::ofstream xyz(test_dir / "coords.xyz");
+    xyz << "0 1\n0 1\n0 1\n";
+    std::ofstream map(test_dir / "A.map");
+    for (int header = 0; header < 6; ++header) map << "header\n";
+    map << "0 0 0 0 0 0 0\n";
+  }
+  bool rejected_truncated_map = false;
+  try {
+    (void) mudock::load_autogrid_maps(invalid_dpf);
+  } catch (const std::runtime_error&) {
+    rejected_truncated_map = true;
+  }
+  std::filesystem::remove_all(test_dir);
+  if (!rejected_truncated_map) throw std::runtime_error("AutoGrid loader accepted a truncated map");
   return EXIT_SUCCESS;
 }

@@ -4,10 +4,16 @@
 namespace mudock {
 
   std::string_view::size_type pdbqt::next_molecule_start_index(std::string_view text) const {
-    const std::string_view start_token{PDBQT_START_TOKEN};
+    constexpr std::string_view model_token = "MODEL ";
+    const auto first_model = text.find(model_token);
+    if (first_model != std::string_view::npos) {
+      const auto second_model = text.find(model_token, first_model + model_token.size());
+      if (second_model != std::string_view::npos) return second_model;
+    }
+    const std::string_view start_token{molecule_name_token};
     const auto index_first_token = text.find(start_token);
     return index_first_token != std::string_view::npos
-               ? text.find(PDBQT_START_TOKEN, index_first_token + start_token.size())
+               ? text.find(molecule_name_token, index_first_token + start_token.size())
                : std::string_view::npos;
   }
 

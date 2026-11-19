@@ -17,10 +17,9 @@ From: ubuntu:24.04
         cmake \
         git \
         libboost-all-dev \
-        libopenbabel-dev \
+        librdkit-dev \
         libtbb-dev \
         ninja-build \
-        openbabel \
         pkg-config \
         python3 \
         ripgrep

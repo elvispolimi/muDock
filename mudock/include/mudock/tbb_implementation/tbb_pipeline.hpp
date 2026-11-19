@@ -279,10 +279,7 @@ namespace mudock {
               oneapi::tbb::filter_mode::serial_in_order,
               stream_filter<format>(in, knobs.max_bytes_per_token, end, &stop_requested))
               & oneapi::tbb::make_filter<std::string, void>(
-                  // OpenBabel MOL2 parsing is deliberately serialized; the
-                  // ADTMOL2/native parser remains parallelizable.
-                  format == supported_format::MOL2 ? oneapi::tbb::filter_mode::serial_in_order
-                                                   : oneapi::tbb::filter_mode::parallel,
+                  oneapi::tbb::filter_mode::parallel,
                   parser_filter<format>(input_queue, &skipped_ligands, &stop_requested)));
 
       info("Pipeline done: closing input queue");

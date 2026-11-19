@@ -103,7 +103,7 @@ namespace mudock {
     requires std::derived_from<queue_t, queue>
   struct geometric: public transform<queue_t> {
     geometric(std::shared_ptr<scratchpad<queue_t>> _scratch,
-              dynamic_molecule& protein,
+              point3D docking_center,
               ligand_placement _placement = {})
         : transform<queue_t>(_scratch),
           ligand_fragments(_scratch->get_queue()),
@@ -111,7 +111,7 @@ namespace mudock {
           frag_start_atom_indices(_scratch->get_queue()),
           frag_stop_atom_indices(_scratch->get_queue()),
           frag_indices_start(_scratch->get_queue()),
-          protein_center(protein.get_center()),
+          target_center(docking_center),
           placement(_placement) {};
 
     void prepare(batch<static_molecule>& batch) {
@@ -149,7 +149,7 @@ namespace mudock {
         // Atoms and bonds
         const int num_atoms = ligand.num_atoms();
         // Place the molecule according to the selected initial placement policy.
-        apply_ligand_placement(ligand, placement, protein_center);
+        apply_ligand_placement(ligand, placement, target_center);
 
         const auto num_rotamers = ligand.num_rotamers();
         assert(batch_rotamers > num_rotamers);
@@ -296,7 +296,7 @@ namespace mudock {
 
     int batch_ligands;
     int batch_atoms;
-    point<fp_type, 3> protein_center;
+    point<fp_type, 3> target_center;
     ligand_placement placement;
     std::unique_ptr<geom_kernel<queue_t>> kernel;
 

@@ -5,12 +5,13 @@
 #include <format>
 #include <memory>
 #include <mudock/chem/autodock_ligand.hpp>
-#include <mudock/chem/autodock_protein.hpp>
+#include <mudock/chem/autodock_grid.hpp>
 #include <mudock/compute/adt_score.hpp>
 #include <mudock/compute/manager.hpp>
 #include <mudock/compute/pipeline.hpp>
 #include <mudock/compute/scratchpad.hpp>
 #include <mudock/format/reader.hpp>
+#include <tests/autogrid.hpp>
 #include <mudock/knobs.hpp>
 #include <mudock/log.hpp>
 #include <mudock/mudock.hpp>
@@ -23,16 +24,16 @@
 
 int main(int argc, char* argv[]) {
   namespace po                          = boost::program_options;
-  std::filesystem::path protein_path    = std::filesystem::path{"protein.pdb"};
+  std::filesystem::path dpf_path        = std::filesystem::path{"rec.dpf"};
   std::filesystem::path ligand_path     = std::filesystem::path{"ligand.mol2"};
   const auto knobs                      = mudock::knobs{1, 1, 0, 0, 123};
   std::vector<std::string> device_confs = {std::string{use_cpu_conf}};
 
   po::options_description arguments_description("Available options");
   arguments_description.add_options()("help", "print this help message");
-  arguments_description.add_options()("protein,p",
-                                      po::value(&protein_path)->default_value(protein_path),
-                                      "Path to the protein file");
+  arguments_description.add_options()("dpf",
+                                      po::value(&dpf_path)->default_value(dpf_path),
+                                      "Path to the AutoDock DPF and AutoGrid maps");
   arguments_description.add_options()("ligand,l",
                                       po::value(&ligand_path)->default_value(ligand_path),
                                       "Path to the ligand file");
@@ -49,15 +50,13 @@ int main(int argc, char* argv[]) {
 
   po::notify(vm);
 
-  mudock::info("Reading and parsing protein ", protein_path, " ...");
-  auto protein =
-      std::make_shared<mudock::dynamic_molecule>(mudock::parser<mudock::dynamic_molecule>(protein_path));
+  auto grid = std::make_shared<mudock::autodock_grid>(load_autogrid_map_dpf(dpf_path));
 
   mudock::info("Reading and parsing ligand ", ligand_path, " ...");
   auto ligand =
       std::make_shared<mudock::static_molecule>(mudock::parser<mudock::static_molecule>(ligand_path));
 
-  mudock::scoring_pipeline<mudock::adt_score> pipe{protein};
+  mudock::scoring_pipeline<mudock::adt_score> pipe{grid};
 
   mudock::info("Generating score reference ...");
   auto output_queue = std::make_shared<mudock::safe_queue<mudock::static_molecule>>();
@@ -100,7 +99,7 @@ int main(int argc, char* argv[]) {
       mudock::error(std::format(
           "Difference betweem scores of {} on {} ( CPU {} vs {} {} with an error threshold of {})",
           ligand_path.string(),
-          protein_path.string(),
+          dpf_path.string(),
           reference_score,
           conf,
           score,
@@ -110,6 +109,6 @@ int main(int argc, char* argv[]) {
   }
 
   mudock::info(
-      std::format("Succesfully verified the score of {} on {}", ligand_path.string(), protein_path.string()));
+      std::format("Succesfully verified the score of {} with {}", ligand_path.string(), dpf_path.string()));
   return EXIT_SUCCESS;
 }

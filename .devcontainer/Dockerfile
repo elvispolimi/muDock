@@ -10,10 +10,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gdb \
     git \
     libboost-all-dev \
-    libopenbabel-dev \
+    librdkit-dev \
     libtbb-dev \
     ninja-build \
-    openbabel \
     pkg-config \
     python3 \
     ripgrep \

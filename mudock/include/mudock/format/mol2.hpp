@@ -160,8 +160,7 @@ namespace mudock {
       requires is_molecule<molecule_type>
     static void parse(molecule_type& molecule, const std::string_view description) {
       // NOTE:
-      // This is the native MOL2 path used for internal molecules. It preserves the raw MOL2 atom typing and
-      // computes can_rotate with a local heuristic instead of forwarding OpenBabel rotor callbacks.
+      // Native MOL2 parsing preserves the source atom typing and applies a local rotatable-bond heuristic.
       enum class state { NONE, MOLECULE, ATOM, BOND };
 
       state current_state = state::NONE;

@@ -7,7 +7,7 @@
 #include <string_view>
 
 //===------------------------------------------------------------------------------------------------------
-// WARNING: This file has been automatically generated from chem/autodock_babel_types.json
+// WARNING: This file has been automatically generated from chem/autodock_types.json
 //===------------------------------------------------------------------------------------------------------
 
 namespace mudock {

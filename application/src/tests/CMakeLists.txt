@@ -42,3 +42,9 @@ set_target_properties(
              CXX_EXTENSIONS OFF)
 target_link_libraries(test_placement libmudock)
 add_test(NAME test_placement COMMAND test_placement)
+
+add_executable_mudock(test_molecular_parsing
+                      "${CMAKE_CURRENT_SOURCE_DIR}/molecular_parsing_test.cpp")
+set_target_properties(test_molecular_parsing PROPERTIES CXX_STANDARD 20 CXX_STANDARD_REQUIRED ON CXX_EXTENSIONS OFF)
+target_link_libraries(test_molecular_parsing libmudock)
+add_test(NAME test_molecular_parsing COMMAND test_molecular_parsing)

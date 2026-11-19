@@ -9,15 +9,18 @@
 #include <mudock/compute/ligand_placement.hpp>
 #include <mudock/compute/scratchpad.hpp>
 #include <mudock/compute/stage.hpp>
+#include <mudock/chem/autodock_grid.hpp>
 #include <mudock/devices.hpp>
 #include <mudock/molecule.hpp>
+#include <stdexcept>
 
 namespace mudock {
 
   struct pipeline {
-    pipeline(std::shared_ptr<dynamic_molecule> _protein,
-             ligand_placement _placement = {}):
-        protein(_protein), placement(_placement) {}
+    pipeline(std::shared_ptr<autodock_grid> _grid, ligand_placement _placement = {})
+        : grid(std::move(_grid)), center(grid_center(grid)), placement(_placement) {}
+    pipeline(std::shared_ptr<dynamic_molecule> _protein, ligand_placement _placement = {})
+        : protein(std::move(_protein)), center(protein_center(protein)), placement(_placement) {}
 
     template<typename queue_type>
     stage<queue_type> get_pipeline(const knobs&,
@@ -32,12 +35,25 @@ namespace mudock {
     }
 
   protected:
+    static point3D grid_center(const std::shared_ptr<autodock_grid>& value) {
+      if (!value) throw std::invalid_argument("AutoDock scoring pipeline requires a grid");
+      return value->get_center();
+    }
+    static point3D protein_center(const std::shared_ptr<dynamic_molecule>& value) {
+      if (!value) throw std::invalid_argument("Protein scoring pipeline requires a protein");
+      return value->get_center();
+    }
+
     std::shared_ptr<dynamic_molecule> protein;
+    std::shared_ptr<autodock_grid> grid;
+    point3D center;
     ligand_placement placement;
   };
 
   template<template<typename> typename scoring_t>
   struct scoring_pipeline: pipeline {
+    scoring_pipeline(std::shared_ptr<autodock_grid> grid_ptr, ligand_placement placement_config = {})
+        : pipeline(std::move(grid_ptr), placement_config) {}
     scoring_pipeline(std::shared_ptr<dynamic_molecule> protein_ptr, ligand_placement placement_config = {})
         : pipeline(std::move(protein_ptr), placement_config) {}
 
@@ -46,10 +62,14 @@ namespace mudock {
                                        const int id,
                                        const device_type dev_type,
                                        std::shared_ptr<scratchpad<queue_type>> device_scratch) {
-      return scoring_t<queue_type>(std::make_shared<mudock::scratchpad<queue_type>>(conf, id, dev_type),
-                                   device_scratch,
-                                   *protein,
-                                   placement);
+      auto scratch = std::make_shared<mudock::scratchpad<queue_type>>(conf, id, dev_type);
+      if constexpr (requires { scoring_t<queue_type>{scratch, device_scratch, *grid, placement}; }) {
+        if (!grid) throw std::invalid_argument("This scoring function requires AutoGrid maps");
+        return scoring_t<queue_type>{scratch, device_scratch, *grid, placement};
+      } else {
+        if (!protein) throw std::invalid_argument("This scoring function requires a protein structure");
+        return scoring_t<queue_type>{scratch, device_scratch, *protein, placement};
+      }
     }
 
     template<typename queue_type>
@@ -81,6 +101,9 @@ namespace mudock {
 
   template<template<typename> typename scoring_t>
   struct genetic_scoring_pipeline: pipeline {
+    genetic_scoring_pipeline(std::shared_ptr<autodock_grid> grid_ptr,
+                             ligand_placement placement_config = {})
+        : pipeline(std::move(grid_ptr), placement_config) {}
     genetic_scoring_pipeline(std::shared_ptr<dynamic_molecule> protein_ptr,
                              ligand_placement placement_config = {})
         : pipeline(std::move(protein_ptr), placement_config) {}
@@ -91,12 +114,17 @@ namespace mudock {
                                                 const device_type dev_type,
                                                 std::shared_ptr<scratchpad<queue_type>> device_scratch) {
       auto q = std::make_shared<mudock::scratchpad<queue_type>>(conf, id, dev_type);
-      return genetic<queue_type, scoring_t>(
-          q,
-          *protein,
-          scoring_t<queue_type>(
-              q, device_scratch, *protein, ligand_placement{ligand_placement_mode::preserve, std::nullopt}),
-          placement);
+      const ligand_placement preserve{ligand_placement_mode::preserve, std::nullopt};
+      auto score = [&]() {
+        if constexpr (requires { scoring_t<queue_type>{q, device_scratch, *grid, preserve}; }) {
+          if (!grid) throw std::invalid_argument("This scoring function requires AutoGrid maps");
+          return scoring_t<queue_type>{q, device_scratch, *grid, preserve};
+        } else {
+          if (!protein) throw std::invalid_argument("This scoring function requires a protein structure");
+          return scoring_t<queue_type>{q, device_scratch, *protein, preserve};
+        }
+      }();
+      return genetic<queue_type, scoring_t>(q, center, std::move(score), placement);
     }
 
     template<typename queue_type>

@@ -1,12 +1,11 @@
 #pragma once
 
-#include <mudock/chem/assign_autodock_types.hpp>
-#include <mudock/chem/autodock_babel_types.hpp>
 #include <mudock/chem/autodock_grid_types.hpp>
 #include <mudock/chem/autodock_parameters.hpp>
 #include <mudock/chem/molecule_layer.hpp>
 #include <mudock/grid/mdspan.hpp>
 #include <mudock/type_alias.hpp>
+#include <stdexcept>
 
 namespace mudock {
   template<class container_aliases>
@@ -17,8 +16,7 @@ namespace mudock {
     template<typename T>
     using bonds_array_type = container_aliases::template bonds_size<T>;
 
-    autodock_layer(molecule<container_aliases>& _molecule,
-                   std::function<void(molecule<container_aliases>&)> f = {})
+    explicit autodock_layer(molecule<container_aliases>& _molecule)
         : molecule_layer<container_aliases>(_molecule) {
       const auto num_atoms = _molecule.num_atoms();
       mudock::resize(atom_Rii, num_atoms);
@@ -27,7 +25,7 @@ namespace mudock {
       mudock::resize(atom_epsii, num_atoms);
       mudock::resize(atom_Rij_hb, num_atoms);
       mudock::resize(atom_epsij_hb, num_atoms);
-      prepare(f);
+      prepare();
     };
     autodock_layer(molecule<container_aliases>& _molecule,
                    std::function<void(autodock_layer<container_aliases>&)> f)
@@ -39,6 +37,8 @@ namespace mudock {
       mudock::resize(atom_epsii, num_atoms);
       mudock::resize(atom_Rij_hb, num_atoms);
       mudock::resize(atom_epsij_hb, num_atoms);
+      if (!_molecule.has_prepared_types())
+        throw std::invalid_argument("AutoDock scoring requires a preprocessed PDBQT molecule");
       f(*this);
     };
 
@@ -127,8 +127,9 @@ namespace mudock {
     atoms_array_type<fp_type> atom_Rij_hb;
     atoms_array_type<fp_type> atom_epsij_hb;
 
-    void prepare(std::function<void(molecule<container_aliases>&)> f = {}) {
-      assign_autodock_types((*this)(), f);
+    void prepare() {
+      if (!this->get_base_molecule().has_prepared_types())
+        throw std::invalid_argument("AutoDock scoring requires a preprocessed PDBQT molecule");
       // fill the atom properties using the autodock force field
       for (int index{0}; index < this->get_base_molecule().num_atoms(); ++index) {
         const auto& ff_entry = get_description(this->get_base_molecule().autodock_type(index));
@@ -143,13 +144,10 @@ namespace mudock {
     }
   };
 
-  using autodock_dynamic_layer = autodock_layer<dynamic_containers>;
   using autodock_static_layer  = autodock_layer<static_containers>;
 
   template<class T>
-  concept is_autodock_layer = (std::same_as<std::remove_cvref_t<T>, autodock_static_layer> ||
-                               std::same_as<std::remove_cvref_t<T>, autodock_dynamic_layer>);
+  concept is_autodock_layer = std::same_as<std::remove_cvref_t<T>, autodock_static_layer>;
   template<class T>
-  concept derived_from_autodock_layer =
-      (std::derived_from<T, autodock_static_layer> || std::derived_from<T, autodock_dynamic_layer>);
+  concept derived_from_autodock_layer = std::derived_from<T, autodock_static_layer>;
 } // namespace mudock

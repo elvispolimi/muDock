@@ -5,7 +5,7 @@
 #include <mudock/batch.hpp>
 #include <mudock/chem/autodock_grid_types.hpp>
 #include <mudock/chem/autodock_ligand.hpp>
-#include <mudock/chem/autodock_protein.hpp>
+#include <mudock/chem/autodock_grid.hpp>
 #include <mudock/compute/adt_score_kernel.hpp>
 #include <mudock/compute/batch_multiple.hpp>
 #include <mudock/compute/ligand_placement.hpp>
@@ -33,7 +33,7 @@ namespace mudock {
 
     adt_score(std::shared_ptr<scratchpad<queue_type>> _scratch,
               std::shared_ptr<scratchpad<queue_type>> _device_scratch,
-              dynamic_molecule &protein,
+              const autodock_grid& _grid,
               ligand_placement _placement = {})
         : scoring<queue_type>(_scratch),
           vols(_scratch->get_queue()),
@@ -47,44 +47,43 @@ namespace mudock {
           nonbond_cB(_scratch->get_queue()),
           nonbond_xB(_scratch->get_queue()),
           device_scratch(_device_scratch),
+          grid(_grid),
           placement(_placement),
-          protein_center(protein.get_center()) {
-      if (!(*device_scratch).template exists<buffer_data_type::PROT_GRID_MAPS>()) {
-        autodock_protein adt_prot(protein);
+          placement_center(_grid.get_center()) {
+      if (!(*device_scratch).template exists<buffer_data_type::GRID_MAPS>()) {
+        auto &grid_min       = (*device_scratch).template get<buffer_data_type::GRID_MIN>();
+        auto &grid_max       = (*device_scratch).template get<buffer_data_type::GRID_MAX>();
+        auto &grid_center    = (*device_scratch).template get<buffer_data_type::GRID_CENTER>();
+        auto &grid_index_x   = (*device_scratch).template get<buffer_data_type::GRID_SIZE_X>();
+        auto &grid_index_xy  = (*device_scratch).template get<buffer_data_type::GRID_SIZE_XY>();
+        auto &grid_index_xyz = (*device_scratch).template get<buffer_data_type::GRID_SIZE_XYZ>();
+        auto &grid_maps      = (*device_scratch).template get<buffer_data_type::GRID_MAPS>();
 
-        auto &prot_min       = (*device_scratch).template get<buffer_data_type::PROT_MIN>();
-        auto &prot_max       = (*device_scratch).template get<buffer_data_type::PROT_MAX>();
-        auto &prot_center    = (*device_scratch).template get<buffer_data_type::PROT_CENTER>();
-        auto &prot_index_x   = (*device_scratch).template get<buffer_data_type::PROT_SIZE_X>();
-        auto &prot_index_xy  = (*device_scratch).template get<buffer_data_type::PROT_SIZE_XY>();
-        auto &prot_index_xyz = (*device_scratch).template get<buffer_data_type::PROT_SIZE_XYZ>();
-        auto &prot_grid_maps = (*device_scratch).template get<buffer_data_type::PROT_GRID_MAPS>();
+        grid_min.alloc(3);
+        grid_max.alloc(3);
+        grid_center.alloc(3);
+        grid_index_x.alloc(1);
+        grid_index_xy.alloc(1);
+        grid_index_xyz.alloc(1);
+        grid_maps.alloc(_grid.get_size_xyz() * num_autodock_grids());
 
-        prot_min.alloc(3);
-        prot_max.alloc(3);
-        prot_center.alloc(3);
-        prot_index_x.alloc(1);
-        prot_index_xy.alloc(1);
-        prot_index_xyz.alloc(1);
-        prot_grid_maps.alloc(adt_prot.get_size_xyz() * num_autodock_grids());
+        std::memcpy(grid_min(), _grid.get_min_p(), 3 * sizeof(fp_type));
+        std::memcpy(grid_max(), _grid.get_max_p(), 3 * sizeof(fp_type));
+        std::memcpy(grid_center(), _grid.get_center_p(), 3 * sizeof(fp_type));
+        grid_index_x()[0]   = static_cast<int>(_grid.get_size_x());
+        grid_index_xy()[0]  = static_cast<int>(_grid.get_size_xy());
+        grid_index_xyz()[0] = static_cast<int>(_grid.get_size_xyz());
+        std::memcpy(grid_maps(),
+                    _grid.get_maps_pointer(),
+                    _grid.get_map_flat_size() * num_autodock_grids() * sizeof(fp_type));
 
-        std::memcpy(prot_min(), adt_prot.get_min_p(), 3 * sizeof(fp_type));
-        std::memcpy(prot_max(), adt_prot.get_max_p(), 3 * sizeof(fp_type));
-        std::memcpy(prot_center(), adt_prot.get_center_p(), 3 * sizeof(fp_type));
-        prot_index_x()[0]   = static_cast<int>(adt_prot.get_size_x());
-        prot_index_xy()[0]  = static_cast<int>(adt_prot.get_size_xy());
-        prot_index_xyz()[0] = static_cast<int>(adt_prot.get_size_xyz());
-        std::memcpy(prot_grid_maps(),
-                    adt_prot.get_maps_pointer(),
-                    adt_prot.get_map_flat_size() * num_autodock_grids() * sizeof(fp_type));
-
-        prot_min.copy_host2device();
-        prot_max.copy_host2device();
-        prot_center.copy_host2device();
-        prot_index_x.copy_host2device();
-        prot_index_xy.copy_host2device();
-        prot_index_xyz.copy_host2device();
-        prot_grid_maps.copy_host2device();
+        grid_min.copy_host2device();
+        grid_max.copy_host2device();
+        grid_center.copy_host2device();
+        grid_index_x.copy_host2device();
+        grid_index_xy.copy_host2device();
+        grid_index_xyz.copy_host2device();
+        grid_maps.copy_host2device();
         // Workers use this device-shared pointer from their own queues.
         device_scratch->get_queue()->synchronize();
       }
@@ -98,7 +97,7 @@ namespace mudock {
       auto q                       = (*this->scratch).get_queue();
 
       for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index)
-        apply_ligand_placement(*batch.molecules[ligand_index], placement, protein_center);
+        apply_ligand_placement(*batch.molecules[ligand_index], placement, placement_center);
 
       load_num_rotamers(batch, this->scratch);
       load_num_atoms(batch, this->scratch);
@@ -132,11 +131,18 @@ namespace mudock {
       nonbond_xB.alloc(batch_non_bonds);
 
       const int map_flat_size =
-          (*device_scratch).template get<buffer_data_type::PROT_SIZE_XYZ>().host_pointer()[0];
+          (*device_scratch).template get<buffer_data_type::GRID_SIZE_XYZ>().host_pointer()[0];
       for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index) {
         auto &ligand = *batch.molecules[ligand_index];
 
         autodock_ligand adt_ligand{ligand};
+
+        for (int atom_index = 0; atom_index < ligand.num_atoms(); ++atom_index) {
+          const auto type = static_cast<autodock_grid_type>(adt_ligand.atom_map_index()[atom_index]);
+          if (!grid.has_map(type))
+            throw std::invalid_argument("AutoGrid input has no map for ligand atom type " +
+                                        std::string(get_description(type).name));
+        }
 
         adt_ligand.update_offsets(map_flat_size);
         const int stride_atoms = ligand_index * batch_atoms;
@@ -210,19 +216,19 @@ namespace mudock {
       const fp_type *nonbond_cB_b = nonbond_cB.dev_pointer();
       const int *nonbond_xB_b     = nonbond_xB.dev_pointer();
 
-      auto &prot_grid_maps = (*device_scratch).template get<buffer_data_type::PROT_GRID_MAPS>();
+      auto &grid_maps_buffer = (*device_scratch).template get<buffer_data_type::GRID_MAPS>();
       const fp_type *grid_maps = (*device_scratch).get_queue()->obj_required()
-                                     ? prot_grid_maps.dev_pointer()
-                                     : prot_grid_maps.host_pointer();
-      const fp_type *minimum = (*device_scratch).template get<buffer_data_type::PROT_MIN>().dev_pointer();
-      const fp_type *maximum = (*device_scratch).template get<buffer_data_type::PROT_MAX>().dev_pointer();
-      const fp_type *center  = (*device_scratch).template get<buffer_data_type::PROT_CENTER>().dev_pointer();
+                                     ? grid_maps_buffer.dev_pointer()
+                                     : grid_maps_buffer.host_pointer();
+      const fp_type *minimum = (*device_scratch).template get<buffer_data_type::GRID_MIN>().dev_pointer();
+      const fp_type *maximum = (*device_scratch).template get<buffer_data_type::GRID_MAX>().dev_pointer();
+      const fp_type *center  = (*device_scratch).template get<buffer_data_type::GRID_CENTER>().dev_pointer();
       const int map_index_x =
-          (*device_scratch).template get<buffer_data_type::PROT_SIZE_X>().host_pointer()[0];
+          (*device_scratch).template get<buffer_data_type::GRID_SIZE_X>().host_pointer()[0];
       const int map_index_xy =
-          (*device_scratch).template get<buffer_data_type::PROT_SIZE_XY>().host_pointer()[0];
+          (*device_scratch).template get<buffer_data_type::GRID_SIZE_XY>().host_pointer()[0];
       const int map_index_xyz =
-          (*device_scratch).template get<buffer_data_type::PROT_SIZE_XYZ>().host_pointer()[0];
+          (*device_scratch).template get<buffer_data_type::GRID_SIZE_XYZ>().host_pointer()[0];
 
       fp_type *scores_b = score_b.dev_pointer();
 
@@ -325,8 +331,9 @@ namespace mudock {
     buffer_vector<int, queue_type> nonbond_xB;
 
     std::shared_ptr<scratchpad<queue_type>> device_scratch;
+    const autodock_grid& grid;
     ligand_placement placement;
-    point3D protein_center;
+    point3D placement_center;
     std::unique_ptr<adt_score_kernel<queue_type>> kernel;
 
     void teardown_impl(batch<static_molecule> &batch) override {

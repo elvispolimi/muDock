@@ -30,9 +30,8 @@ jobs:
             ninja-build \
             pkg-config \
             libboost-all-dev \
-            libopenbabel-dev \
-            libtbb-dev \
-            openbabel
+            librdkit-dev \
+            libtbb-dev
 
       - name: Configure
         run: cmake --preset ci-cpu-debug

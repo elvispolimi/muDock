@@ -26,13 +26,13 @@ namespace mudock {
     Z_SCRATCH,
     NUM_ATOMS,
     NUM_ROTAMERS,
-    PROT_MIN,
-    PROT_MAX,
-    PROT_CENTER,
-    PROT_SIZE_X,
-    PROT_SIZE_XY,
-    PROT_SIZE_XYZ,
-    PROT_GRID_MAPS
+    GRID_MIN,
+    GRID_MAX,
+    GRID_CENTER,
+    GRID_SIZE_X,
+    GRID_SIZE_XY,
+    GRID_SIZE_XYZ,
+    GRID_MAPS
   };
 
   using buffer_type_list = std::tuple<fp_type, int, chromosome>;
@@ -97,32 +97,32 @@ namespace mudock {
     using type = buffer_type_traits_impl<buffer_data_type::NUM_ROTAMERS, int>::type;
   };
   template<>
-  struct buffer_type_traits<buffer_data_type::PROT_MAX> {
-    using type = buffer_type_traits_impl<buffer_data_type::PROT_MAX, fp_type>::type;
+  struct buffer_type_traits<buffer_data_type::GRID_MAX> {
+    using type = buffer_type_traits_impl<buffer_data_type::GRID_MAX, fp_type>::type;
   };
   template<>
-  struct buffer_type_traits<buffer_data_type::PROT_MIN> {
-    using type = buffer_type_traits_impl<buffer_data_type::PROT_MIN, fp_type>::type;
+  struct buffer_type_traits<buffer_data_type::GRID_MIN> {
+    using type = buffer_type_traits_impl<buffer_data_type::GRID_MIN, fp_type>::type;
   };
   template<>
-  struct buffer_type_traits<buffer_data_type::PROT_CENTER> {
-    using type = buffer_type_traits_impl<buffer_data_type::PROT_CENTER, fp_type>::type;
+  struct buffer_type_traits<buffer_data_type::GRID_CENTER> {
+    using type = buffer_type_traits_impl<buffer_data_type::GRID_CENTER, fp_type>::type;
   };
   template<>
-  struct buffer_type_traits<buffer_data_type::PROT_SIZE_X> {
-    using type = buffer_type_traits_impl<buffer_data_type::PROT_SIZE_X, int>::type;
+  struct buffer_type_traits<buffer_data_type::GRID_SIZE_X> {
+    using type = buffer_type_traits_impl<buffer_data_type::GRID_SIZE_X, int>::type;
   };
   template<>
-  struct buffer_type_traits<buffer_data_type::PROT_SIZE_XY> {
-    using type = buffer_type_traits_impl<buffer_data_type::PROT_SIZE_XY, int>::type;
+  struct buffer_type_traits<buffer_data_type::GRID_SIZE_XY> {
+    using type = buffer_type_traits_impl<buffer_data_type::GRID_SIZE_XY, int>::type;
   };
   template<>
-  struct buffer_type_traits<buffer_data_type::PROT_SIZE_XYZ> {
-    using type = buffer_type_traits_impl<buffer_data_type::PROT_SIZE_XYZ, int>::type;
+  struct buffer_type_traits<buffer_data_type::GRID_SIZE_XYZ> {
+    using type = buffer_type_traits_impl<buffer_data_type::GRID_SIZE_XYZ, int>::type;
   };
   template<>
-  struct buffer_type_traits<buffer_data_type::PROT_GRID_MAPS> {
-    using type = buffer_type_traits_impl<buffer_data_type::PROT_SIZE_XYZ, fp_type>::type;
+  struct buffer_type_traits<buffer_data_type::GRID_MAPS> {
+    using type = buffer_type_traits_impl<buffer_data_type::GRID_MAPS, fp_type>::type;
   };
 
   template<template<class...> class container_type, typename T, class queue_t, class... args>
