@@ -11,7 +11,8 @@
 > This branch introduces a **TBB flow-graph** streaming engine as a temporary-second entry point
 > (`muDock-tbb`) alongside the legacy `parallel_pipeline` (`muDock`).
 >
-> The graph pipeline is now wired **end-to-end** with real reader, parser, batcher, screener, and writer.
+> The graph pipeline is now wired **end-to-end** with real reader, parser, batcher, screener, and writer,
+> plus a periodic observer that reports pipeline health throughout the run and a final summary at exit.
 > The GPU subgraph builder is in place but has not been validated against an actual GPU backend.
 >
 > #### Done
@@ -22,8 +23,10 @@
 > - Per-backend configuration parsing via `backend_spec` (`parse_backend_spec` tokenizes `IMPL:DEV:IDS[:WORKERS][:MEMORY]`).
 > - `backend_subgraph` abstraction: one subgraph per CPU-group (one per spec) or GPU device (one per id), owning a batcher node, a batch buffer, and `N` screener nodes. CPU and GPU builders mirror `manager::launch_worker_{cpu,gpu}`.
 > - Real scoring: `screener_state` / `screener_body` wrap the existing `stage::prepare/operator()/teardown` lifecycle.
-> - Three-phase drain: normal flow, then partial-batch flush from each backend's reorder buffer, then writer buffer flush.
-> - Time limit: `detail::deadline_timer` flips `stop_requested` at the configured deadline. The reader exits cleanly and the parser discards admitted-but-unparsed ligands. Enabled via `--time_limit_sec N`.
+> - Three-phase drain: normal flow, then partial-batch flush from each backend's reorder buffer (skipped on cancel), then writer buffer flush.
+> - Time limit: `detail::deadline_timer` calls `graph::cancel()` at the configured deadline. The main thread's `wait_for_all()` drains in-flight tasks; their results are discarded and Phase 2 is skipped. Enabled via `--time_limit_sec N`.
+> - Observability (`observability::run_metrics`): home-grown `counter` and `gauge` primitives (relaxed atomics; `gauge` bundles a high-water peak via CAS) plus a plain-value `run_metrics_snapshot`. Four log functions in `run_metrics_report.hpp` — `log_rolling` (interval deltas + rates), `log_cumulative` (whole-run totals), `log_runtime` (instantaneous: in-flight + peak + parser-in / parsed-buffer / writer-in depths + per-backend waiting vs screening), `log_summary` (vertical end-of-run report). Reusable in-place snapshot (`snapshot_into`) + swap-rotate in the observer callback → zero heap allocation per tick in steady state. Periodic observer wired through `detail::periodic_observer`. Enabled via `--observer N`.
+> - `muDock-graph-sim` bench (`application/src/bench/graph_sim.cpp`): a mock-driven driver that reuses the real `backend_subgraph` plus `observability::run_metrics`, so topology and observability stay a single source of truth.
 >
 > #### Try it
 >
@@ -33,10 +36,11 @@
 > ./build/dev-cpu-debug/application/muDock-tbb \
 >   --protein data/1fkb/1fkb_protein.pdb \
 >   --ligand  data/1fkb/1fkb_ligand.mol2 \
->   --use CPP:CPU:0
+>   --use CPP:CPU:0 \
+>   --observer 5
 > ```
 >
-> Expected output: one line `<ligand-name> <score>` per parsed ligand, plus `INFO` logs.
+> Expected output: one line `<ligand-name> <score>` per parsed ligand, `INFO` logs, periodic observer blocks (rolling + cumulative + runtime), and a final vertical `Run summary`.
 >
 > #### Design choices worth flagging
 >
@@ -46,17 +50,14 @@
 > - **State/body pattern per node**: each stateful body (writer, batcher, screener) has a co-located `<x>_state` class that outlives TBB's internal body copies, simplifying the three-phase drain. The body is a pure delegate; the state owns the mutable data (buffer, reorder buffer, scoring stage instance) and hides "when to emit" policy.
 > - **`backend_subgraph` as the per-spec unit**: one subgraph covers a CPU-group (shared host memory → shared batcher, shared device scratchpad) or a single GPU device (isolated memory → dedicated batcher, dedicated device scratchpad shared across workers). Centralizes the per-backend setup.
 > - **Intentional duplication of `manager::*` procedures**: `parse_backend_spec`, `build_{cpu,gpu}_subgraph`, and `build_backend_subgraphs` mirror `manager::parse_worker_configuration`, `manager::launch_worker_{cpu,gpu}`, and the top-level `manager::manager` loop respectively. Keeping the graph path self-contained means `mudock/compute/manager.hpp` can be deprecated and removed once end-to-end TBB orchestration lands, without having to untangle shared helpers first.
-> - **Timer and observer live as explicit threads**, not TBB nodes: both wait on wall-clock timers, then flip a flag (timer) or emit a log line (observer) — neither produces or consumes graph messages. Inside the graph they'd misbehave three ways: a sleeping task holds an arena slot (losing a core of parallelism); TBB's non-preemptive work-stealing scheduler gives no timing guarantees (a periodic/deadline task fires whenever a worker gets to it, worst-case under the heavy load where you most need the signal); and self-re-enqueueing polling busy-waits, burning CPU and polluting the work-stealing queues.
-> - **Soft shutdown via `stop_requested`, not `graph::cancel()`**: the stop flag is cooperative. Nodes that care about it (reader, parser) check it and exit cleanly, in-flight work drains downstream, and all three drain phases still run to completion. `graph::cancel()` is a hard kill: pending tasks are never scheduled, mid-flight ligands are dropped, and Phase 2 can't flush its partial batch because the graph is already cancelled.
-> - **What soft shutdown discards**: when the deadline fires, the reader exits and the parser drops any tokens that passed the limiter but haven’t been parsed yet. So “no new work is admitted” means nothing new gets past the parser, not the limiter. Ligands that were already parsed still go through to scoring, and partial batches in the batcher’s ROB are still flushed in Phase 2. Dropping at the parser is a deliberate choice that roughly matches how the legacy parallel_pipeline dropped pending work on deadline. We can revisit it if we decide every token past the limiter should be processed.
+> - **Timer and observer live as explicit threads**, not TBB nodes: both wait on wall-clock timers, then act on the graph from outside — neither produces or consumes graph messages. Inside the graph they'd misbehave three ways: a sleeping task holds an arena slot (losing a core of parallelism); TBB's non-preemptive work-stealing scheduler gives no timing guarantees (a periodic/deadline task fires whenever a worker gets to it, worst-case under the heavy load where you most need the signal); and self-re-enqueueing polling busy-waits, burning CPU and polluting the work-stealing queues.
+> - **Hard shutdown via `graph::cancel()`**: when the deadline fires, the timer thread calls `graph::cancel()`. TBB cancels pending/unstarted tasks and the main thread's `wait_for_all()` drains anything already running. Phase 2 is gated by `graph::is_cancelled()` and is **skipped on cancel** — partially-filled batches are discarded. Phase 3 (writer flush) + observer stop + final `Run summary` always run, so partial output and the report remain visible. Versus an earlier `stop_requested` flag: zero polling on the hot path (reader and parser no longer check an atomic per token), and the semantic is uniform — once the deadline fires, anything that isn't already written is dropped.
+> - **Three-way split in the observer**: `log_rolling` answers "how fast per tick?" (counter deltas), `log_cumulative` answers "how much so far?" (counter totals + averaged rates), `log_runtime` answers "where are the ligands right now?" (gauges + derived depths). Each counter/gauge appears in exactly one of them. Mixing instantaneous gauges into "totals" rows was muddled and gone.
 >
 > #### Follow-up...
 >
 > - GPU validation: `build_gpu_subgraph` is implemented but has not been exercised against a real GPU backend.
-> - Aggregate the atomic counters and performance metrics into a cohesive struct (currently scattered across `stream_engine_graph`).
-> - Observer: periodic metrics snapshots (reuse `detail::periodic_observer`).
-> - CLI wiring for `--max_ligands_in_flight` — currently uses the compile-time default.
-> - (?) Whole-graph simulation with mock node bodies to probe end-to-end performance, bottlenecks, and memory footprint under controlled loads.
+> - (?) Cache-line alignment on hot counters/gauges to mitigate potential false sharing inside `backend_metrics` and `run_metrics`.
 > - (?) Per-backend credit limiters, so batches aren't blindly round-robined to already saturated backends.
 > - ...
 
