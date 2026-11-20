@@ -79,10 +79,21 @@ list(
   "${header_path}/${header_prefix}/molecule/graph.hpp"
   "${header_path}/${header_prefix}/molecule/properties.hpp"
   "${header_path}/${header_prefix}/molecule/property_table.hpp"
-  "${header_path}/${header_prefix}/tbb_implementation/stream_filter.hpp"
+  "${header_path}/${header_prefix}/tbb_implementation/backend_spec.hpp"
+  "${header_path}/${header_prefix}/tbb_implementation/backend_subgraph.hpp"
+  "${header_path}/${header_prefix}/tbb_implementation/batcher_body.hpp"
+  "${header_path}/${header_prefix}/tbb_implementation/parser_body.hpp"
   "${header_path}/${header_prefix}/tbb_implementation/parser_filter.hpp"
+  "${header_path}/${header_prefix}/tbb_implementation/reader_body.hpp"
+  "${header_path}/${header_prefix}/tbb_implementation/run_metrics.hpp"
+  "${header_path}/${header_prefix}/tbb_implementation/run_metrics_report.hpp"
   "${header_path}/${header_prefix}/tbb_implementation/runtime_services.hpp"
+  "${header_path}/${header_prefix}/tbb_implementation/screener_body.hpp"
+  "${header_path}/${header_prefix}/tbb_implementation/stream_engine_graph.hpp"
+  "${header_path}/${header_prefix}/tbb_implementation/stream_engine_types.hpp"
+  "${header_path}/${header_prefix}/tbb_implementation/stream_filter.hpp"
   "${header_path}/${header_prefix}/tbb_implementation/tbb_pipeline.hpp"
+  "${header_path}/${header_prefix}/tbb_implementation/writer_body.hpp"
   "${header_path}/${header_prefix}/batch.hpp"
   "${header_path}/${header_prefix}/chem.hpp"
   "${header_path}/${header_prefix}/compute.hpp"
@@ -280,7 +291,7 @@ endif()
 find_package(TBB REQUIRED)
 add_library(libmudock STATIC ${source_files} ${header_files})
 add_library(mudock::libmudock ALIAS libmudock)
-set_target_properties(libmudock PROPERTIES PUBLIC_HEADER "${headers}")
+set_target_properties(libmudock PROPERTIES PUBLIC_HEADER "${header_files}")
 target_include_directories(libmudock PUBLIC "${header_path}")
 target_include_directories(libmudock SYSTEM PUBLIC ${OpenBabel3_INCLUDE_DIRS})
 set_target_properties(libmudock PROPERTIES PREFIX "" OUTPUT_NAME "libmudock")
@@ -544,4 +555,4 @@ endif()
 # ### Declare the install step
 # ##############################################################################
 
-# at the moment wedon't deploy the library
+# at the moment we don't deploy the library

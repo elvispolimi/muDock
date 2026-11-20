@@ -12,9 +12,11 @@ namespace mudock {
     std::size_t tournament_length   = 10;
     fp_type mutation_prob           = static_cast<fp_type>(0.01);
     std::optional<std::size_t> seed = std::optional<std::size_t>{};
-    std::size_t max_tbb_tokens      = 4;
+    std::size_t max_tbb_tokens      = 4;       // TODO - with flow::graph, it can be removed
     std::size_t max_bytes_per_token = 1048576; // 1 MB
-    std::size_t max_tbb_queue_size  = 1000000;
+    std::size_t max_tbb_queue_size  = 100000;
+
+    std::size_t max_ligands_in_flight = 100000;
     // Maximum per-axis displacement of the rigid translation chromosome.
     std::optional<fp_type> max_translation_half_width = std::nullopt;
   };
