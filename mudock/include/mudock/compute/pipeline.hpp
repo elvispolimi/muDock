@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <memory>
 #include <mudock/compute/adt_score.hpp>
+#include <mudock/compute/drugscore/ds_score.hpp>
 #include <mudock/compute/algorithm.hpp>
 #include <mudock/compute/bucket_size.hpp>
 #include <mudock/compute/genetic.hpp>
@@ -129,4 +130,7 @@ namespace mudock {
 
   using adt_score_pipeline   = scoring_pipeline<adt_score>;
   using genetic_adt_pipeline = genetic_scoring_pipeline<adt_score>;
+
+  using ds_score_pipeline = scoring_pipeline<ds_score>;
+  using genetic_ds_pipeline = genetic_scoring_pipeline<ds_score>;
 } // namespace mudock

@@ -42,3 +42,28 @@ set_target_properties(
              CXX_EXTENSIONS OFF)
 target_link_libraries(test_placement libmudock)
 add_test(NAME test_placement COMMAND test_placement)
+
+
+# --- DRUGSCORE ------------------------------------------------------------- # 
+add_executable_mudock(
+  test_score_ds "${CMAKE_CURRENT_SOURCE_DIR}/ds_score_test.cpp")
+target_include_directories(test_score_ds
+                            PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/..")
+set_target_properties(
+  test_score_ds
+  PROPERTIES CXX_STANDARD 20
+              CXX_STANDARD_REQUIRED ON
+              CXX_EXTENSIONS OFF)
+target_link_libraries(test_score_ds libmudock Boost::program_options)
+
+add_executable_mudock(test_score_ds_impl
+                      "${CMAKE_CURRENT_SOURCE_DIR}/ds_impl_score_test.cpp")
+target_include_directories(test_score_ds_impl
+                            PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/..")
+set_target_properties(
+  test_score_ds_impl
+  PROPERTIES CXX_STANDARD 20
+              CXX_STANDARD_REQUIRED ON
+              CXX_EXTENSIONS OFF)
+target_link_libraries(test_score_ds_impl libmudock Boost::program_options)
+

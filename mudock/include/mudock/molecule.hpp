@@ -59,6 +59,7 @@ namespace mudock {
   public:
     // functions to manage the geometry of a molecule
     void resize(const int n_atoms, int n_bonds);
+
     void remove_atom(const int index);
     [[nodiscard]] constexpr auto num_atoms() const { return atoms_size; }
     [[nodiscard]] constexpr auto num_bonds() const { return bonds_size; }
@@ -67,6 +68,8 @@ namespace mudock {
         return b.can_rotate;
       });
     }
+    void permute(const unsigned int* permutation, const unsigned int n_atoms);
+
 
     point<fp_type, 3> get_center() const {
       // FIX ME I don't like it here, I do not undestand why it is needed by ADT
@@ -153,9 +156,10 @@ namespace mudock {
 
     [[nodiscard]] inline const auto& atom_name(const int index) const { return atom_names[index]; }
 
+    [[nodiscard]] inline auto get_sybyl_type() const { return make_span(atom_sybyl_types, atoms_size); }
     [[nodiscard]] inline auto& sybyl_type(const int index) { return atom_sybyl_types[index]; }
-
     [[nodiscard]] inline const auto& sybyl_type(const int index) const { return atom_sybyl_types[index]; }
+    [[nodiscard]] inline auto* sybyl_type() { return atom_sybyl_types.data(); }
 
     [[nodiscard]] inline auto& residue_id(const int index) { return residue_ids[index]; }
 
@@ -263,4 +267,35 @@ namespace mudock {
     bonds_size = new_bond_size;
   }
 
+   template<class container_aliases>
+    requires is_container_specification<container_aliases>
+  void molecule<container_aliases>::permute(const unsigned int* permutation, const unsigned int n_atoms) {
+    assert(atoms_size == static_cast<int>(n_atoms));
+
+    std::vector<unsigned int> reverted_perm(n_atoms);
+    for (unsigned int i = 0; i < n_atoms; ++i) {
+      assert(permutation[i] < n_atoms);
+      reverted_perm[permutation[i]] = i;
+    }
+
+    mudock::permute(atom_elements, permutation, n_atoms);
+    mudock::permute(x_coordinates, permutation, n_atoms);
+    mudock::permute(y_coordinates, permutation, n_atoms);
+    mudock::permute(z_coordinates, permutation, n_atoms);
+    mudock::permute(atom_autodock_type, permutation, n_atoms);
+    mudock::permute(atom_is_aromatic, permutation, n_atoms);
+    mudock::permute(atom_charge, permutation, n_atoms);
+    mudock::permute(atom_num_hbond, permutation, n_atoms);
+    mudock::permute(atom_names, permutation, n_atoms);
+    mudock::permute(atom_sybyl_types, permutation, n_atoms);
+    mudock::permute(residue_ids, permutation, n_atoms);
+    mudock::permute(residue_names, permutation, n_atoms);
+    mudock::permute(atom_residue_types, permutation, n_atoms);
+
+    // now we need to permute the bonds as well
+    for (auto& bond: make_span(bond_descriptions, bonds_size)) {
+      bond.source = reverted_perm[bond.source];
+      bond.dest   = reverted_perm[bond.dest];
+    }
+  }
 } // namespace mudock

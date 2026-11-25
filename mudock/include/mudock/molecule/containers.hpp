@@ -94,4 +94,29 @@ namespace mudock {
     return std::span(std::begin(container), size);
   }
 
+  // helper functions to permute a container
+  template<typename value_type>
+  inline void permute(std::vector<value_type>& container,
+                      const unsigned int* permutation,
+                      const unsigned int n_elements) {
+    assert(n_elements <= container.size());
+    std::vector<value_type> temp_container(container.size());
+    for (unsigned int i = 0; i < n_elements; ++i) {
+      assert(permutation[i] < container.size());
+      temp_container[i] = container[permutation[i]];
+    }
+    container = std::move(temp_container);
+  }
+  template<typename value_type, std::size_t num_elements>
+  inline void permute(std::array<value_type, num_elements>& container,
+                      const unsigned int* permutation,
+                      const unsigned int n_elements) {
+    assert(n_elements <= container.size());
+    std::array<value_type, num_elements> temp_container;
+    for (unsigned int i = 0; i < n_elements; ++i) {
+      assert(permutation[i] < container.size());
+      temp_container[i] = container[permutation[i]];
+    }
+    container = temp_container;
+  }
 } // namespace mudock
