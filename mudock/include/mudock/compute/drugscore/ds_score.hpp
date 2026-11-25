@@ -255,13 +255,14 @@ namespace mudock {
       assert(
           (((*this->scratch).template get<buffer_data_type::SCORES>().num_elements() % batch_ligands) == 0) &&
           "Number of scores is not a multiple of ligands in the batch");
-      assert(kernel && "Kernel method not yet prepared");
 
       if constexpr (PRECOMPUTE) {
         const auto& ker_ptr = std::get<std::unique_ptr<ds_score_precomp_kernel<queue_type>>>(kernel);
+        assert(ker_ptr && "Kernel method not yet prepared");
         (*ker_ptr)();
       } else {
         const auto& ker_ptr = std::get<std::unique_ptr<ds_score_kernel<queue_type>>>(kernel);
+        assert(ker_ptr && "Kernel method not yet prepared");
         (*ker_ptr)();
       };
     }

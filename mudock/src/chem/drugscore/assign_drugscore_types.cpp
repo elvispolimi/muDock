@@ -131,7 +131,7 @@ namespace mudock {
     const auto elements = mol.get_base_molecule().get_sybyl_type();
     auto types          = mol.drugscore_type();
 
-    assert(elements.size() == types.size());
+    assert(elements.size() == mol.get_drugscore_type().size());
 
     for (size_t i = 0; i < elements.size(); ++i) { types[i] = syb_el2drugscore(elements[i]); }
   };
