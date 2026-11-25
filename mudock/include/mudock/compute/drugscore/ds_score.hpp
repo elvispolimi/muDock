@@ -13,6 +13,7 @@
 #include <mudock/compute/ligand_placement.hpp>
 #include <mudock/molecule.hpp>
 #include <mudock/type_alias.hpp>
+#include <variant>
 
 #ifndef __CUDACC__
   #include <mudock/compute/buffer_utils.hpp>
@@ -28,12 +29,11 @@ namespace mudock {
   }
 
 #ifndef __CUDACC__
-  template<typename queue_type>
-  struct ds_score: public scoring<queue_type> {
+  template<typename queue_type, bool PRECOMPUTE>
+  struct ds_score_impl: public scoring<queue_type> {
     static constexpr const char stage_name[] = "DS";
 
-
-    ds_score(std::shared_ptr<scratchpad<queue_type>> scratch_,
+    ds_score_impl(std::shared_ptr<scratchpad<queue_type>> scratch_,
              std::shared_ptr<scratchpad<queue_type>> device_scratch_,
              dynamic_molecule& protein,
              ligand_placement placement_ = {})
@@ -42,87 +42,87 @@ namespace mudock {
           device_scratch(device_scratch_),
           placement(placement_),
           protein_center(protein.get_center()) {
-  #if DRUGSCORE_PRECOMP == 1
-      if (!(*device_scratch).template exists<buffer_data_type::PROT_DS_GRID_MAPS>()) {
-        drugscore_precomp_protein ds_prot(protein);
+      if constexpr (PRECOMPUTE) {
+        if (!(*device_scratch).template exists<buffer_data_type::PROT_DS_GRID_MAPS>()) {
+          drugscore_precomp_protein ds_prot(protein);
 
-        auto& protein_min          = (*device_scratch).template get<buffer_data_type::PROT_MIN>();
-        auto& protein_max          = (*device_scratch).template get<buffer_data_type::PROT_MAX>();
-        auto& protein_index_x      = (*device_scratch).template get<buffer_data_type::PROT_SIZE_X>();
-        auto& protein_index_xy     = (*device_scratch).template get<buffer_data_type::PROT_SIZE_XY>();
-        auto& protein_index_xyz    = (*device_scratch).template get<buffer_data_type::PROT_SIZE_XYZ>();
-        auto& protein_ds_grid_maps = (*device_scratch).template get<buffer_data_type::PROT_DS_GRID_MAPS>();
+          auto& protein_min          = (*device_scratch).template get<buffer_data_type::PROT_MIN>();
+          auto& protein_max          = (*device_scratch).template get<buffer_data_type::PROT_MAX>();
+          auto& protein_index_x      = (*device_scratch).template get<buffer_data_type::PROT_SIZE_X>();
+          auto& protein_index_xy     = (*device_scratch).template get<buffer_data_type::PROT_SIZE_XY>();
+          auto& protein_index_xyz    = (*device_scratch).template get<buffer_data_type::PROT_SIZE_XYZ>();
+          auto& protein_ds_grid_maps = (*device_scratch).template get<buffer_data_type::PROT_DS_GRID_MAPS>();
 
-        protein_min.alloc(3);
-        protein_max.alloc(3);
-        protein_index_x.alloc(1);
-        protein_index_xy.alloc(1);
-        protein_index_xyz.alloc(1);
-        protein_ds_grid_maps.alloc(ds_prot.get_map_flat_size() * num_valued_ds_types());
+          protein_min.alloc(3);
+          protein_max.alloc(3);
+          protein_index_x.alloc(1);
+          protein_index_xy.alloc(1);
+          protein_index_xyz.alloc(1);
+          protein_ds_grid_maps.alloc(ds_prot.get_map_flat_size() * num_valued_ds_types());
 
-        std::memcpy(protein_min(), ds_prot.get_min_p(), 3 * sizeof(fp_type));
-        std::memcpy(protein_max(), ds_prot.get_max_p(), 3 * sizeof(fp_type));
-        protein_index_x()[0]   = static_cast<int>(ds_prot.get_size_x());
-        protein_index_xy()[0]  = static_cast<int>(ds_prot.get_size_xy());
-        protein_index_xyz()[0] = static_cast<int>(ds_prot.get_size_xyz());
-        std::memcpy(protein_ds_grid_maps(),
-                    ds_prot.get_maps_pointer(),
-                    ds_prot.get_map_flat_size() * num_valued_ds_types() * sizeof(fp_type));
+          std::memcpy(protein_min(), ds_prot.get_min_p(), 3 * sizeof(fp_type));
+          std::memcpy(protein_max(), ds_prot.get_max_p(), 3 * sizeof(fp_type));
+          protein_index_x()[0]   = static_cast<int>(ds_prot.get_size_x());
+          protein_index_xy()[0]  = static_cast<int>(ds_prot.get_size_xy());
+          protein_index_xyz()[0] = static_cast<int>(ds_prot.get_size_xyz());
+          std::memcpy(protein_ds_grid_maps(),
+                      ds_prot.get_maps_pointer(),
+                      ds_prot.get_map_flat_size() * num_valued_ds_types() * sizeof(fp_type));
 
-        protein_min.copy_host2device();
-        protein_max.copy_host2device();
-        protein_index_x.copy_host2device();
-        protein_index_xy.copy_host2device();
-        protein_index_xyz.copy_host2device();
-        protein_ds_grid_maps.copy_host2device();
+          protein_min.copy_host2device();
+          protein_max.copy_host2device();
+          protein_index_x.copy_host2device();
+          protein_index_xy.copy_host2device();
+          protein_index_xyz.copy_host2device();
+          protein_ds_grid_maps.copy_host2device();
+        }
+      } else {
+        if (!(*device_scratch).template exists<buffer_data_type::PROT_X_COORDS>()) {
+          drugscore_protein ds_prot(protein);
+          const int n_atoms = protein.num_atoms();
+
+          // sort indices on drugscore types,
+          // N.B. FEATURE TO TEST
+          // std::vector<unsigned int> indices(n_atoms);
+          // std::iota(indices.begin(), indices.end(), 0);
+          // std::sort(indices.begin(), indices.end(), [&](const int a, const int b) {
+          //   return static_cast<int>(ds_prot.drugscore_type(a)) < static_cast<int>(ds_prot.drugscore_type(b));
+          // });
+          //ds_prot.permute(indices.data(), n_atoms);
+
+          auto& prot_x_coords  = (*device_scratch).template get<buffer_data_type::PROT_X_COORDS>();
+          auto& prot_y_coords  = (*device_scratch).template get<buffer_data_type::PROT_Y_COORDS>();
+          auto& prot_z_coords  = (*device_scratch).template get<buffer_data_type::PROT_Z_COORDS>();
+          auto& prot_num_atoms = (*device_scratch).template get<buffer_data_type::PROT_NUM_ATOMS>();
+          auto& prot_ds_types  = (*device_scratch).template get<buffer_data_type::PROT_DS_TYPES>();
+
+          prot_num_atoms.alloc(1);
+          prot_x_coords.alloc(n_atoms);
+          prot_y_coords.alloc(n_atoms);
+          prot_z_coords.alloc(n_atoms);
+          prot_ds_types.alloc(n_atoms);
+
+          std::memcpy(prot_x_coords(), protein.x(), n_atoms * sizeof(fp_type));
+          std::memcpy(prot_y_coords(), protein.y(), n_atoms * sizeof(fp_type));
+          std::memcpy(prot_z_coords(), protein.z(), n_atoms * sizeof(fp_type));
+          std::memcpy(prot_ds_types(), ds_prot.drugscore_type(), n_atoms * sizeof(ds_type));
+          prot_num_atoms()[0] = n_atoms;
+          prot_x_coords.copy_host2device();
+          prot_y_coords.copy_host2device();
+          prot_z_coords.copy_host2device();
+          prot_ds_types.copy_host2device();
+          prot_num_atoms.copy_host2device();
+        }
+
+        if (!(*device_scratch).template exists<buffer_data_type::DS_MODEL>()) {
+          auto& ds_model = (*device_scratch).template get<buffer_data_type::DS_MODEL>();
+
+          const size_t total_size = num_valued_ds_types() * num_valued_ds_types() * num_buckets();
+          ds_model.alloc(total_size);
+          std::memcpy(ds_model(), DRUGSCORE_MODEL_FLAT(), total_size * sizeof(fp_type));
+          ds_model.copy_host2device();
+        }
       }
-  #else
-      if (!(*device_scratch).template exists<buffer_data_type::PROT_X_COORDS>()) {
-        drugscore_protein ds_prot(protein);
-        const int n_atoms = protein.num_atoms();
-
-        // sort indices on drugscore types,
-        // N.B. FEATURE TO TEST
-        // std::vector<unsigned int> indices(n_atoms);
-        // std::iota(indices.begin(), indices.end(), 0);
-        // std::sort(indices.begin(), indices.end(), [&](const int a, const int b) {
-        //   return static_cast<int>(ds_prot.drugscore_type(a)) < static_cast<int>(ds_prot.drugscore_type(b));
-        // });
-        //ds_prot.permute(indices.data(), n_atoms);
-
-        auto& prot_x_coords  = (*device_scratch).template get<buffer_data_type::PROT_X_COORDS>();
-        auto& prot_y_coords  = (*device_scratch).template get<buffer_data_type::PROT_Y_COORDS>();
-        auto& prot_z_coords  = (*device_scratch).template get<buffer_data_type::PROT_Z_COORDS>();
-        auto& prot_num_atoms = (*device_scratch).template get<buffer_data_type::PROT_NUM_ATOMS>();
-        auto& prot_ds_types  = (*device_scratch).template get<buffer_data_type::PROT_DS_TYPES>();
-
-        prot_num_atoms.alloc(1);
-        prot_x_coords.alloc(n_atoms);
-        prot_y_coords.alloc(n_atoms);
-        prot_z_coords.alloc(n_atoms);
-        prot_ds_types.alloc(n_atoms);
-
-        std::memcpy(prot_x_coords(), protein.x(), n_atoms * sizeof(fp_type));
-        std::memcpy(prot_y_coords(), protein.y(), n_atoms * sizeof(fp_type));
-        std::memcpy(prot_z_coords(), protein.z(), n_atoms * sizeof(fp_type));
-        std::memcpy(prot_ds_types(), ds_prot.drugscore_type(), n_atoms * sizeof(ds_type));
-        prot_num_atoms()[0] = n_atoms;
-        prot_x_coords.copy_host2device();
-        prot_y_coords.copy_host2device();
-        prot_z_coords.copy_host2device();
-        prot_ds_types.copy_host2device();
-        prot_num_atoms.copy_host2device();
-      }
-
-      if (!(*device_scratch).template exists<buffer_data_type::DS_MODEL>()) {
-        auto& ds_model = (*device_scratch).template get<buffer_data_type::DS_MODEL>();
-
-        const size_t total_size = num_valued_ds_types() * num_valued_ds_types() * num_buckets();
-        ds_model.alloc(total_size);
-        std::memcpy(ds_model(), DRUGSCORE_MODEL_FLAT(), total_size * sizeof(fp_type));
-        ds_model.copy_host2device();
-      }
-  #endif
 
       device_scratch->get_queue()->synchronize();
     }
@@ -184,74 +184,71 @@ namespace mudock {
       const ds_type* lig_ds_types_p = lig_ds_types.dev_pointer();
       const int* lig_n_atm_p = (*this->scratch).template get<buffer_data_type::NUM_ATOMS>().dev_pointer();
 
-      // protein data pointers
-  #if DRUGSCORE_PRECOMP == 1
-      const fp_type* prot_min = (*device_scratch).template get<buffer_data_type::PROT_MIN>().dev_pointer();
-      const fp_type* prot_max = (*device_scratch).template get<buffer_data_type::PROT_MAX>().dev_pointer();
-      const int prot_index_x =
-          (*device_scratch).template get<buffer_data_type::PROT_SIZE_X>().host_pointer()[0];
-      const int prot_index_xy =
-          (*device_scratch).template get<buffer_data_type::PROT_SIZE_XY>().host_pointer()[0];
-      const int prot_index_xyz =
-          (*device_scratch).template get<buffer_data_type::PROT_SIZE_XYZ>().host_pointer()[0];
-      const fp_type* prot_ds_grid_maps =
-          (*device_scratch).template get<buffer_data_type::PROT_DS_GRID_MAPS>().dev_pointer();
-
-  #else
-      const fp_type* prot_x_p =
-          (*device_scratch).template get<buffer_data_type::PROT_X_COORDS>().dev_pointer();
-      const fp_type* prot_y_p =
-          (*device_scratch).template get<buffer_data_type::PROT_Y_COORDS>().dev_pointer();
-      const fp_type* prot_z_p =
-          (*device_scratch).template get<buffer_data_type::PROT_Z_COORDS>().dev_pointer();
-      const ds_type* prot_ds_types_p =
-          (*device_scratch).template get<buffer_data_type::PROT_DS_TYPES>().dev_pointer();
-      const int prot_n_atm =
-          (*device_scratch).template get<buffer_data_type::PROT_NUM_ATOMS>().host_pointer()[0];
-      // drugscore scores pointer
-      const fp_type* ds_scores = (*device_scratch).template get<buffer_data_type::DS_MODEL>().dev_pointer();
-  #endif
       // result scores pointer
       fp_type* scores_p = (*this->scratch).template get<buffer_data_type::SCORES>().dev_pointer();
       // Device queue
       auto q = this->scratch->get_queue();
 
-  #if DRUGSCORE_PRECOMP == 1
-      kernel = std::make_unique<ds_score_precomp_kernel<queue_type>>(batch_atoms,
-                                                                     batch_ligands,
-                                                                     scores_per_ligand,
-                                                                     x_lig_p,
-                                                                     y_lig_p,
-                                                                     z_lig_p,
-                                                                     lig_ds_types_p,
-                                                                     lig_n_atm_p,
-                                                                     prot_min,
-                                                                     prot_max,
-                                                                     prot_index_x,
-                                                                     prot_index_xy,
-                                                                     prot_index_xyz,
-                                                                     prot_ds_grid_maps,
-                                                                     scores_p,
-                                                                     q);
+      // protein data pointers
+      if constexpr (PRECOMPUTE) {
+        const fp_type* prot_min = (*device_scratch).template get<buffer_data_type::PROT_MIN>().dev_pointer();
+        const fp_type* prot_max = (*device_scratch).template get<buffer_data_type::PROT_MAX>().dev_pointer();
+        const int prot_index_x =
+            (*device_scratch).template get<buffer_data_type::PROT_SIZE_X>().host_pointer()[0];
+        const int prot_index_xy =
+            (*device_scratch).template get<buffer_data_type::PROT_SIZE_XY>().host_pointer()[0];
+        const int prot_index_xyz =
+            (*device_scratch).template get<buffer_data_type::PROT_SIZE_XYZ>().host_pointer()[0];
+        const fp_type* prot_ds_grid_maps =
+            (*device_scratch).template get<buffer_data_type::PROT_DS_GRID_MAPS>().dev_pointer();
 
-  #else
-      kernel = std::make_unique<ds_score_kernel<queue_type>>(batch_atoms,
-                                                             batch_ligands,
-                                                             scores_per_ligand,
-                                                             x_lig_p,
-                                                             y_lig_p,
-                                                             z_lig_p,
-                                                             lig_ds_types_p,
-                                                             lig_n_atm_p,
-                                                             prot_x_p,
-                                                             prot_y_p,
-                                                             prot_z_p,
-                                                             prot_ds_types_p,
-                                                             prot_n_atm,
-                                                             ds_scores,
-                                                             scores_p,
-                                                             q);
-  #endif
+        kernel = std::make_unique<ds_score_precomp_kernel<queue_type>>(batch_atoms,
+                                                                      batch_ligands,
+                                                                      scores_per_ligand,
+                                                                      x_lig_p,
+                                                                      y_lig_p,
+                                                                      z_lig_p,
+                                                                      lig_ds_types_p,
+                                                                      lig_n_atm_p,
+                                                                      prot_min,
+                                                                      prot_max,
+                                                                      prot_index_x,
+                                                                      prot_index_xy,
+                                                                      prot_index_xyz,
+                                                                      prot_ds_grid_maps,
+                                                                      scores_p,
+                                                                      q);
+      } else {
+        const fp_type* prot_x_p =
+            (*device_scratch).template get<buffer_data_type::PROT_X_COORDS>().dev_pointer();
+        const fp_type* prot_y_p =
+            (*device_scratch).template get<buffer_data_type::PROT_Y_COORDS>().dev_pointer();
+        const fp_type* prot_z_p =
+            (*device_scratch).template get<buffer_data_type::PROT_Z_COORDS>().dev_pointer();
+        const ds_type* prot_ds_types_p =
+            (*device_scratch).template get<buffer_data_type::PROT_DS_TYPES>().dev_pointer();
+        const int prot_n_atm =
+            (*device_scratch).template get<buffer_data_type::PROT_NUM_ATOMS>().host_pointer()[0];
+        // drugscore scores pointer
+        const fp_type* ds_scores = (*device_scratch).template get<buffer_data_type::DS_MODEL>().dev_pointer();
+
+        kernel = std::make_unique<ds_score_kernel<queue_type>>(batch_atoms,
+                                                              batch_ligands,
+                                                              scores_per_ligand,
+                                                              x_lig_p,
+                                                              y_lig_p,
+                                                              z_lig_p,
+                                                              lig_ds_types_p,
+                                                              lig_n_atm_p,
+                                                              prot_x_p,
+                                                              prot_y_p,
+                                                              prot_z_p,
+                                                              prot_ds_types_p,
+                                                              prot_n_atm,
+                                                              ds_scores,
+                                                              scores_p,
+                                                              q);
+      }
     }
 
     void operator()() {
@@ -259,7 +256,14 @@ namespace mudock {
           (((*this->scratch).template get<buffer_data_type::SCORES>().num_elements() % batch_ligands) == 0) &&
           "Number of scores is not a multiple of ligands in the batch");
       assert(kernel && "Kernel method not yet prepared");
-      (*kernel)();
+
+      if constexpr (PRECOMPUTE) {
+        const auto& ker_ptr = std::get<std::unique_ptr<ds_score_precomp_kernel<queue_type>>>(kernel);
+        (*ker_ptr)();
+      } else {
+        const auto& ker_ptr = std::get<std::unique_ptr<ds_score_kernel<queue_type>>>(kernel);
+        (*ker_ptr)();
+      };
     }
 
     static batch_multiple get_batch_size(const int atoms,
@@ -294,11 +298,10 @@ namespace mudock {
     ligand_placement placement;
     point3D protein_center;
 
-  #if DRUGSCORE_PRECOMP == 1
-    std::unique_ptr<ds_score_precomp_kernel<queue_type>> kernel;
-  #else
-    std::unique_ptr<ds_score_kernel<queue_type>> kernel;
-  #endif
+    std::variant<
+      std::unique_ptr<ds_score_kernel<queue_type>>,
+      std::unique_ptr<ds_score_precomp_kernel<queue_type>>
+    > kernel;
 
     void teardown_impl(batch<static_molecule>& batch) override {
       assert(batch.num_ligands == batch_ligands && "Scoring algorithm received different batch for teardown");
@@ -315,5 +318,16 @@ namespace mudock {
       }
     };
   };
+
+  template<typename queue_type>
+  struct ds_score : ds_score_impl<queue_type, false> {
+    using ds_score_impl<queue_type,false>::ds_score_impl;
+  };
+
+  template<typename queue_type>
+  struct ds_score_precomp : ds_score_impl<queue_type, true> {
+    using ds_score_impl<queue_type,true>::ds_score_impl;
+  };
+
 #endif
 } // namespace mudock

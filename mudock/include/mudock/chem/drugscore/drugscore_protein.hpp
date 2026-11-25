@@ -4,10 +4,6 @@
 #include <mudock/chem/drugscore/drugscore_layer.hpp>
 #include <mudock/grid.hpp>
 
-#ifndef DRUGSCORE_PRECOMP
-  #define DRUGSCORE_PRECOMP 1
-#endif
-
 namespace mudock {
 
   struct drugscore_protein: public drugscore_dynamic_layer {

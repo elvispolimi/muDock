@@ -70,11 +70,10 @@ int main(int argc, char* argv[]) {
 
   mudock::info("Reading and parsing protein ", protein_path, " ...");
   auto protein = mudock::parser<mudock::dynamic_molecule>(protein_path, &mudock::pdbqt_rotate_check);
-#if DRUGSCORE_PRECOMP == 0
+
   mudock::drugscore_protein ds_prot(protein);
-#else
-  mudock::drugscore_precomp_protein ds_prot(protein);
-#endif
+  mudock::drugscore_precomp_protein ds_prot_precomp(protein);
+
 
   mudock::info("Reading and parsing ligand ", ligand_path, " ...");
   const auto ligand_format = mudock::parse_supported_format(std::filesystem::path{ligand_path});
@@ -99,7 +98,6 @@ int main(int argc, char* argv[]) {
   std::vector<int> num_atoms_b{num_atoms};
   const ds_type* __restrict__ ligand_ds_types = ds_lig.drugscore_type();
 
-#if DRUGSCORE_PRECOMP == 0
   const fp_type* __restrict__ protein_x        = ds_prot.get_base_molecule().x();
   const fp_type* __restrict__ protein_y        = ds_prot.get_base_molecule().y();
   const fp_type* __restrict__ protein_z        = ds_prot.get_base_molecule().z();
@@ -107,19 +105,17 @@ int main(int argc, char* argv[]) {
   const ds_type* __restrict__ protein_ds_types = ds_prot.drugscore_type();
 
   const fp_type* __restrict__ ds_scores = DRUGSCORE_MODEL_FLAT();
-#else
-  const fp_type* __restrict__ prot_min          = ds_prot.get_min_p();
-  const fp_type* __restrict__ prot_max          = ds_prot.get_max_p();
-  const int prot_index_x                        = static_cast<int>(ds_prot.get_size_x());
-  const int prot_index_xy                       = static_cast<int>(ds_prot.get_size_xy());
-  const int prot_index_xyz                      = static_cast<int>(ds_prot.get_size_xyz());
-  const fp_type* __restrict__ prot_ds_grid_maps = ds_prot.get_maps_pointer();
-#endif
+
+  const fp_type* __restrict__ prot_min          = ds_prot_precomp.get_min_p();
+  const fp_type* __restrict__ prot_max          = ds_prot_precomp.get_max_p();
+  const int prot_index_x                        = static_cast<int>(ds_prot_precomp.get_size_x());
+  const int prot_index_xy                       = static_cast<int>(ds_prot_precomp.get_size_xy());
+  const int prot_index_xyz                      = static_cast<int>(ds_prot_precomp.get_size_xyz());
+  const fp_type* __restrict__ prot_ds_grid_maps = ds_prot_precomp.get_maps_pointer();
 
   std::vector<mudock::fp_type> scores{0};
   auto q = std::make_shared<mudock::queue_cpp>(0, mudock::device_type::CPU);
 
-#if DRUGSCORE_PRECOMP == 0
   mudock::ds_score_kernel<mudock::queue_cpp> ds_kernel{num_atoms,
                                                         1,
                                                         1,
@@ -136,8 +132,8 @@ int main(int argc, char* argv[]) {
                                                         ds_scores,
                                                         scores.data(),
                                                         q};
-#else
-  mudock::ds_score_precomp_kernel<mudock::queue_cpp> ds_kernel(num_atoms,
+
+  mudock::ds_score_precomp_kernel<mudock::queue_cpp> ds_kernel_precomp(num_atoms,
                                                                 1,
                                                                 1,
                                                                 ligand_x,
@@ -153,7 +149,6 @@ int main(int argc, char* argv[]) {
                                                                 prot_ds_grid_maps,
                                                                 scores.data(),
                                                                 q);
-#endif
 
   mudock::info("Scoring ...");
   MUDOCK_MARKER_INIT
@@ -161,11 +156,20 @@ int main(int argc, char* argv[]) {
   MUDOCK_CPP_MARKER_START("CPP ds_score_kernel");
   ds_kernel();
   MUDOCK_CPP_MARKER_STOP("CPP ds_score_kernel");
-  MUDOCK_MARKER_CLOSE
 
   const auto drugscore = scores[0];
 
+  MUDOCK_CPP_MARKER_REGISTER("CPP ds_score_kernel");
+  MUDOCK_CPP_MARKER_START("CPP ds_score_kernel");
+  ds_kernel_precomp();
+  MUDOCK_CPP_MARKER_STOP("CPP ds_score_kernel");
+  MUDOCK_MARKER_CLOSE
+
+  const auto drugscore_precomp = scores[0];
+
+  
   fp_type threshold  = std::abs(*ref_score / 10); // static_cast<mudock::fp_type>(0.1)
+
   if (std::abs(drugscore - *ref_score) > threshold) {
     mudock::error(std::format("Difference betweem scores of {} ({} vs {})",
                               ligand_path.string(),
@@ -173,9 +177,17 @@ int main(int argc, char* argv[]) {
                               *ref_score));
     return EXIT_FAILURE;
   }
+  if (std::abs(drugscore_precomp - *ref_score) > threshold) {
+    mudock::error(std::format("Difference betweem scores precompute of {} ({} vs {})",
+                              ligand_path.string(),
+                              drugscore_precomp,
+                              *ref_score));
+    return EXIT_FAILURE;
+  }
 
-  mudock::info(std::format("Succesfully verified the score {} of {} on {}",
+  mudock::info(std::format("Succesfully verified the score {} and score precompute {} of {} on {}",
                             drugscore,
+                            drugscore_precomp,
                             ligand_path.string(),
                             protein_path.string()));
 

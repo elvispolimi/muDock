@@ -133,4 +133,7 @@ namespace mudock {
 
   using ds_score_pipeline = scoring_pipeline<ds_score>;
   using genetic_ds_pipeline = genetic_scoring_pipeline<ds_score>;
+
+  using ds_precomp_score_pipeline = scoring_pipeline<ds_score_precomp>;
+  using genetic_ds_precomp_pipeline = genetic_scoring_pipeline<ds_score_precomp>;
 } // namespace mudock
