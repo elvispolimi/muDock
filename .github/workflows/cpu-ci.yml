@@ -35,10 +35,10 @@ jobs:
             openbabel
 
       - name: Configure
-        run: cmake --preset ci-cpu-debug
+        run: cmake --preset ci-cpu-relwithdebinfo
 
       - name: Build
-        run: cmake --build --preset ci-cpu-debug --parallel
+        run: cmake --build --preset ci-cpu-relwithdebinfo --parallel
 
       - name: Test
-        run: ctest --preset ci-cpu-debug
+        run: ctest --preset ci-cpu-relwithdebinfo
