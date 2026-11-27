@@ -7,6 +7,12 @@ namespace mudock {
   enum class search_algorithm : int { NONE = 0, GENETIC };
   enum class scoring_function : int { ADT = 0 };
 
+  template<typename queue_t, scoring_function scoring>
+  struct scoring_backend;
+
+  template<typename queue_t, scoring_function scoring>
+  struct genetic_scoring;
+
   struct search_algorithm_description {
     search_algorithm value;
     std::string_view token;

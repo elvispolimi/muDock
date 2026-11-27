@@ -7,8 +7,5 @@
 
 namespace mudock {
   template<>
-  batch_multiple get_geom_transform_batch_multiple<queue_cuda>(const int, std::shared_ptr<queue_cuda>);
-
-  template<>
-  void geom_kernel<queue_cuda>::operator()();
+  void geometric<queue_cuda>::operator()();
 } // namespace mudock

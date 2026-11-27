@@ -5,15 +5,12 @@
 #include <concepts>
 #include <memory>
 #include <mudock/chem/geom_ligand.hpp>
-#include <mudock/compute/batch_multiple.hpp>
 #include <mudock/compute/queue.hpp>
-#include <mudock/log.hpp>
-#if !defined(__CUDACC__) && !defined(__HIPCC__)
+#include <mudock/compute/geom_transform_args.hpp>
 #include <mudock/compute/buffer_utils.hpp>
 #include <mudock/compute/ligand_placement.hpp>
-  #include <mudock/compute/scratchpad.hpp>
-  #include <mudock/compute/transform.hpp>
-#endif
+#include <mudock/compute/scratchpad.hpp>
+#include <mudock/compute/transform.hpp>
 #include <mudock/cpp_implementation/centroid.hpp>
 #include <mudock/cpp_implementation/chromosome.hpp>
 #include <mudock/cpp_implementation/mutate_cpp.hpp>
@@ -21,84 +18,6 @@
 #include <mudock/molecule.hpp>
 
 namespace mudock {
-  template<typename queue_type>
-  batch_multiple get_geom_transform_batch_multiple(const int, std::shared_ptr<queue_type>) {
-    return {};
-  }
-
-  template<typename queue_type>
-    requires std::derived_from<queue_type, queue>
-  struct geom_kernel {
-    static constexpr char geom_region_name[] = "geometric_trasformation";
-    geom_kernel(const int batch_ligands_,
-                const int batch_atoms_,
-                const int chromsomes_per_ligand_,
-                const chromosome* __restrict__ chromosomes_b_,
-                const int* __restrict__ num_atoms_b_,
-                const int* __restrict__ num_rotamers_b_,
-                const fp_type* __restrict__ x_coords_b_,
-                const fp_type* __restrict__ y_coords_b_,
-                const fp_type* __restrict__ z_coords_b_,
-                fp_type* __restrict__ x_scratch_b_,
-                fp_type* __restrict__ y_scratch_b_,
-                fp_type* __restrict__ z_scratch_b_,
-                const int* __restrict__ ligand_fragments_b_,
-                const int* __restrict__ ligand_fragments_start_b_,
-                const int* __restrict__ frag_indices_start_b_,
-                const int* __restrict__ frag_start_indices_b_,
-                const int* __restrict__ frag_stop_indices_b_,
-                std::shared_ptr<queue_type> q_)
-        : batch_ligands(batch_ligands_),
-          batch_atoms(batch_atoms_),
-          chromsomes_per_ligand(chromsomes_per_ligand_),
-          chromosomes_b(chromosomes_b_),
-          num_atoms_b(num_atoms_b_),
-          num_rotamers_b(num_rotamers_b_),
-          x_coords_b(x_coords_b_),
-          y_coords_b(y_coords_b_),
-          z_coords_b(z_coords_b_),
-          x_scratch_b(x_scratch_b_),
-          y_scratch_b(y_scratch_b_),
-          z_scratch_b(z_scratch_b_),
-          ligand_fragments_b(ligand_fragments_b_),
-          ligand_fragments_start_b(ligand_fragments_start_b_),
-          frag_indices_start_b(frag_indices_start_b_),
-          frag_start_indices_b(frag_start_indices_b_),
-          frag_stop_indices_b(frag_stop_indices_b_),
-          q(q_) {}
-
-    void operator()();
-    inline void set_chromosomes_buffer(const chromosome* chromosomes_b_) { chromosomes_b = chromosomes_b_; }
-
-    geom_kernel(const geom_kernel&)            = default;
-    geom_kernel(geom_kernel&&)                 = default;
-    geom_kernel& operator=(const geom_kernel&) = delete;
-    geom_kernel& operator=(geom_kernel&&)      = delete;
-
-    ~geom_kernel() = default;
-
-  private:
-    const int batch_ligands;
-    const int batch_atoms;
-    const int chromsomes_per_ligand;
-    const chromosome* __restrict__ chromosomes_b;
-    const int* __restrict__ num_atoms_b;
-    const int* __restrict__ num_rotamers_b;
-    const fp_type* __restrict__ x_coords_b;
-    const fp_type* __restrict__ y_coords_b;
-    const fp_type* __restrict__ z_coords_b;
-    fp_type* __restrict__ x_scratch_b;
-    fp_type* __restrict__ y_scratch_b;
-    fp_type* __restrict__ z_scratch_b;
-    const int* __restrict__ ligand_fragments_b;
-    const int* __restrict__ ligand_fragments_start_b;
-    const int* __restrict__ frag_indices_start_b;
-    const int* __restrict__ frag_start_indices_b;
-    const int* __restrict__ frag_stop_indices_b;
-    std::shared_ptr<queue_type> q;
-  };
-
-#if !defined(__CUDACC__) && !defined(__HIPCC__)
   template<typename queue_t>
     requires std::derived_from<queue_t, queue>
   struct geometric: public transform<queue_t> {
@@ -114,7 +33,7 @@ namespace mudock {
           protein_center(protein.get_center()),
           placement(_placement) {};
 
-    void prepare(batch<static_molecule>& batch) {
+    void prepare(batch<static_molecule>& batch) override {
       batch_ligands                           = batch.num_ligands;
       batch_atoms                             = batch.batch_max_atoms;
       const int batch_rotamers                = batch_atoms - 3;
@@ -124,7 +43,6 @@ namespace mudock {
           tot_atoms_in_batch * static_cast<std::size_t>(batch_rotamers);
       const std::size_t tot_rotamers_in_batch =
           static_cast<std::size_t>(batch_ligands) * static_cast<std::size_t>(batch_rotamers);
-      auto q                                  = (*this->scratch).get_queue();
       const auto chromsomes_per_ligand =
           std::max(1, static_cast<int>((*this->scratch).configuration.population_number));
       const auto expected_chromosomes =
@@ -207,40 +125,33 @@ namespace mudock {
       int* frag_start_indices_p     = frag_start_atom_indices.dev_pointer();
       int* frag_stop_indices_p      = frag_stop_atom_indices.dev_pointer();
 
-      kernel = std::make_unique<geom_kernel<queue_t>>(batch_ligands,
-                                                      batch_atoms,
-                                                      chromsomes_per_ligand,
-                                                      chromosomes_p,
-                                                      num_atoms_p,
-                                                      num_rotamers_p,
-                                                      x_coords_p,
-                                                      y_coords_p,
-                                                      z_coords_p,
-                                                      x_scratch_p,
-                                                      y_scratch_p,
-                                                      z_scratch_p,
-                                                      ligand_fragments_p,
-                                                      ligand_fragments_start_p,
-                                                      frag_indices_start_p,
-                                                      frag_start_indices_p,
-                                                      frag_stop_indices_p,
-                                                      q);
+      args = {batch_ligands,
+              batch_atoms,
+              chromsomes_per_ligand,
+              chromosomes_p,
+              x_coords_p,
+              y_coords_p,
+              z_coords_p,
+              num_atoms_p,
+              num_rotamers_p,
+              ligand_fragments_p,
+              ligand_fragments_start_p,
+              frag_start_indices_p,
+              frag_stop_indices_p,
+              frag_indices_start_p,
+              x_scratch_p,
+              y_scratch_p,
+              z_scratch_p};
     }
 
-    void operator()() {
-      assert(
-          ((*this->scratch).template get<buffer_data_type::CHROMOSOMES>().num_elements() % batch_ligands ==
-           0) &&
-          "Number of chromosomes per ligand is not a multiple of the number of ligands expected to be docked");
+    void operator()() override;
 
-      assert(kernel && "Kernel method not yet prepared");
-      (*kernel)();
-    };
+    [[nodiscard]] geom_transform_args kernel_args() const {
+      return args;
+    }
 
-    inline void set_chromosomes_buffer(const chromosome* chromosomes_b_) {
-      if (kernel) {
-        kernel->set_chromosomes_buffer(chromosomes_b_);
-      }
+    void set_chromosomes_buffer(const chromosome* chromosomes) {
+      args.chromosomes = chromosomes;
     }
 
     static std::size_t get_shared_ligand_mem(const int max_atoms, const knobs conf) {
@@ -265,28 +176,6 @@ namespace mudock {
       return get_shared_ligand_mem(max_atoms, conf) + get_private_ligand_mem(max_atoms, conf);
     }
 
-    static batch_multiple get_batch_size(const int atoms,
-                                         std::shared_ptr<queue_t> q,
-                                         const knobs& conf,
-                                         const size_t max_bucket_size) {
-      (void) conf;
-      const auto plain_multiple_info =
-          normalize_batch_multiple(get_geom_transform_batch_multiple<queue_t>(atoms, q));
-      mudock::stage_bucket_trace("GEOM stage plain multiple for ",
-                                 atoms,
-                                 " atoms -> total=",
-                                 plain_multiple_info.total_multiple(),
-                                 " (active_blocks_per_sm=",
-                                 plain_multiple_info.active_blocks_per_sm,
-                                 ", num_sms=",
-                                 plain_multiple_info.num_sms,
-                                 ")",
-                                 " (max_bucket_size hint=",
-                                 max_bucket_size,
-                                 ")");
-      return plain_multiple_info;
-    }
-
   private:
     buffer_vector<int, queue_t> ligand_fragments;
     buffer_vector<int, queue_t> ligand_fragments_start;
@@ -298,7 +187,7 @@ namespace mudock {
     int batch_atoms;
     point<fp_type, 3> protein_center;
     ligand_placement placement;
-    std::unique_ptr<geom_kernel<queue_t>> kernel;
+    geom_transform_args args{};
 
     void teardown_impl(batch<static_molecule>& batch) {
       const auto chromsomes_per_ligand =
@@ -320,5 +209,4 @@ namespace mudock {
       }
     };
   };
-#endif
 } // namespace mudock

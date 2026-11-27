@@ -1,6 +1,5 @@
 #pragma once
 
-#include <algorithm>
 #include <cstddef>
 #include <memory>
 #include <mudock/batch.hpp>
@@ -15,14 +14,6 @@ namespace mudock {
     static std::size_t get_ligand_mem(const int atoms, const knobs conf) {
       return get_shared_ligand_mem(atoms, conf) + get_private_ligand_mem(atoms, conf);
     }
-    static int get_batch_multiple(const int, std::shared_ptr<queue_type>, const knobs&) { return 1; }
-    static int get_batch_size(const int,
-                              std::shared_ptr<queue_type>,
-                              const knobs&,
-                              const size_t max_bucket_size) {
-      return static_cast<int>(std::max<size_t>(1, max_bucket_size));
-    }
-
     stage(std::shared_ptr<scratchpad<queue_type>> _scratch): scratch(_scratch) {};
     virtual void prepare(batch<static_molecule>&) = 0;
     virtual void operator()()                     = 0;

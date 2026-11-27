@@ -74,11 +74,10 @@ Most useful configuration options:
 - `MUDOCK_ENABLE_XSIMD` — xsimd vectorization
 - `MUDOCK_SYCL_WG_SIZE` — SYCL work-group size override
 - `MUDOCK_ATOM_CLUSTER_LEVEL` — ligand atom-cluster granularity: `OFF`, `MEDIUM`, `LARGE`, `EXTREME`
-- `MUDOCK_STAGE_BUCKET_POLICY` — stage bucket sizing policy: `DEVICE_ALIGNED`, `SM_ALIGNED`, `MAX_UTILIZATION`
-- `MUDOCK_STAGE_BUCKET_OVERRIDE` — explicit stage bucket size, capped by the worker memory budget
-- `MUDOCK_STAGE_BUCKET_MULTIPLE_OVERRIDE` — explicit stage bucket multiplier, also capped by the worker memory budget
+- Batch sizes are selected from each worker's memory budget and the estimated memory per ligand.
+- `MUDOCK_STAGE_BUCKET_OVERRIDE` — fixed maximum batch size, still capped by the worker memory budget; `NONE` uses the memory-based size.
 - `MUDOCK_UNROLL_MODE`, `MUDOCK_UNROLL_FACTOR` — control kernel loop unrolling
-- `MUDOCK_ENABLE_STAGE_BUCKET_TRACE` — print stage bucket decisions at runtime
+- `MUDOCK_ENABLE_STAGE_BUCKET_TRACE` — print memory-based batch-size decisions at runtime
 - `MUDOCK_ENABLE_LIKWID` — LIKWID profiling
 - `MUDOCK_CPU_ARCHITECTURES`, `MUDOCK_CPU_TARGET`, `MUDOCK_CPU_TUNE` — fine-tune CPU code generation
 

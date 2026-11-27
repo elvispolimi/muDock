@@ -66,25 +66,26 @@ namespace mudock {
   } // namespace
 
   template<>
-  void geom_kernel<queue_gh>::operator()() {
-    q->invoke_kernel<geom_region_name>(geom_transform,
-                                       batch_ligands,
-                                       batch_atoms,
-                                       chromsomes_per_ligand,
-                                       chromosomes_b,
-                                       num_atoms_b,
-                                       num_rotamers_b,
-                                       x_coords_b,
-                                       y_coords_b,
-                                       z_coords_b,
-                                       x_scratch_b,
-                                       y_scratch_b,
-                                       z_scratch_b,
-                                       ligand_fragments_b,
-                                       ligand_fragments_start_b,
-                                       frag_indices_start_b,
-                                       frag_start_indices_b,
-                                       frag_stop_indices_b);
+  void geometric<queue_gh>::operator()() {
+    static constexpr char geom_region_name[] = "geometric_trasformation";
+    this->get_queue()->invoke_kernel<geom_region_name>(geom_transform,
+                                                       args.batch_ligands,
+                                                       args.batch_atom_stride,
+                                                       args.chromosomes_per_ligand,
+                                                       args.chromosomes,
+                                                       args.num_atoms,
+                                                       args.num_rotamers,
+                                                       args.original_x,
+                                                       args.original_y,
+                                                       args.original_z,
+                                                       args.x_scratch,
+                                                       args.y_scratch,
+                                                       args.z_scratch,
+                                                       args.fragments,
+                                                       args.ligand_fragments_start,
+                                                       args.frag_indices_start,
+                                                       args.fragments_start_index,
+                                                       args.fragments_stop_index);
   }
 
 } // namespace mudock

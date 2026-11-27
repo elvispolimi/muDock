@@ -75,14 +75,7 @@ endif()
 project(muDock VERSION 1.0)
 enable_language(CXX)
 
-function(mudock_normalize_stage_bucket_policy out_var input_policy)
-  set(policy "${input_policy}")
-  set(${out_var} "${policy}" PARENT_SCOPE)
-endfunction()
-
 set(MUDOCK_DEFAULT_ATOM_CLUSTER_LEVEL "OFF")
-set(MUDOCK_DEFAULT_STAGE_BUCKET_POLICY "MAX_UTILIZATION")
-set(MUDOCK_DEFAULT_GENETIC_BUCKET_COMBINE "SCORE_ONLY")
 set(MUDOCK_DEFAULT_UNROLL_FACTOR "8")
 set(MUDOCK_DEFAULT_UNROLL_MODE "FIXED")
 
@@ -225,26 +218,13 @@ set(MUDOCK_SYC_EXTRA_LINK_FLAGS "" CACHE STRING "Deprecated alias for MUDOCK_SYC
 set(MUDOCK_SYCL_WG_SIZE "" CACHE STRING "SYCL work-group size override for kernels (e.g. 32 or 64)")
 
 set(MUDOCK_STAGE_BUCKET_OVERRIDE "NONE" CACHE STRING
-    "Override stage bucket size, or NONE for automatic selection")
+    "Fixed maximum batch size, capped by the worker memory budget; NONE uses memory only")
 if(MUDOCK_STAGE_BUCKET_OVERRIDE STREQUAL "")
   set(MUDOCK_STAGE_BUCKET_OVERRIDE "NONE" CACHE STRING
-      "Override stage bucket size, or NONE for automatic selection" FORCE)
+      "Fixed maximum batch size, capped by the worker memory budget; NONE uses memory only" FORCE)
 endif()
-set(MUDOCK_STAGE_BUCKET_MULTIPLE_OVERRIDE "NONE" CACHE STRING
-    "Override stage bucket scaling factor, or NONE for automatic selection")
-if(MUDOCK_STAGE_BUCKET_MULTIPLE_OVERRIDE STREQUAL "")
-  set(MUDOCK_STAGE_BUCKET_MULTIPLE_OVERRIDE "NONE" CACHE STRING
-      "Override stage bucket scaling factor, or NONE for automatic selection" FORCE)
-endif()
-set(MUDOCK_STAGE_BUCKET_POLICY "${MUDOCK_DEFAULT_STAGE_BUCKET_POLICY}" CACHE STRING
-    "Stage bucket policy: DEVICE_ALIGNED|SM_ALIGNED|MAX_UTILIZATION")
-set_property(CACHE MUDOCK_STAGE_BUCKET_POLICY PROPERTY STRINGS DEVICE_ALIGNED
-                                                          SM_ALIGNED
-                                                          MAX_UTILIZATION)
-set(MUDOCK_GENETIC_BUCKET_COMBINE "${MUDOCK_DEFAULT_GENETIC_BUCKET_COMBINE}" CACHE STRING "GENETIC score/geom combine policy: MIN|SCORE_ONLY|GEOM_ONLY|LCM")
-set_property(CACHE MUDOCK_GENETIC_BUCKET_COMBINE PROPERTY STRINGS MIN SCORE_ONLY GEOM_ONLY LCM)
 option(MUDOCK_ENABLE_STAGE_BUCKET_TRACE
-       "Enable detailed runtime logging for stage bucket selection"
+       "Enable runtime logging for memory-based batch sizing"
        OFF)
 set(MUDOCK_UNROLL_MODE "${MUDOCK_DEFAULT_UNROLL_MODE}" CACHE STRING
     "Kernel unrolling mode: NONE|HINT|FIXED|TEMPLATE")
@@ -359,24 +339,15 @@ if(MUDOCK_ENABLE_SYCL)
   endif()
 endif()
 
-mudock_normalize_stage_bucket_policy(MUDOCK_STAGE_BUCKET_POLICY
-                                     "${MUDOCK_STAGE_BUCKET_POLICY}")
-if(NOT MUDOCK_STAGE_BUCKET_POLICY STREQUAL "MAX_UTILIZATION"
-   AND NOT MUDOCK_STAGE_BUCKET_POLICY STREQUAL "SM_ALIGNED"
-   AND NOT MUDOCK_STAGE_BUCKET_POLICY STREQUAL "DEVICE_ALIGNED")
-  message(FATAL_ERROR "MUDOCK_STAGE_BUCKET_POLICY must be one of: DEVICE_ALIGNED, SM_ALIGNED, MAX_UTILIZATION")
-endif()
 if(NOT MUDOCK_ATOM_CLUSTER_LEVEL STREQUAL "OFF"
    AND NOT MUDOCK_ATOM_CLUSTER_LEVEL STREQUAL "MEDIUM"
    AND NOT MUDOCK_ATOM_CLUSTER_LEVEL STREQUAL "LARGE"
    AND NOT MUDOCK_ATOM_CLUSTER_LEVEL STREQUAL "EXTREME")
   message(FATAL_ERROR "MUDOCK_ATOM_CLUSTER_LEVEL must be one of: OFF, MEDIUM, LARGE, EXTREME")
 endif()
-if(NOT MUDOCK_GENETIC_BUCKET_COMBINE STREQUAL "MIN"
-   AND NOT MUDOCK_GENETIC_BUCKET_COMBINE STREQUAL "SCORE_ONLY"
-   AND NOT MUDOCK_GENETIC_BUCKET_COMBINE STREQUAL "GEOM_ONLY"
-   AND NOT MUDOCK_GENETIC_BUCKET_COMBINE STREQUAL "LCM")
-  message(FATAL_ERROR "MUDOCK_GENETIC_BUCKET_COMBINE must be one of: MIN, SCORE_ONLY, GEOM_ONLY, LCM")
+if(NOT MUDOCK_STAGE_BUCKET_OVERRIDE STREQUAL "NONE"
+   AND NOT MUDOCK_STAGE_BUCKET_OVERRIDE MATCHES "^[1-9][0-9]*$")
+  message(FATAL_ERROR "MUDOCK_STAGE_BUCKET_OVERRIDE must be a positive integer or NONE")
 endif()
 
 # OpenMP
@@ -619,14 +590,6 @@ mudock_print_config("Stage bucket trace" "${MUDOCK_ENABLE_STAGE_BUCKET_TRACE}"
                     "MUDOCK_ENABLE_STAGE_BUCKET_TRACE")
 mudock_print_config("Stage bucket override" "${MUDOCK_STAGE_BUCKET_OVERRIDE}"
                     "MUDOCK_STAGE_BUCKET_OVERRIDE")
-mudock_print_config("Stage bucket multiple override"
-                    "${MUDOCK_STAGE_BUCKET_MULTIPLE_OVERRIDE}"
-                    "MUDOCK_STAGE_BUCKET_MULTIPLE_OVERRIDE")
-mudock_print_config("Stage bucket policy" "${MUDOCK_STAGE_BUCKET_POLICY}"
-                    "MUDOCK_STAGE_BUCKET_POLICY")
-mudock_print_config("Genetic stage bucket combine"
-                    "${MUDOCK_GENETIC_BUCKET_COMBINE}"
-                    "MUDOCK_GENETIC_BUCKET_COMBINE")
 if(MUDOCK_ENABLE_LIKWID)
   mudock_print_config("Likwid CPP Profiling" "${MUDOCK_LIKWID_CPP}"
                       "MUDOCK_LIKWID_CPP")

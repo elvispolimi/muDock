@@ -53,7 +53,6 @@ list(
   "${header_path}/${header_prefix}/cpp_implementation/queue_cpp.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/adt_score_cpp.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/geom_transform_cpp.hpp"
-  "${header_path}/${header_prefix}/cpp_implementation/genetic_cpp.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/cpp_implementation.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/mutate_cpp.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/mutate.hpp"
@@ -176,8 +175,7 @@ if(MUDOCK_ENABLE_CUDA)
     header_files
     "${header_path}/${header_prefix}/cuda_implementation/queue_cuda.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/adt_score_cuda.cuh"
-    "${header_path}/${header_prefix}/cuda_implementation/genetic_cuda.cuh"
-    "${header_path}/${header_prefix}/cuda_implementation/cuda_random.cuh"
+    "${header_path}/${header_prefix}/cuda_implementation/scoring_cuda.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/cuda_utils.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/mutate.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/cuda_implementation.hpp"
@@ -188,7 +186,6 @@ if(MUDOCK_ENABLE_CUDA)
     "${source_path}/cuda_implementation/queue_cuda.cu"
     "${source_path}/cuda_implementation/adt_score_cuda.cu"
     "${source_path}/cuda_implementation/genetic_cuda.cu"
-    "${source_path}/cuda_implementation/cuda_random.cu"
     "${source_path}/cuda_implementation/geom_transform_cuda.cu"
   )
 endif()
@@ -200,8 +197,7 @@ if(MUDOCK_ENABLE_HIP)
     header_files
     "${header_path}/${header_prefix}/hip_implementation/queue_hip.hpp"
     "${header_path}/${header_prefix}/hip_implementation/adt_score_hip.hpp"
-    "${header_path}/${header_prefix}/hip_implementation/genetic_hip.hpp"
-    "${header_path}/${header_prefix}/hip_implementation/hip_random.hpp"
+    "${header_path}/${header_prefix}/hip_implementation/scoring_hip.hpp"
     "${header_path}/${header_prefix}/hip_implementation/hip_utils.hpp"
     "${header_path}/${header_prefix}/hip_implementation/mutate.hpp"
     "${header_path}/${header_prefix}/hip_implementation/hip_implementation.hpp"
@@ -211,7 +207,6 @@ if(MUDOCK_ENABLE_HIP)
     "${source_path}/hip_implementation/queue_hip.cpp"
     "${source_path}/hip_implementation/adt_score_hip.cpp"
     "${source_path}/hip_implementation/genetic_hip.cpp"
-    "${source_path}/hip_implementation/hip_random.cpp"
     "${source_path}/hip_implementation/geom_transform_hip.cpp"
   )
   list(APPEND source_files ${hip_source_files})
@@ -226,20 +221,18 @@ if(MUDOCK_ENABLE_SYCL)
     "${header_path}/${header_prefix}/sycl_implementation/queue_sycl.hpp"
     "${header_path}/${header_prefix}/sycl_implementation/invoke_kernel_sycl.hpp"
     "${header_path}/${header_prefix}/sycl_implementation/adt_score_sycl.hpp"
+    "${header_path}/${header_prefix}/sycl_implementation/scoring_sycl.hpp"
     "${header_path}/${header_prefix}/sycl_implementation/queue_sycl_impl.hpp"
     "${header_path}/${header_prefix}/sycl_implementation/sycl_kernel_lock.hpp"
-    "${header_path}/${header_prefix}/sycl_implementation/invoke_kernel_sycl.hpp"
-    "${header_path}/${header_prefix}/sycl_implementation/mutate.hpp"
     "${header_path}/${header_prefix}/sycl_implementation/sycl_random.hpp"
+    "${header_path}/${header_prefix}/sycl_implementation/mutate.hpp"
     "${header_path}/${header_prefix}/sycl_implementation/geom_transform_sycl.hpp"
-    "${header_path}/${header_prefix}/sycl_implementation/genetic_sycl.hpp"
    )
   list(APPEND header_files "${header_files_sycl}")
   set(sycl_source_files
       "${source_path}/sycl_implementation/queue_sycl.cpp"
       "${source_path}/sycl_implementation/adt_score_sycl.cpp"
       "${source_path}/sycl_implementation/geom_transform_sycl.cpp"
-      "${source_path}/sycl_implementation/sycl_random.cpp"
       "${source_path}/sycl_implementation/genetic_sycl.cpp"
       "${source_path}/sycl_implementation/sycl_kernel_lock.cpp"
   )
@@ -310,25 +303,6 @@ if(MUDOCK_ENABLE_KERNEL_LOCK)
 endif()
 if(NOT MUDOCK_STAGE_BUCKET_OVERRIDE STREQUAL "NONE")
   target_compile_definitions(libmudock PUBLIC MUDOCK_STAGE_BUCKET_OVERRIDE=${MUDOCK_STAGE_BUCKET_OVERRIDE})
-endif()
-if(NOT MUDOCK_STAGE_BUCKET_MULTIPLE_OVERRIDE STREQUAL "NONE")
-  target_compile_definitions(libmudock PUBLIC MUDOCK_STAGE_BUCKET_MULTIPLE_OVERRIDE=${MUDOCK_STAGE_BUCKET_MULTIPLE_OVERRIDE})
-endif()
-if(MUDOCK_STAGE_BUCKET_POLICY STREQUAL "MAX_UTILIZATION")
-  target_compile_definitions(libmudock PUBLIC MUDOCK_STAGE_BUCKET_POLICY_MAX_UTILIZATION)
-elseif(MUDOCK_STAGE_BUCKET_POLICY STREQUAL "SM_ALIGNED")
-  target_compile_definitions(libmudock PUBLIC MUDOCK_STAGE_BUCKET_POLICY_SM_ALIGNED)
-elseif(MUDOCK_STAGE_BUCKET_POLICY STREQUAL "DEVICE_ALIGNED")
-  target_compile_definitions(libmudock PUBLIC MUDOCK_STAGE_BUCKET_POLICY_DEVICE_ALIGNED)
-endif()
-if(MUDOCK_GENETIC_BUCKET_COMBINE STREQUAL "SCORE_ONLY")
-  target_compile_definitions(libmudock PUBLIC MUDOCK_GENETIC_BUCKET_COMBINE_SCORE_ONLY)
-elseif(MUDOCK_GENETIC_BUCKET_COMBINE STREQUAL "GEOM_ONLY")
-  target_compile_definitions(libmudock PUBLIC MUDOCK_GENETIC_BUCKET_COMBINE_GEOM_ONLY)
-elseif(MUDOCK_GENETIC_BUCKET_COMBINE STREQUAL "LCM")
-  target_compile_definitions(libmudock PUBLIC MUDOCK_GENETIC_BUCKET_COMBINE_LCM)
-elseif(NOT MUDOCK_GENETIC_BUCKET_COMBINE STREQUAL "MIN")
-  message(FATAL_ERROR "MUDOCK_GENETIC_BUCKET_COMBINE must be one of: MIN, SCORE_ONLY, GEOM_ONLY, LCM")
 endif()
 if(MUDOCK_UNROLL_MODE STREQUAL "NONE")
   target_compile_definitions(libmudock PUBLIC MUDOCK_UNROLL_NONE)

@@ -156,22 +156,23 @@ namespace mudock {
   };
 
   template<int MAX_ATOMS>
-  __global__ void apply_hip(const int chromosome_number,
-                            const int atom_stride,
-                            const fp_type* __restrict__ original_x,
-                            const fp_type* __restrict__ original_y,
-                            const fp_type* __restrict__ original_z,
-                            fp_type* __restrict__ scratch_x,
-                            fp_type* __restrict__ scratch_y,
-                            fp_type* __restrict__ scratch_z,
-                            const chromosome* __restrict__ chromosomes,
-                            const int* __restrict__ fragments,
-                            const int* __restrict__ ligand_fragments_start,
-                            const int* __restrict__ fragments_start_index,
-                            const int* __restrict__ fragments_stop_index,
-                            const int* __restrict__ frag_indices_start,
-                            const int* __restrict__ num_rotamers_b,
-                            const int* __restrict__ num_atoms_b) {
+  __device__ __forceinline__ void apply_hip(const int chromosome_number,
+                                            const int atom_stride,
+                                            const fp_type* __restrict__ original_x,
+                                            const fp_type* __restrict__ original_y,
+                                            const fp_type* __restrict__ original_z,
+                                            fp_type* __restrict__ scratch_x,
+                                            fp_type* __restrict__ scratch_y,
+                                            fp_type* __restrict__ scratch_z,
+                                            const chromosome* __restrict__ chromosomes,
+                                            const int* __restrict__ fragments,
+                                            const int* __restrict__ ligand_fragments_start,
+                                            const int* __restrict__ fragments_start_index,
+                                            const int* __restrict__ fragments_stop_index,
+                                            const int* __restrict__ frag_indices_start,
+                                            const int* __restrict__ num_rotamers_b,
+                                            const int* __restrict__ num_atoms_b,
+                                            const int selected_chromosome = -1) {
     const int ligand_id       = blockIdx.x;
     const int local_thread_id = threadIdx.x;
     assert(blockDim.x == BLOCK_SIZE && warpSize == BLOCK_SIZE &&
@@ -191,7 +192,9 @@ namespace mudock {
     const auto* __restrict__ l_frag_start_atom_index = fragments_start_index + frag_indices_start[ligand_id];
     const auto* __restrict__ l_frag_stop_atom_index  = fragments_stop_index + frag_indices_start[ligand_id];
 
-    for (int chromosome_index = 0; chromosome_index < chromosome_number; ++chromosome_index) {
+    const int first_chromosome = selected_chromosome < 0 ? 0 : selected_chromosome;
+    const int chromosome_stop  = selected_chromosome < 0 ? chromosome_number : selected_chromosome + 1;
+    for (int chromosome_index = first_chromosome; chromosome_index < chromosome_stop; ++chromosome_index) {
       const chromosome& l_chromosomes            = chromosomes_b[chromosome_index];
       fp_type* __restrict__ x_scratch_chromosome = l_scratch_x + chromosome_index * atom_stride;
       fp_type* __restrict__ y_scratch_chromosome = l_scratch_y + chromosome_index * atom_stride;
@@ -287,5 +290,40 @@ namespace mudock {
                                         num_atoms);
     }
   };
+
+  template<int MAX_ATOMS>
+  __global__ void apply_hip_kernel(const int chromosome_number,
+                                   const int atom_stride,
+                                   const fp_type* __restrict__ original_x,
+                                   const fp_type* __restrict__ original_y,
+                                   const fp_type* __restrict__ original_z,
+                                   fp_type* __restrict__ scratch_x,
+                                   fp_type* __restrict__ scratch_y,
+                                   fp_type* __restrict__ scratch_z,
+                                   const chromosome* __restrict__ chromosomes,
+                                   const int* __restrict__ fragments,
+                                   const int* __restrict__ ligand_fragments_start,
+                                   const int* __restrict__ fragments_start_index,
+                                   const int* __restrict__ fragments_stop_index,
+                                   const int* __restrict__ frag_indices_start,
+                                   const int* __restrict__ num_rotamers_b,
+                                   const int* __restrict__ num_atoms_b) {
+    apply_hip<MAX_ATOMS>(chromosome_number,
+                         atom_stride,
+                         original_x,
+                         original_y,
+                         original_z,
+                         scratch_x,
+                         scratch_y,
+                         scratch_z,
+                         chromosomes,
+                         fragments,
+                         ligand_fragments_start,
+                         fragments_start_index,
+                         fragments_stop_index,
+                         frag_indices_start,
+                         num_rotamers_b,
+                         num_atoms_b);
+  }
 
 } // namespace mudock

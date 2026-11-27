@@ -36,7 +36,7 @@ namespace {
     dispatch_selected_pipeline(args.search,
                                args.scoring,
                                format,
-                               [&]<typename pipeline_t>(const auto, const auto) {
+                               [&]<typename pipeline_t>() {
                                  pipeline_t pipe{protein, placement};
                                  constexpr_switch<0, mudock::get_num_supported_format(), 1>(
                                      [&](const auto format_index) {

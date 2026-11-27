@@ -2,6 +2,7 @@
 
 #include <cassert>
 #include <mudock/cpp_implementation/chromosome.hpp>
+#include <mudock/compute/geom_transform_args.hpp>
 #include <mudock/molecule.hpp>
 #include <mudock/type_alias.hpp>
 #include <mudock/utils.hpp>
@@ -154,6 +155,101 @@ namespace mudock {
       }
     }
   }
+
+  template<int MAX_ATOMS>
+  __device__ __forceinline__ void apply_chromosome_cuda(const geom_transform_args& args,
+                                                        const int ligand_id,
+                                                        const chromosome& chrom,
+                                                        fp_type* __restrict__ x,
+                                                        fp_type* __restrict__ y,
+                                                        fp_type* __restrict__ z) {
+    const int num_atoms    = args.num_atoms[ligand_id];
+    const int num_rotamers = args.num_rotamers[ligand_id];
+    const int lane         = threadIdx.x;
+    const fp_type* original_x = args.original_x + ligand_id * args.batch_atom_stride;
+    const fp_type* original_y = args.original_y + ligand_id * args.batch_atom_stride;
+    const fp_type* original_z = args.original_z + ligand_id * args.batch_atom_stride;
+
+    MUDOCK_PRAGMA_TEMPLATE_UNROLL(MAX_ATOMS, BLOCK_SIZE)
+    for (int i = 0; i < MAX_ATOMS; i += BLOCK_SIZE) {
+      const int atom_index = i + lane;
+      if (atom_index < num_atoms) {
+        x[atom_index] = original_x[atom_index];
+        y[atom_index] = original_y[atom_index];
+        z[atom_index] = original_z[atom_index];
+      }
+    }
+    __syncwarp();
+
+    fp_type reference_x{0}, reference_y{0}, reference_z{0};
+    MUDOCK_PRAGMA_UNROLL(MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, BLOCK_SIZE))
+    for (int i = 0; i < MAX_ATOMS; i += BLOCK_SIZE) {
+      const int atom_index = i + lane;
+      if (atom_index < num_atoms) {
+        reference_x += x[atom_index];
+        reference_y += y[atom_index];
+        reference_z += z[atom_index];
+      }
+    }
+    reference_x /= num_atoms;
+    reference_y /= num_atoms;
+    reference_z /= num_atoms;
+    for (int offset = BLOCK_SIZE / 2; offset > 0; offset /= 2) {
+      reference_x += __shfl_down_sync(0xffffffff, reference_x, offset, BLOCK_SIZE);
+      reference_y += __shfl_down_sync(0xffffffff, reference_y, offset, BLOCK_SIZE);
+      reference_z += __shfl_down_sync(0xffffffff, reference_z, offset, BLOCK_SIZE);
+    }
+    reference_x = __shfl_sync(0xffffffff, reference_x, 0, BLOCK_SIZE);
+    reference_y = __shfl_sync(0xffffffff, reference_y, 0, BLOCK_SIZE);
+    reference_z = __shfl_sync(0xffffffff, reference_z, 0, BLOCK_SIZE);
+
+    for (int i = 0; i < num_rotamers; ++i) {
+      const int* bitmask = args.fragments + args.ligand_fragments_start[ligand_id] + i * num_atoms;
+      rotate_fragment_cuda<MAX_ATOMS>(x,
+                                      y,
+                                      z,
+                                      bitmask,
+                                      args.fragments_start_index[args.frag_indices_start[ligand_id] + i],
+                                      args.fragments_stop_index[args.frag_indices_start[ligand_id] + i],
+                                      chrom[6 + i],
+                                      num_atoms);
+      __syncwarp();
+    }
+
+    fp_type transformed_x{0}, transformed_y{0}, transformed_z{0};
+    MUDOCK_PRAGMA_UNROLL(MUDOCK_ATOM_LOOP_UNROLL_FACTOR(MAX_ATOMS, BLOCK_SIZE))
+    for (int i = 0; i < MAX_ATOMS; i += BLOCK_SIZE) {
+      const int atom_index = i + lane;
+      if (atom_index < num_atoms) {
+        transformed_x += x[atom_index];
+        transformed_y += y[atom_index];
+        transformed_z += z[atom_index];
+      }
+    }
+    transformed_x /= num_atoms;
+    transformed_y /= num_atoms;
+    transformed_z /= num_atoms;
+    for (int offset = BLOCK_SIZE / 2; offset > 0; offset /= 2) {
+      transformed_x += __shfl_down_sync(0xffffffff, transformed_x, offset, BLOCK_SIZE);
+      transformed_y += __shfl_down_sync(0xffffffff, transformed_y, offset, BLOCK_SIZE);
+      transformed_z += __shfl_down_sync(0xffffffff, transformed_z, offset, BLOCK_SIZE);
+    }
+    transformed_x = __shfl_sync(0xffffffff, transformed_x, 0, BLOCK_SIZE);
+    transformed_y = __shfl_sync(0xffffffff, transformed_y, 0, BLOCK_SIZE);
+    transformed_z = __shfl_sync(0xffffffff, transformed_z, 0, BLOCK_SIZE);
+    translate_molecule_cuda<MAX_ATOMS>(x,
+                                       y,
+                                       z,
+                                       reference_x - transformed_x,
+                                       reference_y - transformed_y,
+                                       reference_z - transformed_z,
+                                       num_atoms);
+    __syncwarp();
+    rotate_molecule_cuda<MAX_ATOMS>(x, y, z, chrom[3], chrom[4], chrom[5], num_atoms);
+    __syncwarp();
+    translate_molecule_cuda<MAX_ATOMS>(x, y, z, chrom[0], chrom[1], chrom[2], num_atoms);
+  }
+
   template<int MAX_ATOMS>
   __global__ void apply_cuda(const int chromosome_number,
                              const int atom_stride,

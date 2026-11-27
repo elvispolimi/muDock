@@ -7,10 +7,5 @@
 
 namespace mudock {
   template<>
-  inline batch_multiple get_geom_transform_batch_multiple<queue_xsimd>(const int, std::shared_ptr<queue_xsimd>) {
-    return {10, 1};
-  }
-
-  template<>
-  void geom_kernel<queue_xsimd>::operator()();
+  void geometric<queue_xsimd>::operator()();
 } // namespace mudock

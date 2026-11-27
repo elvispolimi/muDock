@@ -50,9 +50,12 @@ namespace mudock {
         c_z += z[i];
       }
     }
-    c_x = sycl::reduce_over_group(it.get_group(), c_x, sycl::plus<fp_type>()) / static_cast<fp_type>(num_atoms);
-    c_y = sycl::reduce_over_group(it.get_group(), c_y, sycl::plus<fp_type>()) / static_cast<fp_type>(num_atoms);
-    c_z = sycl::reduce_over_group(it.get_group(), c_z, sycl::plus<fp_type>()) / static_cast<fp_type>(num_atoms);
+    c_x =
+        sycl::reduce_over_group(it.get_group(), c_x, sycl::plus<fp_type>()) / static_cast<fp_type>(num_atoms);
+    c_y =
+        sycl::reduce_over_group(it.get_group(), c_y, sycl::plus<fp_type>()) / static_cast<fp_type>(num_atoms);
+    c_z =
+        sycl::reduce_over_group(it.get_group(), c_z, sycl::plus<fp_type>()) / static_cast<fp_type>(num_atoms);
 
     const auto rad_x = deg_to_rad(*angle_x), rad_y = deg_to_rad(*angle_y), rad_z = deg_to_rad(*angle_z);
     const auto cx = sycl::cos(rad_x), sx = sycl::sin(rad_x);
@@ -162,7 +165,8 @@ namespace mudock {
                     const int* __restrict__ fragments_stop_index,
                     const int* __restrict__ frag_indices_start,
                     const int* __restrict__ num_rotamers_b,
-                    const int* __restrict__ num_atoms_b) const {
+                    const int* __restrict__ num_atoms_b,
+                    const int selected_chromosome = -1) const {
       const int ligand_id       = static_cast<int>(it.get_group(2));
       const int local_thread_id = static_cast<int>(it.get_local_id(2));
       assert(it.get_local_range(2) == MUDOCK_SYCL_WG_SIZE &&
@@ -183,7 +187,9 @@ namespace mudock {
           fragments_start_index + frag_indices_start[ligand_id];
       const auto* __restrict__ l_frag_stop_atom_index = fragments_stop_index + frag_indices_start[ligand_id];
 
-      for (int chromosome_index = 0; chromosome_index < chromosome_number; ++chromosome_index) {
+      const int first_chromosome = selected_chromosome < 0 ? 0 : selected_chromosome;
+      const int chromosome_stop  = selected_chromosome < 0 ? chromosome_number : selected_chromosome + 1;
+      for (int chromosome_index = first_chromosome; chromosome_index < chromosome_stop; ++chromosome_index) {
         const chromosome& l_chromosomes            = chromosomes_b[chromosome_index];
         fp_type* __restrict__ x_scratch_chromosome = l_scratch_x + chromosome_index * atom_stride;
         fp_type* __restrict__ y_scratch_chromosome = l_scratch_y + chromosome_index * atom_stride;

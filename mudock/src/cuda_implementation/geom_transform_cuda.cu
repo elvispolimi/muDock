@@ -1,60 +1,36 @@
 #include <cassert>
 #include <mudock/compute/reorder_buffer.hpp>
-#include <mudock/cuda_implementation/cuda_utils.cuh>
 #include <mudock/cuda_implementation/geom_transform_cuda.cuh>
 #include <mudock/cuda_implementation/mutate.cuh>
 #include <mudock/utils.hpp>
-#include <stdexcept>
 
 namespace mudock {
-  template<int MAX_ATOMS>
-  batch_multiple get_geom_apply_batch(const int device_id) {
-    return get_kernel_batch_multiple_cuda<apply_cuda<MAX_ATOMS>>(device_id,
-                                                                 BLOCK_SIZE,
-                                                                 0,
-                                                                 "geometric::apply_cuda");
-  }
-
   template<>
-  batch_multiple get_geom_transform_batch_multiple<queue_cuda>(const int atoms, std::shared_ptr<queue_cuda> q_b) {
-    batch_multiple bucket_multiple{};
-    const int device_id = q_b->get_id();
-    constexpr_for<0, reorder_buffer<static_molecule>::get_num_atom_clusters(), 1>([&](const auto atom_index) {
-      const auto n_atoms = reorder_buffer<static_molecule>::atoms_clusters[atom_index];
-      if (atoms == n_atoms)
-        bucket_multiple = get_geom_apply_batch<n_atoms>(device_id);
-    });
-    if (bucket_multiple.total_multiple() <= 0)
-      throw std::runtime_error(
-          "Compilation error: there is a bucket of atoms number which it is not handled.");
-    return normalize_batch_multiple(bucket_multiple);
-  }
-
-  template<>
-  void geom_kernel<queue_cuda>::operator()() {
-    void* args[] = {(void*) &chromsomes_per_ligand,
-                    (void*) &batch_atoms,
-                    (void*) &x_coords_b,
-                    (void*) &y_coords_b,
-                    (void*) &z_coords_b,
-                    (void*) &x_scratch_b,
-                    (void*) &y_scratch_b,
-                    (void*) &z_scratch_b,
-                    (void*) &chromosomes_b,
-                    (void*) &ligand_fragments_b,
-                    (void*) &ligand_fragments_start_b,
-                    (void*) &frag_start_indices_b,
-                    (void*) &frag_stop_indices_b,
-                    (void*) &frag_indices_start_b,
-                    (void*) &num_rotamers_b,
-                    (void*) &num_atoms_b};
+  void geometric<queue_cuda>::operator()() {
+    void* kernel_parameters[] = {(void*) &this->args.chromosomes_per_ligand,
+                                 (void*) &this->args.batch_atom_stride,
+                                 (void*) &this->args.original_x,
+                                 (void*) &this->args.original_y,
+                                 (void*) &this->args.original_z,
+                                 (void*) &this->args.x_scratch,
+                                 (void*) &this->args.y_scratch,
+                                 (void*) &this->args.z_scratch,
+                                 (void*) &this->args.chromosomes,
+                                 (void*) &this->args.fragments,
+                                 (void*) &this->args.ligand_fragments_start,
+                                 (void*) &this->args.fragments_start_index,
+                                 (void*) &this->args.fragments_stop_index,
+                                 (void*) &this->args.frag_indices_start,
+                                 (void*) &this->args.num_rotamers,
+                                 (void*) &this->args.num_atoms};
     //TODO check grid/dimensions
     constexpr_switch_bucket<0, reorder_buffer<static_molecule>::get_num_atom_clusters(), 1>(
         [&](const auto atom_index) {
           const auto max_atoms = reorder_buffer<static_molecule>::atoms_clusters[atom_index];
-          q->launch_kernel((void*) apply_cuda<max_atoms>, args, batch_ligands, BLOCK_SIZE);
+          this->get_queue()->launch_kernel(
+              (void*) apply_cuda<max_atoms>, kernel_parameters, this->args.batch_ligands, BLOCK_SIZE);
         },
-        batch_atoms,
+        this->args.batch_atom_stride,
         reorder_buffer<static_molecule>::atoms_clusters.data());
   }
 

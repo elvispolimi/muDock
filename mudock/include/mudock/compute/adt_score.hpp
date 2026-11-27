@@ -6,30 +6,24 @@
 #include <mudock/chem/autodock_grid_types.hpp>
 #include <mudock/chem/autodock_ligand.hpp>
 #include <mudock/chem/autodock_protein.hpp>
-#include <mudock/compute/adt_score_kernel.hpp>
-#include <mudock/compute/batch_multiple.hpp>
+#include <mudock/compute/algorithm.hpp>
+#include <mudock/compute/adt_score_args.hpp>
 #include <mudock/compute/ligand_placement.hpp>
-#if !defined(__CUDACC__) && !defined(__HIPCC__)
-  #include <mudock/compute/buffer_utils.hpp>
-  #include <mudock/compute/scoring.hpp>
-  #include <mudock/compute/scratchpad.hpp>
-#endif
-#include <mudock/log.hpp>
+#include <mudock/compute/buffer_utils.hpp>
+#include <mudock/compute/scoring.hpp>
+#include <mudock/compute/scratchpad.hpp>
 #include <mudock/molecule.hpp>
 #include <mudock/type_alias.hpp>
 
 namespace mudock {
 
-  template<typename queue_type>
-  batch_multiple get_adt_score_batch_multiple(const int, std::shared_ptr<queue_type>) {
-    return {};
-  }
+  struct adt_score_device_kernel;
 
-#if !defined(__CUDACC__) && !defined(__HIPCC__)
   // TODO check that the object type and the kernel impl are the same
   template<typename queue_type>
   struct adt_score: public scoring<queue_type> {
     static constexpr const char stage_name[] = "ADT";
+    using device_kernel = adt_score_device_kernel;
 
     adt_score(std::shared_ptr<scratchpad<queue_type>> _scratch,
               std::shared_ptr<scratchpad<queue_type>> _device_scratch,
@@ -90,13 +84,11 @@ namespace mudock {
       }
     }
 
-    void prepare(batch<static_molecule> &batch) {
+    void prepare(batch<static_molecule>& batch) override {
       batch_ligands                = batch.num_ligands;
       batch_atoms                  = batch.batch_max_atoms;
       const int batch_non_bonds    = batch_ligands * batch_atoms * batch_atoms;
       const int tot_atoms_in_batch = batch_ligands * batch_atoms;
-      auto q                       = (*this->scratch).get_queue();
-
       for (int ligand_index{0}; ligand_index < batch_ligands; ++ligand_index)
         apply_ligand_placement(*batch.molecules[ligand_index], placement, protein_center);
 
@@ -107,14 +99,9 @@ namespace mudock {
           std::max(1, static_cast<int>((*this->scratch).configuration.population_number));
 
       auto &score_b = (*this->scratch).template get<buffer_data_type::SCORES>();
-      if (load_scratchs<queue_type>(batch, this->scratch, scores_per_ligand)) {
-        if (!score_b.is_valid() ||
-            score_b.num_elements() != static_cast<size_t>(batch_ligands * scores_per_ligand)) {
-          score_b.alloc(batch_ligands * scores_per_ligand);
-          score_b.set_valid();
-        }
-      } else if (!score_b.is_valid() ||
-                 score_b.num_elements() != static_cast<size_t>(batch_ligands * scores_per_ligand)) {
+      load_scratchs<queue_type>(batch, this->scratch, scores_per_ligand);
+      if (!score_b.is_valid() ||
+          score_b.num_elements() != static_cast<size_t>(batch_ligands * scores_per_ligand)) {
         score_b.alloc(batch_ligands * scores_per_ligand);
         score_b.set_valid();
       }
@@ -226,42 +213,40 @@ namespace mudock {
 
       fp_type *scores_b = score_b.dev_pointer();
 
-      kernel = std::make_unique<adt_score_kernel<queue_type>>(scores_per_ligand,
-                                                              batch_ligands,
-                                                              batch_atoms,
-                                                              num_atoms_b,
-                                                              num_rotamers_b,
-                                                              num_nonbonds_b,
-                                                              x_scratch_b,
-                                                              y_scratch_b,
-                                                              z_scratch_b,
-                                                              vols_b,
-                                                              solpars_b,
-                                                              charges_b,
-                                                              map_offsets_b,
-                                                              nonbond_a1_b,
-                                                              nonbond_a2_b,
-                                                              nonbond_cA_b,
-                                                              nonbond_cB_b,
-                                                              nonbond_xB_b,
-                                                              grid_maps,
-                                                              minimum,
-                                                              maximum,
-                                                              center,
-                                                              map_index_x,
-                                                              map_index_xy,
-                                                              map_index_xyz,
-                                                              scores_b,
-                                                              q);
+      args = {};
+      args.batch_ligands = batch_ligands;
+      args.scores_per_ligand = scores_per_ligand;
+      args.batch_atom_stride = batch_atoms;
+      args.map_index_x = map_index_x;
+      args.map_index_xy = map_index_xy;
+      args.map_index_xyz = map_index_xyz;
+      args.vols = vols_b;
+      args.solpars = solpars_b;
+      args.charges = charges_b;
+      args.num_atoms = num_atoms_b;
+      args.num_rotamers = num_rotamers_b;
+      args.num_nonbonds = num_nonbonds_b;
+      args.nonbond_a1 = nonbond_a1_b;
+      args.nonbond_a2 = nonbond_a2_b;
+      args.nonbond_cA = nonbond_cA_b;
+      args.nonbond_cB = nonbond_cB_b;
+      args.nonbond_xB = nonbond_xB_b;
+      args.grid_maps = grid_maps;
+      args.atom_map_offsets = map_offsets_b;
+      args.minimum = minimum;
+      args.maximum = maximum;
+      args.center = center;
+      args.scores = scores_b;
+      args.x = x_scratch_b;
+      args.y = y_scratch_b;
+      args.z = z_scratch_b;
     }
 
 
-    void operator()() {
-      assert(
-          (((*this->scratch).template get<buffer_data_type::SCORES>().num_elements() % batch_ligands) == 0) &&
-          "Number of scores is not a multiple of ligands in the batch");
-      assert(kernel && "Kernel method not yet prepared");
-      (*kernel)();
+    void operator()() override;
+
+    [[nodiscard]] adt_score_args kernel_args() const {
+      return args;
     }
 
     static std::size_t get_shared_ligand_mem(const int max_atoms, const knobs conf) {
@@ -274,39 +259,17 @@ namespace mudock {
       const std::size_t non_bonds_atoms = static_cast<std::size_t>(max_atoms) *
                                           static_cast<std::size_t>(max_atoms);
       std::size_t mem{0};
-      mem += sizeof(fp_type) * 3 * max_atoms;                         // vols, solpars, charges
-      mem += sizeof(int) * max_atoms;                                 // map_offsets
-      mem += sizeof(int);                                           // num_nonbond (plus one fixed batch sentinel)
-      mem += sizeof(int) * 2 * non_bonds_atoms;                       // nonbond_a1, nonbond_a2
-      mem += sizeof(fp_type) * 2 * non_bonds_atoms;                   // nonbond_cA, nonbond_cB
-      mem += sizeof(int) * non_bonds_atoms;                           // nonbond_xB
+      mem += sizeof(fp_type) * 3 * max_atoms;       // vols, solpars, charges
+      mem += sizeof(int) * max_atoms;               // map_offsets
+      mem += sizeof(int);                           // num_nonbond sentinel
+      mem += sizeof(int) * 2 * non_bonds_atoms;     // nonbond_a1, nonbond_a2
+      mem += sizeof(fp_type) * 2 * non_bonds_atoms; // nonbond_cA, nonbond_cB
+      mem += sizeof(int) * non_bonds_atoms;         // nonbond_xB
       return mem;
     }
 
     static std::size_t get_ligand_mem(const int max_atoms, const knobs conf) {
       return get_shared_ligand_mem(max_atoms, conf) + get_private_ligand_mem(max_atoms, conf);
-    }
-
-    static batch_multiple get_batch_size(const int atoms,
-                                         std::shared_ptr<queue_type> q,
-                                         const knobs &conf,
-                                         const size_t max_bucket_size) {
-      (void) conf;
-      const auto plain_multiple_info =
-          normalize_batch_multiple(get_adt_score_batch_multiple<queue_type>(atoms, q));
-      mudock::stage_bucket_trace("ADT stage plain multiple for ",
-                                 atoms,
-                                 " atoms -> total=",
-                                 plain_multiple_info.total_multiple(),
-                                 " (active_blocks_per_sm=",
-                                 plain_multiple_info.active_blocks_per_sm,
-                                 ", num_sms=",
-                                 plain_multiple_info.num_sms,
-                                 ")",
-                                 " (max_bucket_size hint=",
-                                 max_bucket_size,
-                                 ")");
-      return plain_multiple_info;
     }
 
   private:
@@ -327,7 +290,7 @@ namespace mudock {
     std::shared_ptr<scratchpad<queue_type>> device_scratch;
     ligand_placement placement;
     point3D protein_center;
-    std::unique_ptr<adt_score_kernel<queue_type>> kernel;
+    adt_score_args args{};
 
     void teardown_impl(batch<static_molecule> &batch) override {
       assert(batch.num_ligands == batch_ligands && "Scoring algorithm received different batch for teardown");
@@ -343,5 +306,11 @@ namespace mudock {
       }
     };
   };
-#endif
+
+  template<typename queue_t>
+  struct scoring_backend<queue_t, scoring_function::ADT> {
+    using stage_type = adt_score<queue_t>;
+    using arguments = adt_score_args;
+    using device_kernel = typename stage_type::device_kernel;
+  };
 } // namespace mudock

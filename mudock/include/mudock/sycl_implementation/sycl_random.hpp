@@ -1,13 +1,11 @@
 #pragma once
 
-#include <mudock/compute/buffer.hpp>
-#include <mudock/sycl_implementation/queue_sycl.hpp>
 #include <mudock/type_alias.hpp>
+#include <array>
+#include <limits>
 
 namespace mudock {
-  // XORWOW state
-  // Should be the default one from curand state in CUDA
-  // Taken from Wikipedia https://en.wikipedia.org/wiki/Xorshift#xorwow
+  // Lightweight per-work-item XORWOW state for SYCL.
   struct XORWOWState {
     std::array<unsigned int, 5> state; // State array
     int index;                         // Current index in the state array
@@ -43,22 +41,15 @@ namespace mudock {
     }
   };
 
-  struct sycl_random_object {
-    sycl_random_object(std::shared_ptr<queue_sycl> q_): q(q_), state(q) {};
-    sycl_random_object(const sycl_random_object &)            = delete;
-    sycl_random_object(sycl_random_object &&)                 = delete;
-    sycl_random_object &operator=(const sycl_random_object &) = delete;
-    sycl_random_object &operator=(sycl_random_object &&)      = delete;
+  // Use vendor-style per-work-item seed/sequence initialization and sampling.
+  // The custom XORWOW state folds sequence into the seed; it has no jump-ahead
+  // offset like CURAND/HIPRAND.
+  inline void syclrand_init(const unsigned long long seed,
+                            const unsigned long long sequence,
+                            XORWOWState* state) {
+    state->set_seed(static_cast<int>(seed + sequence));
+  }
 
-    void alloc(const std::size_t num_elements);
-    void alloc(const std::size_t num_elements, const std::size_t seed);
-
-    [[nodiscard]] inline auto dev_pointer() { return state.dev_pointer(); }
-    [[nodiscard]] inline XORWOWState **dev_pointer_ref() { return state.dev_pointer_ref(); }
-
-  private:
-    std::shared_ptr<queue_sycl> q;
-    buffer_vector<XORWOWState, queue_sycl> state;
-  };
+  inline fp_type syclrand_uniform(XORWOWState* state) { return state->next(); }
 
 } // namespace mudock

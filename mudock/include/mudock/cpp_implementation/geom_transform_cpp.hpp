@@ -7,5 +7,5 @@
 
 namespace mudock {
   template<>
-  void geom_kernel<queue_cpp>::operator()();
+  void geometric<queue_cpp>::operator()();
 } // namespace mudock

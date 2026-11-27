@@ -1,7 +1,6 @@
 #pragma once
 
 #include <memory>
-#include <mudock/compute/batch_multiple.hpp>
 #include <mudock/compute/queue.hpp>
 #include <mudock/grid/mdindex.hpp>
 
@@ -31,14 +30,10 @@ namespace mudock {
     void copy_device2host(const void*, void*, const size_t) override;
     void copy_device2device(const void*, void*, const size_t) override;
     bool obj_required() override { return true; }
-    bool honors_stage_bucket_policy() const override { return dev_type == device_type::GPU; }
 
     void operator()() override;
 
     void synchronize() override;
-
-    template<class kernel_name>
-    batch_multiple get_batch_multiple();
 
   private:
     struct impl;

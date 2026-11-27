@@ -37,12 +37,9 @@ namespace mudock {
 
   using buffer_type_list = std::tuple<fp_type, int, chromosome>;
 
-  template<typename T, typename... Ts>
-  constexpr bool is_in_tuple_v = (std::same_as<T, Ts> || ...);
-
   template<typename T>
-  concept buffer_type_allowed =
-      []<typename... Ts>(std::tuple<Ts...>*) { return is_in_tuple_v<T, Ts...>; }((buffer_type_list*) nullptr);
+  concept buffer_type_allowed = std::same_as<T, fp_type> || std::same_as<T, int> ||
+                                std::same_as<T, chromosome>;
 
   template<buffer_data_type buff_t, class T>
     requires buffer_type_allowed<T>
