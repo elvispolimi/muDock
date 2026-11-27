@@ -27,6 +27,26 @@
       }
     },
     {
+      "name": "base-cpu-relwithdebinfo",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "MUDOCK_ENABLE_TEST": "ON",
+        "MUDOCK_ENABLE_MPI": "OFF",
+        "MUDOCK_ENABLE_OMP": "OFF",
+        "MUDOCK_ENABLE_OMP_OFFLOAD": "OFF",
+        "MUDOCK_ENABLE_GH": "OFF",
+        "MUDOCK_ENABLE_XSIMD": "OFF",
+        "MUDOCK_ENABLE_CUDA": "OFF",
+        "MUDOCK_ENABLE_HIP": "OFF",
+        "MUDOCK_ENABLE_SYCL": "OFF",
+        "MUDOCK_CPU_ARCHITECTURES": "x86-64",
+        "MUDOCK_CPU_TUNE": "generic"
+      }
+    },
+    {
       "name": "ci-cpu-debug",
       "inherits": "base-cpu-debug",
       "displayName": "CI CPU Debug",
@@ -37,6 +57,18 @@
       "inherits": "base-cpu-debug",
       "displayName": "Developer CPU Debug",
       "description": "CPU-only Debug build with tests enabled for local development."
+    },
+    {
+      "name": "ci-cpu-relwithdebinfo",
+      "inherits": "base-cpu-relwithdebinfo",
+      "displayName": "CI CPU Release with Debug Info",
+      "description": "Portable CPU-only Release with Debug Info build with tests enabled for CI."
+    },
+    {
+      "name": "dev-cpu-relwithdebinfo",
+      "inherits": "base-cpu-debug",
+      "displayName": "Developer CPU Release with Debug Info",
+      "description": "CPU-only Release with Debug Info build with tests enabled for local development."
     }
   ],
   "buildPresets": [
@@ -47,6 +79,14 @@
     {
       "name": "dev-cpu-debug",
       "configurePreset": "dev-cpu-debug"
+    },
+    {
+      "name": "ci-cpu-relwithdebinfo",
+      "configurePreset": "ci-cpu-relwithdebinfo"
+    },
+    {
+      "name": "dev-cpu-relwithdebinfo",
+      "configurePreset": "dev-cpu-relwithdebinfo"
     }
   ],
   "testPresets": [
@@ -62,8 +102,26 @@
       }
     },
     {
+      "name": "ci-cpu-relwithdebinfo",
+      "configurePreset": "ci-cpu-relwithdebinfo",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": false
+      }
+    },
+    {
       "name": "dev-cpu-debug",
       "configurePreset": "dev-cpu-debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "dev-cpu-relwithdebinfo",
+      "configurePreset": "dev-cpu-relwithdebinfo",
       "output": {
         "outputOnFailure": true
       }

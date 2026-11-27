@@ -24,6 +24,26 @@ namespace mudock {
     using type = mudock::genetic_adt_pipeline;
   };
 
+  template<>
+  struct pipeline_selector<search_algorithm::NONE, scoring_function::DS> {
+    using type = mudock::ds_score_pipeline;
+  };
+
+  template<>
+  struct pipeline_selector<search_algorithm::GENETIC, scoring_function::DS> {
+    using type = mudock::genetic_ds_pipeline;
+  };
+
+  template<>
+  struct pipeline_selector<search_algorithm::NONE, scoring_function::DS_PRECOMP> {
+    using type = mudock::ds_precomp_score_pipeline;
+  };
+
+  template<>
+  struct pipeline_selector<search_algorithm::GENETIC, scoring_function::DS_PRECOMP> {
+    using type = mudock::genetic_ds_precomp_pipeline;
+  };
+
   template<search_algorithm search, scoring_function scoring>
   using pipeline_selector_t = typename pipeline_selector<search, scoring>::type;
 
@@ -42,7 +62,21 @@ namespace mudock {
   template<>
   struct scoring_function_format<scoring_function::ADT>
       : scoring_function_format_base<scoring_function_format<scoring_function::ADT>> {
-    inline static constexpr std::array formats{supported_format::ADTMOL2, supported_format::PDBQT, supported_format::MOL2};
+    inline static constexpr std::array formats{supported_format::ADTMOL2,
+                                               supported_format::PDBQT,
+                                               supported_format::MOL2};
+  };
+
+  template<>
+  struct scoring_function_format<scoring_function::DS>
+      : scoring_function_format_base<scoring_function_format<scoring_function::DS>> {
+    inline static constexpr std::array formats{supported_format::MOL2};
+  };
+
+  template<>
+  struct scoring_function_format<scoring_function::DS_PRECOMP>
+      : scoring_function_format_base<scoring_function_format<scoring_function::DS_PRECOMP>> {
+    inline static constexpr std::array formats{supported_format::MOL2};
   };
 
   template<typename callback_t>

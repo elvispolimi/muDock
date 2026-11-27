@@ -3,6 +3,7 @@
 #include <concepts>
 #include <cstring>
 #include <memory>
+#include <mudock/chem/drugscore/drugscore_types.hpp>
 #include <mudock/chem/elements.hpp>
 #include <mudock/compute/object.hpp>
 #include <mudock/cpp_implementation/chromosome.hpp>
@@ -32,10 +33,17 @@ namespace mudock {
     PROT_SIZE_X,
     PROT_SIZE_XY,
     PROT_SIZE_XYZ,
-    PROT_GRID_MAPS
+    PROT_GRID_MAPS,
+    PROT_X_COORDS,
+    PROT_Y_COORDS,
+    PROT_Z_COORDS,
+    PROT_NUM_ATOMS,
+    PROT_DS_TYPES,
+    PROT_DS_GRID_MAPS,
+    DS_MODEL
   };
 
-  using buffer_type_list = std::tuple<fp_type, int, chromosome>;
+  using buffer_type_list = std::tuple<fp_type, int, chromosome, ds_type>;
 
   template<typename T, typename... Ts>
   constexpr bool is_in_tuple_v = (std::same_as<T, Ts> || ...);
@@ -52,78 +60,41 @@ namespace mudock {
 
   template<buffer_data_type buff_t>
   struct buffer_type_traits {};
-  template<>
-  struct buffer_type_traits<buffer_data_type::X_COORDS> {
-    using type = buffer_type_traits_impl<buffer_data_type::X_COORDS, fp_type>::type;
-  };
-  template<>
-  struct buffer_type_traits<buffer_data_type::Y_COORDS> {
-    using type = buffer_type_traits_impl<buffer_data_type::Y_COORDS, fp_type>::type;
-  };
-  template<>
-  struct buffer_type_traits<buffer_data_type::Z_COORDS> {
-    using type = buffer_type_traits_impl<buffer_data_type::Z_COORDS, fp_type>::type;
-  };
-  template<>
-  struct buffer_type_traits<buffer_data_type::ELEMENTS> {
-    using type = buffer_type_traits_impl<buffer_data_type::ELEMENTS, int>::type;
-  };
-  template<>
-  struct buffer_type_traits<buffer_data_type::CHROMOSOMES> {
-    using type = buffer_type_traits_impl<buffer_data_type::CHROMOSOMES, chromosome>::type;
-  };
-  template<>
-  struct buffer_type_traits<buffer_data_type::SCORES> {
-    using type = buffer_type_traits_impl<buffer_data_type::SCORES, fp_type>::type;
-  };
-  template<>
-  struct buffer_type_traits<buffer_data_type::X_SCRATCH> {
-    using type = buffer_type_traits_impl<buffer_data_type::X_SCRATCH, fp_type>::type;
-  };
-  template<>
-  struct buffer_type_traits<buffer_data_type::Y_SCRATCH> {
-    using type = buffer_type_traits_impl<buffer_data_type::Y_SCRATCH, fp_type>::type;
-  };
-  template<>
-  struct buffer_type_traits<buffer_data_type::Z_SCRATCH> {
-    using type = buffer_type_traits_impl<buffer_data_type::Z_SCRATCH, fp_type>::type;
-  };
-  template<>
-  struct buffer_type_traits<buffer_data_type::NUM_ATOMS> {
-    using type = buffer_type_traits_impl<buffer_data_type::NUM_ATOMS, int>::type;
-  };
-  template<>
-  struct buffer_type_traits<buffer_data_type::NUM_ROTAMERS> {
-    using type = buffer_type_traits_impl<buffer_data_type::NUM_ROTAMERS, int>::type;
-  };
-  template<>
-  struct buffer_type_traits<buffer_data_type::PROT_MAX> {
-    using type = buffer_type_traits_impl<buffer_data_type::PROT_MAX, fp_type>::type;
-  };
-  template<>
-  struct buffer_type_traits<buffer_data_type::PROT_MIN> {
-    using type = buffer_type_traits_impl<buffer_data_type::PROT_MIN, fp_type>::type;
-  };
-  template<>
-  struct buffer_type_traits<buffer_data_type::PROT_CENTER> {
-    using type = buffer_type_traits_impl<buffer_data_type::PROT_CENTER, fp_type>::type;
-  };
-  template<>
-  struct buffer_type_traits<buffer_data_type::PROT_SIZE_X> {
-    using type = buffer_type_traits_impl<buffer_data_type::PROT_SIZE_X, int>::type;
-  };
-  template<>
-  struct buffer_type_traits<buffer_data_type::PROT_SIZE_XY> {
-    using type = buffer_type_traits_impl<buffer_data_type::PROT_SIZE_XY, int>::type;
-  };
-  template<>
-  struct buffer_type_traits<buffer_data_type::PROT_SIZE_XYZ> {
-    using type = buffer_type_traits_impl<buffer_data_type::PROT_SIZE_XYZ, int>::type;
-  };
-  template<>
-  struct buffer_type_traits<buffer_data_type::PROT_GRID_MAPS> {
-    using type = buffer_type_traits_impl<buffer_data_type::PROT_SIZE_XYZ, fp_type>::type;
-  };
+
+#define ASSOCIATE_TYPE_TO_BUFFER_TRAIT(BUFFER_DATA_TYPE, TYPE)          \
+  template<>                                                            \
+  struct buffer_type_traits<BUFFER_DATA_TYPE> {                         \
+    using type = buffer_type_traits_impl<BUFFER_DATA_TYPE, TYPE>::type; \
+  }
+
+  ASSOCIATE_TYPE_TO_BUFFER_TRAIT(buffer_data_type::X_COORDS, fp_type);
+  ASSOCIATE_TYPE_TO_BUFFER_TRAIT(buffer_data_type::Y_COORDS, fp_type);
+  ASSOCIATE_TYPE_TO_BUFFER_TRAIT(buffer_data_type::Z_COORDS, fp_type);
+  ASSOCIATE_TYPE_TO_BUFFER_TRAIT(buffer_data_type::ELEMENTS, int);
+  ASSOCIATE_TYPE_TO_BUFFER_TRAIT(buffer_data_type::CHROMOSOMES, chromosome);
+  ASSOCIATE_TYPE_TO_BUFFER_TRAIT(buffer_data_type::SCORES, fp_type);
+  ASSOCIATE_TYPE_TO_BUFFER_TRAIT(buffer_data_type::X_SCRATCH, fp_type);
+  ASSOCIATE_TYPE_TO_BUFFER_TRAIT(buffer_data_type::Y_SCRATCH, fp_type);
+  ASSOCIATE_TYPE_TO_BUFFER_TRAIT(buffer_data_type::Z_SCRATCH, fp_type);
+  ASSOCIATE_TYPE_TO_BUFFER_TRAIT(buffer_data_type::NUM_ATOMS, int);
+  ASSOCIATE_TYPE_TO_BUFFER_TRAIT(buffer_data_type::NUM_ROTAMERS, int);
+  ASSOCIATE_TYPE_TO_BUFFER_TRAIT(buffer_data_type::PROT_MAX, fp_type);
+  ASSOCIATE_TYPE_TO_BUFFER_TRAIT(buffer_data_type::PROT_MIN, fp_type);
+  ASSOCIATE_TYPE_TO_BUFFER_TRAIT(buffer_data_type::PROT_CENTER, fp_type);
+  ASSOCIATE_TYPE_TO_BUFFER_TRAIT(buffer_data_type::PROT_SIZE_X, int);
+  ASSOCIATE_TYPE_TO_BUFFER_TRAIT(buffer_data_type::PROT_SIZE_XY, int);
+  ASSOCIATE_TYPE_TO_BUFFER_TRAIT(buffer_data_type::PROT_SIZE_XYZ, int);
+  ASSOCIATE_TYPE_TO_BUFFER_TRAIT(buffer_data_type::PROT_GRID_MAPS, fp_type);
+  ASSOCIATE_TYPE_TO_BUFFER_TRAIT(buffer_data_type::PROT_X_COORDS, fp_type);
+  ASSOCIATE_TYPE_TO_BUFFER_TRAIT(buffer_data_type::PROT_Y_COORDS, fp_type);
+  ASSOCIATE_TYPE_TO_BUFFER_TRAIT(buffer_data_type::PROT_Z_COORDS, fp_type);
+  ASSOCIATE_TYPE_TO_BUFFER_TRAIT(buffer_data_type::PROT_NUM_ATOMS, int);
+  ASSOCIATE_TYPE_TO_BUFFER_TRAIT(buffer_data_type::PROT_DS_TYPES, ds_type);
+  ASSOCIATE_TYPE_TO_BUFFER_TRAIT(buffer_data_type::DS_MODEL, fp_type);
+  ASSOCIATE_TYPE_TO_BUFFER_TRAIT(buffer_data_type::PROT_DS_GRID_MAPS, fp_type);
+
+#undef ASSOCIATE_TYPE_TO_BUFFER_TRAIT
+
 
   template<template<class...> class container_type, typename T, class queue_t, class... args>
   struct buffer_impl {

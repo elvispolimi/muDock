@@ -1,0 +1,582 @@
+{
+  "source": "Table adapted and enriched from: Drugscore2018",
+  "comment": "Mapping of Sybyl atom types to DrugScore atom types used in MuDock",
+  "missing from drugscore": "'NH', 'FL', 'MC', 'LV'",
+  "elements": [
+    {
+      "value": "METAL",
+      "name": "Li",
+      "index": 4
+    },
+    {
+      "value": "METAL",
+      "name": "Be",
+      "index": 5
+    },
+    {
+      "value": "C_2",
+      "name": "C_2",
+      "index": 7
+    },
+    {
+      "value": "C_3",
+      "name": "C_3",
+      "index": 8
+    },
+    {
+      "value": "C_ar",
+      "name": "C_ar",
+      "index": 10
+    },
+    {
+      "value": "C_1",
+      "name": "C_1",
+      "index": 11
+    },
+    {
+      "value": "C_cat",
+      "name": "C_cat",
+      "index": 13
+    },
+    {
+      "value": "N_3",
+      "name": "N_3",
+      "index": 18
+    },
+    {
+      "value": "N_pl3",
+      "name": "N_pl3",
+      "index": 19
+    },
+    {
+      "value": "N_2",
+      "name": "N_2",
+      "index": 20
+    },
+    {
+      "value": "N_ar",
+      "name": "N_ar",
+      "index": 21
+    },
+    {
+      "value": "N_am",
+      "name": "N_am",
+      "index": 22
+    },
+    {
+      "value": "N_1",
+      "name": "N_1",
+      "index": 24
+    },
+    {
+      "value": "N_4",
+      "name": "N_4",
+      "index": 26
+    },
+    {
+      "value": "O_3",
+      "name": "O_3",
+      "index": 28
+    },
+    {
+      "value": "O_2",
+      "name": "O_2",
+      "index": 29
+    },
+    {
+      "value": "O_co2",
+      "name": "O_co2",
+      "index": 30
+    },
+    {
+      "value": "F",
+      "name": "F",
+      "index": 33
+    },
+    {
+      "value": "METAL",
+      "name": "Na",
+      "index": 35
+    },
+    {
+      "value": "METAL",
+      "name": "Mg",
+      "index": 36
+    },
+    {
+      "value": "METAL",
+      "name": "Al",
+      "index": 37
+    },
+    {
+      "value": "P_3",
+      "name": "P_3",
+      "index": 39
+    },
+    {
+      "value": "S_3",
+      "name": "S_3",
+      "index": 40
+    },
+    {
+      "value": "S_2",
+      "name": "S_2",
+      "index": 41
+    },
+    {
+      "value": "S_o2",
+      "name": "S_o2",
+      "index": 42
+    },
+    {
+      "value": "S_o",
+      "name": "S_o",
+      "index": 43
+    },
+    {
+      "value": "Cl",
+      "name": "Cl",
+      "index": 45
+    },
+    {
+      "value": "METAL",
+      "name": "K",
+      "index": 47
+    },
+    {
+      "value": "METAL",
+      "name": "Ca",
+      "index": 48
+    },
+    {
+      "value": "METAL",
+      "name": "Sc",
+      "index": 49
+    },
+    {
+      "value": "METAL",
+      "name": "Ti",
+      "index": 50
+    },
+    {
+      "value": "METAL",
+      "name": "V",
+      "index": 51
+    },
+    {
+      "value": "METAL",
+      "name": "Cr_oh",
+      "index": 52
+    },
+    {
+      "value": "METAL",
+      "name": "Cr_th",
+      "index": 53
+    },
+    {
+      "value": "METAL",
+      "name": "Mn",
+      "index": 54
+    },
+    {
+      "value": "METAL",
+      "name": "Fe",
+      "index": 55
+    },
+    {
+      "value": "METAL",
+      "name": "Co_oh",
+      "index": 56
+    },
+    {
+      "value": "METAL",
+      "name": "Ni",
+      "index": 57
+    },
+    {
+      "value": "METAL",
+      "name": "Cu",
+      "index": 58
+    },
+    {
+      "value": "METAL",
+      "name": "Zn",
+      "index": 59
+    },
+    {
+      "value": "METAL",
+      "name": "Ga",
+      "index": 60
+    },
+    {
+      "value": "METAL",
+      "name": "Ge",
+      "index": 61
+    },
+    {
+      "value": "Br",
+      "name": "Br",
+      "index": 64
+    },
+    {
+      "value": "METAL",
+      "name": "Rb",
+      "index": 66
+    },
+    {
+      "value": "METAL",
+      "name": "Sr",
+      "index": 67
+    },
+    {
+      "value": "METAL",
+      "name": "Y",
+      "index": 68
+    },
+    {
+      "value": "METAL",
+      "name": "Zr",
+      "index": 69
+    },
+    {
+      "value": "METAL",
+      "name": "Nb",
+      "index": 70
+    },
+    {
+      "value": "METAL",
+      "name": "Mo",
+      "index": 71
+    },
+    {
+      "value": "METAL",
+      "name": "Tc",
+      "index": 72
+    },
+    {
+      "value": "METAL",
+      "name": "Ru",
+      "index": 73
+    },
+    {
+      "value": "METAL",
+      "name": "Rh",
+      "index": 74
+    },
+    {
+      "value": "METAL",
+      "name": "Pd",
+      "index": 75
+    },
+    {
+      "value": "METAL",
+      "name": "Ag",
+      "index": 76
+    },
+    {
+      "value": "METAL",
+      "name": "Cd",
+      "index": 77
+    },
+    {
+      "value": "METAL",
+      "name": "In",
+      "index": 78
+    },
+    {
+      "value": "METAL",
+      "name": "Sn",
+      "index": 79
+    },
+    {
+      "value": "METAL",
+      "name": "Sb",
+      "index": 80
+    },
+    {
+      "value": "I",
+      "name": "I",
+      "index": 82
+    },
+    {
+      "value": "METAL",
+      "name": "Cs",
+      "index": 84
+    },
+    {
+      "value": "METAL",
+      "name": "Ba",
+      "index": 85
+    },
+    {
+      "value": "METAL",
+      "name": "La",
+      "index": 86
+    },
+    {
+      "value": "METAL",
+      "name": "Ce",
+      "index": 87
+    },
+    {
+      "value": "METAL",
+      "name": "Pr",
+      "index": 88
+    },
+    {
+      "value": "METAL",
+      "name": "Nd",
+      "index": 89
+    },
+    {
+      "value": "METAL",
+      "name": "Pm",
+      "index": 90
+    },
+    {
+      "value": "METAL",
+      "name": "Sm",
+      "index": 91
+    },
+    {
+      "value": "METAL",
+      "name": "Eu",
+      "index": 92
+    },
+    {
+      "value": "METAL",
+      "name": "Gd",
+      "index": 93
+    },
+    {
+      "value": "METAL",
+      "name": "Tb",
+      "index": 94
+    },
+    {
+      "value": "METAL",
+      "name": "Dy",
+      "index": 95
+    },
+    {
+      "value": "METAL",
+      "name": "Ho",
+      "index": 96
+    },
+    {
+      "value": "METAL",
+      "name": "Er",
+      "index": 97
+    },
+    {
+      "value": "METAL",
+      "name": "Tm",
+      "index": 98
+    },
+    {
+      "value": "METAL",
+      "name": "Yb",
+      "index": 99
+    },
+    {
+      "value": "METAL",
+      "name": "Lu",
+      "index": 100
+    },
+    {
+      "value": "METAL",
+      "name": "Hf",
+      "index": 101
+    },
+    {
+      "value": "METAL",
+      "name": "Ta",
+      "index": 102
+    },
+    {
+      "value": "METAL",
+      "name": "W",
+      "index": 103
+    },
+    {
+      "value": "METAL",
+      "name": "Re",
+      "index": 104
+    },
+    {
+      "value": "METAL",
+      "name": "Os",
+      "index": 105
+    },
+    {
+      "value": "METAL",
+      "name": "Ir",
+      "index": 106
+    },
+    {
+      "value": "METAL",
+      "name": "Pt",
+      "index": 107
+    },
+    {
+      "value": "METAL",
+      "name": "Au",
+      "index": 108
+    },
+    {
+      "value": "METAL",
+      "name": "Hg",
+      "index": 109
+    },
+    {
+      "value": "METAL",
+      "name": "Tl",
+      "index": 110
+    },
+    {
+      "value": "METAL",
+      "name": "Pb",
+      "index": 111
+    },
+    {
+      "value": "METAL",
+      "name": "Bi",
+      "index": 112
+    },
+    {
+      "value": "METAL",
+      "name": "Po",
+      "index": 113
+    },
+    {
+      "value": "METAL",
+      "name": "Fr",
+      "index": 116
+    },
+    {
+      "value": "METAL",
+      "name": "Ra",
+      "index": 117
+    },
+    {
+      "value": "METAL",
+      "name": "Ac",
+      "index": 118
+    },
+    {
+      "value": "METAL",
+      "name": "Th",
+      "index": 119
+    },
+    {
+      "value": "METAL",
+      "name": "Pa",
+      "index": 120
+    },
+    {
+      "value": "METAL",
+      "name": "U",
+      "index": 121
+    },
+    {
+      "value": "METAL",
+      "name": "Np",
+      "index": 122
+    },
+    {
+      "value": "METAL",
+      "name": "Pu",
+      "index": 123
+    },
+    {
+      "value": "METAL",
+      "name": "Am",
+      "index": 124
+    },
+    {
+      "value": "METAL",
+      "name": "Cm",
+      "index": 125
+    },
+    {
+      "value": "METAL",
+      "name": "Bk",
+      "index": 126
+    },
+    {
+      "value": "METAL",
+      "name": "Cf",
+      "index": 127
+    },
+    {
+      "value": "METAL",
+      "name": "Es",
+      "index": 128
+    },
+    {
+      "value": "METAL",
+      "name": "Fm",
+      "index": 129
+    },
+    {
+      "value": "METAL",
+      "name": "Md",
+      "index": 130
+    },
+    {
+      "value": "METAL",
+      "name": "No",
+      "index": 131
+    },
+    {
+      "value": "METAL",
+      "name": "Lr",
+      "index": 132
+    },
+    {
+      "value": "METAL",
+      "name": "Rf",
+      "index": 133
+    },
+    {
+      "value": "METAL",
+      "name": "Db",
+      "index": 134
+    },
+    {
+      "value": "METAL",
+      "name": "Sg",
+      "index": 135
+    },
+    {
+      "value": "METAL",
+      "name": "Bh",
+      "index": 136
+    },
+    {
+      "value": "METAL",
+      "name": "Hs",
+      "index": 137
+    },
+    {
+      "value": "METAL",
+      "name": "Mt",
+      "index": 138
+    },
+    {
+      "value": "METAL",
+      "name": "Ds",
+      "index": 139
+    },
+    {
+      "value": "METAL",
+      "name": "Rg",
+      "index": 140
+    },
+    {
+      "value": "METAL",
+      "name": "Cn",
+      "index": 141
+    }
+  ]
+}

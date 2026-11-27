@@ -8,6 +8,12 @@ set(header_prefix "mudock")
 list(
   APPEND
   header_files
+  "${header_path}/${header_prefix}/chem/drugscore/drugscore_layer.hpp"
+  "${header_path}/${header_prefix}/chem/drugscore/drugscore_ligand.hpp"
+  "${header_path}/${header_prefix}/chem/drugscore/drugscore_model_data.hpp"
+  "${header_path}/${header_prefix}/chem/drugscore/drugscore_model.hpp"
+  "${header_path}/${header_prefix}/chem/drugscore/drugscore_protein.hpp"
+  "${header_path}/${header_prefix}/chem/drugscore/drugscore_types.hpp"
   "${header_path}/${header_prefix}/chem/assign_autodock_babel_types.hpp"
   "${header_path}/${header_prefix}/chem/autodock_babel_types.hpp"
   "${header_path}/${header_prefix}/chem/autodock_grid_types.hpp"
@@ -25,6 +31,8 @@ list(
   "${header_path}/${header_prefix}/chem/grid_const.hpp"
   "${header_path}/${header_prefix}/chem/mehler_solmajer.hpp"
   "${header_path}/${header_prefix}/chem/molecule_layer.hpp"
+  "${header_path}/${header_prefix}/compute/drugscore/ds_score_kernel.hpp"
+  "${header_path}/${header_prefix}/compute/drugscore/ds_score.hpp"
   "${header_path}/${header_prefix}/compute/safe_stack.hpp"
   "${header_path}/${header_prefix}/compute/parse_ids.hpp"
   "${header_path}/${header_prefix}/compute/reorder_buffer.hpp"
@@ -55,6 +63,7 @@ list(
   "${header_path}/${header_prefix}/cpp_implementation/geom_transform_cpp.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/genetic_cpp.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/cpp_implementation.hpp"
+  "${header_path}/${header_prefix}/cpp_implementation/ds_score_cpp.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/mutate_cpp.hpp"
   "${header_path}/${header_prefix}/cpp_implementation/mutate.hpp"
   "${header_path}/${header_prefix}/format/concept.hpp"
@@ -101,6 +110,10 @@ set(source_path "${CMAKE_CURRENT_SOURCE_DIR}/src")
 list(
   APPEND
   source_files
+  "${source_path}/chem/drugscore/assign_drugscore_types.cpp"
+  "${source_path}/chem/drugscore/drugscore_model_data.cpp"
+  "${source_path}/chem/drugscore/drugscore_protein.cpp"
+  "${source_path}/chem/drugscore/drugscore_types.cpp"
   "${source_path}/chem/assign_autodock_babel_types.cpp"
   "${source_path}/chem/assign_autodock_types.cpp"
   "${source_path}/chem/autodock_babel_types.cpp"
@@ -130,6 +143,7 @@ list(
   "${source_path}/cpp_implementation/mutate_cpp.cpp"
   "${source_path}/cpp_implementation/geom_transform_cpp.cpp"
   "${source_path}/cpp_implementation/adt_score_cpp.cpp"
+  "${source_path}/cpp_implementation/ds_score_cpp.cpp"
   "${source_path}/cpp_implementation/genetic_cpp.cpp"
   "${source_path}/tbb_implementation/runtime_services.cpp"
 )
@@ -178,6 +192,7 @@ if(MUDOCK_ENABLE_CUDA)
     "${header_path}/${header_prefix}/cuda_implementation/adt_score_cuda.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/genetic_cuda.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/cuda_random.cuh"
+    "${header_path}/${header_prefix}/cuda_implementation/ds_score_cuda.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/cuda_utils.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/mutate.cuh"
     "${header_path}/${header_prefix}/cuda_implementation/cuda_implementation.hpp"
@@ -187,6 +202,7 @@ if(MUDOCK_ENABLE_CUDA)
     source_files
     "${source_path}/cuda_implementation/queue_cuda.cu"
     "${source_path}/cuda_implementation/adt_score_cuda.cu"
+    "${source_path}/cuda_implementation/ds_score_cuda.cu"
     "${source_path}/cuda_implementation/genetic_cuda.cu"
     "${source_path}/cuda_implementation/cuda_random.cu"
     "${source_path}/cuda_implementation/geom_transform_cuda.cu"
